@@ -1131,10 +1131,17 @@ function initializeOperationalLinks() {
   elements.monthNavLink.href = elements.publicLink.href;
   const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
   adminEntryUrl.searchParams.set('view', 'admin');
-  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
-  [elements.adminEntryLink, elements.agendaAdminEntry].filter(Boolean).forEach((link) => {
-    link.href = adminEntryUrl.pathname + adminEntryUrl.search;
-  });
+  if (elements.adminEntryLink) {
+    // L'accesso iniziale non deve conservare l'ID di un centro eventualmente
+    // cancellato: dopo il login il profilo amministratore sceglie quello attivo.
+    elements.adminEntryLink.href = adminEntryUrl.pathname + adminEntryUrl.search;
+  }
+  if (elements.agendaAdminEntry) {
+    // Dall'Agenda, invece, il centro è già stato validato e va mantenuto.
+    const agendaAdminUrl = new URL(adminEntryUrl);
+    if (centerId) agendaAdminUrl.searchParams.set('c', centerId);
+    elements.agendaAdminEntry.href = agendaAdminUrl.pathname + agendaAdminUrl.search;
+  }
   const mealsAccessButton = document.querySelector('[data-access-link="pasti"]');
   const kitchenAccessButton = document.querySelector('[data-access-link="cucina"]');
   const mealsShareButton = document.querySelector('[data-share-access-link="pasti"]');

@@ -152,6 +152,8 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(index, /data-resident-password-input/);
   assert.match(index, /data-admin-entry-link[^>]+href="\/\?view=admin"/);
   assert.match(index, /data-agenda-admin-entry[^>]+href="\/\?view=admin"/);
+  assert.match(app, /elements\.adminEntryLink\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
+  assert.match(app, /agendaAdminUrl\.searchParams\.set\('c', centerId\)/);
 });
 
 test('l invito resta accessibile da disconnessi e gli amministratori non vedono l accesso residenti', () => {
