@@ -116,7 +116,7 @@ function renderScreen(screen, { kitchen, activeIndex }) {
             ${screen.columns
               .map(
                 (column) => `
-              <th class="summary-matrix-meal-heading${nextDateClass(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(column.label)}</span>${renderBreakfastStatus(column)}</th>
+              <th class="summary-matrix-meal-heading${nextDateClass(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(localizedMealLabel(column))}</span>${renderBreakfastStatus(column)}</th>
             `,
               )
               .join("")}
@@ -150,6 +150,13 @@ function renderCaption(screen, kitchen) {
 
 function mealIcon(mealTypeId) {
   return { breakfast: "☕", lunch: "🍝", dinner: "🍽" }[mealTypeId] || "•";
+}
+
+function localizedMealLabel(column) {
+  const mealTypeId = String(column?.mealTypeId || "").trim().toLowerCase();
+  const translated = mealTypeId ? t(`meal.type.${mealTypeId}`) : "";
+  const raw = String(column?.label || "").trim();
+  return translated && translated !== `meal.type.${mealTypeId}` ? translated : raw;
 }
 
 function renderRow(label, className, screen, renderCell) {
@@ -283,7 +290,7 @@ function renderInternationalCard(column, { kitchen }) {
     <article class="summary-international-card${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
-        <div><strong>${escapeHtml(column.label)}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
+        <div><strong>${escapeHtml(localizedMealLabel(column))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
       </header>
       <dl>
         ${column.guestCount > 0 ? `<div><dt>${escapeHtml(t("summary.guests"))}</dt><dd>${column.guestCount}</dd></div>` : ""}

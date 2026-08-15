@@ -558,6 +558,28 @@
                     <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per chi non ha ancora fissato una preferenza personale.</small>
                   </label>
 
+                  <div class="admin-layout-pickers" data-admin-layout-pickers>
+                    <div class="admin-option-group">
+                      <label class="field-label" for="admin-summary-layout-select">
+                        <span data-i18n="admin.adaptations.summaryLayout.label">Vista del riepilogo</span>
+                        <select id="admin-summary-layout-select" data-admin-summary-layout-select aria-label="Vista del riepilogo">
+                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
+                          <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div class="admin-option-group">
+                      <label class="field-label" for="admin-kitchen-layout-select">
+                        <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
+                        <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
+                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
+                          <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
+                        </select>
+                      </label>
+                    </div>
+                    <p class="field-help" data-i18n="admin.adaptations.layouts.help">Scegli separatamente l'aspetto del riepilogo e quello della cucina.</p>
+                  </div>
+
                   <fieldset class="admin-theme-picker" data-admin-theme-picker>
                     <legend data-i18n="admin.adaptations.theme.label">Palette colori</legend>
                     <p class="field-help" data-i18n="admin.adaptations.theme.help">Scegli la combinazione di colori dell'app per questo centro. L'anteprima si applica subito.</p>
