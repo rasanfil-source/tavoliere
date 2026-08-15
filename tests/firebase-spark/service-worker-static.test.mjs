@@ -71,8 +71,11 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /styles\.css\?v=20260815o/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260815o/);
   assert.match(index, /app\.js\?v=20260815q/);
+  assert.match(index, /manifest\.webmanifest\?v=20260816a/);
+  assert.match(index, /launcher-192\.png\?v=20260816a/);
   assert.match(app, /center-settings\.js\?v=20260815q/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v265'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v266'/);
+  assert.match(serviceWorker, /launcher-512\.png\?v=20260816a/);
 });
 
 test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {

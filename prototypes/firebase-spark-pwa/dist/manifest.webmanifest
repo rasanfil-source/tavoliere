@@ -9,13 +9,13 @@
   "theme_color": "#16615a",
   "icons": [
     {
-      "src": "/icons/launcher-192.png?v=20260809b",
+      "src": "/icons/launcher-192.png?v=20260816a",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/launcher-512.png?v=20260809b",
+      "src": "/icons/launcher-512.png?v=20260816a",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
