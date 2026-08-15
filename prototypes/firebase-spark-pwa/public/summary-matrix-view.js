@@ -4,7 +4,7 @@ import { formatDietLabel } from "./diet-utils.mjs?v=20260810a";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260815f";
+} from "./summary-matrix-model.js?v=20260815i";
 
 export function mountSummaryMatrix(
   container,
@@ -104,7 +104,7 @@ function renderScreen(screen, { kitchen, activeIndex }) {
             ${screen.dateGroups
               .map(
                 (group) => `
-              <th class="summary-matrix-date-heading${nextDateClass(group, screen)}" scope="colgroup" colspan="${group.span}">
+              <th class="summary-matrix-date-heading${dateClasses(group, screen)}" scope="colgroup" colspan="${group.span}">
                 <span>${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
                 <time datetime="${escapeHtml(group.dateId)}">${escapeHtml(formatDate(group.dateId))}</time>
               </th>
@@ -116,7 +116,7 @@ function renderScreen(screen, { kitchen, activeIndex }) {
             ${screen.columns
               .map(
                 (column) => `
-              <th class="summary-matrix-meal-heading${nextDateClass(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(localizedMealLabel(column))}</span>${renderBreakfastStatus(column, kitchen)}</th>
+              <th class="summary-matrix-meal-heading${dateClasses(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(localizedMealLabel(column))}</span>${renderBreakfastStatus(column, kitchen)}</th>
             `,
               )
               .join("")}
@@ -163,7 +163,7 @@ function renderRow(label, className, screen, renderCell) {
   return `
     <tr class="${className}">
       <th class="summary-matrix-label" scope="row">${escapeHtml(label)}</th>
-      ${screen.columns.map((column) => `<td class="${nextDateClass(column, screen).trim()}">${renderCell(column)}</td>`).join("")}
+      ${screen.columns.map((column) => `<td class="${dateClasses(column, screen).trim()}">${renderCell(column)}</td>`).join("")}
     </tr>
   `;
 }
@@ -196,7 +196,7 @@ function renderMassBandRow(screen) {
   const cells = getMassDateGroups(screen)
     .map(
       (group) =>
-        `<td class="summary-matrix-mass-band${nextDateClass(group, screen)}" colspan="${group.span}"><span class="summary-matrix-mass-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>${renderMassCell(group)}</td>`,
+        `<td class="summary-matrix-mass-band${dateClasses(group, screen)}" colspan="${group.span}"><span class="summary-matrix-mass-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>${renderMassCell(group)}</td>`,
     )
     .join("");
   return `
@@ -287,7 +287,7 @@ function renderInternationalScreen(screen, { kitchen, activeIndex }) {
 function renderInternationalCard(column, { kitchen }) {
   const diets = kitchen ? renderKitchenDietCell(column) : renderDietCell(column);
   return `
-    <article class="summary-international-card${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
+    <article class="summary-international-card summary-day-tone-${normalizeDayTone(column.dayIndex)}${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
         <div><strong>${escapeHtml(localizedMealLabel(column))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
@@ -313,7 +313,7 @@ function renderInternationalMass(screen, kitchen) {
         ${groups
           .map(
             (group, index) => `
-          <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${nextDateClass(group, screen)}" style="--mass-segment-span:${group.span}">
+          <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${dateClasses(group, screen)}" style="--mass-segment-span:${group.span}">
             ${index === 0 ? `<strong class="summary-international-mass-title">${escapeHtml(t("summary.mass"))}</strong>` : ""}
             <div class="summary-international-mass-segment">
               <span>${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
@@ -363,6 +363,14 @@ function renderEmpty(label) {
 
 function nextDateClass(column, screen) {
   return column.dayIndex > screen.index ? " summary-matrix-next-date" : "";
+}
+
+function dateClasses(item, screen) {
+  return `${nextDateClass(item, screen)} summary-day-tone-${normalizeDayTone(item.dayIndex)}`;
+}
+
+function normalizeDayTone(dayIndex) {
+  return Math.max(0, Math.min(2, Number(dayIndex) || 0));
 }
 
 function relativeDayLabel(dayIndex) {

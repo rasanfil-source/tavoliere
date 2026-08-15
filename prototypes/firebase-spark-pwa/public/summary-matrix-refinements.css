@@ -239,6 +239,10 @@
   --today-surface: color-mix(in srgb, var(--primary) 10%, var(--surface));
   --today-line: color-mix(in srgb, var(--primary) 48%, var(--line));
   --today-ink: var(--primary);
+  --summary-day-next: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  --summary-day-next-strong: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  --summary-day-following: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  --summary-day-following-strong: color-mix(in srgb, var(--primary) 15%, var(--surface));
 }
 
 html[data-theme="giallino"] {
@@ -731,6 +735,30 @@ html[data-theme="confetto"] {
   background: color-mix(in srgb, var(--calendar-heading-bg) 48%, var(--surface));
 }
 
+/* I toni seguono il giorno assoluto, così domani resta riconoscibile
+   quando diventa la schermata corrente e dopodomani usa il terzo tono. */
+.summary-layout-classic .summary-matrix td.summary-day-tone-1,
+.summary-layout-classic .summary-matrix th.summary-day-tone-1 {
+  background: var(--summary-day-next);
+}
+
+.summary-layout-classic .summary-matrix td.summary-day-tone-2,
+.summary-layout-classic .summary-matrix th.summary-day-tone-2 {
+  background: var(--summary-day-following);
+}
+
+.summary-layout-classic .summary-matrix-date-heading.summary-day-tone-1,
+.summary-layout-classic .summary-matrix-meal-heading.summary-day-tone-1,
+.summary-layout-classic .summary-matrix-mass-band.summary-day-tone-1 {
+  background: var(--summary-day-next-strong);
+}
+
+.summary-layout-classic .summary-matrix-date-heading.summary-day-tone-2,
+.summary-layout-classic .summary-matrix-meal-heading.summary-day-tone-2,
+.summary-layout-classic .summary-matrix-mass-band.summary-day-tone-2 {
+  background: var(--summary-day-following-strong);
+}
+
 .summary-layout-classic .summary-matrix-row-meals td {
   height: 104px;
 }
@@ -812,6 +840,22 @@ html[data-theme="confetto"] {
   border: 1px solid var(--view-border);
   border-radius: 11px;
   background: var(--surface);
+}
+
+.summary-international-card.summary-day-tone-1 {
+  background: var(--summary-day-next);
+}
+
+.summary-international-card.summary-day-tone-2 {
+  background: var(--summary-day-following);
+}
+
+.summary-international-card.summary-day-tone-1 > header {
+  background: var(--summary-day-next-strong);
+}
+
+.summary-international-card.summary-day-tone-2 > header {
+  background: var(--summary-day-following-strong);
 }
 
 .summary-international-card > header {
@@ -916,6 +960,16 @@ html[data-theme="confetto"] {
   border: 1px solid var(--view-border);
   border-radius: 10px;
   background: var(--calendar-heading-bg);
+}
+
+.summary-international-mass-group.summary-day-tone-1,
+.summary-international-mass-group.summary-day-tone-1 .summary-international-mass-title {
+  background: var(--summary-day-next-strong);
+}
+
+.summary-international-mass-group.summary-day-tone-2,
+.summary-international-mass-group.summary-day-tone-2 .summary-international-mass-title {
+  background: var(--summary-day-following-strong);
 }
 
 .summary-international-mass-group-first {
@@ -1065,12 +1119,20 @@ html[data-theme="confetto"] {
   }
 
   .summary-international-mass {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
   }
 
   .summary-international-mass-group {
-    grid-column: 1;
+    grid-column: span 1;
+  }
+
+  .summary-international-mass-group-first {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .summary-international-mass-title {
+    padding-inline: 10px;
   }
 
   .admin-calendar-extension {
