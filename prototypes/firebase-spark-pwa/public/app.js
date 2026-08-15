@@ -43,7 +43,7 @@ import {
   savePreferredView,
   clearPreferredView,
   cacheDefaultView
-} from './center-settings.js?v=20260813h';
+} from './center-settings.js?v=20260815a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260809a';
 import {
   formatDietLabel,
@@ -68,6 +68,10 @@ import {
 } from './domain/participant-profile.mjs?v=20260809a';
 import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260812a';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260813a';
+import {
+  mountSummaryMatrix,
+  scrollSummaryMatrix
+} from './summary-matrix-view.js?v=20260815a';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -319,8 +323,13 @@ const state = {
   participantSummary: null,
   calendarAnchoredToCenter: false,
   todayOverview: [],
+  summaryDays: [],
+  summaryOperations: [],
   summaryDayOffset: 0,
   kitchenDayOffset: 0,
+  kitchenDays: [],
+  kitchenOperations: [],
+  kitchenNotes: [],
   kitchenNote: null,
   kitchenDailyOperation: null,
   kitchenDailyHealth: null,
@@ -360,6 +369,8 @@ const state = {
     participantContactSharingEnabled: true,
     themePalette: 'smeraldo',
     defaultView: loadCachedDefaultView(),
+    summaryLayout: 'international',
+    kitchenLayout: 'classic',
     language: 'it',
     administratorName: '',
     administratorSignature: '',
@@ -482,6 +493,8 @@ const elements = {
   adminNavConfiguration: document.querySelector('[data-admin-nav-configuration]'),
   adminNavActivity: document.querySelector('[data-admin-nav-activity]'),
   adminDefaultViewSelect: document.querySelector('[data-admin-default-view-select]'),
+  adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
+  adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
@@ -2211,17 +2224,31 @@ async function performRefresh(source) {
     state.centerContactSettings = centerSettings;
     await applyCenterDefaultLanguage(centerSettings);
     renderMode();
-    const kitchenDate = getKitchenDate();
-    const [meals, kitchenNote, dailyOperation, dailyHealth] = await Promise.all([
-      loadKitchenCounts(kitchenDate, {
-        forceStaticRefresh: source === 'manuale',
-        sessionReady: true,
-        staticVersion: state.centerContactSettings.participantDataVersion || '0'
-      }),
-      loadKitchenNote(kitchenDate, { forceRefresh: source === 'manuale' }),
-      loadDailyOperation(kitchenDate, { forceRefresh: source === 'manuale' }),
-      loadDailyHealth(kitchenDate, { forceRefresh: source === 'manuale' })
-    ]).catch((error) => {
+    const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
+    const kitchenPayloads = await Promise.all(kitchenDates.map(async (date) => {
+      const [meals, kitchenNote, dailyOperation, dailyHealth] = await Promise.all([
+        loadKitchenCounts(date, {
+          forceStaticRefresh: source === 'manuale',
+          sessionReady: true,
+          staticVersion: state.centerContactSettings.participantDataVersion || '0'
+        }),
+        loadKitchenNote(date, { forceRefresh: source === 'manuale' }),
+        loadDailyOperation(date, { forceRefresh: source === 'manuale' }),
+        loadDailyHealth(date, { forceRefresh: source === 'manuale' })
+      ]);
+      return {
+        dateId: formatDateId(date),
+        meals: applyDailyDietsToKitchenMeals(meals, dailyHealth.dietAssignments)
+          .map((meal) => ({
+            ...meal,
+            mealTypeId: meal.mealTypeId || meal.key,
+            present: meal.present || meal.dietParticipants || []
+          })),
+        kitchenNote,
+        dailyOperation,
+        dailyHealth
+      };
+    })).catch((error) => {
       error.refreshStage = 'dati';
       throw error;
     });
@@ -2230,10 +2257,19 @@ async function performRefresh(source) {
       || kitchenDayOffset !== state.kitchenDayOffset) {
       return;
     }
-    state.meals = applyDailyDietsToKitchenMeals(meals, dailyHealth.dietAssignments);
-    state.kitchenNote = kitchenNote;
-    state.kitchenDailyOperation = dailyOperation;
-    state.kitchenDailyHealth = dailyHealth;
+    state.kitchenDays = kitchenPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
+    state.kitchenOperations = kitchenPayloads.map(({ dateId, kitchenNote, dailyOperation, dailyHealth }) => ({
+      dateId,
+      notes: kitchenNote ? [kitchenNote] : [],
+      dailyOperation,
+      dailyHealth
+    }));
+    state.kitchenNotes = kitchenPayloads.map(({ dateId, kitchenNote }) => ({ dateId, note: kitchenNote }));
+    state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || [];
+    state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || null;
+    state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || null;
+    state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || null;
+    selectKitchenMatrixDay(state.kitchenDayOffset);
     state.kitchenUpdatedAt = new Date();
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
     renderMeals();
@@ -2259,6 +2295,9 @@ async function performRefresh(source) {
         'previous'
       );
     } else {
+      state.kitchenDays = [];
+      state.kitchenOperations = [];
+      state.kitchenNotes = [];
       state.kitchenNote = null;
       state.kitchenDailyOperation = null;
       state.kitchenDailyHealth = null;
@@ -2331,22 +2370,39 @@ async function refreshParticipant(source) {
     if (!isCurrentParticipantRequest(request)) return;
     anchorCalendarToCenterToday();
     if (state.mode === 'summary') {
-      const [todayOverview, dailyOperation, dailyHealth] = await Promise.all([
-        loadParticipantDaySummaries(getSummaryDate(), {
-          forceStaticRefresh: source === 'manuale',
-          staticVersion: state.centerContactSettings.participantDataVersion || '0',
-          includeContacts: state.centerContactSettings.participantContactSharingEnabled
-        }),
-        loadDailyOperation(getSummaryDate(), { forceRefresh: source === 'manuale' }),
-        loadDailyHealth(getSummaryDate(), { forceRefresh: source === 'manuale' })
-      ]);
+      const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
+      const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
+        const [meals, dailyOperation, dailyHealth] = await Promise.all([
+          loadParticipantDaySummaries(date, {
+            forceStaticRefresh: source === 'manuale',
+            staticVersion: state.centerContactSettings.participantDataVersion || '0',
+            includeContacts: state.centerContactSettings.participantContactSharingEnabled
+          }),
+          loadDailyOperation(date, { forceRefresh: source === 'manuale' }),
+          loadDailyHealth(date, { forceRefresh: source === 'manuale' })
+        ]);
+        return {
+          dateId: formatDateId(date),
+          meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
+          dailyOperation,
+          dailyHealth
+        };
+      }));
       if (!isCurrentParticipantRequest(request)) return;
-      state.todayOverview = todayOverview;
-      state.summaryDailyOperation = dailyOperation;
-      state.summaryDailyHealth = dailyHealth;
-      state.todayOverview = applyDailyDietsToSummary(todayOverview, dailyHealth.dietAssignments);
+      state.summaryDays = summaryPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
+      state.summaryOperations = summaryPayloads.map(({ dateId, dailyOperation, dailyHealth }) => ({
+        dateId,
+        dailyOperation,
+        dailyHealth
+      }));
+      state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || [];
+      state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || null;
+      state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || null;
+      selectSummaryMatrixDay(state.summaryDayOffset);
     } else {
       state.todayOverview = [];
+      state.summaryDays = [];
+      state.summaryOperations = [];
       state.summaryDailyOperation = null;
       state.summaryDailyHealth = null;
     }
@@ -2401,12 +2457,17 @@ function clearParticipantDataAfterAccessRevocation() {
   state.participantWeek = [];
   state.participantMonth = [];
   state.todayOverview = [];
+  state.summaryDays = [];
+  state.summaryOperations = [];
   state.participantSummary = null;
   renderParticipantMeals();
 }
 
 function clearKitchenDataAfterAccessRevocation() {
   state.meals = [];
+  state.kitchenDays = [];
+  state.kitchenOperations = [];
+  state.kitchenNotes = [];
   state.kitchenNote = null;
   state.kitchenDailyOperation = null;
   state.kitchenDailyHealth = null;
@@ -3043,6 +3104,9 @@ async function performAdminCenterSettingsSave() {
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
       themePalette: state.centerContactSettings.themePalette || 'smeraldo',
+      defaultView: state.centerContactSettings.defaultView || 'month',
+      summaryLayout: state.centerContactSettings.summaryLayout || 'international',
+      kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorName,
       administratorSignature,
@@ -3203,6 +3267,12 @@ function syncAdminAdaptationsForm() {
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
   }
+  if (elements.adminSummaryLayoutSelect) {
+    elements.adminSummaryLayoutSelect.value = state.centerContactSettings.summaryLayout || 'international';
+  }
+  if (elements.adminKitchenLayoutSelect) {
+    elements.adminKitchenLayoutSelect.value = state.centerContactSettings.kitchenLayout || 'classic';
+  }
   if (elements.adminContactSharingSelect) {
     const isEnabled = state.centerContactSettings.participantContactSharingEnabled;
     elements.adminContactSharingSelect.value = isEnabled ? 'enabled' : 'disabled';
@@ -3247,6 +3317,8 @@ async function handleAdminAdaptationsSave() {
       participantContactSharingEnabled: sharingEnabled,
       themePalette: paletteToSave,
       defaultView: elements.adminDefaultViewSelect ? elements.adminDefaultViewSelect.value : state.centerContactSettings.defaultView,
+      summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
+      kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
       language: languageToSave,
       commonPassword: '',
       administratorName: state.centerContactSettings.administratorName || getCurrentUser()?.displayName || '',
@@ -3570,24 +3642,48 @@ function renderCenterAvatar(showInCurrentMode, centerName) {
 
 function handleSummaryDayChange(offset) {
   state.summaryDayOffset = offset === 1 ? 1 : 0;
-  elements.summaryDayButtons.forEach((button) => {
-    button.classList.toggle('week-pill-active', Number(button.dataset.summaryDay) === state.summaryDayOffset);
-    button.setAttribute('aria-selected', String(Number(button.dataset.summaryDay) === state.summaryDayOffset));
-  });
+  selectSummaryMatrixDay(state.summaryDayOffset);
   renderMode();
-  refreshNow('riepilogo');
+  if (state.summaryDays.length === 0) {
+    refreshNow('riepilogo');
+  }
 }
 
 function handleKitchenDayChange(offset) {
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
-  state.kitchenRequestVersion += 1;
+  selectKitchenMatrixDay(state.kitchenDayOffset);
+  renderKitchenHeading();
+  renderMeals();
+  if (state.kitchenDays.length === 0) {
+    refreshNow('giorno');
+  }
+}
+
+function selectSummaryMatrixDay(offset) {
+  state.summaryDayOffset = offset === 1 ? 1 : 0;
+  state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || state.todayOverview;
+  state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || state.summaryDailyOperation;
+  state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || state.summaryDailyHealth;
+  elements.summaryDayButtons.forEach((button) => {
+    const isSelected = Number(button.dataset.summaryDay) === state.summaryDayOffset;
+    button.classList.toggle('week-pill-active', isSelected);
+    button.setAttribute('aria-selected', String(isSelected));
+  });
+  scrollSummaryMatrix(elements.todayOverview, state.summaryDayOffset, { smooth: false });
+}
+
+function selectKitchenMatrixDay(offset) {
+  state.kitchenDayOffset = offset === 1 ? 1 : 0;
+  state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
+  state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || state.kitchenNote;
+  state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || state.kitchenDailyOperation;
+  state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || state.kitchenDailyHealth;
   elements.kitchenDayButtons.forEach((button) => {
     const isSelected = Number(button.dataset.kitchenDay) === state.kitchenDayOffset;
     button.classList.toggle('week-pill-active', isSelected);
     button.setAttribute('aria-selected', String(isSelected));
   });
-  renderKitchenHeading();
-  refreshNow('giorno');
+  scrollSummaryMatrix(elements.cards, state.kitchenDayOffset, { kitchen: true, smooth: false });
 }
 
 function getKitchenDate() {
@@ -4289,6 +4385,17 @@ function getMealIcon(mealTypeId) {
 }
 
 function renderTodayOverview() {
+  if (state.summaryDays.length > 0) {
+    mountSummaryMatrix(elements.todayOverview, {
+      days: state.summaryDays,
+      operationDays: state.summaryOperations,
+      layout: state.centerContactSettings.summaryLayout || 'international',
+      activeIndex: state.summaryDayOffset,
+      onActiveIndexChange: selectSummaryMatrixDay
+    });
+    return;
+  }
+
   const mealIcons = { breakfast: '☕', lunch: '🍝', dinner: '🍽' };
   elements.todayOverview.innerHTML = `
     <section class="today-panel">
@@ -5442,6 +5549,27 @@ function renderDietNameList(participants) {
 
 function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   renderKitchenHeading();
+  if (state.kitchenDays.length > 0) {
+    elements.kitchenNote.hidden = true;
+    elements.kitchenSick.hidden = true;
+    const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+    if (massCard) {
+      massCard.hidden = true;
+    }
+    mountSummaryMatrix(elements.cards, {
+      days: state.kitchenDays,
+      operationDays: state.kitchenOperations,
+      kitchen: true,
+      layout: state.centerContactSettings.kitchenLayout || 'classic',
+      activeIndex: state.kitchenDayOffset,
+      onActiveIndexChange: selectKitchenMatrixDay
+    });
+    return;
+  }
+  const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+  if (massCard) {
+    massCard.hidden = false;
+  }
   renderKitchenNote();
   renderKitchenMass();
   renderKitchenSickPeople();

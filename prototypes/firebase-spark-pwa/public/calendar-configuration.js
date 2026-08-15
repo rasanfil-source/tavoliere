@@ -22,6 +22,7 @@ const MEAL_TYPES = [
 ];
 const WINDOW_DAY_BATCH_SIZE = 132;
 const DATE_ID_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
 
 export async function saveCenterConfiguration({
   name,
@@ -30,6 +31,8 @@ export async function saveCenterConfiguration({
   participantContactSharingEnabled,
   themePalette,
   defaultView,
+  summaryLayout,
+  kitchenLayout,
   language,
   commonPassword,
   administratorName,
@@ -64,6 +67,8 @@ export async function saveCenterConfiguration({
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: typeof themePalette === 'string' ? themePalette : 'smeraldo',
     defaultView: defaultView === 'week' ? 'week' : 'month',
+    summaryLayout: normalizeLayout(summaryLayout, 'international'),
+    kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
     language: typeof language === 'string' ? language : 'it',
     commonPassword: typeof commonPassword === 'string' && commonPassword.length >= 4 ? commonPassword : null,
     administratorName,
@@ -186,6 +191,8 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       participantContactSharingEnabled: target.participantContactSharingEnabled,
       themePalette: target.themePalette,
       defaultView: target.defaultView,
+      summaryLayout: target.summaryLayout,
+      kitchenLayout: target.kitchenLayout,
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
@@ -225,6 +232,8 @@ async function completeConfiguration({
       participantContactSharingEnabled: target.participantContactSharingEnabled,
       themePalette: target.themePalette,
       defaultView: target.defaultView,
+      summaryLayout: target.summaryLayout,
+      kitchenLayout: target.kitchenLayout,
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
@@ -321,4 +330,8 @@ function reportProgress(onProgress, progress) {
 
 function yieldToMainThread() {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function normalizeLayout(value, fallback) {
+  return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
 }

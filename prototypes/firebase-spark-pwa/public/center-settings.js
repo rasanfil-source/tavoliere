@@ -12,6 +12,7 @@ export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const PREFERRED_VIEW_STORAGE_KEY = 'tavolaComune.preferredView';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
+const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
 const CENTER_AVATAR_MAX_LENGTH = 300000;
 const ALLOWED_THEME_PALETTES = new Set([
@@ -94,6 +95,8 @@ export async function updateCenterSettings({
   participantContactSharingEnabled,
   themePalette,
   defaultView,
+  summaryLayout,
+  kitchenLayout,
   language,
   commonPassword,
   administratorName,
@@ -131,7 +134,7 @@ export async function updateCenterSettings({
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260813g');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260815a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -139,6 +142,8 @@ export async function updateCenterSettings({
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: normalizeThemePalette(themePalette),
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
+    summaryLayout: normalizeLayout(summaryLayout, 'international'),
+    kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
     language: language || 'it',
     commonPassword: trimmedPassword || null,
     administratorName: normalizedAdministratorName,
@@ -211,6 +216,8 @@ function refreshCenterContactSettings() {
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
         themePalette: normalizeThemePalette(data.themePalette),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
+        summaryLayout: normalizeLayout(data.summaryLayout, 'international'),
+        kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
@@ -242,6 +249,10 @@ function normalizeCenterName(value) {
 
 function normalizeThemePalette(value) {
   return ALLOWED_THEME_PALETTES.has(value) ? value : 'smeraldo';
+}
+
+function normalizeLayout(value, fallback) {
+  return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
 }
 
 async function resolveCenterAvatar(avatarVersion) {

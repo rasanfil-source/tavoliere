@@ -1,10 +1,13 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v247';
+const CACHE_NAME = CACHE_PREFIX + 'v248';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/styles.css',
+  '/summary-matrix-refinements.css',
   '/app.js',
+  '/summary-matrix-view.js',
+  '/summary-matrix-model.js',
   '/html-utils.js',
   '/firebase-client.js',
   '/center-context.js',
