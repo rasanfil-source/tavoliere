@@ -251,6 +251,83 @@
   --mass-no-ink: color-mix(in srgb, var(--muted) 90%, var(--ink));
 }
 
+.summary-layout-classic .summary-matrix-people-label {
+  text-align: center;
+  vertical-align: top;
+}
+
+.summary-matrix-people-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--primary);
+}
+
+.summary-matrix-people-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.summary-layout-classic .summary-matrix-names > li {
+  display: block;
+}
+
+.summary-matrix-contact-picker {
+  min-width: 0;
+  width: 100%;
+}
+
+.summary-matrix-contact-picker[open] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-matrix-contact-picker > summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  color: var(--primary);
+  cursor: pointer;
+  list-style: none;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 38%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.summary-matrix-contact-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-matrix-contact-picker > summary .summary-matrix-person-name {
+  flex: 1 1 auto;
+}
+
+.summary-matrix-contact-caret {
+  flex: 0 0 auto;
+  font-size: 0.8em;
+  line-height: 1;
+  transition: transform 140ms ease;
+}
+
+.summary-matrix-contact-picker[open] .summary-matrix-contact-caret {
+  transform: rotate(180deg);
+}
+
+.summary-matrix-contact-picker .summary-matrix-contact-actions {
+  gap: 6px;
+}
+
 html[data-theme="giallino"] {
   --bg: #fffdf5;
   --surface: #fffefa;

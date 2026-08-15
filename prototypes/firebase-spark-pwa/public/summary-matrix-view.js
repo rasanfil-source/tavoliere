@@ -129,7 +129,7 @@ function renderScreen(screen, { kitchen, activeIndex }) {
           ${screen.hasSickMeals ? renderRow(t("summary.sickMeals"), "summary-matrix-row-sick", screen, renderSickMealCell) : ""}
           ${screen.hasSickDiets ? renderRow(t("summary.sickDiets"), "summary-matrix-row-sick-diets", screen, renderSickDietCell) : ""}
           ${screen.hasMassInformation ? renderMassBandRow(screen) : ""}
-          ${kitchen ? "" : renderRow(t("summary.names"), "summary-matrix-row-names", screen, renderNamesCell)}
+          ${kitchen ? "" : renderClassicNamesRow(screen)}
         </tbody>
       </table>
       ${kitchen ? renderNotes(screen) : ""}
@@ -192,6 +192,25 @@ function renderMassCell(column) {
   return `<span class="summary-matrix-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</span>`;
 }
 
+function renderClassicNamesRow(screen) {
+  return `
+    <tr class="summary-matrix-row-names">
+      <th class="summary-matrix-label summary-matrix-people-label" scope="row">
+        <span class="summary-matrix-people-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="9" cy="8" r="3"></circle>
+            <circle cx="17" cy="9" r="2.5"></circle>
+            <path d="M3.5 19c.4-4 2.3-6 5.5-6s5.1 2 5.5 6"></path>
+            <path d="M14.5 14.5c3.4-.7 5.4.8 6 4.5"></path>
+          </svg>
+        </span>
+        <span class="sr-only">${escapeHtml(t("summary.names"))}</span>
+      </th>
+      ${screen.columns.map((column) => `<td class="${dateClasses(column, screen).trim()}">${renderNamesCell(column, { compactActions: true })}</td>`).join("")}
+    </tr>
+  `;
+}
+
 function massStateClass(status) {
   if (status === "YES") return " summary-mass-state-yes";
   if (status === "NO") return " summary-mass-state-no";
@@ -248,7 +267,7 @@ function formatKitchenDietLabel(tag) {
   return /^\d+$/.test(value) ? value : formatDietLabel(value);
 }
 
-function renderNamesCell(column) {
+function renderNamesCell(column, { compactActions = false } = {}) {
   if (column.names.length === 0) return renderEmpty(t("summary.noName"));
   return `<ul class="summary-matrix-names">${column.names
     .map((participant) => {
@@ -265,6 +284,17 @@ function renderNamesCell(column) {
       const whatsapp = participant.whatsappEnabled && participant.phoneConsent && phone
         ? `<a class="summary-matrix-whatsapp" href="https://wa.me/${escapeHtml(phone.replace(/\D/g, ""))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(t("summary.messagePerson", { name: participant.displayName }))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`
         : "";
+      if (compactActions && (call || whatsapp)) {
+        return `
+          <li class="summary-matrix-name-with-picker">
+            <details class="summary-matrix-contact-picker">
+              <summary aria-label="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}" title="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}">
+                ${personName}<span class="summary-matrix-contact-caret" aria-hidden="true">⌄</span>
+              </summary>
+              <span class="summary-matrix-contact-actions">${call}${whatsapp}</span>
+            </details>
+          </li>`;
+      }
       return `<li>${personName}<span class="summary-matrix-contact-actions">${call}${whatsapp}</span></li>`;
     })
     .join("")}</ul>`;

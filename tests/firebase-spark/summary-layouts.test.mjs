@@ -54,6 +54,16 @@ test('telefono e WhatsApp sono separati e WhatsApp resta leggermente piu piccola
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.summary-matrix-contact-actions \{\s*gap: 6px/);
 });
 
+test('solo Classic compatta i commensali dietro il nome e una icona persone', () => {
+  assert.match(view, /renderClassicNamesRow\(screen\)/);
+  assert.match(view, /summary-matrix-people-icon/);
+  assert.match(view, /renderNamesCell\(column, \{ compactActions: true \}\)/);
+  assert.match(view, /details class="summary-matrix-contact-picker"/);
+  assert.match(view, /summary\.contactPerson/);
+  assert.match(styles, /\.summary-matrix-contact-picker\[open\][\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column\)/);
+});
+
 test('impostazioni e manutenzione presentano controlli graficamente raggruppati', () => {
   assert.match(index, /fieldset class="admin-layout-settings-card"/);
   assert.match(index, /details class="admin-audit-disclosure" data-admin-audit-load/);

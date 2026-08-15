@@ -416,6 +416,7 @@
   "summary.breakfastNotPlanned": "No prevista",
   "summary.breakfastPlanned": "Prevista",
   "summary.callPerson": "Llamar a {name}",
+  "summary.contactPerson": "Contactar con {name}",
   "summary.cover.one": "cubierto",
   "summary.cover.other": "cubiertos",
   "summary.dayAfterTomorrow": "Pasado mañana",

@@ -416,6 +416,7 @@
   "summary.breakfastNotPlanned": "Not planned",
   "summary.breakfastPlanned": "Planned",
   "summary.callPerson": "Call {name}",
+  "summary.contactPerson": "Contact {name}",
   "summary.cover.one": "place",
   "summary.cover.other": "places",
   "summary.dayAfterTomorrow": "Day after tomorrow",

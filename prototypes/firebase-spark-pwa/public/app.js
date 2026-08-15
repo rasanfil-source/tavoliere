@@ -71,7 +71,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815k';
+} from './summary-matrix-view.js?v=20260815l';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
