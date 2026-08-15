@@ -151,10 +151,17 @@ test('sul mobile le schede supportano swipe e snap sincronizzato', () => {
   assert.match(app, /addEventListener\('touchend', handleAdminSectionSwipeEnd/);
   assert.match(app, /ADMIN_SECTIONS\.filter\(isAdminSectionAllowed\)/);
   assert.match(app, /selectAdminSection\(nextSection, \{ updateHash: true \}\)/);
-  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-section-nav[\s\S]*scroll-snap-type: inline mandatory/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-section-nav \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(css, /\.admin-section-nav[\s\S]{0,240}scroll-snap-type: inline mandatory/);
   assert.match(css, /body\[data-mode="admin"\] \.admin-panel[\s\S]*touch-action: pan-y/);
   assert.match(css, /admin-snap-in-forward/);
   assert.match(css, /admin-snap-in-backward/);
+});
+
+test('la manutenzione mobile non schiaccia il testo dell archivio', () => {
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-tools-row \{[\s\S]*display: grid;[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /\.admin-export-copy,[\s\S]*\.admin-download-action \{[\s\S]*width: 100%;[\s\S]*min-width: 0/);
+  assert.match(css, /\.admin-export-copy strong,[\s\S]*overflow-wrap: normal;[\s\S]*word-break: normal/);
 });
 
 test('il proprietario esce con un azione primaria e l amministrazione non usa sigle residenti', () => {

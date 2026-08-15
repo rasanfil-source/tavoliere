@@ -827,36 +827,21 @@ button[aria-busy="true"] {
 
 @media (max-width: 620px) {
   .admin-section-nav {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
   }
 
   .admin-section-nav a {
-    flex: 0 0 auto;
-    min-width: min(46vw, 180px);
+    width: 100%;
+    min-width: 0;
     padding-inline: 8px;
-    scroll-snap-align: center;
-    scroll-snap-stop: always;
     text-align: center;
   }
 
-  .admin-section-nav::-webkit-scrollbar {
-    display: none;
-  }
-
   body[data-mode="admin"] .admin-panel {
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: inline mandatory;
     touch-action: pan-y;
-  }
-
-  body[data-mode="admin"] .admin-panel [data-admin-mobile-section] {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
   }
 
   body[data-mode="admin"] .admin-panel.admin-snap-forward [data-admin-mobile-section],
@@ -2520,6 +2505,30 @@ button[aria-busy="true"]:disabled {
 
   .admin-control-section .section-title > p {
     flex-basis: 100%;
+  }
+
+  .admin-tools-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .admin-export-copy,
+  .admin-download-action {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-export-copy strong,
+  .admin-export-copy p {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .admin-download-action {
+    min-height: 48px;
   }
 
   .admin-form-grid,
