@@ -739,7 +739,7 @@ populateDietSelect(elements.weekDietType, 'Nessuna dieta occasionale');
 document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
-elements.participantRefreshButton.addEventListener('click', () => refreshNow('manuale'));
+elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
 elements.viewPinButtons.forEach((button) => button.addEventListener('click', handleViewPinToggle));
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
@@ -3744,7 +3744,9 @@ function renderMode() {
   if (elements.agendaAdminEntry) {
     elements.agendaAdminEntry.hidden = !hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA);
   }
-  elements.participantRefreshButton.hidden = true;
+  if (elements.participantRefreshButton) {
+    elements.participantRefreshButton.hidden = true;
+  }
   if (isKitchen) {
     renderKitchenHeading();
   }

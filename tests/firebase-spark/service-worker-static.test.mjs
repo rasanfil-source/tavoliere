@@ -70,9 +70,15 @@ test('versioned app shell files load the exact release with an offline fallback'
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
   assert.match(index, /styles\.css\?v=20260815n/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260815n/);
-  assert.match(index, /app\.js\?v=20260815m/);
+  assert.match(index, /app\.js\?v=20260815n/);
   assert.match(app, /center-settings\.js\?v=20260815a/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v261'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v262'/);
+});
+
+test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {
+  assert.doesNotMatch(index, /data-participant-refresh/);
+  assert.match(app, /participantRefreshButton\?\.addEventListener/);
+  assert.match(app, /if \(elements\.participantRefreshButton\) \{\s*elements\.participantRefreshButton\.hidden = true;/);
 });
 
 test('the app registers the service worker and no longer unregisters it at startup', () => {
