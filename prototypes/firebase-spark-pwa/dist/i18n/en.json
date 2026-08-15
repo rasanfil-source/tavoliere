@@ -47,7 +47,7 @@
   "admin.adaptations.summaryLayout.label": "Summary view",
   "admin.adaptations.theme.help": "Choose the app color combination for this center. The preview applies immediately.",
   "admin.adaptations.theme.label": "Color palette",
-  "admin.adaptations.theme.preview": "Unsaved preview.",
+  "admin.adaptations.theme.preview": "If you like it, save this color choice",
   "admin.adaptations.theme.previewDefault": "Default preview (Emerald). Save to apply.",
   "admin.adaptations.title": "Settings",
   "admin.administrator.email.label": "Administrator email",

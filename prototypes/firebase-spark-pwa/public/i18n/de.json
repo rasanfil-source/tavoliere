@@ -47,7 +47,7 @@
   "admin.adaptations.summaryLayout.label": "Zusammenfassungsansicht",
   "admin.adaptations.theme.help": "Wahlen Sie die Farbkombination der App fur dieses Center. Die Vorschau wird sofort angewendet.",
   "admin.adaptations.theme.label": "Farbpalette",
-  "admin.adaptations.theme.preview": "Sie sehen eine Vorschau. Speichern Sie die Einstellungen, um diese Farbpalette anzuwenden.",
+  "admin.adaptations.theme.preview": "Wenn es Ihnen gefällt, speichern Sie diese Farbauswahl",
   "admin.adaptations.theme.previewDefault": "Standardvorschau (Smaragd). Speichern zum Anwenden.",
   "admin.adaptations.title": "Einstellungen",
   "admin.administrator.email.label": "E-Mail des Administrators",

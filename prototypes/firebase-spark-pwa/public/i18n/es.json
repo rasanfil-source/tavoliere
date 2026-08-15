@@ -47,7 +47,7 @@
   "admin.adaptations.summaryLayout.label": "Vista del resumen",
   "admin.adaptations.theme.help": "Elige la combinacion de colores de la aplicacion para este centro. La vista previa se aplica inmediatamente.",
   "admin.adaptations.theme.label": "Paleta de colores",
-  "admin.adaptations.theme.preview": "Estás viendo una vista previa. Guarda la configuración para aplicar esta paleta.",
+  "admin.adaptations.theme.preview": "Si te gusta, guarda esta elección de colores",
   "admin.adaptations.theme.previewDefault": "Vista previa predeterminada (Esmeralda). Guardar para aplicar.",
   "admin.adaptations.title": "Ajustes",
   "admin.administrator.email.label": "Correo del administrador",

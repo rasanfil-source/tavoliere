@@ -47,7 +47,7 @@
   "admin.adaptations.summaryLayout.label": "Vue du récapitulatif",
   "admin.adaptations.theme.help": "Choisissez la combinaison de couleurs de l'application pour ce centre. L'apercu s'applique immediatement.",
   "admin.adaptations.theme.label": "Palette de couleurs",
-  "admin.adaptations.theme.preview": "Vous affichez un aperçu. Enregistrez les paramètres pour appliquer cette palette.",
+  "admin.adaptations.theme.preview": "Si vous l'aimez, enregistrez ce choix de couleurs",
   "admin.adaptations.theme.previewDefault": "Aperçu par défaut (Émeraude). Enregistrer pour appliquer.",
   "admin.adaptations.title": "Paramètres",
   "admin.administrator.email.label": "E-mail de l'administrateur",
