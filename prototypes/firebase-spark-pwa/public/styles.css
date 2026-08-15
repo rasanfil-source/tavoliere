@@ -992,7 +992,7 @@ h1,
 
 .summary-status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
   align-items: center;
   gap: 8px;
 }
@@ -1016,6 +1016,15 @@ h1,
   margin: 0;
   justify-self: end;
   text-align: right;
+}
+
+.compact-status-link {
+  min-height: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  font-size: 0.82rem;
+  line-height: 28px;
 }
 
 .status-refresh-button {
@@ -3337,10 +3346,6 @@ button[aria-busy="true"]:disabled {
   margin-top: 14px;
 }
 
-.summary-date-tabs > .panel-link {
-  margin-left: auto;
-}
-
 .panel-links > .panel-link,
 .summary-date-tabs > .week-pill,
 .summary-date-tabs > .panel-link {
@@ -4662,7 +4667,9 @@ button[aria-busy="true"]:disabled {
   }
 
   .summary-date-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    margin-top: 8px;
+    scroll-margin-top: 8px;
   }
 
   .admin-center-avatar {

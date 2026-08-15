@@ -71,7 +71,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815j';
+} from './summary-matrix-view.js?v=20260815k';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -266,6 +266,7 @@ function addCalendarDays(date, amount) {
 const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
+const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
 const ADMIN_DIET_OPTIONS = getDietOptions();
 
 function readDietCode(select, numberInput) {
@@ -302,6 +303,9 @@ const state = {
   monthAutoScrollTimerId: 0,
   monthAutoScrollCleanup: null,
   monthAutoScrollHandled: false,
+  operationalAutoScrollTimerId: 0,
+  operationalAutoScrollCleanup: null,
+  operationalAutoScrollHandled: false,
   refreshInFlight: false,
   pendingRefreshSource: '',
   participantRequestVersion: 0,
@@ -631,6 +635,7 @@ const elements = {
   kitchenDayTitle: document.querySelector('[data-kitchen-day-title]'),
   kitchenDate: document.querySelector('[data-kitchen-date]'),
   kitchenDayButtons: document.querySelectorAll('[data-kitchen-day]'),
+  kitchenDateTabs: document.querySelector('[data-kitchen-date-tabs]'),
   kitchenNote: document.querySelector('[data-kitchen-note]'),
   kitchenNoteText: document.querySelector('[data-kitchen-note-text]'),
   kitchenSick: document.querySelector('[data-kitchen-sick]'),
@@ -643,6 +648,7 @@ const elements = {
   weekStatus: document.querySelector('[data-week-status]'),
   weekStatusName: document.querySelector('[data-week-status-name]'),
   summaryStatus: document.querySelector('[data-summary-status]'),
+  summaryDateTabs: document.querySelector('[data-summary-date-tabs]'),
   calendarStatus: document.querySelector('[data-calendar-status]'),
   calendarPanel: document.querySelector('[data-calendar-panel]'),
   monthJumpSelect: document.querySelector('[data-month-jump]'),
@@ -670,7 +676,7 @@ const elements = {
   summaryNavLinks: document.querySelectorAll('[data-summary-nav-link]'),
   participantWeekNavLink: document.querySelector('[data-participant-week-nav-link]'),
   monthNavLink: document.querySelector('[data-month-nav-link]'),
-  participantNavLink: document.querySelector('[data-participant-nav-link]'),
+  participantNavLinks: document.querySelectorAll('[data-participant-nav-link]'),
   summaryDayButtons: document.querySelectorAll('[data-summary-day]')
 };
 
@@ -888,7 +894,7 @@ elements.operationalLinks.addEventListener('click', handleOperationalLinksClick)
   ...elements.summaryNavLinks,
   elements.participantWeekNavLink,
   elements.monthNavLink,
-  elements.participantNavLink
+  ...elements.participantNavLinks
 ].filter(Boolean).forEach((link) => link.addEventListener('click', handleInAppNavigation));
 window.addEventListener('popstate', () => {
   const nextMode = resolveMode();
@@ -1007,6 +1013,8 @@ function prepareMonthAutoScrollEntry(previousMode, nextMode) {
   if (previousMode === nextMode) return;
   cancelMonthAutoScroll();
   state.monthAutoScrollHandled = false;
+  cancelOperationalAutoScroll();
+  state.operationalAutoScrollHandled = false;
 }
 
 function cancelMonthAutoScroll(markHandled = false) {
@@ -1066,6 +1074,62 @@ function scheduleMonthAutoScroll() {
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     elements.calendarPanel.scrollIntoView({ behavior, block: 'start' });
   }, MONTH_AUTO_SCROLL_DELAY_MS);
+}
+
+function cancelOperationalAutoScroll(markHandled = false) {
+  if (state.operationalAutoScrollTimerId) {
+    window.clearTimeout(state.operationalAutoScrollTimerId);
+    state.operationalAutoScrollTimerId = 0;
+  }
+  if (state.operationalAutoScrollCleanup) {
+    state.operationalAutoScrollCleanup();
+    state.operationalAutoScrollCleanup = null;
+  }
+  if (markHandled) state.operationalAutoScrollHandled = true;
+}
+
+function scheduleOperationalAutoScroll() {
+  const target = state.mode === 'summary'
+    ? elements.summaryDateTabs
+    : state.mode === 'kitchen'
+      ? elements.kitchenDateTabs
+      : null;
+  const panel = state.mode === 'summary' ? elements.summaryPanel : elements.kitchenPanel;
+  if (
+    state.operationalAutoScrollHandled
+    || state.operationalAutoScrollTimerId
+    || !target
+    || !panel
+    || !window.matchMedia('(max-width: 620px)').matches
+  ) return;
+
+  const cancelForUser = () => cancelOperationalAutoScroll(true);
+  MONTH_AUTO_SCROLL_CANCEL_EVENTS.forEach((eventName) => {
+    window.addEventListener(eventName, cancelForUser, { once: true, passive: true });
+  });
+  state.operationalAutoScrollCleanup = () => {
+    MONTH_AUTO_SCROLL_CANCEL_EVENTS.forEach((eventName) => {
+      window.removeEventListener(eventName, cancelForUser);
+    });
+  };
+
+  state.operationalAutoScrollTimerId = window.setTimeout(() => {
+    state.operationalAutoScrollTimerId = 0;
+    state.operationalAutoScrollCleanup?.();
+    state.operationalAutoScrollCleanup = null;
+    state.operationalAutoScrollHandled = true;
+    const targetRect = target.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const needsMoreRoom = panelRect.bottom > window.innerHeight && targetRect.top > 8;
+    if (
+      !needsMoreRoom
+      || document.hidden
+      || !window.matchMedia('(max-width: 620px)').matches
+      || (state.mode !== 'summary' && state.mode !== 'kitchen')
+    ) return;
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    target.scrollIntoView({ behavior, block: 'start' });
+  }, OPERATIONAL_AUTO_SCROLL_DELAY_MS);
 }
 
 function updateConnectivityState() {
@@ -1129,7 +1193,9 @@ function initializeOperationalLinks() {
     link.href = buildOperationalLink('summary', publicToken, centerId, personalAccess);
   });
   const entryMode = resolveEntryView() === 'week' ? 'week' : 'participant';
-  elements.participantNavLink.href = buildOperationalLink(entryMode, publicToken, centerId, personalAccess);
+  elements.participantNavLinks.forEach((link) => {
+    link.href = buildOperationalLink(entryMode, publicToken, centerId, personalAccess);
+  });
   const weekHref = buildOperationalLink('week', publicToken, centerId, personalAccess);
   elements.participantWeekNavLink.href = weekHref;
   elements.monthNavLink.href = elements.publicLink.href;
@@ -4482,6 +4548,7 @@ function renderTodayOverview() {
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: selectSummaryMatrixDay
     });
+    scheduleOperationalAutoScroll();
     return;
   }
 
@@ -5653,6 +5720,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
       activeIndex: state.kitchenDayOffset,
       onActiveIndexChange: selectKitchenMatrixDay
     });
+    scheduleOperationalAutoScroll();
     return;
   }
   const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');

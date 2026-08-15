@@ -278,8 +278,11 @@ function normalizePhone(value) {
 function renderInternationalScreen(screen, { kitchen, activeIndex }) {
   const prefix = kitchen ? "kitchen" : "summary";
   const isActive = screen.index === activeIndex;
+  const densityClass = hasSpecialOperationalContent(screen)
+    ? " summary-screen-has-special"
+    : " summary-screen-ordinary";
   return `
-    <section class="summary-matrix-screen summary-international-screen" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
+    <section class="summary-matrix-screen summary-international-screen${densityClass}" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
       ${kitchen ? `<h2 class="sr-only">${escapeHtml(`${t("kitchen.title")}: ${t(screen.labelKey)}`)}</h2>` : `<header class="summary-international-title"><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></header>`}
       <div class="summary-international-grid">
         ${screen.columns.map((column) => renderInternationalCard(column, { kitchen })).join("")}
@@ -288,6 +291,15 @@ function renderInternationalScreen(screen, { kitchen, activeIndex }) {
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
+}
+
+function hasSpecialOperationalContent(screen) {
+  return screen.columns.some((column) =>
+    column.guestCount > 0
+    || column.specialDiets.participantCount > 0
+    || column.sickCount > 0
+    || column.sickDiets.length > 0
+  ) || screen.notesByDate.length > 0;
 }
 
 function renderInternationalCard(column, { kitchen }) {

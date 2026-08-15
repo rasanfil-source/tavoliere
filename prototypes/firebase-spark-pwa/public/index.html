@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260809b">
-    <link rel="stylesheet" href="/styles.css?v=20260815k">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815j">
+    <link rel="stylesheet" href="/styles.css?v=20260815l">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815k">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -222,30 +222,31 @@
 
       <section class="participant-panel" data-summary-panel hidden>
         <div class="section-title summary-status-row">
+          <a class="panel-link secondary-action compact-status-link" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Pasti</a>
           <p data-summary-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna Oggi a tavola" title="Aggiorna">
             <span aria-hidden="true">↻</span>
           </button>
         </div>
-        <div class="summary-date-tabs" role="tablist" aria-label="Giorno del riepilogo">
+        <div class="summary-date-tabs" data-summary-date-tabs role="tablist" aria-label="Giorno del riepilogo">
           <div class="summary-day-segment">
             <button type="button" class="week-pill week-pill-active" data-summary-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
             <button type="button" class="week-pill" data-summary-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
           </div>
-          <a class="panel-link secondary-action" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a>
         </div>
         <div class="today-overview" data-today-overview></div>
       </section>
 
       <section class="board" aria-label="Conteggi pasti" data-kitchen-panel hidden>
         <div class="section-title kitchen-status-row">
-          <h2 data-kitchen-day-title>Oggi</h2>
+          <a class="panel-link secondary-action compact-status-link" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Pasti</a>
+          <h2 class="sr-only" data-kitchen-day-title>Oggi</h2>
           <p data-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna cucina" title="Aggiorna">
             <span aria-hidden="true">↻</span>
           </button>
         </div>
-        <div class="summary-date-tabs kitchen-date-tabs" role="tablist" aria-label="Giorno della cucina">
+        <div class="summary-date-tabs kitchen-date-tabs" data-kitchen-date-tabs role="tablist" aria-label="Giorno della cucina">
           <div class="summary-day-segment">
             <button type="button" class="week-pill week-pill-active" data-kitchen-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
             <button type="button" class="week-pill" data-kitchen-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
@@ -878,6 +879,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260815k"></script>
+  <script type="module" src="/app.js?v=20260815l"></script>
   </body>
 </html>

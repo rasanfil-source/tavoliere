@@ -145,7 +145,7 @@
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 
 .summary-matrix-whatsapp {
@@ -157,8 +157,8 @@
 
 .summary-matrix-whatsapp img {
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
@@ -364,7 +364,7 @@ html[data-theme="confetto"] {
   }
 
   .summary-matrix-contact-actions {
-    gap: 3px;
+    gap: 6px;
   }
 
   .summary-matrix-call,
@@ -374,8 +374,8 @@ html[data-theme="confetto"] {
   }
 
   .summary-matrix-whatsapp img {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -600,7 +600,7 @@ html[data-theme="confetto"] {
   }
 
   .summary-matrix-contact-actions {
-    gap: 2px;
+    gap: 6px;
   }
 
   .summary-matrix-call,
@@ -610,8 +610,8 @@ html[data-theme="confetto"] {
   }
 
   .summary-matrix-whatsapp img {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -1120,20 +1120,22 @@ html[data-theme="confetto"] {
 
   .summary-matrix-swipe-hint {
     display: block;
+    margin-top: 7px;
+    font-size: 0.76rem;
   }
 
   .summary-layout-classic .summary-matrix th,
   .summary-layout-classic .summary-matrix td {
-    padding: 9px 6px;
+    padding: 6px 5px;
   }
 
   .summary-layout-classic .summary-matrix-meal-heading {
-    min-height: 78px;
+    min-height: 58px;
     padding-inline: 3px;
   }
 
   .summary-layout-classic .summary-matrix-row-meals td {
-    height: 86px;
+    height: 62px;
   }
 
   .summary-matrix-total {
@@ -1142,7 +1144,63 @@ html[data-theme="confetto"] {
 
   .summary-international-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 7px;
+  }
+
+  .summary-matrix-unit {
+    display: none;
+  }
+
+  .summary-international-title {
+    margin-bottom: 5px;
+    padding-block: 5px;
+    font-size: 0.94rem;
+  }
+
+  .summary-international-card > header {
+    min-height: 58px;
+    gap: 9px;
+    padding: 7px 10px;
+  }
+
+  .summary-international-card dl > div {
+    min-height: 48px;
+    padding: 6px 10px;
+  }
+
+  .summary-international-card .summary-matrix-total {
+    font-size: 1.8rem;
+  }
+
+  .summary-international-names {
+    padding: 7px 10px 8px;
+  }
+
+  .summary-international-names h3 {
+    margin-bottom: 5px;
+    font-size: 0.82rem;
+  }
+
+  .summary-screen-ordinary .summary-international-card {
+    display: grid;
+    grid-template-columns: minmax(112px, 0.82fr) minmax(0, 1.18fr);
+  }
+
+  .summary-screen-ordinary .summary-international-card > header {
+    border-right: 1px solid var(--view-border);
+    border-bottom: 0;
+  }
+
+  .summary-screen-ordinary .summary-international-card dl {
+    display: grid;
+  }
+
+  .summary-screen-ordinary .summary-international-card dl > div {
+    border-top: 0;
+  }
+
+  .summary-screen-ordinary .summary-international-names {
+    grid-column: 1 / -1;
   }
 
   .summary-international-card > header {
@@ -1157,6 +1215,7 @@ html[data-theme="confetto"] {
     /* Il giorno vicino rappresenta pranzo+cena; quello ulteriore solo colazione. */
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 9px;
+    margin-top: 7px;
   }
 
   .summary-international-mass-group {
@@ -1169,6 +1228,15 @@ html[data-theme="confetto"] {
 
   .summary-international-mass-title {
     padding-inline: 10px;
+  }
+
+  .summary-international-mass-segment {
+    min-height: 52px;
+    padding-block: 6px;
+  }
+
+  [data-kitchen-panel] .kitchen-date {
+    margin-block: 6px;
   }
 
   .admin-calendar-extension {

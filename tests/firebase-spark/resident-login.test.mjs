@@ -274,6 +274,15 @@ test('la vista mese mobile porta la griglia in primo piano senza scavalcare l ut
   assert.match(app, /scheduleMonthAutoScroll\(\)/);
 });
 
+test('riepilogo e cucina portano il selettore giorni in primo piano solo quando serve', () => {
+  assert.match(index, /data-summary-date-tabs/);
+  assert.match(index, /data-kitchen-date-tabs/);
+  assert.match(app, /const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800/);
+  assert.match(app, /const needsMoreRoom = panelRect\.bottom > window\.innerHeight && targetRect\.top > 8/);
+  assert.match(app, /target\.scrollIntoView\(\{ behavior, block: 'start' \}\)/);
+  assert.match(app, /scheduleOperationalAutoScroll\(\)/);
+});
+
 test('una sessione residente non viene presentata come accesso amministratore', () => {
   assert.match(app, /user\.isAnonymous \|\| isResidentTechnicalEmail\(user\.email\)/);
   assert.match(app, /elements\.authStatus\.textContent = 'Accesso amministratore'/);
@@ -392,7 +401,9 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(index, /participant-status-row[\s\S]*data-refresh-button/);
   assert.match(index, /summary-status-row[\s\S]*data-summary-status[\s\S]*data-refresh-button/);
   assert.match(index, /data-kitchen-panel[\s\S]*kitchen-status-row[\s\S]*data-status[\s\S]*data-refresh-button/);
-  assert.match(index, /summary-date-tabs[\s\S]*Prenotazioni/);
+  assert.equal((index.match(/data-participant-nav-link/g) || []).length, 2);
+  assert.match(index, /summary-status-row[\s\S]*compact-status-link[\s\S]*data-summary-status/);
+  assert.match(index, /kitchen-status-row[\s\S]*compact-status-link[\s\S]*data-status/);
   assert.match(styles, /\.summary-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
   assert.match(styles, /\.kitchen-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
   assert.match(app, /elements\.refreshButtons\.forEach/);
