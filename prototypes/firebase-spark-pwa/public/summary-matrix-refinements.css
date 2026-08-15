@@ -623,6 +623,13 @@ html[data-theme="confetto"] {
   display: none;
 }
 
+/* La nuova Cucina è un unico riepilogo, non una delle tre vecchie card:
+   sui desktop deve quindi occupare l'intera griglia. */
+[data-kitchen-panel] .meal-grid > .summary-matrix-track {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 .summary-matrix-screen {
   box-sizing: border-box;
   min-width: 100%;

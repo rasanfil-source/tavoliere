@@ -137,7 +137,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /\['participant', 'week'\]\.includes\(initialMode\)/);
   assert.match(app, /data-forget-device/);
   assert.match(app, /const showResidentExit = isOrdinaryView && !needsResidentLogin && hasResidentIdentity/);
-  assert.match(app, /const showResidentLogin = needsResidentLogin[\s\S]*!isAdminView[\s\S]*!state\.platformOwner[\s\S]*!state\.adminRole[\s\S]*!authenticatedAdministrator/);
+  assert.match(app, /const showResidentLogin = needsResidentLogin\s*&& !isAdminView/);
   assert.match(app, /elements\.residentLogin\.hidden = !showResidentLogin/);
   assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
@@ -156,9 +156,9 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /agendaAdminUrl\.searchParams\.set\('c', centerId\)/);
 });
 
-test('l invito resta accessibile da disconnessi e gli amministratori non vedono l accesso residenti', () => {
+test('il link operativo residente prevale anche su una sessione amministrativa', () => {
   assert.match(app, /elements\.adminShell\.open = state\.mode === 'admin'/);
-  assert.match(app, /const shouldShowLogin = showLogin[\s\S]*state\.mode !== 'admin'[\s\S]*!state\.adminRole[\s\S]*!authenticatedAdministrator/);
+  assert.match(app, /const shouldShowLogin = showLogin\s*&& state\.mode !== 'admin'/);
   assert.match(app, /elements\.participantPanel\.hidden = !isParticipant \|\| needsResidentLogin \|\| state\.platformOwner/);
   assert.match(app, /elements\.weekPanel\.hidden = !isWeek \|\| needsResidentLogin \|\| state\.platformOwner/);
   assert.match(app, /elements\.summaryPanel\.hidden = !isSummary \|\| needsResidentLogin \|\| state\.platformOwner/);

@@ -17,6 +17,7 @@ test('le due giornate sono schermate intere con snap orizzontale', () => {
   assert.match(styles, /\.summary-matrix-track[\s\S]*scroll-snap-type: inline mandatory/);
   assert.match(styles, /\.summary-matrix-screen[\s\S]*flex: 0 0 100%/);
   assert.equal((index.match(/class="summary-day-segment"/g) || []).length, 2);
+  assert.match(styles, /\[data-kitchen-panel\] \.meal-grid > \.summary-matrix-track[\s\S]*grid-column: 1 \/ -1/);
 });
 
 test('la Cucina non mostra Prevista e il riepilogo mantiene nomi e contatti', () => {

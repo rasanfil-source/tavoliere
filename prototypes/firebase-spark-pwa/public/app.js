@@ -2501,15 +2501,8 @@ function initializeResidentAccess() {
 }
 
 function renderResidentAccess(showLogin) {
-  const currentUser = getCurrentUser();
-  const authenticatedAdministrator = currentUser
-    && !currentUser.isAnonymous
-    && !isResidentTechnicalEmail(currentUser.email);
   const shouldShowLogin = showLogin
-    && state.mode !== 'admin'
-    && !state.platformOwner
-    && !state.adminRole
-    && !authenticatedAdministrator;
+    && state.mode !== 'admin';
   elements.residentLogin.hidden = !shouldShowLogin;
   elements.participantPanel.hidden = shouldShowLogin || state.mode !== 'participant';
   elements.weekPanel.hidden = shouldShowLogin || state.mode !== 'week';
@@ -3542,10 +3535,7 @@ function renderMode() {
     && !currentUser.isAnonymous
     && !isResidentTechnicalEmail(currentUser.email);
   const showResidentLogin = needsResidentLogin
-    && !isAdminView
-    && !state.platformOwner
-    && !state.adminRole
-    && !authenticatedAdministrator;
+    && !isAdminView;
   const sessionRole = state.platformOwner
     ? t('role.platformOwner')
     : state.adminRole === 'OWNER'
