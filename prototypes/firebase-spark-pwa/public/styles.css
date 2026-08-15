@@ -1302,8 +1302,29 @@ body[data-center-activation="true"] .admin-shell-body {
   margin: 0;
 }
 
-.admin-center-avatar-picker input {
-  width: 100%;
+.admin-center-avatar-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.avatar-file-button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 0.88rem;
+  border-radius: var(--radius-sm, 6px);
+  margin: 0;
+}
+
+.avatar-file-name {
+  font-size: 0.85rem;
+  color: var(--muted);
+  word-break: break-all;
 }
 
 .admin-center-avatar-actions {
@@ -1565,12 +1586,12 @@ html[data-theme="smeraldo"] {
   --calendar-heading-ink: #2f5963;
 }
 html[data-theme="giallino"] {
-  --primary: #8a6d1b;
-  --ink: #383017;
-  --bg: #faf7ef;
-  --calendar-heading-bg: #f8f4e6;
-  --calendar-heading-border: #e8debe;
-  --calendar-heading-ink: #544415;
+  --primary: #927000;
+  --ink: #3b310f;
+  --bg: #fffdf5;
+  --calendar-heading-bg: #fff7d4;
+  --calendar-heading-border: #e7d898;
+  --calendar-heading-ink: #5a4600;
 }
 html[data-theme="beige"] {
   --primary: #7c6853;
@@ -1614,7 +1635,7 @@ html[data-theme="confetto"] {
 }
 
 .theme-swatch-smeraldo { background: linear-gradient(135deg, #16615a 60%, #f7f5ef 60%); }
-.theme-swatch-giallino { background: linear-gradient(135deg, #8a6d1b 60%, #faf7ef 60%); }
+.theme-swatch-giallino { background: linear-gradient(135deg, #927000 60%, #fff7d4 60%); }
 .theme-swatch-beige { background: linear-gradient(135deg, #7c6853 60%, #f9f6f2 60%); }
 .theme-swatch-rosso-pallido { background: linear-gradient(135deg, #9e4a40 60%, #fcf5f4 60%); }
 .theme-swatch-confetto {

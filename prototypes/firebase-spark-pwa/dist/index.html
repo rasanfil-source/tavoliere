@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260809b">
-    <link rel="stylesheet" href="/styles.css?v=20260815j">
+    <link rel="stylesheet" href="/styles.css?v=20260815k">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815i">
   </head>
   <body>
@@ -535,15 +535,19 @@
                   </div>
                   <div class="admin-center-avatar-controls">
                     <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
-                    <label class="field-label admin-center-avatar-picker">
+                    <div class="field-label admin-center-avatar-picker">
                       <span data-i18n="admin.avatar.chooseImage">Scegli immagine</span>
-                      <input type="file" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif">
-                    </label>
+                      <div class="admin-center-avatar-input-wrapper">
+                        <input type="file" id="admin-center-avatar-input" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif" class="visually-hidden">
+                        <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseImage">Scegli immagine</label>
+                        <span class="avatar-file-name" data-admin-avatar-filename data-i18n="admin.avatar.noFileSelected">Nessun file selezionato</span>
+                      </div>
+                    </div>
                     <div class="admin-center-avatar-actions">
                       <button type="button" class="save-button" data-admin-center-avatar-save disabled data-i18n="common.actions.save">Salva icona</button>
                       <button type="button" class="tertiary-action" data-admin-center-avatar-remove hidden data-i18n="common.actions.delete">Rimuovi</button>
                     </div>
-                    <p data-admin-center-avatar-status aria-live="polite">Nessuna icona inserita.</p>
+                    <p data-admin-center-avatar-status aria-live="polite" data-i18n="admin.avatar.none">Nessuna icona inserita.</p>
                   </div>
                 </section>
               </section>
@@ -606,7 +610,7 @@
                         <option value="confetto">Confetto</option>
                       </select>
                     </div>
-                    <p data-admin-theme-status aria-live="polite">Anteprima non salvata.</p>
+                    <p data-admin-theme-status aria-live="polite" data-i18n="admin.adaptations.theme.preview">Anteprima non salvata.</p>
                   </fieldset>
 
                   <label class="field-label admin-language-picker" data-admin-language-picker>
@@ -659,13 +663,13 @@
 
                   <section class="admin-invitation-management" data-admin-invitation-management hidden>
                     <h3 data-i18n="admin.invitations.recent">Inviti recenti</h3>
-                    <p data-admin-invitation-management-status aria-live="polite">Nessun invito emesso</p>
+                    <p data-admin-invitation-management-status aria-live="polite" data-i18n="admin.invitations.none">Nessun invito emesso</p>
                     <div class="admin-invitation-list" data-admin-invitation-list></div>
                   </section>
 
                   <section class="admin-invitation-management" data-admin-account-management hidden>
                     <h3 data-i18n="admin.accounts.active">Amministratori attivi</h3>
-                    <p data-admin-account-status aria-live="polite">Nessun altro amministratore attivo</p>
+                    <p data-admin-account-status aria-live="polite" data-i18n="admin.accounts.noOtherAdmins">Nessun altro amministratore attivo</p>
                     <div class="admin-invitation-list" data-admin-account-list></div>
                   </section>
 
@@ -874,6 +878,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260815j"></script>
+  <script type="module" src="/app.js?v=20260815k"></script>
   </body>
 </html>

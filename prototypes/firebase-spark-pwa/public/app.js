@@ -525,6 +525,7 @@ const elements = {
   adminCenterAvatarPreview: document.querySelector('[data-admin-center-avatar-preview]'),
   adminCenterAvatarPlaceholder: document.querySelector('[data-admin-center-avatar-placeholder]'),
   adminCenterAvatarInput: document.querySelector('[data-admin-center-avatar-input]'),
+  adminAvatarFilename: document.querySelector('[data-admin-avatar-filename]'),
   adminCenterAvatarSave: document.querySelector('[data-admin-center-avatar-save]'),
   adminCenterAvatarRemove: document.querySelector('[data-admin-center-avatar-remove]'),
   adminCenterAvatarStatus: document.querySelector('[data-admin-center-avatar-status]'),
@@ -2669,8 +2670,8 @@ async function refreshAdminParticipants() {
     }
     initializeOperationalLinks();
     elements.adminStatus.textContent = !profileComplete
-      ? 'Completa i dati del responsabile'
-      : state.adminPersonDirty ? 'Modifiche non salvate' : 'Pronto';
+      ? t('admin.people.completeProfile')
+      : state.adminPersonDirty ? t('admin.people.unsavedChanges') : t('admin.people.ready');
   } catch (error) {
     if (!requestCoordinator.isCurrentRequest(request)) return;
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Contatti non disponibili');
@@ -3041,12 +3042,12 @@ function renderAdminInvitationList() {
         <span><strong>${escapeHtml(roleLabel)}</strong><small>${escapeHtml(targetLabel)}</small></span>
         <span class="admin-invitation-state ${active ? 'admin-invitation-active' : ''}">${escapeHtml(statusLabel)}</span>
         <time>${escapeHtml(expiryLabel)}</time>
-        ${canRevoke ? `<button type="button" class="tertiary-action" data-revoke-admin-invitation="${escapeHtml(invitation.invitationId)}">Revoca</button>` : ''}
+        ${canRevoke ? `<button type="button" class="tertiary-action" data-revoke-admin-invitation="${escapeHtml(invitation.invitationId)}">${escapeHtml(t('admin.invitations.revoke'))}</button>` : ''}
       </article>`;
-  }).join('') || '<p class="empty-state">Nessun invito emesso.</p>';
+  }).join('');
   elements.adminInvitationManagementStatus.textContent = state.adminInvitations.length === 0
-    ? 'Nessun invito emesso'
-    : `${state.adminInvitations.length} inviti recenti`;
+    ? t('admin.invitations.none')
+    : t('admin.invitations.recentCount', { count: state.adminInvitations.length });
 }
 
 async function handleAdminInvitationListClick(event) {
@@ -3061,15 +3062,15 @@ async function handleAdminInvitationListClick(event) {
   });
   if (!decision.confirmed) return;
   button.disabled = true;
-  elements.adminInvitationManagementStatus.textContent = 'Revoco l invito...';
+  elements.adminInvitationManagementStatus.textContent = t('admin.invitations.revoking');
   try {
     await operationGuard.run(`admin:revoke-invitation:${invitationId}`, () => (
       revokeAdministratorInvitation(invitationId)
     ));
     await refreshAdminInvitationList();
-    elements.adminInvitationManagementStatus.textContent = 'Invito revocato';
+    elements.adminInvitationManagementStatus.textContent = t('admin.invitations.revoked');
   } catch (error) {
-    elements.adminInvitationManagementStatus.textContent = friendlyErrorMessage(error, 'Invito non revocato');
+    elements.adminInvitationManagementStatus.textContent = friendlyErrorMessage(error, t('admin.invitations.revokeFailed'));
     button.disabled = false;
   }
 }
@@ -3086,21 +3087,21 @@ function renderAdminAccountList() {
     const participant = state.adminParticipants.find((item) => (
       item.participantId === account.participantId
     ));
-    const name = participant?.displayName || account.email || 'Amministratore';
+    const name = participant?.displayName || account.email || t('role.admin');
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(account.email || '')}</small></span>
-        <span class="admin-invitation-state admin-invitation-active">Attivo</span>
-        <span>${escapeHtml(account.role === 'ADMIN' ? 'Amministratore' : 'Vice amministratore')}</span>
+        <span class="admin-invitation-state admin-invitation-active">${escapeHtml(t('status.active'))}</span>
+        <span>${escapeHtml(account.role === 'ADMIN' ? t('role.admin') : t('role.vice'))}</span>
         ${account.adminUid !== currentUid
-          ? `<button type="button" class="danger-action" data-revoke-center-admin="${escapeHtml(account.adminUid)}">Revoca accesso</button>`
+          ? `<button type="button" class="danger-action" data-revoke-center-admin="${escapeHtml(account.adminUid)}">${escapeHtml(t('admin.accounts.revokeAccess'))}</button>`
           : ''}
       </article>`;
-  }).join('') || '<p class="empty-state">Nessun altro amministratore attivo.</p>';
+  }).join('');
   if (elements.adminAccountStatus) {
     elements.adminAccountStatus.textContent = accounts.length === 0
-      ? 'Nessun altro amministratore attivo'
-      : `${accounts.length} amministratori attivi`;
+      ? t('admin.accounts.noOtherAdmins')
+      : t('admin.accounts.activeCount', { count: accounts.length });
   }
 }
 
@@ -3374,7 +3375,7 @@ function handleThemeSelectChange(event) {
   document.documentElement.dataset.theme = selectedPalette;
   updateThemeSelectControl(selectedPalette);
   if (elements.adminThemeStatus) {
-    elements.adminThemeStatus.textContent = 'Anteprima non salvata.';
+    elements.adminThemeStatus.textContent = t('admin.adaptations.theme.preview');
   }
 }
 
@@ -3448,17 +3449,23 @@ async function handleAdminCenterAvatarSelection(event) {
   if (!hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_AVATAR)) return;
   const [file] = event.currentTarget.files || [];
   state.pendingCenterAvatarDataUrl = '';
+  if (elements.adminAvatarFilename) {
+    elements.adminAvatarFilename.textContent = file ? file.name : t('admin.avatar.noFileSelected');
+  }
   renderAdminCenterAvatarEditor();
   if (!file) {
     return;
   }
-  elements.adminCenterAvatarStatus.textContent = 'Preparo l\'immagine...';
+  elements.adminCenterAvatarStatus.textContent = t('common.status.loading');
   try {
     state.pendingCenterAvatarDataUrl = await prepareCenterAvatar(file);
     renderAdminCenterAvatarEditor();
   } catch (error) {
     event.currentTarget.value = '';
-    elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, 'Immagine non utilizzabile');
+    if (elements.adminAvatarFilename) {
+      elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
+    }
+    elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, t('admin.avatar.notUsable'));
   }
 }
 
@@ -3478,6 +3485,9 @@ async function handleAdminCenterAvatarSave() {
     state.centerContactSettings = { ...state.centerContactSettings, ...avatar };
     state.pendingCenterAvatarDataUrl = '';
     elements.adminCenterAvatarInput.value = '';
+    if (elements.adminAvatarFilename) {
+      elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
+    }
     renderAdminCenterAvatarEditor();
     renderMode();
     elements.adminCenterAvatarStatus.textContent = t('admin.avatar.saved');
@@ -3505,6 +3515,9 @@ async function handleAdminCenterAvatarRemove() {
     state.centerContactSettings = { ...state.centerContactSettings, ...avatar };
     state.pendingCenterAvatarDataUrl = '';
     elements.adminCenterAvatarInput.value = '';
+    if (elements.adminAvatarFilename) {
+      elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
+    }
     renderAdminCenterAvatarEditor();
     renderMode();
     elements.adminCenterAvatarStatus.textContent = t('admin.avatar.removed');

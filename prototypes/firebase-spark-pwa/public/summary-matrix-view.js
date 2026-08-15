@@ -192,11 +192,17 @@ function renderMassCell(column) {
   return `<span class="summary-matrix-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</span>`;
 }
 
+function massStateClass(status) {
+  if (status === "YES") return " summary-mass-state-yes";
+  if (status === "NO") return " summary-mass-state-no";
+  return " summary-mass-state-unknown";
+}
+
 function renderMassBandRow(screen) {
   const cells = getMassDateGroups(screen)
     .map(
       (group) =>
-        `<td class="summary-matrix-mass-band${dateClasses(group, screen)}" colspan="${group.span}"><span class="summary-matrix-mass-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>${renderMassCell(group)}</td>`,
+        `<td class="summary-matrix-mass-band${dateClasses(group, screen)}${massStateClass(group.massStatus)}" colspan="${group.span}"><span class="summary-matrix-mass-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>${renderMassCell(group)}</td>`,
     )
     .join("");
   return `
@@ -313,7 +319,7 @@ function renderInternationalMass(screen, kitchen) {
         ${groups
           .map(
             (group, index) => `
-          <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${dateClasses(group, screen)}" style="--mass-segment-span:${group.span}">
+          <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${dateClasses(group, screen)}${massStateClass(group.massStatus)}" style="--mass-segment-span:${group.span}">
             ${index === 0 ? `<strong class="summary-international-mass-title">${escapeHtml(t("summary.mass"))}</strong>` : ""}
             <div class="summary-international-mass-segment">
               <span>${escapeHtml(relativeDayLabel(group.dayIndex))}</span>

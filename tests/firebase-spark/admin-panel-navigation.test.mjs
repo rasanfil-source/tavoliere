@@ -63,8 +63,19 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.doesNotMatch(html, /data-theme-select-trigger|data-admin-theme-radio/);
   assert.match(app, /adminThemeSelect\.addEventListener\('change', handleThemeSelectChange\)/);
   assert.match(app, /document\.documentElement\.dataset\.theme = selectedPalette/);
+  assert.match(html, /Stai visualizzando un’anteprima\. Salva le impostazioni per applicare questa palette\./);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
   assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'smeraldo'/);
+});
+
+test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
+  const invitations = app.match(/function renderAdminInvitationList\(\)[\s\S]*?\r?\n}\r?\n\r?\nasync function handleAdminInvitationListClick/)?.[0] || '';
+  const accounts = app.match(/function renderAdminAccountList\(\)[\s\S]*?\r?\n}\r?\n\r?\nasync function handleAdminAccountListClick/)?.[0] || '';
+
+  assert.doesNotMatch(invitations, /\.join\(''\) \|\|/);
+  assert.match(invitations, /adminInvitationManagementStatus\.textContent/);
+  assert.doesNotMatch(accounts, /\.join\(''\) \|\|/);
+  assert.match(accounts, /adminAccountStatus\.textContent/);
 });
 
 test('i collegamenti operativi usano copia diretta e condivisione nativa o assistita', () => {

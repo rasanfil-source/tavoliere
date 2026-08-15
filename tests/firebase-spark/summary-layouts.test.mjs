@@ -21,7 +21,16 @@ test('le due giornate sono schermate intere con snap orizzontale', () => {
   assert.match(view, /summary-day-tone-\$\{normalizeDayTone\(column\.dayIndex\)\}/);
   assert.match(styles, /--summary-day-next:/);
   assert.match(styles, /--summary-day-following:/);
-  assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-mass \{[\s\S]*grid-template-columns: repeat\(2/);
+  assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-mass \{[\s\S]*grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
+});
+
+test('la fascia Messa distingue visivamente Sì e No in ogni palette', () => {
+  assert.match(view, /summary-mass-state-yes/);
+  assert.match(view, /summary-mass-state-no/);
+  assert.match(styles, /--mass-yes-bg:/);
+  assert.match(styles, /--mass-no-bg:/);
+  assert.match(styles, /\.summary-matrix-mass-band\.summary-mass-state-yes/);
+  assert.match(styles, /\.summary-international-mass-group\.summary-mass-state-no/);
 });
 
 test('la Cucina non mostra Prevista e il riepilogo mantiene nomi e contatti', () => {

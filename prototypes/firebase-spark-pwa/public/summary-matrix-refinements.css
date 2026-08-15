@@ -243,14 +243,20 @@
   --summary-day-next-strong: color-mix(in srgb, var(--primary) 9%, var(--surface));
   --summary-day-following: color-mix(in srgb, var(--primary) 10%, var(--surface));
   --summary-day-following-strong: color-mix(in srgb, var(--primary) 15%, var(--surface));
+  --mass-yes-bg: color-mix(in srgb, var(--good) 14%, var(--surface));
+  --mass-yes-border: color-mix(in srgb, var(--good) 42%, var(--line));
+  --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
+  --mass-no-bg: color-mix(in srgb, var(--muted) 8%, var(--surface));
+  --mass-no-border: color-mix(in srgb, var(--muted) 24%, var(--line));
+  --mass-no-ink: color-mix(in srgb, var(--muted) 90%, var(--ink));
 }
 
 html[data-theme="giallino"] {
-  --bg: #fffdf7;
+  --bg: #fffdf5;
   --surface: #fffefa;
-  --line: #e9e1c9;
-  --calendar-heading-bg: #fff9df;
-  --calendar-heading-border: #eadfb8;
+  --line: #eadfb9;
+  --calendar-heading-bg: #fff7d4;
+  --calendar-heading-border: #e7d898;
 }
 
 html[data-theme="beige"] {
@@ -269,7 +275,7 @@ html[data-theme="confetto"] {
 }
 
 .theme-swatch-giallino {
-  background: linear-gradient(135deg, #8a6d1b 60%, #fff9df 60%);
+  background: linear-gradient(135deg, #927000 60%, #fff7d4 60%);
 }
 
 .kitchen-notes,
@@ -994,6 +1000,35 @@ html[data-theme="confetto"] {
   padding: 9px;
 }
 
+/* Lo stato della Messa deve essere leggibile anche senza affidarsi al solo testo. */
+.summary-matrix-mass-band.summary-mass-state-yes,
+.summary-international-mass-group.summary-mass-state-yes,
+.summary-international-mass-group.summary-mass-state-yes .summary-international-mass-title {
+  border-color: var(--mass-yes-border);
+  background: var(--mass-yes-bg);
+}
+
+.summary-matrix-mass-band.summary-mass-state-no,
+.summary-international-mass-group.summary-mass-state-no,
+.summary-international-mass-group.summary-mass-state-no .summary-international-mass-title {
+  border-color: var(--mass-no-border);
+  background: var(--mass-no-bg);
+}
+
+.summary-mass-state-yes .summary-matrix-mass-day,
+.summary-mass-state-yes .summary-international-mass-title,
+.summary-mass-state-yes .summary-international-mass-segment > span:first-child,
+.summary-matrix-mass-yes {
+  color: var(--mass-yes-ink);
+}
+
+.summary-mass-state-no .summary-matrix-mass-day,
+.summary-mass-state-no .summary-international-mass-title,
+.summary-mass-state-no .summary-international-mass-segment > span:first-child,
+.summary-matrix-mass-no {
+  color: var(--mass-no-ink);
+}
+
 .kitchen-notes {
   margin-top: 14px;
   padding: 15px 16px;
@@ -1119,7 +1154,8 @@ html[data-theme="confetto"] {
   }
 
   .summary-international-mass {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Il giorno vicino rappresenta pranzo+cena; quello ulteriore solo colazione. */
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 9px;
   }
 
