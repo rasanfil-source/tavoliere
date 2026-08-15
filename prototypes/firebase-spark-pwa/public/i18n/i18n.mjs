@@ -12,6 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
+const CATALOG_RELEASE = '20260815p';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -219,11 +220,13 @@ async function loadCatalog(locale) {
 
   try {
     const catalogUrl = new URL(`./${locale}.json`, import.meta.url);
+    const catalogFetchUrl = new URL(catalogUrl.href);
+    catalogFetchUrl.searchParams.set('v', CATALOG_RELEASE);
     let catalog = null;
 
     if (typeof fetch === 'function') {
       try {
-        const response = await fetch(catalogUrl.href);
+        const response = await fetch(catalogFetchUrl.href);
         if (response && response.ok) {
           catalog = await response.json();
         }

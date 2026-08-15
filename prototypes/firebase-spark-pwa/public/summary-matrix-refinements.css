@@ -715,17 +715,50 @@ html[data-theme="confetto"] {
 }
 
 .meal-view-preference {
-  display: flex;
+  display: block;
   min-width: 0;
-  align-items: center;
-  gap: 7px;
 }
 
 .meal-view-segment .week-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   text-decoration: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.meal-view-pin {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--primary);
+  transform: rotate(-24deg);
+}
+
+.meal-view-pin svg {
+  display: block;
+}
+
+.meal-view-segment .week-pill[data-preferred-view="true"] .meal-view-pin {
+  display: inline-flex;
+}
+
+.meal-view-segment .week-pill-active[data-preferred-view="true"] .meal-view-pin,
+.meal-view-segment .week-pill.meal-view-preference-pressing {
+  color: var(--surface);
+}
+
+.meal-view-segment .week-pill.meal-view-preference-pressing {
+  background: var(--primary);
+}
+
+[data-participant-panel],
+[data-week-panel] {
+  touch-action: pan-y;
 }
 
 .meal-view-nav > [data-summary-nav-link] {
@@ -1315,28 +1348,6 @@ html[data-theme="confetto"] {
   .summary-international-names h3 {
     margin-bottom: 5px;
     font-size: 0.82rem;
-  }
-
-  .summary-screen-ordinary .summary-international-card {
-    display: grid;
-    grid-template-columns: minmax(112px, 0.82fr) minmax(0, 1.18fr);
-  }
-
-  .summary-screen-ordinary .summary-international-card > header {
-    border-right: 1px solid var(--view-border);
-    border-bottom: 0;
-  }
-
-  .summary-screen-ordinary .summary-international-card dl {
-    display: grid;
-  }
-
-  .summary-screen-ordinary .summary-international-card dl > div {
-    border-top: 0;
-  }
-
-  .summary-screen-ordinary .summary-international-names {
-    grid-column: 1 / -1;
   }
 
   .summary-international-card > header {

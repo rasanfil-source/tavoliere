@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const root = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
 const index = readFileSync(new URL('index.html', root), 'utf8');
+const app = readFileSync(new URL('app.js', root), 'utf8');
 const view = readFileSync(new URL('summary-matrix-view.js', root), 'utf8');
 const styles = readFileSync(new URL('summary-matrix-refinements.css', root), 'utf8');
 
@@ -40,11 +41,11 @@ test('la Cucina non mostra Prevista e il riepilogo mantiene nomi e contatti', ()
   assert.match(view, /\$\{kitchen \? "" : `<section class="summary-international-names"/);
 });
 
-test('il mobile compatta le situazioni ordinarie senza sacrificare quelle speciali', () => {
+test('il mobile usa la stessa struttura per le due schermate anche senza situazioni speciali', () => {
   assert.match(view, /summary-screen-has-special/);
   assert.match(view, /summary-screen-ordinary/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-matrix-unit \{\s*display: none/);
-  assert.match(styles, /\.summary-screen-ordinary \.summary-international-card \{[\s\S]*grid-template-columns: minmax\(112px, 0\.82fr\) minmax\(0, 1\.18fr\)/);
+  assert.doesNotMatch(styles, /\.summary-screen-ordinary \.summary-international-card \{[\s\S]*grid-template-columns/);
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-row-meals td \{\s*height: 62px/);
 });
 
@@ -68,9 +69,31 @@ test('solo Classic compatta i commensali dietro il nome e una icona persone', ()
 
 test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {
   assert.equal((index.match(/class="summary-day-segment meal-view-segment"/g) || []).length, 2);
-  assert.equal((index.match(/data-preference-view="month"/g) || []).length, 1);
-  assert.equal((index.match(/data-preference-view="week"/g) || []).length, 1);
+  assert.equal((index.match(/data-preference-view="month"/g) || []).length, 2);
+  assert.equal((index.match(/data-preference-view="week"/g) || []).length, 2);
+  assert.equal((index.match(/data-view-preference-control/g) || []).length, 4);
+  assert.doesNotMatch(index, /data-view-pin-button/);
+  assert.match(index, /class="meal-view-pin"/);
+  assert.match(app, /VIEW_PREFERENCE_HOLD_MS = 650/);
+  assert.match(app, /addEventListener\('pointerdown', handleViewPreferenceHoldStart\)/);
+  assert.match(app, /savePreferredView\(selectedView\)/);
+  assert.match(styles, /\.week-pill\[data-preferred-view="true"\] \.meal-view-pin/);
   assert.match(styles, /\.week-meal-button\.meal-state-present[\s\S]*background: var\(--primary\)/);
+});
+
+test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () => {
+  assert.match(app, /addEventListener\('touchstart', handleMealViewSwipeStart/);
+  assert.match(app, /state\.mode === 'participant' && deltaX < 0/);
+  assert.match(app, /state\.mode === 'week' && deltaX > 0/);
+  assert.match(styles, /\[data-participant-panel\],[\s\S]*\[data-week-panel\] \{[\s\S]*touch-action: pan-y/);
+});
+
+test('il selettore Oggi Domani scorre con la stessa animazione nelle due direzioni', () => {
+  assert.match(app, /selectSummaryMatrixDay\(state\.summaryDayOffset, \{ smooth: true \}\)/);
+  assert.match(app, /selectKitchenMatrixDay\(state\.kitchenDayOffset, \{ smooth: true \}\)/);
+  assert.match(app, /function selectSummaryMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
+  assert.match(app, /function selectKitchenMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
+  assert.match(view, /behavior: smooth \? "smooth" : "auto"/);
 });
 
 test('impostazioni e manutenzione presentano controlli graficamente raggruppati', () => {

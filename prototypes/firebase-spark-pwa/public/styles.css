@@ -5428,35 +5428,3 @@ button[aria-busy="true"]:disabled {
   border: none;
   cursor: pointer;
 }
-
-.view-pin-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.view-pin-button svg {
-  transform: rotate(-35deg);
-  transition: transform 150ms ease-out, color 150ms ease-out;
-}
-
-.view-pin-button:hover,
-.view-pin-button:focus-visible {
-  color: var(--primary);
-}
-
-.view-pin-button[aria-pressed="true"] {
-  color: var(--primary);
-}
-
-.view-pin-button[aria-pressed="true"] svg {
-  transform: rotate(0deg);
-}

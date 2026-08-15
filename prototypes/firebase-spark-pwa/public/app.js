@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs';
+} from './i18n/i18n.mjs?v=20260815p';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js';
@@ -41,14 +41,12 @@ import {
   loadCachedDefaultView,
   loadStoredPreferredView,
   savePreferredView,
-  clearPreferredView,
   cacheDefaultView
 } from './center-settings.js?v=20260815a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260809a';
 import {
   formatDietLabel,
   getDietOptions,
-  isCustomDietNumber,
   normalizeDietCode,
   resolveDietSelection
 } from './diet-utils.mjs?v=20260810a';
@@ -267,7 +265,14 @@ const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
 const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
-const ADMIN_DIET_OPTIONS = getDietOptions();
+const VIEW_PREFERENCE_HOLD_MS = 650;
+const MEAL_VIEW_SWIPE_MIN_X = 72;
+const MEAL_VIEW_SWIPE_MAX_Y = 96;
+const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
+let viewPreferenceHoldTimer = 0;
+let viewPreferenceHoldControl = null;
+let viewPreferenceHoldTriggered = false;
+let mealViewSwipeStart = null;
 
 function readDietCode(select, numberInput) {
   return resolveDietSelection(select.value || 'STANDARD', numberInput?.value);
@@ -283,6 +288,53 @@ function populateDietSelect(select, emptyLabel) {
     fragment.append(option);
   });
   select.replaceChildren(fragment);
+}
+
+function getAdminDietNumbers() {
+  const numbers = state.adminParticipants.flatMap((participant) => (
+    Array.isArray(participant.dietTags) ? participant.dietTags : []
+  )).map((tag) => Number(String(tag || '').trim()))
+    .filter((number) => Number.isInteger(number) && number >= 1 && number <= 999);
+  return [...new Set([...BASE_ADMIN_DIET_NUMBERS, ...numbers])].sort((left, right) => left - right);
+}
+
+function populateAdminDietSelect(emptyLabel = t('diet.option.STANDARD')) {
+  const select = elements.adminParticipantDiets;
+  if (!select) return;
+  const previousValue = select.value || 'STANDARD';
+  const fragment = document.createDocumentFragment();
+  const emptyOption = document.createElement('option');
+  emptyOption.value = 'STANDARD';
+  emptyOption.textContent = emptyLabel;
+  fragment.append(emptyOption);
+  getAdminDietNumbers().forEach((number) => {
+    const option = document.createElement('option');
+    option.value = String(number);
+    option.textContent = String(number);
+    fragment.append(option);
+  });
+  const addOption = document.createElement('option');
+  addOption.value = 'CUSTOM';
+  addOption.textContent = t('diet.option.ADD_HIGHER');
+  fragment.append(addOption);
+  select.replaceChildren(fragment);
+  select.value = Array.from(select.options).some((option) => option.value === previousValue)
+    ? previousValue
+    : 'STANDARD';
+  const nextDietNumber = Math.max(...getAdminDietNumbers()) + 1;
+  elements.adminParticipantDietNumber.min = String(nextDietNumber);
+  elements.adminParticipantDietNumber.placeholder = `≥ ${nextDietNumber}`;
+}
+
+function readAdminDietCode() {
+  const selected = elements.adminParticipantDiets.value || 'STANDARD';
+  if (selected !== 'CUSTOM') return selected;
+  const nextDietNumber = Math.max(...getAdminDietNumbers()) + 1;
+  const number = Number(elements.adminParticipantDietNumber.value);
+  if (!Number.isInteger(number) || number < nextDietNumber || number > 999) {
+    throw new Error(t('diet.validation.customNumberRange', { min: nextDietNumber, max: 999 }));
+  }
+  return String(number);
 }
 
 function syncCustomDietNumber(select, numberInput) {
@@ -626,7 +678,7 @@ const elements = {
   adminAdministratorPassword: document.querySelector('[data-admin-administrator-password]'),
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
   title: document.querySelector('[data-title]'),
-  viewPinButtons: document.querySelectorAll('[data-view-pin-button]'),
+  viewPreferenceControls: document.querySelectorAll('[data-view-preference-control]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
   sessionRole: document.querySelector('[data-session-role]'),
@@ -730,7 +782,7 @@ function showActionDialog({
   });
 }
 
-populateDietSelect(elements.adminParticipantDiets, 'Nessuna dieta');
+populateAdminDietSelect('Nessuna dieta');
 
 // Il pannello globale vive fuori dall area del singolo centro.
 elements.adminShell.append(elements.ownerInvitationPanel);
@@ -740,7 +792,19 @@ document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
 elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
-elements.viewPinButtons.forEach((button) => button.addEventListener('click', handleViewPinToggle));
+elements.viewPreferenceControls.forEach((control) => {
+  control.addEventListener('pointerdown', handleViewPreferenceHoldStart);
+  control.addEventListener('pointerup', handleViewPreferenceHoldEnd);
+  control.addEventListener('pointercancel', handleViewPreferenceHoldCancel);
+  control.addEventListener('pointerleave', handleViewPreferenceHoldCancel);
+  control.addEventListener('contextmenu', handleViewPreferenceContextMenu);
+});
+elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
+elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
+elements.weekPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
+elements.weekPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.weekPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
 elements.ownerExitButton.addEventListener('click', handleOwnerExit);
@@ -942,7 +1006,7 @@ function renderAllViews() {
     elements.adminLanguageSelect.value = getLocale();
   }
   if (elements.adminParticipantDiets) {
-    populateDietSelect(elements.adminParticipantDiets, t('diet.option.STANDARD'));
+    populateAdminDietSelect(t('diet.option.STANDARD'));
   }
   if (elements.weekDietType) {
     populateDietSelect(elements.weekDietType, t('diet.option.STANDARD'));
@@ -950,7 +1014,7 @@ function renderAllViews() {
   if (state.mode === 'admin') {
     renderAdminPeopleList();
     renderAdminOverview();
-    syncAdminCenterAvatarState();
+    renderAdminCenterAvatarEditor();
   }
   applyTranslations(document);
 }
@@ -1155,6 +1219,11 @@ function updateConnectivityState() {
 
 function handleInAppNavigation(event) {
   const link = event.currentTarget;
+  if (link.dataset.suppressNextClick === 'true') {
+    event.preventDefault();
+    delete link.dataset.suppressNextClick;
+    return;
+  }
   const targetUrl = new URL(link.href, window.location.href);
   const targetMode = targetUrl.searchParams.get('view');
   if (!state.friendlyAccess || !['participant', 'week', 'summary'].includes(targetMode)) {
@@ -1170,6 +1239,81 @@ function handleInAppNavigation(event) {
   state.friendlyAccess = true;
   renderMode();
   refreshNow('navigazione');
+}
+
+function handleViewPreferenceHoldStart(event) {
+  if (!state.residentReady || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  clearViewPreferenceHold();
+  viewPreferenceHoldControl = event.currentTarget;
+  viewPreferenceHoldTriggered = false;
+  viewPreferenceHoldControl.classList.add('meal-view-preference-pressing');
+  viewPreferenceHoldTimer = window.setTimeout(() => {
+    const control = viewPreferenceHoldControl;
+    if (!control) return;
+    const selectedView = control.dataset.preferenceView === 'week' ? 'week' : 'month';
+    savePreferredView(selectedView);
+    viewPreferenceHoldTriggered = true;
+    control.dataset.suppressNextClick = 'true';
+    renderViewPreference();
+    initializeOperationalLinks();
+  }, VIEW_PREFERENCE_HOLD_MS);
+}
+
+function handleViewPreferenceHoldEnd(event) {
+  const control = event.currentTarget;
+  if (viewPreferenceHoldTriggered && control === viewPreferenceHoldControl) {
+    control.dataset.suppressNextClick = 'true';
+  }
+  clearViewPreferenceHold();
+}
+
+function handleViewPreferenceHoldCancel() {
+  clearViewPreferenceHold();
+}
+
+function handleViewPreferenceContextMenu(event) {
+  if (event.currentTarget.dataset.preferredView === 'true'
+      || event.currentTarget.dataset.suppressNextClick === 'true') {
+    event.preventDefault();
+  }
+}
+
+function clearViewPreferenceHold() {
+  window.clearTimeout(viewPreferenceHoldTimer);
+  viewPreferenceHoldTimer = 0;
+  viewPreferenceHoldControl?.classList.remove('meal-view-preference-pressing');
+  viewPreferenceHoldControl = null;
+  viewPreferenceHoldTriggered = false;
+}
+
+function handleMealViewSwipeStart(event) {
+  const touch = event.touches?.[0];
+  if (!touch || event.target.closest('input, select, textarea, button, a, dialog, [contenteditable="true"]')) {
+    mealViewSwipeStart = null;
+    return;
+  }
+  mealViewSwipeStart = { x: touch.clientX, y: touch.clientY, mode: state.mode };
+}
+
+function handleMealViewSwipeEnd(event) {
+  const start = mealViewSwipeStart;
+  mealViewSwipeStart = null;
+  const touch = event.changedTouches?.[0];
+  if (!start || !touch || start.mode !== state.mode) return;
+  const deltaX = touch.clientX - start.x;
+  const deltaY = touch.clientY - start.y;
+  if (Math.abs(deltaX) < MEAL_VIEW_SWIPE_MIN_X
+      || Math.abs(deltaY) > MEAL_VIEW_SWIPE_MAX_Y
+      || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) return;
+  if (state.mode === 'participant' && deltaX < 0) {
+    elements.participantWeekNavLinks[0]?.click();
+  } else if (state.mode === 'week' && deltaX > 0) {
+    elements.monthNavLinks[0]?.click();
+  }
+}
+
+function cancelMealViewSwipe() {
+  mealViewSwipeStart = null;
 }
 
 function initializeOperationalLinks() {
@@ -2708,6 +2852,7 @@ async function refreshAdminParticipants() {
     if (!requestCoordinator.isCurrentRequest(request)) return;
     state.adminParticipants = adminParticipants;
     state.adminAccounts = adminAccounts;
+    populateAdminDietSelect(t('diet.option.STANDARD'));
     state.centerContactSettings = centerSettings;
     await applyCenterDefaultLanguage(centerSettings);
     state.operationalLinks = operationalLinks;
@@ -3735,6 +3880,11 @@ function renderMode() {
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
   elements.forgetDeviceButton.hidden = !showResidentExit;
   elements.ownerExitButton.hidden = !state.platformOwner && !authenticatedAdministrator;
+  if (authenticatedAdministrator) {
+    elements.authActions.classList.add('auth-actions-signed-in');
+    elements.authButton.textContent = t('common.actions.exit');
+    elements.adminEmailAuth.hidden = true;
+  }
   elements.accountFooter.hidden = elements.adminShell.hidden
     && elements.forgetDeviceButton.hidden
     && elements.ownerExitButton.hidden;
@@ -3759,28 +3909,14 @@ function renderViewPreference() {
   const effectivePreference = loadStoredPreferredView()
     || state.centerContactSettings.defaultView
     || loadCachedDefaultView();
-  elements.viewPinButtons.forEach((button) => {
-    const viewKey = button.dataset.preferenceView === 'week' ? 'week' : 'month';
+  elements.viewPreferenceControls.forEach((control) => {
+    const viewKey = control.dataset.preferenceView === 'week' ? 'week' : 'month';
     const isPinned = effectivePreference === viewKey;
-    const text = isPinned
-      ? t(`viewPreference.unpin.${viewKey}`)
-      : t(`viewPreference.pin.${viewKey}`);
-    button.hidden = !canChoosePreference;
-    button.setAttribute('aria-pressed', String(isPinned));
-    button.setAttribute('aria-label', text);
-    button.title = text;
+    const text = t(`viewPreference.pin.${viewKey}`);
+    control.dataset.preferredView = canChoosePreference && isPinned ? 'true' : 'false';
+    control.setAttribute('aria-description', text);
+    control.title = text;
   });
-}
-
-function handleViewPinToggle(event) {
-  const selectedView = event.currentTarget.dataset.preferenceView === 'week' ? 'week' : 'month';
-  if (loadStoredPreferredView() === selectedView) {
-    clearPreferredView();
-  } else {
-    savePreferredView(selectedView);
-  }
-  renderViewPreference();
-  initializeOperationalLinks();
 }
 
 function renderCenterAvatar(showInCurrentMode, centerName) {
@@ -3800,7 +3936,7 @@ function renderCenterAvatar(showInCurrentMode, centerName) {
 
 function handleSummaryDayChange(offset) {
   state.summaryDayOffset = offset === 1 ? 1 : 0;
-  selectSummaryMatrixDay(state.summaryDayOffset);
+  selectSummaryMatrixDay(state.summaryDayOffset, { smooth: true });
   renderMode();
   if (state.summaryDays.length === 0) {
     refreshNow('riepilogo');
@@ -3809,15 +3945,14 @@ function handleSummaryDayChange(offset) {
 
 function handleKitchenDayChange(offset) {
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
-  selectKitchenMatrixDay(state.kitchenDayOffset);
+  selectKitchenMatrixDay(state.kitchenDayOffset, { smooth: true });
   renderKitchenHeading();
-  renderMeals();
   if (state.kitchenDays.length === 0) {
     refreshNow('giorno');
   }
 }
 
-function selectSummaryMatrixDay(offset) {
+function selectSummaryMatrixDay(offset, { smooth = false, scroll = true } = {}) {
   state.summaryDayOffset = offset === 1 ? 1 : 0;
   state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || state.todayOverview;
   state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || state.summaryDailyOperation;
@@ -3827,10 +3962,12 @@ function selectSummaryMatrixDay(offset) {
     button.classList.toggle('week-pill-active', isSelected);
     button.setAttribute('aria-selected', String(isSelected));
   });
-  scrollSummaryMatrix(elements.todayOverview, state.summaryDayOffset, { smooth: false });
+  if (scroll) {
+    scrollSummaryMatrix(elements.todayOverview, state.summaryDayOffset, { smooth });
+  }
 }
 
-function selectKitchenMatrixDay(offset) {
+function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) {
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
   state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
   state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || state.kitchenNote;
@@ -3841,7 +3978,9 @@ function selectKitchenMatrixDay(offset) {
     button.classList.toggle('week-pill-active', isSelected);
     button.setAttribute('aria-selected', String(isSelected));
   });
-  scrollSummaryMatrix(elements.cards, state.kitchenDayOffset, { kitchen: true, smooth: false });
+  if (scroll) {
+    scrollSummaryMatrix(elements.cards, state.kitchenDayOffset, { kitchen: true, smooth });
+  }
 }
 
 function getKitchenDate() {
@@ -4143,7 +4282,7 @@ function handleAdminCancelParticipant() {
 
 function syncAdminContactForm() {
   const participant = state.adminParticipants.find((item) => item.participantId === state.adminParticipantId) || null;
-  elements.adminParticipantDiets.querySelectorAll('[data-custom-diet]').forEach((option) => option.remove());
+  populateAdminDietSelect(t('diet.option.STANDARD'));
   const canDeleteParticipant = Boolean(participant)
     && hasCurrentCapability(CAPABILITIES.DELETE_PARTICIPANTS);
   elements.adminDeleteParticipant.hidden = !canDeleteParticipant;
@@ -4170,21 +4309,11 @@ function syncAdminContactForm() {
   elements.adminParticipantSignature.value = participant.signature || '';
   elements.adminParticipantGroup.value = participant.groupId === 'group_ospiti' ? 'group_ospiti' : 'group_residenti';
   const dietValue = (participant.dietTags || [])
-    .filter((tag) => tag !== 'STANDARD')
     .map(normalizeDietCode)
-    .join(', ') || 'STANDARD';
-  const selectedDietValue = isCustomDietNumber(dietValue) || dietValue === 'DIETA'
-    ? 'CUSTOM'
-    : dietValue;
-  if (selectedDietValue && !Array.from(elements.adminParticipantDiets.options).some((option) => option.value === selectedDietValue)) {
-    const customOption = document.createElement('option');
-    customOption.value = selectedDietValue;
-    customOption.textContent = selectedDietValue;
-    customOption.dataset.customDiet = 'true';
-    elements.adminParticipantDiets.append(customOption);
-  }
-  elements.adminParticipantDiets.value = selectedDietValue;
-  elements.adminParticipantDietNumber.value = isCustomDietNumber(dietValue) ? dietValue : '';
+    .find((tag) => /^\d+$/.test(tag)) || 'STANDARD';
+  elements.adminParticipantDiets.value = Array.from(elements.adminParticipantDiets.options)
+    .some((option) => option.value === dietValue) ? dietValue : 'STANDARD';
+  elements.adminParticipantDietNumber.value = '';
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
   elements.adminPhoneInput.value = participant.phone || '';
   elements.adminParticipantLiturgy.checked = participant.liturgicalRole === true;
@@ -4299,8 +4428,8 @@ function assertViceSelectionLimit(participantId, selectedAsVice) {
     && participant.status === 'ACTIVE'
     && participant.viceAdminRole === true
   )).length;
-  if (otherViceCount >= 2) {
-    throw new Error('Puoi indicare al massimo due vice amministratori');
+  if (otherViceCount >= 4) {
+    throw new Error(t('admin.people.viceLimit', { count: 4 }));
   }
 }
 
@@ -4549,7 +4678,10 @@ function renderTodayOverview() {
       operationDays: state.summaryOperations,
       layout: state.centerContactSettings.summaryLayout || 'international',
       activeIndex: state.summaryDayOffset,
-      onActiveIndexChange: selectSummaryMatrixDay
+      onActiveIndexChange: (index) => {
+        selectSummaryMatrixDay(index, { scroll: false });
+        renderMode();
+      }
     });
     scheduleOperationalAutoScroll();
     return;
@@ -5231,10 +5363,7 @@ async function performAdminSaveContact() {
 
   try {
     const rawPhone = elements.adminPhoneInput.value.trim();
-    const dietCode = readDietCode(
-      elements.adminParticipantDiets,
-      elements.adminParticipantDietNumber
-    );
+    const dietCode = readAdminDietCode();
     const dietTags = dietCode && dietCode !== 'STANDARD' ? [dietCode] : ['STANDARD'];
     const sortOrder = participant?.sortOrder
       || Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
@@ -5711,7 +5840,10 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
       kitchen: true,
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,
-      onActiveIndexChange: selectKitchenMatrixDay
+      onActiveIndexChange: (index) => {
+        selectKitchenMatrixDay(index, { scroll: false });
+        renderKitchenHeading();
+      }
     });
     scheduleOperationalAutoScroll();
     return;
