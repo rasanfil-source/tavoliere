@@ -364,6 +364,7 @@
   "month.previous": "Mes anterior",
   "month.select": "Elegir mes",
   "month.view.title": "Vista mensual",
+  "month.view.short": "Mes",
   "network.offline.banner": "Sin conexión · cambios pausados. Los últimos datos permanecen visibles.",
   "network.offline.bannerWithTime": "Sin conexión · cambios pausados. Datos a las {time} visibles.",
   "network.offline.guardedAction": "Sin conexión. Los datos ingresados permanecen en pantalla; podrás guardar al volver a conectarte.",
@@ -493,5 +494,6 @@
   "week.select": "Elegir semana",
   "week.view.loading": "Cargando semana...",
   "week.view.noMeals": "No hay comidas disponibles",
-  "week.view.title": "Semana"
+  "week.view.title": "Semana",
+  "week.view.short": "Semana"
 }

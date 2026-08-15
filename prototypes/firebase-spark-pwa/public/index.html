@@ -34,7 +34,7 @@
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260809b">
     <link rel="stylesheet" href="/styles.css?v=20260815n">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815l">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815n">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -46,19 +46,6 @@
           <img class="center-avatar" data-center-avatar alt="" hidden>
           <div class="topbar-heading">
             <h1 data-title>Pasti</h1>
-            <button
-              type="button"
-              class="view-pin-button"
-              data-view-pin-button
-              hidden
-              aria-pressed="false"
-              aria-label="Preferenza vista"
-              title="Preferenza vista"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-                <path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/>
-              </svg>
-            </button>
             <p class="title-center-name" data-title-center hidden></p>
             <p class="session-role" data-session-role hidden></p>
           </div>
@@ -99,11 +86,16 @@
             <span aria-hidden="true">↻</span>
           </button>
         </div>
-        <nav class="panel-links" aria-label="Navigazione partecipante" data-i18n-aria-label="a11y.participantNavigation">
-          <button type="button" class="icon-button" data-participant-refresh hidden data-i18n-aria-label="common.actions.refresh" aria-label="Aggiorna">
-            <span aria-hidden="true">↻</span>
-          </button>
-          <a class="panel-link secondary-action" data-participant-week-nav-link href="/?view=week" data-i18n="week.view.title">Vista settimana</a>
+        <nav class="meal-view-nav" aria-label="Navigazione partecipante" data-i18n-aria-label="a11y.participantNavigation">
+          <div class="meal-view-preference meal-view-preference-month">
+            <div class="summary-day-segment meal-view-segment" role="tablist">
+              <a class="week-pill week-pill-active" data-month-nav-link href="/?view=participant" role="tab" aria-selected="true" aria-current="page" data-i18n="month.view.short">Mese</a>
+              <a class="week-pill" data-participant-week-nav-link href="/?view=week" role="tab" aria-selected="false" data-i18n="week.view.short">Settimana</a>
+            </div>
+            <button type="button" class="view-pin-button" data-view-pin-button data-preference-view="month" hidden aria-pressed="false" aria-label="Preferenza vista" title="Preferenza vista">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg>
+            </button>
+          </div>
           <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
         </nav>
         <section class="calendar-panel" data-calendar-panel aria-label="Calendario prenotazioni future" data-i18n-aria-label="a11y.futureBookingsCalendar">
@@ -137,8 +129,16 @@
             <span aria-hidden="true">↻</span>
           </button>
         </div>
-        <nav class="panel-links" aria-label="Navigazione settimanale" data-i18n-aria-label="a11y.weekNavigation">
-          <a class="panel-link secondary-action" data-month-nav-link href="/?view=participant" data-i18n="month.view.title">Vista mese</a>
+        <nav class="meal-view-nav" aria-label="Navigazione settimanale" data-i18n-aria-label="a11y.weekNavigation">
+          <div class="meal-view-preference meal-view-preference-week">
+            <button type="button" class="view-pin-button" data-view-pin-button data-preference-view="week" hidden aria-pressed="false" aria-label="Preferenza vista" title="Preferenza vista">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg>
+            </button>
+            <div class="summary-day-segment meal-view-segment" role="tablist">
+              <a class="week-pill" data-month-nav-link href="/?view=participant" role="tab" aria-selected="false" data-i18n="month.view.short">Mese</a>
+              <a class="week-pill week-pill-active" data-participant-week-nav-link href="/?view=week" role="tab" aria-selected="true" aria-current="page" data-i18n="week.view.short">Settimana</a>
+            </div>
+          </div>
           <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
         </nav>
         <div class="week-toolbar">
@@ -879,6 +879,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260815l"></script>
+  <script type="module" src="/app.js?v=20260815m"></script>
   </body>
 </html>

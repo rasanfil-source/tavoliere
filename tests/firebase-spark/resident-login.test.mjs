@@ -173,7 +173,8 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
   assert.match(index, /data-action-dialog/);
   assert.match(app, /requiredText: 'ELIMINA'/);
   assert.match(app, /function showActionDialog/);
-  assert.match(app, /effect === 'ABSENT'[\s\S]*title: 'Svuota selezione'/);
+  const monthBulkHandler = app.match(/async function handleMonthBulkButton\(button\)[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(monthBulkHandler, /showActionDialog|dialog\.clearSelection/);
   assert.doesNotMatch(app, /window\.(?:alert|confirm|prompt)/);
   const exportHandler = app.match(/async function handleAdminExport\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.doesNotMatch(exportHandler, /window\.confirm/);

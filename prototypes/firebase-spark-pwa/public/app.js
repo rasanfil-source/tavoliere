@@ -71,7 +71,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815l';
+} from './summary-matrix-view.js?v=20260815m';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -626,7 +626,7 @@ const elements = {
   adminAdministratorPassword: document.querySelector('[data-admin-administrator-password]'),
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
   title: document.querySelector('[data-title]'),
-  viewPinButton: document.querySelector('[data-view-pin-button]'),
+  viewPinButtons: document.querySelectorAll('[data-view-pin-button]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
   sessionRole: document.querySelector('[data-session-role]'),
@@ -674,8 +674,8 @@ const elements = {
   operationalLinksStatus: document.querySelector('[data-operational-links-status]'),
   rotateLinkButtons: document.querySelectorAll('[data-rotate-operational-link]'),
   summaryNavLinks: document.querySelectorAll('[data-summary-nav-link]'),
-  participantWeekNavLink: document.querySelector('[data-participant-week-nav-link]'),
-  monthNavLink: document.querySelector('[data-month-nav-link]'),
+  participantWeekNavLinks: document.querySelectorAll('[data-participant-week-nav-link]'),
+  monthNavLinks: document.querySelectorAll('[data-month-nav-link]'),
   participantNavLinks: document.querySelectorAll('[data-participant-nav-link]'),
   summaryDayButtons: document.querySelectorAll('[data-summary-day]')
 };
@@ -740,9 +740,7 @@ document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
 elements.participantRefreshButton.addEventListener('click', () => refreshNow('manuale'));
-if (elements.viewPinButton) {
-  elements.viewPinButton.addEventListener('click', handleViewPinToggle);
-}
+elements.viewPinButtons.forEach((button) => button.addEventListener('click', handleViewPinToggle));
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
 elements.ownerExitButton.addEventListener('click', handleOwnerExit);
@@ -892,8 +890,8 @@ elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
 elements.operationalLinks.addEventListener('click', handleOperationalLinksClick);
 [
   ...elements.summaryNavLinks,
-  elements.participantWeekNavLink,
-  elements.monthNavLink,
+  ...elements.participantWeekNavLinks,
+  ...elements.monthNavLinks,
   ...elements.participantNavLinks
 ].filter(Boolean).forEach((link) => link.addEventListener('click', handleInAppNavigation));
 window.addEventListener('popstate', () => {
@@ -1197,8 +1195,12 @@ function initializeOperationalLinks() {
     link.href = buildOperationalLink(entryMode, publicToken, centerId, personalAccess);
   });
   const weekHref = buildOperationalLink('week', publicToken, centerId, personalAccess);
-  elements.participantWeekNavLink.href = weekHref;
-  elements.monthNavLink.href = elements.publicLink.href;
+  elements.participantWeekNavLinks.forEach((link) => {
+    link.href = weekHref;
+  });
+  elements.monthNavLinks.forEach((link) => {
+    link.href = elements.publicLink.href;
+  });
   const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
   adminEntryUrl.searchParams.set('view', 'admin');
   if (elements.adminEntryLink) {
@@ -3752,29 +3754,28 @@ function renderMode() {
 function renderViewPreference() {
   const isRelevantMode = state.mode === 'participant' || state.mode === 'week';
   const canChoosePreference = isRelevantMode && state.residentReady;
-  if (elements.viewPinButton) {
-    elements.viewPinButton.hidden = !canChoosePreference;
-  }
-  if (!canChoosePreference || !elements.viewPinButton) return;
-
-  const currentView = state.mode === 'week' ? 'week' : 'month';
-  const isPinned = loadStoredPreferredView() === currentView;
-  const viewKey = currentView === 'week' ? 'week' : 'month';
-  const text = isPinned
-    ? t(`viewPreference.unpin.${viewKey}`)
-    : t(`viewPreference.pin.${viewKey}`);
-
-  elements.viewPinButton.setAttribute('aria-pressed', String(isPinned));
-  elements.viewPinButton.setAttribute('aria-label', text);
-  elements.viewPinButton.title = text;
+  const effectivePreference = loadStoredPreferredView()
+    || state.centerContactSettings.defaultView
+    || loadCachedDefaultView();
+  elements.viewPinButtons.forEach((button) => {
+    const viewKey = button.dataset.preferenceView === 'week' ? 'week' : 'month';
+    const isPinned = effectivePreference === viewKey;
+    const text = isPinned
+      ? t(`viewPreference.unpin.${viewKey}`)
+      : t(`viewPreference.pin.${viewKey}`);
+    button.hidden = !canChoosePreference;
+    button.setAttribute('aria-pressed', String(isPinned));
+    button.setAttribute('aria-label', text);
+    button.title = text;
+  });
 }
 
-function handleViewPinToggle() {
-  const currentView = state.mode === 'week' ? 'week' : 'month';
-  if (loadStoredPreferredView() === currentView) {
+function handleViewPinToggle(event) {
+  const selectedView = event.currentTarget.dataset.preferenceView === 'week' ? 'week' : 'month';
+  if (loadStoredPreferredView() === selectedView) {
     clearPreferredView();
   } else {
-    savePreferredView(currentView);
+    savePreferredView(selectedView);
   }
   renderViewPreference();
   initializeOperationalLinks();
@@ -5156,16 +5157,6 @@ async function handleMonthBulkButton(button) {
   const scope = button.dataset.monthScope;
   const effect = button.dataset.monthEffect;
   const mealTypeId = button.dataset.mealType || null;
-
-  if (effect === 'ABSENT') {
-    const decision = await showActionDialog({
-      title: t('dialog.clearSelection.title'), // title: 'Svuota selezione'
-      message: t('dialog.clearSelection.message'),
-      confirmLabel: t('dialog.clearSelection.title'),
-      destructive: true
-    });
-    if (!decision.confirmed) return;
-  }
 
   button.setAttribute('aria-busy', 'true');
   try {

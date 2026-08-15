@@ -364,6 +364,7 @@
   "month.previous": "Mese precedente",
   "month.select": "Scegli mese",
   "month.view.title": "Vista mese",
+  "month.view.short": "Mese",
   "network.offline.banner": "Offline · modifiche sospese. Restano visibili gli ultimi dati disponibili.",
   "network.offline.bannerWithTime": "Offline · modifiche sospese. Restano visibili i dati aggiornati alle {time}.",
   "network.offline.guardedAction": "Connessione assente. I dati inseriti restano nella schermata; potrai salvarli quando torni online.",
@@ -493,5 +494,6 @@
   "week.select": "Scegli settimana",
   "week.view.loading": "Caricamento settimana…",
   "week.view.noMeals": "Nessun pasto disponibile",
-  "week.view.title": "Settimana"
+  "week.view.title": "Settimana",
+  "week.view.short": "Settimana"
 }

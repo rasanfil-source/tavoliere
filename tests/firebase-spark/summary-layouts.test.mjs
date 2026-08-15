@@ -58,10 +58,19 @@ test('solo Classic compatta i commensali dietro il nome e una icona persone', ()
   assert.match(view, /renderClassicNamesRow\(screen\)/);
   assert.match(view, /summary-matrix-people-icon/);
   assert.match(view, /renderNamesCell\(column, \{ compactActions: true \}\)/);
-  assert.match(view, /details class="summary-matrix-contact-picker"/);
+  assert.match(view, /class="summary-matrix-person-trigger" popovertarget=/);
+  assert.match(view, /class="summary-matrix-contact-popover"[^>]*popover role="dialog"/);
   assert.match(view, /summary\.contactPerson/);
-  assert.match(styles, /\.summary-matrix-contact-picker\[open\][\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.summary-matrix-contact-popover::backdrop/);
+  assert.match(styles, /text-underline-offset: 3px;\s*}\s*\.summary-matrix-person-trigger \.summary-matrix-person-name/);
   assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column\)/);
+});
+
+test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {
+  assert.equal((index.match(/class="summary-day-segment meal-view-segment"/g) || []).length, 2);
+  assert.equal((index.match(/data-preference-view="month"/g) || []).length, 1);
+  assert.equal((index.match(/data-preference-view="week"/g) || []).length, 1);
+  assert.match(styles, /\.week-meal-button\.meal-state-present[\s\S]*background: var\(--primary\)/);
 });
 
 test('impostazioni e manutenzione presentano controlli graficamente raggruppati', () => {

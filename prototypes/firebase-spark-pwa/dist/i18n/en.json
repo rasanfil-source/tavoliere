@@ -364,6 +364,7 @@
   "month.previous": "Previous month",
   "month.select": "Choose month",
   "month.view.title": "Month view",
+  "month.view.short": "Month",
   "network.offline.banner": "Offline · updates paused. Last available data remains visible.",
   "network.offline.bannerWithTime": "Offline · updates paused. Data as of {time} remains visible.",
   "network.offline.guardedAction": "No connection. Entered data stays on screen; you can save when you are back online.",
@@ -493,5 +494,6 @@
   "week.select": "Choose week",
   "week.view.loading": "Loading week…",
   "week.view.noMeals": "No meals available",
-  "week.view.title": "Week"
+  "week.view.title": "Week",
+  "week.view.short": "Week"
 }

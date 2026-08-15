@@ -6,6 +6,8 @@ import {
   buildSummaryMatrixScreens,
 } from "./summary-matrix-model.js?v=20260815i";
 
+let contactPopupSequence = 0;
+
 export function mountSummaryMatrix(
   container,
   {
@@ -285,14 +287,13 @@ function renderNamesCell(column, { compactActions = false } = {}) {
         ? `<a class="summary-matrix-whatsapp" href="https://wa.me/${escapeHtml(phone.replace(/\D/g, ""))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(t("summary.messagePerson", { name: participant.displayName }))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`
         : "";
       if (compactActions && (call || whatsapp)) {
+        const popupId = `summary-contact-popup-${++contactPopupSequence}`;
         return `
-          <li class="summary-matrix-name-with-picker">
-            <details class="summary-matrix-contact-picker">
-              <summary aria-label="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}" title="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}">
-                ${personName}<span class="summary-matrix-contact-caret" aria-hidden="true">⌄</span>
-              </summary>
+          <li class="summary-matrix-name-with-popup">
+            <button type="button" class="summary-matrix-person-trigger" popovertarget="${popupId}" aria-haspopup="dialog" aria-label="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}" title="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}">${personName}</button>
+            <span class="summary-matrix-contact-popover" id="${popupId}" popover role="dialog" aria-label="${escapeHtml(t("summary.contactPerson", { name: participant.displayName }))}">
               <span class="summary-matrix-contact-actions">${call}${whatsapp}</span>
-            </details>
+            </span>
           </li>`;
       }
       return `<li>${personName}<span class="summary-matrix-contact-actions">${call}${whatsapp}</span></li>`;
