@@ -604,3 +604,473 @@ html[data-theme="confetto"] {
     height: 18px;
   }
 }
+
+/* Struttura completa delle due schermate operative. */
+.summary-matrix-track {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.summary-matrix-track::-webkit-scrollbar {
+  display: none;
+}
+
+.summary-matrix-screen {
+  box-sizing: border-box;
+  min-width: 100%;
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.summary-matrix-swipe-hint {
+  display: none;
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* Classic: un'unica griglia, con righe che compaiono solo quando servono. */
+.summary-layout-classic .summary-matrix {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-collapse: separate;
+  border-radius: 10px;
+  border-spacing: 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.summary-layout-classic .summary-matrix caption {
+  caption-side: top;
+}
+
+.summary-layout-classic .summary-matrix th,
+.summary-layout-classic .summary-matrix td {
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 0;
+  border-right: 1px solid var(--view-border);
+  vertical-align: middle;
+}
+
+.summary-layout-classic .summary-matrix tr > :last-child {
+  border-right: 0;
+}
+
+.summary-layout-classic .summary-matrix thead tr + tr > *,
+.summary-layout-classic .summary-matrix tbody tr > * {
+  border-top: 1px solid var(--view-border);
+}
+
+.summary-layout-classic .summary-matrix-corner {
+  background: var(--surface);
+}
+
+.summary-layout-classic .summary-matrix-date-heading {
+  padding-block: 9px;
+  background: var(--calendar-heading-bg);
+  color: var(--calendar-heading-ink);
+  font-weight: 750;
+  text-align: center;
+}
+
+.summary-layout-classic .summary-matrix-date-heading time {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.summary-layout-classic .summary-matrix-meal-heading {
+  min-height: 92px;
+  padding-block: 13px;
+  background: var(--view-control);
+  color: var(--ink);
+  font-size: 0.98rem;
+  font-weight: 750;
+}
+
+.summary-layout-classic .summary-matrix-meal-icon {
+  min-height: 24px;
+  margin-bottom: 5px;
+  font-size: 1.2rem;
+}
+
+.summary-layout-classic .summary-matrix-label {
+  background: var(--view-surface);
+  color: var(--ink);
+  font-weight: 720;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.summary-layout-classic .summary-matrix td {
+  background: var(--surface);
+  text-align: center;
+}
+
+.summary-layout-classic .summary-matrix-next-date {
+  background: color-mix(in srgb, var(--calendar-heading-bg) 48%, var(--surface));
+}
+
+.summary-layout-classic .summary-matrix-row-meals td {
+  height: 104px;
+}
+
+.summary-layout-classic .summary-matrix-row-names td {
+  padding-block: 13px;
+  vertical-align: top;
+}
+
+.summary-matrix-total {
+  display: block;
+  color: var(--primary);
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 760;
+  line-height: 1;
+}
+
+.summary-matrix-diet-total {
+  display: block;
+  color: var(--primary);
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
+.summary-matrix-unit {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.summary-matrix-diets,
+.summary-matrix-names {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-matrix-diets li {
+  line-height: 1.25;
+}
+
+.summary-matrix-empty {
+  color: var(--muted);
+}
+
+.summary-matrix-row-mass-band .summary-matrix-label,
+.summary-matrix-mass-band {
+  background: var(--calendar-heading-bg);
+}
+
+.summary-matrix-mass-yes {
+  color: var(--good);
+  font-weight: 750;
+}
+
+.summary-matrix-mass-no {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+/* Internazionale: tre schede autonome e fascia Messa coordinata. */
+.summary-international-title {
+  margin-bottom: 8px;
+  text-transform: capitalize;
+}
+
+.summary-international-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-international-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 11px;
+  background: var(--surface);
+}
+
+.summary-international-card > header {
+  display: flex;
+  min-height: 80px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--view-border);
+  background: var(--view-control);
+  text-align: left;
+}
+
+.summary-international-card-icon {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+}
+
+.summary-international-card header strong,
+.summary-international-card header time {
+  display: block;
+}
+
+.summary-international-card header strong {
+  font-size: 1.02rem;
+}
+
+.summary-international-card header time {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.summary-international-card dl {
+  margin: 0;
+}
+
+.summary-international-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 66px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--view-border);
+}
+
+.summary-international-card dl > div:first-child {
+  border-top: 0;
+}
+
+.summary-international-card dt,
+.summary-international-card dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.summary-international-card dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.summary-international-card dd {
+  text-align: right;
+}
+
+.summary-international-card .summary-matrix-total {
+  font-size: 2.25rem;
+}
+
+.summary-international-names {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--view-border);
+}
+
+.summary-international-names h3 {
+  margin: 0 0 9px;
+  font-size: 0.9rem;
+}
+
+.summary-international-mass {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.summary-international-mass-segments {
+  display: contents;
+}
+
+.summary-international-mass-group {
+  display: grid;
+  grid-column: span var(--mass-segment-span);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 10px;
+  background: var(--calendar-heading-bg);
+}
+
+.summary-international-mass-group-first {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.summary-international-mass-title {
+  display: grid;
+  align-items: center;
+  padding: 10px 15px;
+  border-right: 1px solid var(--view-border);
+  background: color-mix(in srgb, var(--calendar-heading-bg) 72%, var(--surface));
+}
+
+.summary-international-mass-segment {
+  display: grid;
+  min-height: 66px;
+  box-sizing: border-box;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 9px;
+}
+
+.kitchen-notes {
+  margin-top: 14px;
+  padding: 15px 16px;
+  border: 1px solid var(--kitchen-note-border);
+  border-left-width: 4px;
+  border-radius: 9px;
+}
+
+.kitchen-notes h3,
+.kitchen-notes time,
+.kitchen-notes p {
+  margin: 0;
+}
+
+.kitchen-notes-group time {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.kitchen-notes ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+/* Accesso, impostazioni, manutenzione e Agenda centro. */
+.resident-login .resident-admin-entry {
+  margin-top: 16px;
+}
+
+.admin-calendar-extension {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 18px;
+}
+
+.admin-calendar-extension > .section-title {
+  min-width: 0;
+}
+
+.admin-calendar-extension [data-bootstrap-button] {
+  justify-self: end;
+}
+
+.admin-audit-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.admin-audit-disclosure > summary {
+  display: flex;
+  min-height: 48px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.admin-audit-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-audit-disclosure .disclosure-caret {
+  transition: transform 150ms ease;
+}
+
+.admin-audit-disclosure[open] .disclosure-caret {
+  transform: rotate(180deg);
+}
+
+.admin-audit-disclosure > p,
+.admin-audit-disclosure > .admin-audit-list {
+  margin-inline: 14px;
+}
+
+@media (max-width: 620px) {
+  .summary-matrix-track {
+    gap: 14px;
+  }
+
+  .summary-matrix-swipe-hint {
+    display: block;
+  }
+
+  .summary-layout-classic .summary-matrix th,
+  .summary-layout-classic .summary-matrix td {
+    padding: 9px 6px;
+  }
+
+  .summary-layout-classic .summary-matrix-meal-heading {
+    min-height: 78px;
+    padding-inline: 3px;
+  }
+
+  .summary-layout-classic .summary-matrix-row-meals td {
+    height: 86px;
+  }
+
+  .summary-matrix-total {
+    font-size: 1.8rem;
+  }
+
+  .summary-international-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .summary-international-card > header {
+    justify-content: flex-start;
+  }
+
+  [data-kitchen-panel] .summary-international-card > header {
+    justify-content: center;
+  }
+
+  .summary-international-mass {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .summary-international-mass-group {
+    grid-column: 1;
+  }
+
+  .admin-calendar-extension {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-calendar-extension [data-bootstrap-button] {
+    justify-self: stretch;
+  }
+}

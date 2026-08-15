@@ -71,7 +71,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815a';
+} from './summary-matrix-view.js?v=20260815f';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -423,6 +423,8 @@ const elements = {
   refreshButtons: document.querySelectorAll('[data-refresh-button]'),
   offlineBanner: document.querySelector('[data-offline-banner]'),
   accountFooter: document.querySelector('[data-account-footer]'),
+  adminEntryLink: document.querySelector('[data-admin-entry-link]'),
+  agendaAdminEntry: document.querySelector('[data-agenda-admin-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
   authActions: document.querySelector('[data-auth-actions]'),
   authButton: document.querySelector('[data-auth-button]'),
@@ -800,7 +802,11 @@ elements.adminSectionNav.addEventListener('click', handleAdminSectionNavigation)
 if (elements.activationChecklistList) {
   elements.activationChecklistList.addEventListener('click', handleAdminSectionNavigation);
 }
-elements.adminAuditLoad.addEventListener('click', handleAuditLoad);
+elements.adminAuditLoad.addEventListener('toggle', () => {
+  if (elements.adminAuditLoad.open && elements.adminAuditLoad.dataset.loaded !== 'true') {
+    handleAuditLoad();
+  }
+});
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
 elements.adminCenterAvatarSave.addEventListener('click', handleAdminCenterAvatarSave);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
@@ -1123,6 +1129,12 @@ function initializeOperationalLinks() {
   const weekHref = buildOperationalLink('week', publicToken, centerId, personalAccess);
   elements.participantWeekNavLink.href = weekHref;
   elements.monthNavLink.href = elements.publicLink.href;
+  const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
+  adminEntryUrl.searchParams.set('view', 'admin');
+  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
+  [elements.adminEntryLink, elements.agendaAdminEntry].filter(Boolean).forEach((link) => {
+    link.href = adminEntryUrl.pathname + adminEntryUrl.search;
+  });
   const mealsAccessButton = document.querySelector('[data-access-link="pasti"]');
   const kitchenAccessButton = document.querySelector('[data-access-link="cucina"]');
   const mealsShareButton = document.querySelector('[data-share-access-link="pasti"]');
@@ -2043,7 +2055,7 @@ function renderCalendarExtensionStatus() {
   const date = new Date(`${coverage.through}T12:00:00`);
   const formatted = Number.isNaN(date.getTime())
     ? coverage.through
-    : formatDateTime(date, { dateStyle: 'long' }, getLocale());
+    : formatDateTime(date, { day: '2-digit', month: '2-digit', year: 'numeric' }, getLocale());
   elements.adminCalendarExtensionStatus.textContent = t('admin.calendar.availableUntil', { date: formatted });
 }
 
@@ -2824,18 +2836,19 @@ function handleAuditLoad() {
 
 async function performAuditLoad() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
-  elements.adminAuditLoad.disabled = true;
+  elements.adminAuditLoad.setAttribute('aria-busy', 'true');
   elements.adminAuditStatus.textContent = 'Carico le attività...';
   try {
     const events = await listAuditEvents(20);
     renderAuditEvents(events);
+    elements.adminAuditLoad.dataset.loaded = 'true';
     elements.adminAuditStatus.textContent = events.length === 0
       ? 'Nessuna modifica registrata'
       : `Ultime ${events.length} modifiche`;
   } catch (error) {
     elements.adminAuditStatus.textContent = friendlyErrorMessage(error, 'Attività non disponibili');
   } finally {
-    elements.adminAuditLoad.disabled = false;
+    elements.adminAuditLoad.setAttribute('aria-busy', 'false');
   }
 }
 
@@ -3576,8 +3589,7 @@ function renderMode() {
   const isOrdinaryView = isParticipant || isWeek || isSummary;
   const hasResidentIdentity = state.residentReady || Boolean(loadStoredResidentSignature());
   const showResidentExit = isOrdinaryView && !needsResidentLogin && hasResidentIdentity;
-  const showAdministratorAccess = isAdminView
-    || (isOrdinaryView && (needsResidentLogin || state.platformOwner));
+  const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
   elements.forgetDeviceButton.hidden = !showResidentExit;
   elements.ownerExitButton.hidden = !state.platformOwner && !authenticatedAdministrator;
@@ -3586,6 +3598,9 @@ function renderMode() {
     && elements.ownerExitButton.hidden;
   if (isAdminView) {
     elements.adminShell.open = true;
+  }
+  if (elements.agendaAdminEntry) {
+    elements.agendaAdminEntry.hidden = !hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA);
   }
   elements.participantRefreshButton.hidden = true;
   if (isKitchen) {

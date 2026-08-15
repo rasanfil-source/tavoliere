@@ -34,7 +34,7 @@
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260809b">
     <link rel="stylesheet" href="/styles.css?v=20260815e">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815a">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815f">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -85,6 +85,10 @@
           <p class="field-help" data-i18n="auth.resident.password.help">Se non ricordi la password comune, chiedila al responsabile del centro.</p>
           <button type="submit" class="save-button primary-action" data-resident-login-button data-i18n="auth.resident.submit">Entra</button>
         </form>
+        <a class="secondary-action resident-admin-entry" data-admin-entry-link href="/?view=admin">
+          <span aria-hidden="true">⚙</span>
+          <span data-i18n="app.header.controlPanel">Pannello di controllo</span>
+        </a>
       </section>
 
       <section class="participant-panel" data-participant-panel>
@@ -157,10 +161,16 @@
             <span data-week-operations-status aria-live="polite">-</span>
           </summary>
           <div class="agenda-center-content">
-          <label class="field-label week-operations-day">
-            <span data-i18n="week.operations.day">Giorno</span>
-            <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
-          </label>
+          <div class="agenda-center-toolbar">
+            <label class="field-label week-operations-day">
+              <span data-i18n="week.operations.day">Giorno</span>
+              <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
+            </label>
+            <a class="secondary-action agenda-admin-entry" data-agenda-admin-entry href="/?view=admin" hidden>
+              <span aria-hidden="true">⚙</span>
+              <span data-i18n="app.header.controlPanel">Pannello di controllo</span>
+            </a>
+          </div>
           <div class="week-operations-grid">
             <details class="week-operation-section" open>
               <summary data-i18n="week.operations.sick">Ammalati</summary>
@@ -218,8 +228,10 @@
           </button>
         </div>
         <div class="summary-date-tabs" role="tablist" aria-label="Giorno del riepilogo">
-          <button type="button" class="week-pill week-pill-active" data-summary-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
-          <button type="button" class="week-pill" data-summary-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+          <div class="summary-day-segment">
+            <button type="button" class="week-pill week-pill-active" data-summary-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
+            <button type="button" class="week-pill" data-summary-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+          </div>
           <a class="panel-link secondary-action" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a>
         </div>
         <div class="today-overview" data-today-overview></div>
@@ -234,8 +246,10 @@
           </button>
         </div>
         <div class="summary-date-tabs kitchen-date-tabs" role="tablist" aria-label="Giorno della cucina">
-          <button type="button" class="week-pill week-pill-active" data-kitchen-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
-          <button type="button" class="week-pill" data-kitchen-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+          <div class="summary-day-segment">
+            <button type="button" class="week-pill week-pill-active" data-kitchen-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
+            <button type="button" class="week-pill" data-kitchen-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+          </div>
         </div>
         <p class="kitchen-date" data-kitchen-date></p>
         <aside class="kitchen-note" data-kitchen-note hidden>
@@ -558,18 +572,18 @@
                     <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per chi non ha ancora fissato una preferenza personale.</small>
                   </label>
 
-                  <div class="admin-layout-pickers" data-admin-layout-pickers>
-                    <div class="admin-option-group">
-                      <label class="field-label" for="admin-summary-layout-select">
+                  <fieldset class="admin-layout-settings-card" data-admin-layout-pickers>
+                    <legend data-i18n="admin.adaptations.layouts.title">Viste operative</legend>
+                    <p class="field-help" data-i18n="admin.adaptations.layouts.help">Scegli separatamente l'aspetto del riepilogo e quello della cucina.</p>
+                    <div class="admin-layout-settings-grid">
+                      <label class="field-label admin-layout-setting" for="admin-summary-layout-select">
                         <span data-i18n="admin.adaptations.summaryLayout.label">Vista del riepilogo</span>
                         <select id="admin-summary-layout-select" data-admin-summary-layout-select aria-label="Vista del riepilogo">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
                         </select>
                       </label>
-                    </div>
-                    <div class="admin-option-group">
-                      <label class="field-label" for="admin-kitchen-layout-select">
+                      <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select">
                         <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
@@ -577,8 +591,7 @@
                         </select>
                       </label>
                     </div>
-                    <p class="field-help" data-i18n="admin.adaptations.layouts.help">Scegli separatamente l'aspetto del riepilogo e quello della cucina.</p>
-                  </div>
+                  </fieldset>
 
                   <fieldset class="admin-theme-picker" data-admin-theme-picker>
                     <legend data-i18n="admin.adaptations.theme.label">Palette colori</legend>
@@ -772,10 +785,15 @@
               <section class="admin-control-section admin-audit-section" data-admin-mobile-section="activity" data-admin-audit-section hidden aria-labelledby="admin-audit-title">
                 <div class="section-title">
                   <h2 id="admin-audit-title" data-i18n="admin.activity.audit">Attività recenti</h2>
-                  <p data-admin-audit-status aria-live="polite">Caricate solo quando servono.</p>
                 </div>
-                <button type="button" class="tertiary-action" data-admin-audit-load data-i18n="common.actions.loading">Mostra attività</button>
-                <div class="admin-audit-list" data-admin-audit-list></div>
+                <details class="admin-audit-disclosure" data-admin-audit-load>
+                  <summary>
+                    <span data-i18n="common.actions.view">Vedi</span>
+                    <span class="disclosure-caret" aria-hidden="true">⌄</span>
+                  </summary>
+                  <p data-admin-audit-status aria-live="polite"></p>
+                  <div class="admin-audit-list" data-admin-audit-list></div>
+                </details>
               </section>
 
               <div class="admin-tools-row" data-admin-mobile-section="activity" data-admin-tools>
@@ -856,6 +874,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260815e"></script>
+  <script type="module" src="/app.js?v=20260815f"></script>
   </body>
 </html>

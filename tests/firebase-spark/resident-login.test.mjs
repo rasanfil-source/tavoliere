@@ -139,7 +139,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /const showResidentExit = isOrdinaryView && !needsResidentLogin && hasResidentIdentity/);
   assert.match(app, /const showResidentLogin = needsResidentLogin[\s\S]*!isAdminView[\s\S]*!state\.platformOwner[\s\S]*!state\.adminRole[\s\S]*!authenticatedAdministrator/);
   assert.match(app, /elements\.residentLogin\.hidden = !showResidentLogin/);
-  assert.match(app, /const showAdministratorAccess = isAdminView[\s\S]*\(isOrdinaryView && \(needsResidentLogin \|\| state\.platformOwner\)\)/);
+  assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
   assert.match(app, /elements\.ownerExitButton\.hidden = !state\.platformOwner/);
   assert.match(app, /elements\.accountFooter\.hidden = elements\.adminShell\.hidden[\s\S]*elements\.ownerExitButton\.hidden/);
@@ -150,6 +150,8 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(index, /data-resident-login-form/);
   assert.match(index, /data-resident-signature-input/);
   assert.match(index, /data-resident-password-input/);
+  assert.match(index, /data-admin-entry-link[^>]+href="\/\?view=admin"/);
+  assert.match(index, /data-agenda-admin-entry[^>]+href="\/\?view=admin"/);
 });
 
 test('l invito resta accessibile da disconnessi e gli amministratori non vedono l accesso residenti', () => {

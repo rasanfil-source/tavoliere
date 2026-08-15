@@ -34,22 +34,6 @@ function buildMatrixScreens(days, participants, operationDays, includeNames) {
     breakfastIndex >= 0 ? mealOrder.slice(breakfastIndex + 1) : mealOrder;
   const followingMorningMeals =
     breakfastIndex >= 0 ? mealOrder.slice(0, breakfastIndex + 1) : [];
-  const hasGuestGroup =
-    participants.some(
-      (participant) => participant.groupId === GUEST_GROUP_ID,
-    ) ||
-    normalizedDays.some((day) =>
-      day.meals?.some(
-        (meal) =>
-          meal.present?.some(
-            (participant) => participant.groupId === GUEST_GROUP_ID,
-          ) ||
-          meal.dietParticipants?.some(
-            (participant) => participant.groupId === GUEST_GROUP_ID,
-          ),
-      ),
-    );
-
   return [0, 1].map((screenIndex) => {
     const columns = [
       ...sameDayMeals.map((meal) =>
@@ -83,7 +67,7 @@ function buildMatrixScreens(days, participants, operationDays, includeNames) {
       label: screenIndex === 0 ? "Oggi" : "Domani",
       columns,
       dateGroups,
-      hasGuestGroup,
+      hasGuestGroup: columns.some((column) => column.guestCount > 0),
       hasSpecialDiets: columns.some(
         (column) => column.specialDiets.participantCount > 0,
       ),

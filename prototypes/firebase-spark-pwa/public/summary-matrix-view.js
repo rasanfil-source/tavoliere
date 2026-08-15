@@ -4,7 +4,7 @@ import { formatDietLabel } from "./diet-utils.mjs?v=20260810a";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260814y";
+} from "./summary-matrix-model.js?v=20260815f";
 
 export function mountSummaryMatrix(
   container,
@@ -29,7 +29,7 @@ export function mountSummaryMatrix(
   const prefix = kitchen ? "kitchen" : "summary";
   const render = layout === "international" ? renderInternationalScreen : renderScreen;
   container.innerHTML = `
-    <div class="summary-matrix-track" data-${prefix}-matrix-track aria-label="${escapeHtml(t("summary.screensLabel"))}">
+    <div class="summary-matrix-track summary-layout-${layout}${kitchen ? " summary-layout-kitchen" : " summary-layout-diners"}" data-${prefix}-matrix-track aria-label="${escapeHtml(t("summary.screensLabel"))}">
       ${screens.map((screen) => render(screen, { kitchen, activeIndex })).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${escapeHtml(t("summary.swipeHint"))}</p>
@@ -116,7 +116,7 @@ function renderScreen(screen, { kitchen, activeIndex }) {
             ${screen.columns
               .map(
                 (column) => `
-              <th class="summary-matrix-meal-heading${nextDateClass(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(localizedMealLabel(column))}</span>${renderBreakfastStatus(column)}</th>
+              <th class="summary-matrix-meal-heading${nextDateClass(column, screen)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span><span class="summary-matrix-meal-label">${escapeHtml(localizedMealLabel(column))}</span>${renderBreakfastStatus(column, kitchen)}</th>
             `,
               )
               .join("")}
@@ -207,8 +207,8 @@ function renderMassBandRow(screen) {
   `;
 }
 
-function renderBreakfastStatus(column) {
-  if (column.mealTypeId !== "breakfast") return "";
+function renderBreakfastStatus(column, kitchen) {
+  if (kitchen || column.mealTypeId !== "breakfast") return "";
   const planned = column.breakfastPlanned === true;
   const label = t(
     planned ? "summary.breakfastPlanned" : "summary.breakfastNotPlanned",
