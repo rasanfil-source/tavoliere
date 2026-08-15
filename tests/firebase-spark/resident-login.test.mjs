@@ -166,7 +166,7 @@ test('friendly access is explicit and offers device exit', () => {
 
 test('il link operativo residente prevale anche su una sessione amministrativa', () => {
   assert.match(app, /elements\.adminShell\.open = state\.mode === 'admin'/);
-  assert.match(app, /const shouldShowLogin = showLogin\s*&& state\.mode !== 'admin'/);
+  assert.match(app, /const shouldShowLogin = showLogin\s*&& !state\.residentRestorePending\s*&& state\.mode !== 'admin'/);
   assert.match(app, /elements\.participantPanel\.hidden = !isParticipant \|\| needsResidentLogin \|\| state\.platformOwner/);
   assert.match(app, /elements\.weekPanel\.hidden = !isWeek \|\| needsResidentLogin \|\| state\.platformOwner/);
   assert.match(app, /elements\.summaryPanel\.hidden = !isSummary \|\| needsResidentLogin \|\| state\.platformOwner/);
@@ -226,6 +226,15 @@ test('un aggiornamento fallito conserva i dati partecipante già visibili', () =
   assert.match(refresh, /const hadVisibleData/);
   assert.match(refresh, /if \(hadVisibleData\) \{[\s\S]*renderParticipantMeals\(\)/);
   assert.match(refresh, /formatPreviousDataMessage/);
+});
+
+test('un errore temporaneo conserva identita e sessione residente', () => {
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(restore, /isRecoverableSessionError\(error\)/);
+  assert.match(restore, /error\.preserveResidentIdentity = true/);
+  assert.match(restore, /throw error/);
+  assert.match(app, /residentRestorePending: Boolean\(loadStoredResidentSignature\(\)\)/);
+  assert.match(app, /error\?\.preserveResidentIdentity === true[\s\S]*state\.residentRestorePending = true/);
 });
 
 test('la vista settimana usa una matrice con intestazioni pasto e comandi compatti', () => {

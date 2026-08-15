@@ -1,4 +1,4 @@
-import { roleLabel } from '../role-policy.mjs';
+import { roleLabel } from '../role-policy.mjs?v=20260815q';
 
 export function buildAdminOverview({
   role,

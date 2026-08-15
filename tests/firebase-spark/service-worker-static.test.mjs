@@ -70,9 +70,9 @@ test('versioned app shell files load the exact release with an offline fallback'
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
   assert.match(index, /styles\.css\?v=20260815o/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260815o/);
-  assert.match(index, /app\.js\?v=20260815p/);
-  assert.match(app, /center-settings\.js\?v=20260815a/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v264'/);
+  assert.match(index, /app\.js\?v=20260815q/);
+  assert.match(app, /center-settings\.js\?v=20260815q/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v265'/);
 });
 
 test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {

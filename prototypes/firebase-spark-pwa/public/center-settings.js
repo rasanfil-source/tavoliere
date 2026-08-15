@@ -4,13 +4,14 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260809c';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260808c';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260809a';
+import { db } from './firebase-client.js?v=20260815q';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260815q';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260815q';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const PREFERRED_VIEW_STORAGE_KEY = 'tavolaComune.preferredView';
+export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
@@ -24,6 +25,52 @@ const ALLOWED_THEME_PALETTES = new Set([
 ]);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
+
+export function loadCachedCenterContactSettings() {
+  try {
+    const raw = window.localStorage.getItem(getCenterScopedStorageKey(CENTER_PRESENTATION_CACHE_KEY));
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached || typeof cached !== 'object') return null;
+    return {
+      name: normalizeCenterName(cached.name),
+      timezone: typeof cached.timezone === 'string' ? cached.timezone : 'Europe/Rome',
+      reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
+      participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
+      themePalette: normalizeThemePalette(cached.themePalette),
+      defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
+      summaryLayout: normalizeLayout(cached.summaryLayout, 'international'),
+      kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic'),
+      language: normalizeCenterLanguage(cached.language),
+      administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
+      administratorSignature: typeof cached.administratorSignature === 'string' ? cached.administratorSignature.trim() : '',
+      adminEmail: typeof cached.adminEmail === 'string' ? cached.adminEmail.trim() : '',
+      administratorProfileRequired: cached.administratorProfileRequired === true,
+      administratorProfileComplete: cached.administratorProfileComplete !== false,
+      administratorPasswordRequired: cached.administratorPasswordRequired === true,
+      adminPasswordSet: cached.adminPasswordSet === true,
+      commonPasswordSet: cached.commonPasswordSet === true,
+      participantDataVersion: typeof cached.participantDataVersion === 'string' ? cached.participantDataVersion : '0',
+      avatarVersion: typeof cached.avatarVersion === 'string' ? cached.avatarVersion : '',
+      avatarDataUrl: loadCachedCenterAvatar()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeCachedCenterContactSettings(value) {
+  try {
+    const cached = { ...value };
+    delete cached.avatarDataUrl;
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(CENTER_PRESENTATION_CACHE_KEY),
+      JSON.stringify(cached)
+    );
+  } catch {
+    // La cache accelera soltanto il primo disegno e non condiziona i dati autorevoli.
+  }
+}
 
 export function loadCachedCenterAvatar() {
   return readCenterAvatarCache()?.dataUrl || '';
@@ -134,7 +181,7 @@ export async function updateCenterSettings({
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260815a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260815q');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -153,6 +200,10 @@ export async function updateCenterSettings({
   });
   invalidateCenterContactSettingsCache();
   cacheDefaultView(settings.defaultView);
+  storeCachedCenterContactSettings({
+    ...(loadCachedCenterContactSettings() || {}),
+    ...settings
+  });
   return settings;
 }
 
@@ -233,6 +284,7 @@ function refreshCenterContactSettings() {
         avatarDataUrl
       };
       cacheDefaultView(value.defaultView);
+      storeCachedCenterContactSettings(value);
       centerContactSettingsCache = { value, cachedAt: Date.now() };
       return value;
     })

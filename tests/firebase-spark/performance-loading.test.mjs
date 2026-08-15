@@ -32,7 +32,57 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   }
   assert.match(app, /import\(domainModulePaths\[name\]\)/);
   assert.match(app, /if \(initialMode === 'kitchen'\)/);
+  assert.match(app, /const hasStoredResidentIdentity = Boolean\(loadStoredResidentSignature\(\)\)/);
+  assert.match(app, /initialMode === 'summary'[\s\S]*hasStoredResidentIdentity/);
+  assert.doesNotMatch(app, /if \(initialMode === 'admin'\) \{\s*loadDomainModule\('audit'\)/);
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
+});
+
+test('la schermata iniziale non attende Firestore prima di diventare visibile', () => {
+  const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
+  const hideIndex = bootstrap.indexOf('hideStartupSplash();');
+  const settingsIndex = bootstrap.indexOf('await Promise.all([i18nPromise, settingsPromise])');
+  assert.ok(hideIndex >= 0 && settingsIndex > hideIndex);
+  assert.match(bootstrap, /const settingsPromise = loadCenterContactSettings\(\)\.catch/);
+  assert.match(bootstrap, /const i18nPromise = initI18n/);
+  assert.match(bootstrap, /const \[, centerSettings\] = await Promise\.all\(\[i18nPromise, settingsPromise\]\)/);
+  assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
+  assert.match(bootstrap, /if \(isPlainResidentLogin\)[\s\S]*setParticipantStatus[\s\S]*else \{\s*refreshNow\('avvio'\)/);
+});
+
+test('i moduli condivisi hanno una sola identita URL durante il caricamento', async () => {
+  const runtimeModules = await Promise.all([
+    'app.js',
+    'access-links.js',
+    'admin-center.js',
+    'audit-log.js',
+    'bootstrap-demo.js',
+    'calendar-configuration.js',
+    'center-settings.js',
+    'daily-operations.js',
+    'kitchen-data.js',
+    'kitchen-notes.js',
+    'participant-data.js',
+    'summary-matrix-view.js',
+    'core/user-error.mjs',
+    'domain/admin-overview.mjs'
+  ].map(readPublic));
+  for (const sharedModule of [
+    'firebase-client.js',
+    'center-context.js',
+    'center-settings.js',
+    'i18n.mjs',
+    'role-policy.mjs',
+    'user-error.mjs'
+  ]) {
+    const escaped = sharedModule.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const urls = runtimeModules.flatMap((source) => (
+      [...source.matchAll(new RegExp(`[^'\"]*${escaped}\\?v=([^'\"]+)`, 'g'))]
+        .map((match) => match[0])
+    ));
+    assert.ok(urls.length > 0, sharedModule);
+    assert.equal(new Set(urls.map((url) => url.split('?')[1])).size, 1, `${sharedModule}: ${urls.join(', ')}`);
+  }
 });
 
 test('la pagina prepara in anticipo le connessioni Firebase principali', () => {

@@ -12,17 +12,17 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260809c';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260813a';
+import { db, getCurrentUser } from './firebase-client.js?v=20260815q';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260815q';
 import {
   createOwnedCenterId,
   getActiveCenterId,
   setActiveCenterId
-} from './center-context.js?v=20260814a';
-import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260808b';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260813b';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260813b';
-import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260809a';
+} from './center-context.js?v=20260815q';
+import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260815q';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260815q';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260815q';
+import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260815q';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
 const CENTER_INVITATION_COLLECTION = 'centerInvitations';

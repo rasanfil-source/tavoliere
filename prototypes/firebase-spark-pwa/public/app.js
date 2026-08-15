@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260815p';
+} from './i18n/i18n.mjs?v=20260815q';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js';
-import { escapeHtml } from './html-utils.js?v=20260808a';
+} from './refresh-schedule.js?v=20260815q';
+import { escapeHtml } from './html-utils.js?v=20260815q';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,14 +26,15 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260815a';
+} from './firebase-client.js?v=20260815q';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260814a';
+} from './center-context.js?v=20260815q';
 import {
   loadCachedCenterAvatar,
+  loadCachedCenterContactSettings,
   loadCenterContactSettings,
   removeCenterAvatar,
   saveCenterAvatar,
@@ -42,34 +43,34 @@ import {
   loadStoredPreferredView,
   savePreferredView,
   cacheDefaultView
-} from './center-settings.js?v=20260815a';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260809a';
+} from './center-settings.js?v=20260815q';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260815q';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260810a';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260809a';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260813b';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260809a';
-import { createStateStore } from './core/state-store.mjs?v=20260809a';
-import { toUserMessage } from './core/user-error.mjs?v=20260809a';
+} from './diet-utils.mjs?v=20260815q';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260815q';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260815q';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260815q';
+import { createStateStore } from './core/state-store.mjs?v=20260815q';
+import { toUserMessage } from './core/user-error.mjs?v=20260815q';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260810a';
+} from './core/connectivity.mjs?v=20260815q';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260809a';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260812a';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260813a';
+} from './domain/participant-profile.mjs?v=20260815q';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260815q';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260815q';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815m';
+} from './summary-matrix-view.js?v=20260815q';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -78,14 +79,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260813b',
-  admin: './admin-center.js?v=20260815a',
-  audit: './audit-log.js?v=20260813b',
-  bootstrap: './bootstrap-demo.js?v=20260814a',
-  daily: './daily-operations.js?v=20260810a',
-  kitchen: './kitchen-data.js?v=20260813b',
-  notes: './kitchen-notes.js?v=20260809f',
-  participant: './participant-data.js?v=20260814a'
+  accessLinks: './access-links.js?v=20260815q',
+  admin: './admin-center.js?v=20260815q',
+  audit: './audit-log.js?v=20260815q',
+  bootstrap: './bootstrap-demo.js?v=20260815q',
+  daily: './daily-operations.js?v=20260815q',
+  kitchen: './kitchen-data.js?v=20260815q',
+  notes: './kitchen-notes.js?v=20260815q',
+  participant: './participant-data.js?v=20260815q'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -103,17 +104,17 @@ function callDomain(name, exportName) {
 }
 
 function preloadActiveViewModules() {
-  if (initialMode === 'admin') {
-    loadDomainModule('audit');
-  }
-  if (['participant', 'week', 'summary'].includes(initialMode)) {
+  const hasStoredResidentIdentity = Boolean(loadStoredResidentSignature());
+  if (initialMode === 'summary'
+      || (['participant', 'week'].includes(initialMode) && hasStoredResidentIdentity)) {
     loadDomainModule('participant');
   }
   if (initialMode === 'kitchen') {
     loadDomainModule('kitchen');
     loadDomainModule('notes');
   }
-  if (['kitchen', 'summary', 'week'].includes(initialMode)) {
+  if (['kitchen', 'summary'].includes(initialMode)
+      || (initialMode === 'week' && hasStoredResidentIdentity)) {
     loadDomainModule('daily');
   }
 }
@@ -349,6 +350,8 @@ function syncCustomDietNumber(select, numberInput) {
   }
 }
 
+const cachedCenterContactSettings = loadCachedCenterContactSettings();
+
 const state = {
   timerId: 0,
   backgroundRefreshTimerId: 0,
@@ -373,6 +376,7 @@ const state = {
   friendlyAccess: ['participant', 'week'].includes(initialMode)
     || new URLSearchParams(window.location.search).get('access') === 'friendly',
   residentReady: false,
+  residentRestorePending: Boolean(loadStoredResidentSignature()),
   participantMeals: [],
   participantWeek: [],
   participantMonth: [],
@@ -436,7 +440,8 @@ const state = {
     administratorPasswordRequired: false,
     adminPasswordSet: false,
     avatarVersion: '',
-    avatarDataUrl: loadCachedCenterAvatar()
+    avatarDataUrl: loadCachedCenterAvatar(),
+    ...(cachedCenterContactSettings || {})
   },
   operationalLinks: {
     publicTokenId: '',
@@ -1020,21 +1025,36 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
-  const centerSettings = await loadCenterContactSettings().catch(() => null);
-  if (centerSettings) {
-    state.centerContactSettings = centerSettings;
-  }
-  await initI18n({
-    development: window.location.hostname === 'localhost',
-    centerLocale: centerSettings?.language || null
-  });
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
   initializeAuthPanel();
   initializeResidentAccess();
+  renderMode();
+  hideStartupSplash();
+
+  const settingsPromise = loadCenterContactSettings().catch(() => null);
+  const i18nPromise = initI18n({
+    development: window.location.hostname === 'localhost',
+    centerLocale: state.centerContactSettings.language || null
+  });
+  const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
+  if (centerSettings) {
+    state.centerContactSettings = centerSettings;
+    await applyCenterDefaultLanguage(centerSettings);
+  }
   renderAllViews();
-  refreshNow('avvio');
+
+  const isPlainResidentLogin = state.friendlyAccess
+    && ['participant', 'week'].includes(state.mode)
+    && !state.residentRestorePending
+    && !loadStoredResidentSignature()
+    && !(state.mode === 'week' && canUseWeekWithoutParticipant());
+  if (isPlainResidentLogin) {
+    setParticipantStatus(t('auth.resident.status'));
+  } else {
+    refreshNow('avvio');
+  }
 
   window.setTimeout(hideStartupSplash, 8000);
 }
@@ -1619,7 +1639,9 @@ function normalizeClientDate(value) {
 function initializeAuthPanel() {
   let authSettled = false;
   let authRevision = 0;
-  elements.authStatus.textContent = t('app.header.checkingAccess');
+  elements.authStatus.textContent = t('app.header.checkingAccess', {}, {
+    fallback: 'Accesso in verifica'
+  });
   if (!isFirebaseConfigured) {
     elements.authButton.disabled = true;
     elements.authStatus.textContent = 'Config mancante: ' + missingFirebaseConfigValues.join(', ');
@@ -2616,6 +2638,7 @@ async function refreshParticipant(source) {
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
+      state.residentRestorePending = Boolean(loadStoredResidentSignature());
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession();
@@ -2623,10 +2646,12 @@ async function refreshParticipant(source) {
         state.participants = restored.participants;
         state.selectedParticipant = restored.participant;
         state.residentReady = true;
+        state.residentRestorePending = false;
         if (applyResidentEntryView()) {
           request = beginParticipantRequest();
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
+        state.residentRestorePending = false;
         renderResidentAccess(true);
         hideStartupSplash();
         setParticipantStatus('Accedi per vedere e modificare i tuoi pasti');
@@ -2721,8 +2746,13 @@ async function refreshParticipant(source) {
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
+    if (error?.preserveResidentIdentity === true) {
+      state.residentRestorePending = true;
+      renderResidentAccess(false);
+      renderMode();
+    }
     const message = friendlyErrorMessage(error, 'Prenotazione non disponibile');
-    if (isCenterAccessRevokedError(error)) {
+    if (error?.preserveResidentIdentity !== true && isCenterAccessRevokedError(error)) {
       clearParticipantDataAfterAccessRevocation();
       renderResidentAccess(true);
       setParticipantStatus('Centro non disponibile');
@@ -2747,6 +2777,7 @@ function isCenterAccessRevokedError(error) {
 
 function clearParticipantDataAfterAccessRevocation() {
   state.residentReady = false;
+  state.residentRestorePending = false;
   state.selectedParticipant = null;
   state.participants = [];
   state.participantMeals = [];
@@ -2779,6 +2810,7 @@ function initializeResidentAccess() {
 
 function renderResidentAccess(showLogin) {
   const shouldShowLogin = showLogin
+    && !state.residentRestorePending
     && state.mode !== 'admin';
   elements.residentLogin.hidden = !shouldShowLogin;
   elements.participantPanel.hidden = shouldShowLogin || state.mode !== 'participant';
@@ -2798,6 +2830,7 @@ async function handleResidentLogin(event) {
     state.participants = result.participants;
     state.selectedParticipant = result.participant;
     state.residentReady = true;
+    state.residentRestorePending = false;
     applyResidentEntryView();
     elements.residentPasswordInput.value = '';
     renderResidentAccess(false);
@@ -2824,6 +2857,7 @@ function togglePasswordVisibility(input, toggle) {
 async function handleForgetDevice() {
   await forgetResidentDevice();
   state.residentReady = false;
+  state.residentRestorePending = false;
   state.selectedParticipant = null;
   if (!state.adminRole) state.adminParticipants = [];
   renderResidentAccess(true);
@@ -3816,6 +3850,7 @@ function renderMode() {
   document.body.dataset.centerActivation = isCenterActivation ? 'true' : 'false';
   const needsResidentLogin = state.friendlyAccess
     && !state.residentReady
+    && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
   const mealTitle = 'Prenotazione Pasti';
   const participantName = state.selectedParticipant?.displayName || '';

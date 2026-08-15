@@ -1,4 +1,4 @@
-import { t } from '../i18n/i18n.mjs';
+import { t } from '../i18n/i18n.mjs?v=20260815q';
 
 const AUTH_MESSAGES = Object.freeze({
   'auth/invalid-credential': 'errors.auth.invalidCredentials',
@@ -19,6 +19,39 @@ function normalizedCode(error) {
 
 function normalizedMessage(error) {
   return String(error?.message || '').trim().toLowerCase();
+}
+
+const RECOVERABLE_SESSION_CODES = new Set([
+  'aborted',
+  'auth/internal-error',
+  'auth/network-request-failed',
+  'auth/too-many-requests',
+  'cancelled',
+  'deadline-exceeded',
+  'firestore/aborted',
+  'firestore/cancelled',
+  'firestore/deadline-exceeded',
+  'firestore/internal',
+  'firestore/permission-denied',
+  'firestore/resource-exhausted',
+  'firestore/unavailable',
+  'internal',
+  'permission-denied',
+  'resource-exhausted',
+  'unavailable'
+]);
+
+export function isRecoverableSessionError(error) {
+  const code = normalizedCode(error);
+  const message = normalizedMessage(error);
+  return RECOVERABLE_SESSION_CODES.has(code)
+    || message.includes('failed to fetch')
+    || message.includes('network')
+    || message.includes('offline')
+    || message.includes('timeout')
+    || message.includes('timed out')
+    || message.includes('connessione')
+    || message.includes('rete');
 }
 
 function withActionFallback(message, fallback) {

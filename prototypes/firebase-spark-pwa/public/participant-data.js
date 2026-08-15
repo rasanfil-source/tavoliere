@@ -13,22 +13,23 @@ import {
   runTransaction,
   startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, getResidentTechnicalEmail, signInAnonymousUser, signInResidentTechnicalUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260815a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260808c';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260809d';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260809a';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260810a';
+import { db, getCurrentUser, getResidentTechnicalEmail, signInAnonymousUser, signInResidentTechnicalUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260815q';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260815q';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260815q';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260815q';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260815q';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260809a';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260809a';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260809a';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260813b';
+} from './domain/participant-profile.mjs?v=20260815q';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260815q';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260815q';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260815q';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260815q';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260813h';
+} from './center-settings.js?v=20260815q';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -36,7 +37,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260813h';
+} from './center-settings.js?v=20260815q';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -214,6 +215,10 @@ export async function restoreFriendlyResidentSession() {
     });
     return { participant, participants: [participant] };
   } catch (error) {
+    if (isRecoverableSessionError(error)) {
+      error.preserveResidentIdentity = true;
+      throw error;
+    }
     clearStoredResidentIdentity();
     clearCurrentSession();
     await signOutCurrentUser();
