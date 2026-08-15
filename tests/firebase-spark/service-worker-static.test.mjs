@@ -71,7 +71,7 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /styles\.css\?v=20260815k/);
   assert.match(index, /app\.js\?v=20260815k/);
   assert.match(app, /center-settings\.js\?v=20260815a/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v254'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v255'/);
 });
 
 test('the app registers the service worker and no longer unregisters it at startup', () => {
