@@ -799,6 +799,9 @@ if (elements.adminAccountList) {
 }
 elements.platformCenterList.addEventListener('click', handlePlatformCenterListClick);
 elements.adminSectionNav.addEventListener('click', handleAdminSectionNavigation);
+elements.adminPanel?.addEventListener('touchstart', handleAdminSectionSwipeStart, { passive: true });
+elements.adminPanel?.addEventListener('touchend', handleAdminSectionSwipeEnd, { passive: true });
+elements.adminPanel?.addEventListener('touchcancel', cancelAdminSectionSwipe, { passive: true });
 if (elements.activationChecklistList) {
   elements.activationChecklistList.addEventListener('click', handleAdminSectionNavigation);
 }
@@ -1183,6 +1186,67 @@ function handleAdminSectionNavigation(event) {
   if (!section) return;
   event.preventDefault();
   selectAdminSection(section, { focus: true, updateHash: true });
+}
+
+let adminSectionSwipe = null;
+let adminSectionSwipeTimer = 0;
+
+function handleAdminSectionSwipeStart(event) {
+  if (!window.matchMedia('(max-width: 620px)').matches
+    || state.mode !== 'admin'
+    || elements.adminPanel?.hidden
+    || event.touches.length !== 1) {
+    adminSectionSwipe = null;
+    return;
+  }
+  if (event.target.closest('input, select, textarea, button, a, summary, [contenteditable="true"], [data-admin-section-nav]')) {
+    adminSectionSwipe = null;
+    return;
+  }
+  const touch = event.touches[0];
+  adminSectionSwipe = {
+    x: touch.clientX,
+    y: touch.clientY,
+    startedAt: Date.now()
+  };
+}
+
+function handleAdminSectionSwipeEnd(event) {
+  const start = adminSectionSwipe;
+  adminSectionSwipe = null;
+  if (!start || event.changedTouches.length !== 1) return;
+
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - start.x;
+  const deltaY = touch.clientY - start.y;
+  const duration = Date.now() - start.startedAt;
+  const threshold = Math.max(54, window.innerWidth * 0.12);
+  if (duration > 900 || Math.abs(deltaX) < threshold || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+    return;
+  }
+
+  const availableSections = ADMIN_SECTIONS.filter(isAdminSectionAllowed);
+  const currentIndex = availableSections.indexOf(state.adminActiveSection);
+  if (currentIndex < 0) return;
+  const direction = deltaX < 0 ? 1 : -1;
+  const nextSection = availableSections[currentIndex + direction];
+  if (!nextSection) return;
+
+  window.clearTimeout(adminSectionSwipeTimer);
+  elements.adminPanel.classList.remove('admin-snap-forward', 'admin-snap-backward');
+  elements.adminPanel.classList.add(direction > 0 ? 'admin-snap-forward' : 'admin-snap-backward');
+  selectAdminSection(nextSection, { updateHash: true });
+
+  const activeTab = elements.adminSectionNav.querySelector(`[data-admin-section-id="${nextSection}"]`);
+  activeTab?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  elements.adminSectionNav.scrollIntoView?.({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+  adminSectionSwipeTimer = window.setTimeout(() => {
+    elements.adminPanel?.classList.remove('admin-snap-forward', 'admin-snap-backward');
+  }, 240);
+}
+
+function cancelAdminSectionSwipe() {
+  adminSectionSwipe = null;
 }
 
 const ADMIN_SECTION_VISIT_KEY = 'tavolaComune.adminPanelVisited';

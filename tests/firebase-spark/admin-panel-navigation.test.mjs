@@ -135,6 +135,17 @@ test('la navigazione dichiara controlli e stato accessibili', () => {
   assert.match(app, /aria-selected/);
 });
 
+test('sul mobile le schede supportano swipe e snap sincronizzato', () => {
+  assert.match(app, /addEventListener\('touchstart', handleAdminSectionSwipeStart/);
+  assert.match(app, /addEventListener\('touchend', handleAdminSectionSwipeEnd/);
+  assert.match(app, /ADMIN_SECTIONS\.filter\(isAdminSectionAllowed\)/);
+  assert.match(app, /selectAdminSection\(nextSection, \{ updateHash: true \}\)/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-section-nav[\s\S]*scroll-snap-type: inline mandatory/);
+  assert.match(css, /body\[data-mode="admin"\] \.admin-panel[\s\S]*touch-action: pan-y/);
+  assert.match(css, /admin-snap-in-forward/);
+  assert.match(css, /admin-snap-in-backward/);
+});
+
 test('il proprietario esce con un azione primaria e l amministrazione non usa sigle residenti', () => {
   assert.match(html, /class="primary-action owner-panel-exit"[^>]*data-owner-exit/);
   assert.doesNotMatch(html, /data-change-signature|Cambia sigla/);

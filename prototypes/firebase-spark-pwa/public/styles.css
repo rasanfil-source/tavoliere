@@ -827,17 +827,76 @@ button[aria-busy="true"] {
 
 @media (max-width: 620px) {
   .admin-section-nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: none;
   }
 
   .admin-section-nav a {
+    flex: 0 0 auto;
+    min-width: min(46vw, 180px);
     padding-inline: 8px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
     text-align: center;
+  }
+
+  .admin-section-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  body[data-mode="admin"] .admin-panel {
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    touch-action: pan-y;
+  }
+
+  body[data-mode="admin"] .admin-panel [data-admin-mobile-section] {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  body[data-mode="admin"] .admin-panel.admin-snap-forward [data-admin-mobile-section],
+  body[data-mode="admin"] .admin-panel.admin-snap-backward [data-admin-mobile-section] {
+    animation-duration: 220ms;
+    animation-timing-function: ease-out;
+  }
+
+  body[data-mode="admin"] .admin-panel.admin-snap-forward [data-admin-mobile-section] {
+    animation-name: admin-snap-in-forward;
+  }
+
+  body[data-mode="admin"] .admin-panel.admin-snap-backward [data-admin-mobile-section] {
+    animation-name: admin-snap-in-backward;
   }
 
   .admin-week-entry {
     width: 100%;
+  }
+}
+
+@keyframes admin-snap-in-forward {
+  from {
+    opacity: 0.55;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes admin-snap-in-backward {
+  from {
+    opacity: 0.55;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
