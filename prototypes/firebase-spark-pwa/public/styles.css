@@ -1341,18 +1341,11 @@ body[data-center-activation="true"] .admin-shell-body {
 
 .auth-actions-signed-in {
   order: 100;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  width: 100%;
+  display: none;
 }
 
 .auth-actions-signed-in [data-bootstrap-button] {
   order: 1;
-}
-
-.auth-actions-signed-in [data-auth-button] {
-  order: 2;
-  width: 100%;
 }
 
 .admin-email-auth {

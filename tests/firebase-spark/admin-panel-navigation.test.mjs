@@ -166,6 +166,11 @@ test('la manutenzione mobile non schiaccia il testo dell archivio', () => {
 
 test('il proprietario esce con un azione primaria e l amministrazione non usa sigle residenti', () => {
   assert.match(html, /class="primary-action owner-panel-exit"[^>]*data-owner-exit/);
+  const ownerPanelEnd = html.indexOf('</section>', html.indexOf('data-owner-invitation-panel'));
+  const exitPosition = html.indexOf('data-owner-exit');
+  assert.ok(exitPosition > ownerPanelEnd);
+  assert.match(css, /\.auth-actions-signed-in \{[\s\S]*?display: none/);
+  assert.match(html, /data-owner-exit[\s\S]*class="exit-icon"[\s\S]*data-i18n="common.actions.exit">Esci/);
   assert.doesNotMatch(html, /data-change-signature|Cambia sigla/);
   assert.doesNotMatch(app, /handleChangeSignature|changeSignatureButton/);
 });

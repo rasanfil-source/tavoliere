@@ -146,7 +146,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(styles, /\.account-footer \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /\.footer-exit-button \{[\s\S]*?width: 100%/);
   assert.match(index, /class="primary-action footer-exit-button" data-forget-device/);
-  assert.match(styles, /\.auth-actions-signed-in \{[\s\S]*?order: 100/);
+  assert.match(styles, /\.auth-actions-signed-in \{[\s\S]*?order: 100;[\s\S]*?display: none/);
   assert.match(index, /data-resident-login-form/);
   assert.match(index, /data-resident-signature-input/);
   assert.match(index, /data-resident-password-input/);
