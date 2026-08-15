@@ -1,0 +1,1 @@
+function t(r){const e=Number(r);return Number.isInteger(e)&&e>=0?e:0}function a(r,e){const n=t(r),i=t(e);if(n!==i){const o=new Error("La scheda e stata modificata da un altro amministratore. Aggiorna prima di salvare.");throw o.code="aborted",o}return n}function s(r){return t(r)+1}export{a as assertCurrentRevision,s as nextRevision,t as normalizeRevision};

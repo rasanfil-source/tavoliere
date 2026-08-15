@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 2,
+  "projectId": "tavola-comune",
+  "centerId": "center_restore_test",
+  "center": {
+    "name": "Centro ripristino",
+    "timezone": "Europe/Rome",
+    "ownerUid": "identita_da_preservare",
+    "status": "ACTIVE",
+    "participantContactSharingEnabled": false,
+    "updatedAt": {
+      "seconds": 1786356000,
+      "nanoseconds": 0
+    }
+  },
+  "exportedAt": "2026-08-10T10:00:00.000Z",
+  "totalDocuments": 3,
+  "counts": {
+    "groups": 0,
+    "participants": 1,
+    "publicParticipants": 1,
+    "mealTypes": 0,
+    "mealWindows": 0,
+    "reservationRules": 1,
+    "reservationOverrides": 0,
+    "kitchenNotes": 0,
+    "dailyOperations": 0,
+    "dailyHealth": 0,
+    "assets": 0,
+    "auditEvents": 0
+  },
+  "documents": {
+    "groups": [],
+    "participants": [
+      {
+        "id": "person_restore",
+        "centerId": "center_restore_test",
+        "name": "Persona prova",
+        "signature": "PROVA",
+        "status": "ACTIVE"
+      }
+    ],
+    "publicParticipants": [
+      {
+        "id": "person_restore",
+        "centerId": "center_restore_test",
+        "displayName": "Persona prova",
+        "status": "ACTIVE"
+      }
+    ],
+    "mealTypes": [],
+    "mealWindows": [],
+    "reservationRules": [
+      {
+        "id": "rule_person_restore",
+        "centerId": "center_restore_test",
+        "participantId": "person_restore",
+        "status": "ACTIVE",
+        "defaultEffect": "ABSENT"
+      }
+    ],
+    "reservationOverrides": [],
+    "kitchenNotes": [],
+    "dailyOperations": [],
+    "dailyHealth": [],
+    "assets": [],
+    "auditEvents": []
+  }
+}

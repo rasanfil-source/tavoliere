@@ -1,0 +1,1087 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrapOwner() {
+      return signedIn()
+        && (
+          request.auth.uid == 'kWYvLr1fkKVuhZ8I8HrVivN2ra03'
+          || (
+            request.auth.token.email == 'donraimondo@parrocchiasanteugenio.it'
+            && request.auth.token.email_verified == true
+          )
+        );
+    }
+
+    function hasResidentTechnicalEmail() {
+      return signedIn()
+        && request.auth.token.email.matches('^residenti\\+[A-Za-z0-9_-]{1,120}@tavola-comune\\.local$')
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isResidentTechnicalUser(centerId) {
+      return hasResidentTechnicalEmail()
+        && request.auth.token.email.lower() == ('residenti+' + centerId + '@tavola-comune.local').lower();
+    }
+
+    function isInteractiveAdminUser() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && !hasResidentTechnicalEmail();
+    }
+
+    function hasVerifiedAdministratorIdentity() {
+      return isInteractiveAdminUser()
+        && (
+          request.auth.token.firebase.sign_in_provider != 'password'
+          || request.auth.token.email_verified == true
+        );
+    }
+
+    function isOwnedCenterId(centerId) {
+      return isInteractiveAdminUser()
+        && (
+          centerId == 'center_' + request.auth.uid
+          || centerId.matches('^center_' + request.auth.uid + '_[a-f0-9]{16}$')
+        );
+    }
+
+    function invitationIsActive(invitationId) {
+      return invitationId is string
+        && exists(/databases/$(database)/documents/centerInvitations/$(invitationId))
+        && get(/databases/$(database)/documents/centerInvitations/$(invitationId)).data.status == 'ACTIVE'
+        && request.time < get(/databases/$(database)/documents/centerInvitations/$(invitationId)).data.expiresAt;
+    }
+
+    function invitationClaimsCenter(invitationId, centerId) {
+      return invitationIsActive(invitationId)
+        && getAfter(/databases/$(database)/documents/centerInvitations/$(invitationId)).data.status == 'USED'
+        && getAfter(/databases/$(database)/documents/centerInvitations/$(invitationId)).data.consumedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/centerInvitations/$(invitationId)).data.centerId == centerId;
+    }
+
+    function adminInvitationIsActive(invitationId) {
+      return invitationId is string
+        && exists(/databases/$(database)/documents/adminInvitations/$(invitationId))
+        && get(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.status == 'ACTIVE'
+        && request.time < get(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.expiresAt;
+    }
+
+    function adminInvitationClaimsRole(invitationId, centerId, adminUid, role) {
+      return adminInvitationIsActive(invitationId)
+        && get(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.centerId == centerId
+        && get(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.role == role
+        && getAfter(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.status == 'USED'
+        && getAfter(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.consumedBy == adminUid;
+    }
+
+    function isAdmin(centerId) {
+      return signedIn()
+        && centerIsActive(centerId)
+        && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+
+    function centerIsActive(centerId) {
+      return exists(/databases/$(database)/documents/centers/$(centerId))
+        && get(/databases/$(database)/documents/centers/$(centerId)).data.status == 'ACTIVE';
+    }
+
+    function adminRole(centerId) {
+      return get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('role', '');
+    }
+
+    function canManageAdministrativeRoles(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
+    }
+
+    function isCenterOwner(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) == 'OWNER';
+    }
+
+    function canManageCenterConfiguration(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
+    }
+
+    function canManageRoleInvitation(centerId, role) {
+      return isCenterOwner(centerId)
+        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
+    }
+
+    function centerTimezoneIsValid(value) {
+      return value in ['Europe/Rome', 'Europe/Madrid', 'Europe/Paris', 'Europe/London'];
+    }
+
+    function clockTimeIsValid(value) {
+      return value is string
+        && value.matches('^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$');
+    }
+
+    function reservationCutoffsAreValid(value) {
+      return value is map
+        && value.keys().hasAll(['lunch', 'dinner', 'nextDayBreakfast'])
+        && value.keys().hasOnly(['lunch', 'dinner', 'nextDayBreakfast'])
+        && clockTimeIsValid(value.lunch)
+        && clockTimeIsValid(value.dinner)
+        && clockTimeIsValid(value.nextDayBreakfast);
+    }
+
+    function administratorProfileIsValid(value) {
+      let profileRequired = value.get('administratorProfileRequired', false);
+      let profileComplete = value.get('administratorProfileComplete', !profileRequired);
+      let administratorName = value.get('administratorName', '');
+      let administratorSignature = value.get('administratorSignature', '');
+      let administratorEmail = value.get('adminEmail', '');
+      return !profileRequired || administratorName is string
+        && administratorName.size() <= 120
+        && administratorSignature is string
+        && administratorSignature.size() <= 12
+        && administratorEmail is string
+        && administratorEmail.size() <= 254
+        && (!profileComplete || (
+          administratorName.size() > 0
+          && administratorSignature.matches('^[A-Z0-9]{2,12}$')
+          && administratorEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        ));
+    }
+
+    function calendarReconfigurationIsValid(centerId) {
+      return request.resource.data.keys().hasAll([
+          'centerId', 'operationId', 'status', 'targetName', 'targetTimezone',
+          'targetCutoffs', 'startDate', 'through', 'targetThrough',
+          'completedAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'centerId', 'operationId', 'status', 'targetName', 'targetTimezone',
+          'targetCutoffs', 'startDate', 'through', 'targetThrough',
+          'completedAt', 'updatedAt'
+        ])
+        && request.resource.data.centerId == centerId
+        && request.resource.data.operationId is string
+        && request.resource.data.operationId.size() <= 80
+        && request.resource.data.status in ['ACTIVE', 'COMPLETED']
+        && request.resource.data.targetName is string
+        && request.resource.data.targetName.size() > 0
+        && request.resource.data.targetName.size() <= 120
+        && centerTimezoneIsValid(request.resource.data.targetTimezone)
+        && reservationCutoffsAreValid(request.resource.data.targetCutoffs)
+        && request.resource.data.startDate is string
+        && request.resource.data.through is string
+        && request.resource.data.targetThrough is string
+        && request.resource.data.updatedAt == request.time
+        && (
+          request.resource.data.status == 'ACTIVE'
+            && request.resource.data.completedAt == null
+          || request.resource.data.status == 'COMPLETED'
+            && request.resource.data.completedAt == request.time
+        );
+    }
+
+    function canCreateCenterAdministrator(centerId, role) {
+      return isCenterOwner(centerId) && role in ['ADMIN', 'MANAGER']
+        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
+    }
+
+    function canUpdateCenterAdministrator(centerId) {
+      return resource.data.get('role', '') != 'OWNER'
+        && (
+          isCenterOwner(centerId)
+            && request.resource.data.get('role', '') in ['ADMIN', 'MANAGER']
+          || isAdmin(centerId)
+            && adminRole(centerId) == 'ADMIN'
+            && resource.data.get('role', '') == 'MANAGER'
+            && request.resource.data.get('role', '') == 'MANAGER'
+        );
+    }
+
+    function canDeleteCenterAdministrator(centerId) {
+      return resource.data.get('role', '') != 'OWNER'
+        && (
+          isCenterOwner(centerId)
+          || isAdmin(centerId)
+            && adminRole(centerId) == 'ADMIN'
+            && resource.data.get('role', '') == 'MANAGER'
+        );
+    }
+
+    function isCoordinatedOwnershipTransfer(centerId) {
+      let nextOwnerUid = getAfter(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid;
+      return isCenterOwner(centerId)
+        && nextOwnerUid is string
+        && nextOwnerUid != request.auth.uid
+        && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid))
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'ADMIN'
+        && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
+        && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'OWNER'
+        && (
+          !existsAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
+          || getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE'
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.role == 'ADMIN'
+        );
+    }
+
+    function isOwnershipRoleChange(centerId, adminUid) {
+      let nextOwnerUid = getAfter(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid;
+      return isCoordinatedOwnershipTransfer(centerId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'role', 'massPermission', 'dailyOperationsPermission', 'updatedAt'
+        ])
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.massPermission == true
+        && request.resource.data.dailyOperationsPermission == true
+        && (
+          adminUid == request.auth.uid
+            && resource.data.role == 'OWNER'
+            && request.resource.data.role == 'ADMIN'
+          || adminUid == nextOwnerUid
+            && resource.data.role == 'ADMIN'
+            && request.resource.data.role == 'OWNER'
+        );
+    }
+
+    function adminCanManageMass(centerId) {
+      return isAdmin(centerId)
+        && (
+          adminRole(centerId) in ['OWNER', 'ADMIN']
+          || get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('massPermission', false) == true
+        );
+    }
+
+    function adminCanManageDailyOperations(centerId) {
+      return isAdmin(centerId)
+        && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
+    }
+
+    function canManageMass(centerId) {
+      return adminCanManageMass(centerId)
+        || residentHasOperationalIdentity(centerId)
+          && (
+            residentIsCenterAdministrator(centerId)
+            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('liturgicalRole', false) == true
+          );
+    }
+
+    function canManageDailyOperations(centerId) {
+      return adminCanManageDailyOperations(centerId)
+        || residentHasOperationalIdentity(centerId)
+          && (
+            residentIsCenterAdministrator(centerId)
+            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('viceAdminRole', false) == true
+          );
+    }
+
+    function residentHasOperationalIdentity(centerId) {
+      return hasSessionScope(centerId, 'PERSONAL')
+        && hasSelectedParticipant(centerId)
+        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.status == 'ACTIVE';
+    }
+
+    function residentIsCenterAdministrator(centerId) {
+      return get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '') != ''
+        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('signature', '')
+          == get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
+    }
+
+    function centerSharesParticipantContacts(centerId) {
+      return get(/databases/$(database)/documents/centers/$(centerId)).data.participantContactSharingEnabled == true;
+    }
+
+    function hasSession(centerId) {
+      return signedIn()
+        && centerIsActive(centerId)
+        && exists(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.status == 'ACTIVE'
+        && request.time < get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.expiresAt
+        && tokenIsUsable(
+          centerId,
+          get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.tokenId
+        );
+    }
+
+    function hasSessionScope(centerId, scope) {
+      return hasSession(centerId)
+        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.scope == scope;
+    }
+
+    function hasSelectedParticipant(centerId) {
+      return hasSession(centerId)
+        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId is string;
+    }
+
+    function sessionParticipantId(centerId) {
+      return get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId;
+    }
+
+    function tokenExists(centerId, tokenId) {
+      return exists(/databases/$(database)/documents/centers/$(centerId)/linkTokens/$(tokenId));
+    }
+
+    function tokenData(centerId, tokenId) {
+      return get(/databases/$(database)/documents/centers/$(centerId)/linkTokens/$(tokenId)).data;
+    }
+
+    function tokenIsUsable(centerId, tokenId) {
+      return centerIsActive(centerId)
+        && tokenExists(centerId, tokenId)
+        && tokenData(centerId, tokenId).status == 'ACTIVE'
+        && request.time < tokenData(centerId, tokenId).expiresAt;
+    }
+
+    function mealWindowIsOpen(centerId, mealWindowId) {
+      return exists(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId))
+        && get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId)).data.status == 'OPEN'
+        && request.time < get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId)).data.closesAt;
+    }
+
+    function massWindowIsOpen(centerId, dateId) {
+      return mealWindowIsOpen(centerId, dateId + '_dinner');
+    }
+
+    function reservationRuleAllowsOverride(centerId, ruleId, mealTypeId, mealDate) {
+      return exists(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId))
+        && get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.status == 'ACTIVE'
+        && mealTypeId in get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.mealTypeIds
+        && get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.startsOn <= mealDate
+        && (
+          get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.endsOn == null
+          || get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.endsOn >= mealDate
+        );
+    }
+
+    function canReadParticipantOverride(centerId) {
+      return hasSessionScope(centerId, 'PERSONAL')
+        && hasSelectedParticipant(centerId)
+        && resource.data.participantId == sessionParticipantId(centerId);
+    }
+
+    function personalOverrideSessionIsValid(centerId, participantId) {
+      let session = get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data;
+      let token = get(/databases/$(database)/documents/centers/$(centerId)/linkTokens/$(session.tokenId)).data;
+      return signedIn()
+        && get(/databases/$(database)/documents/centers/$(centerId)).data.status == 'ACTIVE'
+        && session.status == 'ACTIVE'
+        && session.scope == 'PERSONAL'
+        && session.participantId == participantId
+        && request.time < session.expiresAt
+        && token.status == 'ACTIVE'
+        && request.time < token.expiresAt;
+    }
+
+    function overrideKeysAreValid() {
+      return request.resource.data.keys().hasOnly([
+        'centerId',
+        'participantId',
+        'groupId',
+        'dietTags',
+        'mealDate',
+        'mealTypeId',
+        'mealWindowId',
+        'effect',
+        'requestId',
+        'source',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function overrideIdentityIsValid(centerId, overrideId) {
+      return request.resource.data.centerId == centerId
+        && request.resource.data.mealWindowId == request.resource.data.mealDate + '_' + request.resource.data.mealTypeId
+        && overrideId == request.resource.data.participantId + '_' + request.resource.data.mealWindowId;
+    }
+
+    function overrideValuesAreValid(centerId) {
+      return request.resource.data.effect in ['PRESENT', 'ABSENT']
+        && request.resource.data.source in ['PUBLIC', 'PERSONAL', 'ADMIN']
+        && participantIsActive(centerId, request.resource.data.participantId)
+        && reservationRuleAllowsOverride(
+          centerId,
+          'rule_' + request.resource.data.participantId,
+          request.resource.data.mealTypeId,
+          request.resource.data.mealDate
+        )
+        && mealWindowIsOpen(centerId, request.resource.data.mealWindowId)
+        && (
+          request.resource.data.source in ['ADMIN', 'PUBLIC']
+            && isAdmin(centerId)
+          || request.resource.data.source == 'PERSONAL'
+            && personalOverrideSessionIsValid(centerId, request.resource.data.participantId)
+        );
+    }
+
+    function participantExists(centerId, participantId) {
+      return exists(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId))
+        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId)).data.status == 'ACTIVE'
+        && participantIsActive(centerId, participantId);
+    }
+
+    function participantIsActive(centerId, participantId) {
+      return exists(/databases/$(database)/documents/centers/$(centerId)/participants/$(participantId))
+        && get(/databases/$(database)/documents/centers/$(centerId)/participants/$(participantId)).data.status == 'ACTIVE';
+    }
+
+    function ruleStatusMatchesParticipant(centerId, participantId, status) {
+      return existsAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(participantId))
+        && (
+          status == 'ACTIVE'
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(participantId)).data.status == 'ACTIVE'
+          || status == 'DISABLED'
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(participantId)).data.status == 'DISABLED'
+        );
+    }
+
+    function adminProfileTargetsActiveMembership(adminUid) {
+      return request.resource.data.centerId is string
+        && request.resource.data.get('centerIds', [request.resource.data.centerId]) is list
+        && request.resource.data.get('centerIds', [request.resource.data.centerId]).size() <= 100
+        && request.resource.data.centerId in request.resource.data.get('centerIds', [request.resource.data.centerId])
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.role in ['OWNER', 'ADMIN', 'MANAGER']
+        && existsAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId))
+        && getAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId)).data.status == 'ACTIVE'
+        && existsAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/admins/$(adminUid))
+        && getAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/admins/$(adminUid)).data.status == 'ACTIVE'
+        && getAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/admins/$(adminUid)).data.role == request.resource.data.role;
+    }
+
+    match /adminProfiles/{adminUid} {
+      allow read: if signedIn() && request.auth.uid == adminUid || isBootstrapOwner();
+      allow create: if hasVerifiedAdministratorIdentity()
+        && request.auth.uid == adminUid
+        && adminProfileTargetsActiveMembership(adminUid);
+      allow update: if hasVerifiedAdministratorIdentity()
+        && request.auth.uid == adminUid
+        && adminProfileTargetsActiveMembership(adminUid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'centerId', 'participantId', 'status', 'email', 'role', 'massPermission',
+          'dailyOperationsPermission', 'centerIds', 'createdAt', 'updatedAt'
+        ])
+        || isCenterOwner(resource.data.centerId)
+          && adminUid == getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid
+          && request.resource.data.centerId == resource.data.centerId
+          && request.resource.data.status == 'ACTIVE'
+          && request.resource.data.role == 'OWNER'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])
+        || signedIn()
+          && request.auth.uid == adminUid
+          && isCoordinatedOwnershipTransfer(resource.data.centerId)
+          && request.resource.data.centerId == resource.data.centerId
+          && request.resource.data.status == 'DISABLED'
+          && request.resource.data.role == 'ADMIN'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /centerInvitations/{invitationId} {
+      allow read: if isBootstrapOwner()
+        || hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt;
+      allow create: if isBootstrapOwner()
+        && request.resource.data.keys().hasAll(['status', 'createdBy', 'expiresAt', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['status', 'createdBy', 'expiresAt', 'createdAt', 'updatedAt'])
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isBootstrapOwner()
+        || hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt
+          && request.resource.data.status == 'USED'
+          && request.resource.data.consumedBy == request.auth.uid
+          && isOwnedCenterId(request.resource.data.centerId)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.consumedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'consumedBy', 'centerId', 'consumedAt', 'updatedAt'
+          ]);
+      allow delete: if isBootstrapOwner();
+    }
+
+    match /adminInvitations/{invitationId} {
+      allow read: if isBootstrapOwner()
+        || canManageAdministrativeRoles(resource.data.centerId)
+        || hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt;
+      allow create: if (
+          request.resource.data.role == 'MANAGER'
+            && canManageAdministrativeRoles(request.resource.data.centerId)
+          || request.resource.data.role == 'ADMIN'
+            && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
+        )
+        && request.resource.data.keys().hasAll([
+          'centerId', 'participantId', 'role', 'status', 'createdBy',
+          'expiresAt', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'centerId', 'participantId', 'role', 'status', 'createdBy',
+          'expiresAt', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && (
+          request.resource.data.role == 'ADMIN'
+            && (
+              request.resource.data.participantId == ''
+              || get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
+            )
+          || request.resource.data.role == 'MANAGER'
+            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
+            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.viceAdminRole == true
+        );
+      allow update: if canManageRoleInvitation(resource.data.centerId, resource.data.role)
+          && resource.data.status == 'ACTIVE'
+          && request.resource.data.status == 'REVOKED'
+          && request.resource.data.revokedBy == request.auth.uid
+          && request.resource.data.revokedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'revokedBy', 'revokedAt', 'updatedAt'
+          ])
+        || hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt
+          && request.resource.data.status == 'REJECTED'
+          && request.resource.data.rejectedBy == request.auth.uid
+          && request.resource.data.rejectedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'rejectedBy', 'rejectedAt', 'updatedAt'
+          ])
+        || hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt
+          && request.resource.data.status == 'USED'
+          && request.resource.data.consumedBy == request.auth.uid
+          && request.resource.data.centerId == resource.data.centerId
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.consumedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.role == resource.data.role
+          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.participantId == resource.data.participantId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'consumedBy', 'consumedAt', 'updatedAt'
+          ]);
+      allow delete: if canManageRoleInvitation(resource.data.centerId, resource.data.role) || isBootstrapOwner();
+    }
+
+    match /centers/{centerId} {
+      allow read: if isBootstrapOwner() || isAdmin(centerId) || hasSession(centerId);
+      allow create: if (isBootstrapOwner() || (
+          hasVerifiedAdministratorIdentity()
+          &&
+          isOwnedCenterId(centerId)
+          && request.resource.data.ownerUid == request.auth.uid
+          && invitationClaimsCenter(request.resource.data.get('invitationId', ''), centerId)
+        ))
+        && request.resource.data.keys().hasOnly([
+          'ownerUid', 'name', 'timezone', 'locale', 'reservationCutoffs',
+          'participantContactSharingEnabled', 'participantDataUpdatedAt',
+          'invitationId', 'status', 'createdAt', 'updatedAt',
+          'administratorName', 'administratorSignature',
+          'administratorProfileRequired', 'administratorProfileComplete',
+          'administratorPasswordRequired', 'adminEmail'
+        ])
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.name is string
+        && request.resource.data.administratorProfileRequired == true
+        && request.resource.data.administratorProfileComplete == false
+        && request.resource.data.administratorPasswordRequired
+          == (request.auth.token.firebase.sign_in_provider == 'password')
+        && administratorProfileIsValid(request.resource.data)
+        && centerTimezoneIsValid(request.resource.data.timezone);
+      allow update: if canManageCenterConfiguration(centerId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'ownerUid', 'status', 'createdAt', 'invitationId',
+            'administratorProfileRequired', 'administratorPasswordRequired'
+          ])
+          && administratorProfileIsValid(request.resource.data)
+          && (
+            resource.data.get('administratorProfileComplete', true) != true
+            || request.resource.data.get('administratorProfileComplete', true) == true
+          )
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['timezone'])
+            || centerTimezoneIsValid(request.resource.data.timezone)
+          )
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reservationCutoffs'])
+            || reservationCutoffsAreValid(request.resource.data.reservationCutoffs)
+          )
+        || isCoordinatedOwnershipTransfer(centerId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'ownerUid', 'administratorName', 'administratorSignature', 'adminEmail',
+            'administratorPasswordRequired', 'updatedAt'
+          ])
+          && administratorProfileIsValid(request.resource.data)
+        || isBootstrapOwner()
+          && request.resource.data.status == 'DELETED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if false;
+
+      match /admins/{adminUid} {
+        allow read: if isAdmin(centerId);
+        allow update: if canUpdateCenterAdministrator(centerId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'participantId', 'status', 'email', 'role', 'massPermission',
+              'dailyOperationsPermission', 'administratorPasswordRequired',
+              'passwordSetupRequired', 'revokedBy', 'revokedAt', 'updatedAt'
+            ])
+          || adminUid == request.auth.uid
+            && resource.data.status == 'ACTIVE'
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.participantId is string
+            && participantIsActive(centerId, request.resource.data.participantId)
+            && request.resource.data.updatedAt == request.time
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'participantId', 'updatedAt'
+            ])
+          || adminUid == request.auth.uid
+            && resource.data.status == 'ACTIVE'
+            && resource.data.get('passwordSetupRequired', false) == true
+            && request.resource.data.passwordSetupRequired == false
+            && request.resource.data.updatedAt == request.time
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'passwordSetupRequired', 'updatedAt'
+            ])
+          || isOwnershipRoleChange(centerId, adminUid);
+        allow delete: if canDeleteCenterAdministrator(centerId)
+          || adminUid == request.auth.uid
+            && resource.data.role == 'OWNER'
+            && isCoordinatedOwnershipTransfer(centerId);
+        allow create: if request.resource.data.keys().hasOnly([
+            'centerId', 'participantId', 'invitationId', 'status', 'email',
+            'role', 'massPermission', 'dailyOperationsPermission',
+            'administratorPasswordRequired', 'passwordSetupRequired',
+            'createdAt', 'updatedAt'
+          ])
+          && (canCreateCenterAdministrator(centerId, request.resource.data.role)
+          || (
+            hasVerifiedAdministratorIdentity()
+            && adminUid == request.auth.uid
+            && request.resource.data.centerId == centerId
+            && request.resource.data.role in ['ADMIN', 'MANAGER']
+            && request.resource.data.status == 'ACTIVE'
+            && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
+            && request.resource.data.dailyOperationsPermission == true
+            && (
+              request.resource.data.role != 'ADMIN'
+              || request.resource.data.get('administratorPasswordRequired', false)
+                == (request.auth.token.firebase.sign_in_provider == 'password')
+                && request.resource.data.get('passwordSetupRequired', false)
+                  == (request.auth.token.firebase.sign_in_provider == 'password')
+            )
+            && request.resource.data.participantId is string
+            && (
+              request.resource.data.role == 'ADMIN'
+                && (
+                  request.resource.data.participantId == ''
+                  || participantExists(centerId, request.resource.data.participantId)
+                    && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
+                )
+              || request.resource.data.role == 'MANAGER'
+                && participantExists(centerId, request.resource.data.participantId)
+                && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.get('viceAdminRole', false) == true
+            )
+            && adminInvitationClaimsRole(request.resource.data.invitationId, centerId, adminUid, request.resource.data.role)
+          )
+          || (
+            isBootstrapOwner()
+            && adminUid == request.auth.uid
+            && request.resource.data.status == 'ACTIVE'
+            && request.resource.data.role == 'OWNER'
+          )
+          || (
+            isOwnedCenterId(centerId)
+            && adminUid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid == request.auth.uid
+            && request.resource.data.status == 'ACTIVE'
+            && request.resource.data.role == 'OWNER'
+          ));
+      }
+
+      match /groups/{groupId} {
+        allow read: if isAdmin(centerId) || hasSession(centerId);
+        allow write: if canManageCenterConfiguration(centerId);
+      }
+
+      match /assets/{assetId} {
+        allow read: if isAdmin(centerId) || hasSession(centerId);
+        allow create, update: if canManageAdministrativeRoles(centerId)
+          && assetId == 'avatar'
+          && request.resource.data.keys().hasAll(['centerId', 'dataUrl', 'version', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'dataUrl', 'version', 'updatedAt'])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.dataUrl is string
+          && request.resource.data.dataUrl.size() <= 300000
+          && request.resource.data.version is string
+          && request.resource.data.version.size() <= 80
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canManageAdministrativeRoles(centerId);
+      }
+
+      match /auditEvents/{eventId} {
+        allow read: if canManageAdministrativeRoles(centerId);
+        allow create: if isAdmin(centerId)
+          && request.resource.data.keys().hasAll([
+            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+          ])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.action in [
+            'DELETE_PARTICIPANT', 'TRANSFER_OWNERSHIP',
+            'UPDATE_ADMIN_PERMISSIONS', 'UPSERT_PARTICIPANT',
+            'ROTATE_OPERATIONAL_LINK', 'REVOKE_ADMIN', 'REVOKE_ADMIN_INVITATION',
+            'UPDATE_CENTER_SETTINGS'
+          ]
+          && request.resource.data.targetType is string
+          && request.resource.data.targetType.size() <= 40
+          && request.resource.data.targetId is string
+          && request.resource.data.targetId.size() <= 160
+          && request.resource.data.summary is string
+          && request.resource.data.summary.size() <= 240
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /privateSettings/{settingsId} {
+        allow read: if canManageCenterConfiguration(centerId);
+        allow create, update: if canManageCenterConfiguration(centerId)
+          && (
+            settingsId == 'operationalLinks'
+              && (
+                request.resource.data.keys().hasAll([
+                  'centerId', 'publicTokenId', 'kitchenTokenId',
+                  'publicCreatedAt', 'kitchenCreatedAt', 'updatedAt'
+                ])
+                && request.resource.data.keys().hasOnly([
+                  'centerId', 'publicTokenId', 'kitchenTokenId',
+                  'publicCreatedAt', 'kitchenCreatedAt', 'updatedAt'
+                ])
+                || request.resource.data.keys().hasAll([
+                  'centerId', 'publicTokenId', 'kitchenTokenId', 'updatedAt'
+                ])
+                && request.resource.data.keys().hasOnly([
+                  'centerId', 'publicTokenId', 'kitchenTokenId', 'updatedAt'
+                ])
+              )
+              && request.resource.data.centerId == centerId
+              && request.resource.data.publicTokenId is string
+              && request.resource.data.publicTokenId.size() <= 160
+              && request.resource.data.kitchenTokenId is string
+              && request.resource.data.kitchenTokenId.size() <= 160
+              && (
+                !request.resource.data.keys().hasAny(['publicCreatedAt', 'kitchenCreatedAt'])
+                || request.resource.data.publicCreatedAt is timestamp
+                  && request.resource.data.kitchenCreatedAt is timestamp
+              )
+              && request.resource.data.updatedAt == request.time
+            || settingsId == 'calendarReconfiguration'
+              && calendarReconfigurationIsValid(centerId)
+          );
+        allow delete: if false;
+      }
+
+      match /participants/{participantId} {
+        allow read: if isAdmin(centerId)
+          || centerSharesParticipantContacts(centerId) && (
+            hasSessionScope(centerId, 'PUBLIC')
+            || hasSessionScope(centerId, 'PERSONAL')
+          );
+        allow create: if isAdmin(centerId)
+          && (
+            !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
+            || request.resource.data.get('viceAdminRole', false) == false
+              && request.resource.data.get('liturgicalRole', false) == false
+            || canManageAdministrativeRoles(centerId)
+          );
+        allow update: if isAdmin(centerId)
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
+            || canManageAdministrativeRoles(centerId)
+          );
+        allow delete: if canManageCenterConfiguration(centerId);
+      }
+
+      match /publicParticipants/{participantId} {
+        allow read: if isAdmin(centerId)
+          || isResidentTechnicalUser(centerId)
+          || hasSessionScope(centerId, 'PUBLIC')
+          || canManageDailyOperations(centerId)
+          || (
+            hasSessionScope(centerId, 'PERSONAL')
+            && hasSelectedParticipant(centerId)
+            && participantId == sessionParticipantId(centerId)
+          );
+        allow create: if isAdmin(centerId)
+          && (
+            !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
+            || request.resource.data.get('viceAdminRole', false) == false
+              && request.resource.data.get('liturgicalRole', false) == false
+            || canManageAdministrativeRoles(centerId)
+          );
+        allow update: if isAdmin(centerId)
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
+            || canManageAdministrativeRoles(centerId)
+          );
+        allow delete: if canManageCenterConfiguration(centerId);
+      }
+
+      match /mealTypes/{mealTypeId} {
+        allow read: if isAdmin(centerId) || hasSession(centerId);
+        allow write: if canManageCenterConfiguration(centerId);
+      }
+
+      match /mealWindows/{mealWindowId} {
+        allow read: if isAdmin(centerId) || hasSession(centerId);
+        allow write: if canManageCenterConfiguration(centerId);
+      }
+
+      match /linkTokens/{tokenId} {
+        allow read: if false;
+        allow create: if canManageCenterConfiguration(centerId)
+          || (
+            isResidentTechnicalUser(centerId)
+            && tokenId.matches('personal_[A-Za-z0-9_]+')
+            && request.resource.data.keys().hasAll([
+              'status',
+              'scope',
+              'targetType',
+              'participantId',
+              'expiresAt',
+              'createdAt',
+              'updatedAt'
+            ])
+            && request.resource.data.keys().hasOnly([
+              'status',
+              'scope',
+              'targetType',
+              'participantId',
+              'expiresAt',
+              'createdAt',
+              'updatedAt'
+            ])
+            && request.resource.data.status == 'ACTIVE'
+            && request.resource.data.scope == 'PERSONAL'
+            && request.resource.data.targetType == 'PARTICIPANT'
+            && request.resource.data.participantId is string
+            && participantExists(centerId, request.resource.data.participantId)
+            && request.resource.data.expiresAt is timestamp
+            && request.resource.data.expiresAt > request.time
+            && request.resource.data.expiresAt <= request.time + duration.value(9001, 'd')
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.updatedAt == request.time
+          );
+        allow update: if canManageCenterConfiguration(centerId);
+        allow delete: if canManageCenterConfiguration(centerId)
+          || isAdmin(centerId) && resource.data.scope == 'PERSONAL'
+          || (
+            hasSessionScope(centerId, 'PERSONAL')
+            && tokenId == get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.tokenId
+            && resource.data.participantId == sessionParticipantId(centerId)
+          );
+      }
+
+      match /accessSessions/{authUid} {
+        allow read: if signedIn() && request.auth.uid == authUid || isAdmin(centerId);
+        allow create: if signedIn()
+          && request.auth.uid == authUid
+          && request.resource.data.keys().hasAll([
+            'centerId',
+            'scope',
+            'targetType',
+            'tokenId',
+            'status',
+            'expiresAt',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'centerId',
+            'scope',
+            'targetType',
+            'participantId',
+            'groupId',
+            'tokenId',
+            'status',
+            'expiresAt',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.status == 'ACTIVE'
+          && request.resource.data.expiresAt > request.time
+          && request.resource.data.expiresAt <= tokenData(centerId, request.resource.data.tokenId).expiresAt
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && tokenIsUsable(centerId, request.resource.data.tokenId)
+          && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
+          && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
+          && (
+            (
+              request.resource.data.scope == 'PUBLIC'
+              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+            )
+            || (
+              request.resource.data.scope == 'KITCHEN'
+              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+            )
+            || (
+              request.resource.data.scope == 'PERSONAL'
+              && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
+              && !request.resource.data.keys().hasAny(['groupId'])
+            )
+          );
+        allow update: if signedIn()
+          && request.auth.uid == authUid
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt
+          && request.resource.data.centerId == resource.data.centerId
+          && request.resource.data.scope == resource.data.scope
+          && request.resource.data.targetType == resource.data.targetType
+          && request.resource.data.tokenId == resource.data.tokenId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt']);
+        allow delete: if isAdmin(centerId) || signedIn() && request.auth.uid == authUid;
+      }
+
+      match /kitchenNotes/{mealDate} {
+        allow read: if isAdmin(centerId)
+          || hasSessionScope(centerId, 'KITCHEN')
+          || canManageDailyOperations(centerId);
+        allow create, update: if canManageDailyOperations(centerId)
+          && request.resource.data.keys().hasAll(['centerId', 'mealDate', 'text', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'mealDate', 'text', 'updatedAt'])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.mealDate == mealDate
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canManageDailyOperations(centerId);
+      }
+
+      match /dailyOperations/{dateId} {
+        allow read: if isAdmin(centerId)
+          || hasSessionScope(centerId, 'KITCHEN')
+          || hasSessionScope(centerId, 'PUBLIC')
+          || hasSessionScope(centerId, 'PERSONAL');
+        allow create, update: if canManageMass(centerId)
+          && massWindowIsOpen(centerId, dateId)
+          && request.resource.data.keys().hasAll(['centerId', 'dateId', 'massScheduled', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'massScheduled', 'updatedAt'])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.dateId == dateId
+          && request.resource.data.massScheduled is bool
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canManageMass(centerId) && massWindowIsOpen(centerId, dateId);
+      }
+
+      match /dailyHealth/{dateId} {
+        allow read: if isAdmin(centerId)
+          || hasSessionScope(centerId, 'KITCHEN')
+          || hasSessionScope(centerId, 'PUBLIC')
+          || hasSessionScope(centerId, 'PERSONAL');
+        allow create, update: if canManageDailyOperations(centerId)
+          && request.resource.data.keys().hasAll(['centerId', 'dateId', 'sickPeople', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'sickPeople', 'dietAssignments', 'updatedAt'])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.dateId == dateId
+          && request.resource.data.sickPeople is list
+          && request.resource.data.sickPeople.size() <= 100
+          && request.resource.data.get('dietAssignments', []) is list
+          && request.resource.data.get('dietAssignments', []).size() <= 100
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canManageDailyOperations(centerId);
+      }
+
+      match /reservationRules/{ruleId} {
+        allow read: if isAdmin(centerId)
+          || hasSessionScope(centerId, 'KITCHEN')
+          || hasSessionScope(centerId, 'PUBLIC')
+          || (
+            (
+              hasSessionScope(centerId, 'PERSONAL')
+            )
+            && hasSelectedParticipant(centerId)
+            && resource.data.participantId == sessionParticipantId(centerId)
+          );
+        allow create: if isAdmin(centerId)
+          && ruleId == 'rule_' + request.resource.data.participantId
+          && request.resource.data.participantId is string
+          && ruleStatusMatchesParticipant(
+            centerId,
+            request.resource.data.participantId,
+            request.resource.data.status
+          );
+        allow update: if isAdmin(centerId)
+          && ruleId == 'rule_' + request.resource.data.participantId
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.mealTypeIds == resource.data.mealTypeIds
+          && request.resource.data.startsOn == resource.data.startsOn
+          && request.resource.data.endsOn == resource.data.endsOn
+          && ruleStatusMatchesParticipant(
+            centerId,
+            request.resource.data.participantId,
+            request.resource.data.status
+          );
+        allow delete: if isAdmin(centerId)
+          && !existsAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(resource.data.participantId));
+      }
+
+      match /reservationOverrides/{overrideId} {
+        allow read: if isAdmin(centerId)
+          || hasSessionScope(centerId, 'KITCHEN')
+          || hasSessionScope(centerId, 'PUBLIC')
+          || canReadParticipantOverride(centerId);
+
+        allow create: if overrideKeysAreValid()
+          && overrideIdentityIsValid(centerId, overrideId)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && overrideValuesAreValid(centerId);
+
+        allow update: if overrideKeysAreValid()
+          && overrideIdentityIsValid(centerId, overrideId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['effect', 'requestId', 'source', 'updatedAt'])
+          && overrideValuesAreValid(centerId);
+
+        allow delete: if isAdmin(centerId);
+      }
+
+      match /reservationOverrideHistory/{historyId} {
+        allow read: if isAdmin(centerId);
+        allow create: if isAdmin(centerId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

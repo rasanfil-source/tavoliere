@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16615a">
+    <meta name="description" content="Prenotazioni pasti, riepiloghi e conteggi cucina.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Prenotazione pasti">
+    <meta property="og:description" content="Organizza prenotazioni e presenze ai pasti della tua comunità.">
+    <meta property="og:image" content="https://tavola-comune.web.app/icons/launcher-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <title>Prenotazione pasti</title>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="https://securetoken.googleapis.com">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
+    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260809b">
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('view') !== 'kitchen') {
+          return;
+        }
+
+        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260809b';
+        document.title = 'Prenotazione pasti - Cucina';
+        document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
+      }());
+    </script>
+    <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260809b">
+    <link rel="stylesheet" href="/styles.css?v=20260815d">
+  </head>
+  <body>
+    <div class="startup-splash" data-startup-splash aria-hidden="true">
+      <img src="/icons/splash-512.png?v=20260807a" alt="">
+    </div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <img class="center-avatar" data-center-avatar alt="" hidden>
+          <div class="topbar-heading">
+            <h1 data-title>Pasti</h1>
+            <button
+              type="button"
+              class="view-pin-button"
+              data-view-pin-button
+              hidden
+              aria-pressed="false"
+              aria-label="Preferenza vista"
+              title="Preferenza vista"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/>
+              </svg>
+            </button>
+            <p class="title-center-name" data-title-center hidden></p>
+            <p class="session-role" data-session-role hidden></p>
+          </div>
+        </div>
+        <p class="admin-role-chip" data-admin-role-chip hidden></p>
+      </header>
+      <p class="offline-banner" data-offline-banner role="status" aria-live="polite" data-i18n="common.status.noConnection" hidden>
+        Connessione assente. Le modifiche sono sospese finche torni online.
+      </p>
+
+      <section class="resident-login" data-resident-login hidden>
+        <div class="section-title">
+          <h2 data-i18n="auth.resident.title">Accesso residenti</h2>
+          <p data-resident-login-status aria-live="polite" data-i18n="auth.resident.status">Inserisci sigla e password comune.</p>
+        </div>
+        <form data-resident-login-form>
+          <label class="field-label"><span data-i18n="auth.resident.signature.label">Sigla</span><input type="text" data-resident-signature-input autocomplete="username" autocapitalize="characters" autocorrect="off" spellcheck="false" inputmode="text"></label>
+          <label class="field-label"><span data-i18n="auth.resident.password.label">Password comune</span>
+            <span class="password-field">
+              <input type="password" data-resident-password-input autocomplete="current-password">
+              <button type="button" class="password-toggle tertiary-action" data-password-toggle="resident" data-i18n="auth.resident.password.show" aria-pressed="false">Mostra</button>
+            </span>
+          </label>
+          <p class="field-help" data-i18n="auth.resident.password.help">Se non ricordi la password comune, chiedila al responsabile del centro.</p>
+          <button type="submit" class="save-button primary-action" data-resident-login-button data-i18n="auth.resident.submit">Entra</button>
+        </form>
+      </section>
+
+      <section class="participant-panel" data-participant-panel>
+        <div class="section-title participant-status-row">
+          <strong class="participant-status-name" data-participant-status-name hidden></strong>
+          <p data-participant-status aria-live="polite">-</p>
+          <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="participant.status.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna vista mese" title="Aggiorna">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+        <nav class="panel-links" aria-label="Navigazione partecipante" data-i18n-aria-label="a11y.participantNavigation">
+          <button type="button" class="icon-button" data-participant-refresh hidden data-i18n-aria-label="common.actions.refresh" aria-label="Aggiorna">
+            <span aria-hidden="true">↻</span>
+          </button>
+          <a class="panel-link secondary-action" data-participant-week-nav-link href="/?view=week" data-i18n="week.view.title">Vista settimana</a>
+          <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
+        </nav>
+        <section class="calendar-panel" data-calendar-panel aria-label="Calendario prenotazioni future" data-i18n-aria-label="a11y.futureBookingsCalendar">
+          <p data-calendar-status hidden>Settimana corrente</p>
+          <div class="month-toolbar">
+            <button type="button" class="icon-button" data-month-prev data-i18n-aria-label="month.previous" aria-label="Mese precedente">
+              <span aria-hidden="true">←</span>
+            </button>
+            <label class="month-jump-toolbar month-navigation-toolbar">
+              <span class="sr-only" data-i18n="month.select">Scegli mese</span>
+              <span class="month-navigation-label" data-month-jump-label aria-hidden="true"></span>
+              <select data-month-jump data-i18n-aria-label="month.select" aria-label="Scegli mese"></select>
+            </label>
+            <button type="button" class="icon-button" data-month-next data-i18n-aria-label="month.next" aria-label="Mese successivo">
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+          <div class="month-grid" data-month-grid></div>
+          <details class="month-actions-legend">
+            <summary data-i18n="month.legend.summary">Come funzionano i comandi</summary>
+            <p><strong>M</strong> <span data-i18n="month.legend.desc.month">riempie o svuota il mese;</span> <strong>▦</strong> <span data-i18n="month.legend.desc.week">agisce sulla settimana;</span> <strong>☕</strong>, <strong>🍝</strong> e <strong>🍽</strong> <span data-i18n="month.legend.desc.meals">selezionano colazione, pranzo e cena.</span></p>
+          </details>
+        </section>
+      </section>
+
+      <section class="participant-panel" data-week-panel hidden>
+        <div class="section-title participant-status-row">
+          <strong class="participant-status-name" data-week-status-name hidden></strong>
+          <p data-week-status aria-live="polite">-</p>
+          <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna vista settimana" title="Aggiorna">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+        <nav class="panel-links" aria-label="Navigazione settimanale" data-i18n-aria-label="a11y.weekNavigation">
+          <a class="panel-link secondary-action" data-month-nav-link href="/?view=participant" data-i18n="month.view.title">Vista mese</a>
+          <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
+        </nav>
+        <div class="week-toolbar">
+          <button type="button" class="icon-button" data-week-prev data-i18n-aria-label="week.previous" aria-label="Settimana precedente">
+            <span aria-hidden="true">←</span>
+          </button>
+          <label class="month-jump-toolbar week-navigation-toolbar">
+            <span class="sr-only" data-i18n="week.select">Scegli settimana</span>
+            <select data-week-jump data-i18n-aria-label="week.select" aria-label="Scegli settimana"></select>
+          </label>
+          <button type="button" class="icon-button" data-week-next data-i18n-aria-label="week.next" aria-label="Settimana successiva">
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <div class="week-grid" data-participant-meals></div>
+        <div data-participant-summary hidden></div>
+        <details class="week-operations" data-week-operations hidden>
+          <summary class="agenda-center-toggle">
+            <strong data-i18n="week.agenda.title">Agenda centro</strong>
+            <span data-week-operations-status aria-live="polite">-</span>
+          </summary>
+          <div class="agenda-center-content">
+          <label class="field-label week-operations-day">
+            <span data-i18n="week.operations.day">Giorno</span>
+            <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
+          </label>
+          <div class="week-operations-grid">
+            <details class="week-operation-section" open>
+              <summary data-i18n="week.operations.sick">Ammalati</summary>
+              <p class="operation-status" data-week-health-status aria-live="polite">-</p>
+              <div class="week-health-list" data-week-health-list></div>
+              <button type="button" class="save-button" data-week-health-save data-i18n="common.actions.save">Salva ammalati</button>
+            </details>
+
+            <details class="week-operation-section">
+              <summary data-i18n="week.operations.notes">Note</summary>
+              <p class="operation-status" data-week-kitchen-note-status aria-live="polite">-</p>
+              <label class="field-label">
+                <span data-i18n="week.operations.specialNotes">Indicazioni speciali</span>
+                <textarea data-week-kitchen-note-input rows="3" maxlength="1000" placeholder="Per esempio: pranzo servito alle 12:30" data-i18n-placeholder="placeholder.specialNotes"></textarea>
+              </label>
+              <button type="button" class="save-button" data-week-kitchen-note-save data-i18n="common.actions.save">Salva nota</button>
+            </details>
+
+            <details class="week-operation-section">
+              <summary data-i18n="week.operations.diet">Dieta occasionale</summary>
+              <p class="operation-status" data-week-diet-status aria-live="polite">-</p>
+              <label class="field-label">
+                <span data-i18n="week.operations.person">Persona</span>
+                <select data-week-diet-participant></select>
+              </label>
+              <label class="field-label">
+                <span data-i18n="diet.option.label">Dieta</span>
+                <span class="admin-diet-fields">
+                  <select data-week-diet-type></select>
+                  <input type="number" min="5" max="999" inputmode="numeric"
+                    data-week-diet-number aria-label="Numero dieta occasionale"
+                    placeholder="N." hidden disabled>
+                </span>
+              </label>
+              <label class="field-label">
+                <span data-i18n="week.operations.duration">Durata</span>
+                <select data-week-diet-duration>
+                  <option value="1" data-i18n="week.operations.duration.todayOnly">Solo questo giorno</option>
+                  <option value="2" data-i18n="week.operations.duration.todayAndNext">Questo giorno e il successivo</option>
+                </select>
+              </label>
+              <button type="button" class="save-button" data-week-diet-save data-i18n="common.actions.save">Aggiorna dieta</button>
+              <div class="week-diet-list" data-week-diet-list></div>
+            </details>
+          </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="participant-panel" data-summary-panel hidden>
+        <div class="section-title summary-status-row">
+          <p data-summary-status aria-live="polite">-</p>
+          <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna Oggi a tavola" title="Aggiorna">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+        <div class="summary-date-tabs" role="tablist" aria-label="Giorno del riepilogo">
+          <button type="button" class="week-pill week-pill-active" data-summary-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
+          <button type="button" class="week-pill" data-summary-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+          <a class="panel-link secondary-action" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a>
+        </div>
+        <div class="today-overview" data-today-overview></div>
+      </section>
+
+      <section class="board" aria-label="Conteggi pasti" data-kitchen-panel hidden>
+        <div class="section-title kitchen-status-row">
+          <h2 data-kitchen-day-title>Oggi</h2>
+          <p data-status aria-live="polite">-</p>
+          <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna cucina" title="Aggiorna">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+        <div class="summary-date-tabs kitchen-date-tabs" role="tablist" aria-label="Giorno della cucina">
+          <button type="button" class="week-pill week-pill-active" data-kitchen-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
+          <button type="button" class="week-pill" data-kitchen-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
+        </div>
+        <p class="kitchen-date" data-kitchen-date></p>
+        <aside class="kitchen-note" data-kitchen-note hidden>
+          <strong data-i18n="kitchen.view.notes">Nota per la cucina</strong>
+          <p data-kitchen-note-text></p>
+        </aside>
+        <div class="meal-grid" data-meal-cards></div>
+        <article class="mass-card kitchen-mass-card mass-card-no" data-kitchen-mass aria-label="Messa: No">
+          <div class="mass-card-content">
+            <strong>Messa</strong>
+            <span data-kitchen-mass-value>No</span>
+          </div>
+        </article>
+        <article class="today-card sick-card" data-kitchen-sick hidden>
+          <div class="today-card-head"><strong data-i18n="week.operations.sick">Ammalati</strong></div>
+          <ul class="sick-list" data-kitchen-sick-list></ul>
+        </article>
+      </section>
+
+      <div class="account-footer" data-account-footer>
+      <details class="admin-shell" data-admin-shell>
+        <summary class="admin-shell-summary">
+          <div>
+            <span data-i18n="admin.overview.title">Area amministrazione</span>
+            <strong data-auth-status>Caricamento...</strong>
+          </div>
+          <span class="admin-shell-caret" aria-hidden="true">▾</span>
+        </summary>
+         <div class="admin-shell-body">
+           <code data-auth-uid hidden></code>
+           <label class="admin-center-switcher field-label" data-admin-center-switcher hidden>
+             <span data-i18n="admin.centerSwitcher.label">Centro amministrato</span>
+             <select data-admin-center-select data-i18n-aria-label="admin.centerSwitcher.label" aria-label="Centro amministrato"></select>
+           </label>
+            <div class="auth-actions" data-auth-actions>
+              <button type="button" class="primary-action" data-auth-button data-i18n="auth.google.signIn">Accedi con Google</button>
+            </div>
+            <div class="admin-invite-accept-panel" data-admin-invite-accept-panel hidden>
+              <p data-admin-invite-accept-text>
+                Sei stato invitato come amministratore del centro. Accedi per accettare o rifiutare.
+              </p>
+              <div class="admin-invite-accept-actions">
+                <button type="button" class="primary-action" data-invite-accept>Sì, accetto</button>
+                <button type="button" class="danger-action" data-invite-reject>Rifiuto</button>
+              </div>
+            </div>
+            <div class="admin-email-auth" data-admin-email-auth>
+             <label class="field-label">
+               <span data-i18n="auth.email.label">Email amministratore</span>
+               <input type="email" data-admin-email autocomplete="username" inputmode="email">
+             </label>
+              <label class="field-label">
+                <span data-admin-password-label data-i18n="auth.password.label">Password</span>
+                <span class="password-field">
+                  <input type="password" data-admin-password autocomplete="current-password" minlength="6">
+                  <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                </span>
+              </label>
+              <div class="admin-email-actions">
+                <button type="button" class="primary-action" data-admin-email-signin data-i18n="auth.email.signIn">Accedi con email</button>
+                <button type="button" class="primary-action" data-admin-email-create hidden data-i18n="auth.email.createWithInvite">Crea account con invito</button>
+                <button type="button" class="tertiary-action" data-admin-email-mode-toggle hidden data-i18n="auth.email.haveAccount">Hai già un account? Accedi</button>
+                <button type="button" class="tertiary-action" data-admin-password-reset hidden data-i18n="auth.email.forgotPassword">Password dimenticata?</button>
+              </div>
+              <p data-admin-email-status aria-live="polite" data-i18n="auth.email.noGoogleNeeded">Puoi accedere anche senza un account Google.</p>
+           </div>
+          <div class="bootstrap-progress" data-bootstrap-progress role="status" aria-live="polite" aria-atomic="true" hidden>
+            <span class="bootstrap-progress-spinner" aria-hidden="true"></span>
+            <span>
+              <strong>Attendere, prego...</strong>
+              <span data-bootstrap-progress-detail>Creazione calendario pasti centro...</span>
+            </span>
+          </div>
+
+          <section class="center-initializer" data-center-initializer hidden>
+            <div class="section-title">
+              <h2>Attivazione centro</h2>
+              <p data-center-initializer-status aria-live="polite">Inserisci i dati di base.</p>
+            </div>
+            <div class="initializer-account-info" data-initializer-account-info hidden>
+              <span>L'amministratore del centro sarà: <strong data-initializer-email></strong></span>
+              <button type="button" class="tertiary-action" data-initializer-signout>Usa un altro account</button>
+            </div>
+            <label class="field-label">
+              Nome centro
+              <input type="text" data-center-initializer-name maxlength="120" placeholder="Nome della sede" autocomplete="organization">
+            </label>
+            <label class="field-label">
+              Fuso orario
+              <select data-center-initializer-timezone>
+                <option value="Europe/Rome">Europe/Rome</option>
+                <option value="Europe/Madrid">Europe/Madrid</option>
+                <option value="Europe/Paris">Europe/Paris</option>
+                <option value="Europe/London">Europe/London</option>
+              </select>
+            </label>
+            <div data-initializer-password-row hidden>
+              <label class="field-label">
+                Scegli la tua password amministratore definitiva
+                <span class="password-field">
+                  <input type="password" data-initializer-password minlength="6" placeholder="Minimo 6 caratteri">
+                  <button type="button" class="password-toggle tertiary-action" data-password-toggle="initializer" aria-pressed="false">Mostra</button>
+                </span>
+              </label>
+            </div>
+            <button type="button" class="save-button primary-action" data-center-initializer-button>Crea nuovo centro</button>
+          </section>
+
+          <section class="admin-panel" data-admin-panel hidden>
+            <section class="owner-invitation-panel" data-owner-invitation-panel hidden>
+              <div class="section-title">
+                <h2>Pannello Proprietario</h2>
+                <p data-owner-invitation-status aria-live="polite">Genera il collegamento per il responsabile del centro</p>
+                <p class="admin-option-help">Gestisce centri e amministratori.</p>
+              </div>
+              <button type="button" class="primary-action" data-owner-invitation-generate>Crea nuovo centro</button>
+              <div class="owner-invitation-result" data-owner-invitation-result hidden>
+                <label class="field-label">
+                  Collegamento da inviare al responsabile per configurare il centro
+                  <input type="url" data-owner-invitation-link readonly>
+                </label>
+                <div class="owner-invitation-actions">
+                  <button type="button" class="secondary-action" data-owner-invitation-copy>Copia collegamento</button>
+                  <button type="button" class="icon-action" data-owner-invitation-share aria-label="Condividi collegamento" hidden>
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.06-.23.09-.46.09-.7s-.03-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.03.47.09.7L7.04 9.81C6.5 9.31 5.79 9 5 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.06.21-.09.44-.09.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="platform-center-list" data-platform-center-list>
+                <p class="empty-state">Centri in caricamento...</p>
+              </div>
+              <button type="button" class="primary-action owner-panel-exit" data-owner-exit hidden aria-label="Esci" data-i18n-aria-label="common.actions.exit" title="Esci">
+                <svg class="exit-icon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span class="btn-label" data-i18n="common.actions.exit">Esci</span>
+              </button>
+            </section>
+            <nav class="admin-section-nav" data-admin-section-nav aria-label="Sezioni amministrazione" role="tablist">
+              <a data-admin-nav-configuration data-admin-section-id="configuration" href="#admin-configuration-section" role="tab" aria-controls="admin-configuration-section" data-i18n="admin.configuration.title">Configurazione</a>
+              <a data-admin-nav-people data-admin-section-id="people" href="#admin-person-editor" role="tab" aria-controls="admin-person-editor" data-i18n="admin.people.title">Persone</a>
+              <a data-admin-nav-overview data-admin-section-id="overview" href="#admin-overview-section" role="tab" aria-controls="admin-overview-section" data-i18n="admin.overview.links">Link per accedere</a>
+              <a data-admin-nav-adaptations data-admin-section-id="adaptations" href="#admin-adaptations-section" role="tab" aria-controls="admin-adaptations-section" data-i18n="admin.adaptations.title">Impostazioni</a>
+              <a data-admin-nav-access data-admin-section-id="access" href="#admin-access-section" role="tab" aria-controls="admin-access-section" data-i18n="admin.access.title">Amministratore</a>
+              <a data-admin-nav-activity data-admin-section-id="activity" href="#admin-activity-section" role="tab" aria-controls="admin-activity-section" data-i18n="admin.activity.title">Manutenzione</a>
+            </nav>
+            <div class="admin-overview-content" data-admin-mobile-section="overview">
+              <div class="operational-links operational-links-legacy" data-operational-links hidden aria-hidden="true">
+                <section class="operational-link-group" aria-labelledby="resident-links-title">
+                  <div class="operational-link-head">
+                    <strong id="resident-links-title" data-i18n="role.resident">Residenti</strong>
+                    <span class="link-active-status" data-public-link-status>Attivo</span>
+                  </div>
+                  <p class="operational-link-meta" data-public-link-meta>Data di attivazione non disponibile</p>
+                  <span><a data-public-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a><button type="button" class="tertiary-action" data-copy-link="[data-public-link]" data-i18n="common.actions.copy">Copia</button></span>
+                  <span><a data-summary-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a><button type="button" class="tertiary-action" data-copy-link="[data-summary-link]" data-i18n="common.actions.copy">Copia</button></span>
+                  <button type="button" class="secondary-action rotate-link-action" data-rotate-operational-link="PUBLIC" data-i18n="admin.access.links.rotate">Rigenera link residenti</button>
+                </section>
+                <section class="operational-link-group" aria-labelledby="kitchen-links-title">
+                  <div class="operational-link-head">
+                    <strong id="kitchen-links-title" data-i18n="role.kitchen">Cucina</strong>
+                    <span class="link-active-status" data-kitchen-link-status>Attivo</span>
+                  </div>
+                  <p class="operational-link-meta" data-kitchen-link-meta>Data di attivazione non disponibile</p>
+                  <span><a data-kitchen-link href="/?view=kitchen" data-i18n="kitchen.view.title">Pannello cucina</a><button type="button" class="tertiary-action" data-copy-link="[data-kitchen-link]" data-i18n="common.actions.copy">Copia</button></span>
+                  <button type="button" class="secondary-action rotate-link-action" data-rotate-operational-link="KITCHEN" data-i18n="admin.access.links.rotate">Rigenera link cucina</button>
+                </section>
+                <p class="operational-links-status" data-operational-links-status aria-live="polite">Collegamenti attivi</p>
+              </div>
+              <section class="admin-overview-band" id="admin-overview-section" tabindex="-1" aria-labelledby="admin-overview-title">
+                <div class="section-title admin-overview-heading">
+                  <h2 id="admin-overview-title" data-i18n="admin.overview.links">Link per accedere</h2>
+                </div>
+
+                <div class="access-links-explanation">
+                  <p class="access-link-row">
+                    <span data-i18n="admin.overview.residentLinkHelp">Link per le prenotazioni dei residenti</span>
+                    <span class="access-link-controls">
+                      <button type="button" class="access-link-btn" data-access-link="pasti" disabled data-i18n="app.header.pasti">Pasti</button>
+                      <button type="button" class="share-access-link icon-button" data-share-access-link="pasti" disabled aria-label="Condividi link Pasti" title="Condividi link Pasti" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
+                    </span>
+                  </p>
+                  <p class="access-link-row">
+                    <span data-i18n="admin.overview.kitchenLinkHelp">Link da dare alla Cucina</span>
+                    <span class="access-link-controls">
+                      <button type="button" class="access-link-btn" data-access-link="cucina" disabled data-i18n="role.kitchen">Cucina</button>
+                      <button type="button" class="share-access-link icon-button" data-share-access-link="cucina" disabled aria-label="Condividi link Cucina" title="Condividi link Cucina" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
+                    </span>
+                  </p>
+                </div>
+
+              </section>
+            </div>
+            <div class="admin-dashboard-grid">
+              <section class="admin-control-section admin-center-settings" id="admin-configuration-section" data-admin-mobile-section="configuration" tabindex="-1" data-admin-center-settings-section aria-labelledby="admin-center-settings-title">
+                <div class="section-title">
+                  <h2 id="admin-center-settings-title" data-i18n="admin.centerSettings.title">Centro attivo</h2>
+                </div>
+                <div class="admin-form-grid admin-center-fields">
+                  <label class="field-label">
+                    <span data-i18n="admin.centerSettings.name.label">Nome centro</span>
+                    <input type="text" data-admin-center-name maxlength="120" placeholder="Nome della sede" data-i18n-placeholder="admin.centerSettings.name.placeholder">
+                  </label>
+                  <label class="field-label">
+                    <span data-i18n="admin.centerSettings.timezone.label">Fuso orario</span>
+                    <select data-admin-center-timezone>
+                      <option value="Europe/Rome">Europe/Rome</option>
+                      <option value="Europe/Madrid">Europe/Madrid</option>
+                      <option value="Europe/Paris">Europe/Paris</option>
+                      <option value="Europe/London">Europe/London</option>
+                    </select>
+                  </label>
+                  <label class="field-label">
+                    <span data-i18n="admin.centerSettings.cutoff.lunch">Chiusura pranzo</span>
+                    <input type="time" data-admin-cutoff-lunch required>
+                  </label>
+                  <label class="field-label">
+                    <span data-i18n="admin.centerSettings.cutoff.dinner">Chiusura cena</span>
+                    <input type="time" data-admin-cutoff-dinner required>
+                  </label>
+                  <label class="field-label admin-field-wide">
+                    <span data-i18n="admin.centerSettings.cutoff.breakfast">Chiusura colazione del giorno dopo</span>
+                    <input type="time" data-admin-cutoff-breakfast required>
+                  </label>
+                </div>
+                <fieldset class="admin-administrator-profile" data-admin-administrator-profile>
+                  <legend data-i18n="role.owner">Responsabile del centro</legend>
+                  <p class="field-help" data-i18n="admin.administrator.help">Richiesti per iniziare · modificabili in seguito</p>
+                  <div class="admin-administrator-profile-fields">
+                    <label class="field-label">
+                      <span data-i18n="admin.people.name">Nome</span>
+                      <input type="text" data-admin-administrator-name maxlength="120" autocomplete="name" required>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.people.signature">Sigla</span>
+                      <input type="text" data-admin-administrator-signature minlength="2" maxlength="12" pattern="[A-Za-z0-9]{2,12}" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" required>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.administrator.email.label">Email dell'amministratore</span>
+                      <input type="email" data-admin-administrator-email maxlength="254" autocomplete="email" inputmode="email" required>
+                    </label>
+                    <label class="field-label" data-admin-administrator-password-row>
+                      <span data-i18n="admin.administrator.password.label">Password amministratore</span>
+                      <span class="password-field">
+                        <input type="password" data-admin-administrator-password placeholder="Lascia vuoto per non cambiarla" data-i18n-placeholder="admin.administrator.password.placeholder" autocomplete="new-password" minlength="6">
+                        <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-owner" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                      </span>
+                    </label>
+                  </div>
+                  <label class="field-label admin-field-wide" data-admin-common-password-row>
+                    <span data-i18n="admin.configuration.password.label">Password comune</span>
+                    <span class="password-field">
+                      <input
+                        type="password"
+                        id="admin-common-password-input"
+                        data-admin-common-password-input
+                        minlength="4"
+                        maxlength="32"
+                        autocomplete="new-password"
+                        placeholder="Minimo 4 caratteri"
+                        data-i18n-placeholder="admin.commonPassword.placeholder"
+                      >
+                      <button
+                        type="button"
+                        class="password-toggle tertiary-action"
+                        data-password-toggle="common-password"
+                        aria-pressed="false"
+                        aria-label="Mostra password comune"
+                        data-i18n="auth.resident.password.show"
+                      >Mostra</button>
+                    </span>
+                    <small class="field-help"><span data-i18n="admin.commonPassword.help">Vuoto = password invariata · </span><span data-admin-common-password-status></span></small>
+                  </label>
+                </fieldset>
+                <div class="admin-section-actions">
+                  <button type="button" class="save-button" data-admin-center-settings-save data-i18n="admin.centerSettings.save">Salva centro</button>
+                  <p data-admin-center-settings-status aria-live="polite" data-i18n="admin.centerSettings.cutoffsHelp">Gli orari si applicano alle prenotazioni future.</p>
+                </div>
+                <section class="admin-center-avatar" aria-labelledby="admin-center-avatar-title">
+                  <div class="admin-center-avatar-preview-wrap">
+                    <img class="admin-center-avatar-preview" data-admin-center-avatar-preview alt="Anteprima icona del centro" hidden>
+                    <span class="admin-center-avatar-placeholder" data-admin-center-avatar-placeholder aria-hidden="true">+</span>
+                  </div>
+                  <div class="admin-center-avatar-controls">
+                    <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
+                    <label class="field-label admin-center-avatar-picker">
+                      <span data-i18n="admin.avatar.chooseImage">Scegli immagine</span>
+                      <input type="file" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif">
+                    </label>
+                    <div class="admin-center-avatar-actions">
+                      <button type="button" class="save-button" data-admin-center-avatar-save disabled data-i18n="common.actions.save">Salva icona</button>
+                      <button type="button" class="tertiary-action" data-admin-center-avatar-remove hidden data-i18n="common.actions.delete">Rimuovi</button>
+                    </div>
+                    <p data-admin-center-avatar-status aria-live="polite">Nessuna icona inserita.</p>
+                  </div>
+                </section>
+              </section>
+
+              <div class="admin-role-stack" id="admin-adaptations-section" data-admin-mobile-section="adaptations" tabindex="-1">
+                <section class="admin-control-section" data-admin-adaptations>
+                  <div class="section-title">
+                    <h2 data-i18n="admin.adaptations.title">Impostazioni</h2>
+                    <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app per questo centro.</p>
+                  </div>
+
+                  <label class="field-label admin-contact-sharing-picker" data-admin-contact-sharing-row>
+                    <span data-i18n="admin.adaptations.contactSharing.label">Chiamata ai commensali</span>
+                    <select data-admin-contact-sharing-select>
+                      <option value="enabled" data-i18n="admin.adaptations.contactSharing.enabled">📞 Chiamata ai commensali attivata</option>
+                      <option value="disabled" data-i18n="admin.adaptations.contactSharing.disabled">📵 Chiamata ai commensali disattivata</option>
+                    </select>
+                  </label>
+
+                  <label class="field-label admin-default-view-picker" data-admin-default-view-picker>
+                    <span data-i18n="viewPreference.label">Vista di apertura preferita</span>
+                    <select data-admin-default-view-select aria-label="Vista di apertura preferita del centro">
+                      <option value="month" data-i18n="viewPreference.option.month">Vista mese</option>
+                      <option value="week" data-i18n="viewPreference.option.week">Vista settimana</option>
+                    </select>
+                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per chi non ha ancora fissato una preferenza personale.</small>
+                  </label>
+
+                  <fieldset class="admin-theme-picker" data-admin-theme-picker>
+                    <legend data-i18n="admin.adaptations.theme.label">Palette colori</legend>
+                    <p class="field-help" data-i18n="admin.adaptations.theme.help">Scegli la combinazione di colori dell'app per questo centro. L'anteprima si applica subito.</p>
+                    <div class="theme-select-control">
+                      <span class="theme-swatch-preview theme-swatch-smeraldo" data-theme-select-preview aria-hidden="true"></span>
+                      <select data-admin-theme-select aria-label="Palette colori">
+                        <option value="smeraldo">Smeraldo</option>
+                        <option value="giallino">Giallino</option>
+                        <option value="beige">Beige</option>
+                        <option value="rosso-pallido">Rosso pallido</option>
+                        <option value="confetto">Confetto</option>
+                      </select>
+                    </div>
+                    <p data-admin-theme-status aria-live="polite">Anteprima non salvata.</p>
+                  </fieldset>
+
+                  <label class="field-label admin-language-picker" data-admin-language-picker>
+                    <span data-i18n="admin.adaptations.language.label">Lingua dell'app</span>
+                    <select data-admin-language-select>
+                      <option value="it" data-i18n="language.it" selected>Italiano</option>
+                      <option value="en" data-i18n="language.en">Inglese</option>
+                      <option value="fr" data-i18n="language.fr">Francese</option>
+                      <option value="es" data-i18n="language.es">Spagnolo</option>
+                      <option value="de" data-i18n="language.de">Tedesco</option>
+                    </select>
+                    <small class="field-help" data-i18n="admin.adaptations.language.help">La lingua scelta viene usata per l'interfaccia di questo dispositivo.</small>
+                  </label>
+
+                  <div class="admin-section-actions">
+                    <button type="button" class="save-button" data-admin-adaptations-save data-i18n="admin.adaptations.save">Salva impostazioni</button>
+                    <button type="button" class="tertiary-action" data-admin-adaptations-cancel data-i18n="admin.adaptations.cancel">Annulla</button>
+                    <button type="button" class="tertiary-action" data-admin-adaptations-reset data-i18n="admin.adaptations.reset">Ripristina predefinita</button>
+                  </div>
+                </section>
+              </div>
+
+              <div class="admin-role-stack" id="admin-access-section" data-admin-mobile-section="access" tabindex="-1">
+                <section class="admin-control-section" data-admin-leadership hidden>
+                  <div class="section-title">
+                    <h2 data-i18n="admin.access.title">Amministratore</h2>
+                  </div>
+                  <p data-admin-leadership-status aria-live="polite" data-i18n="admin.access.leadershipHelp">
+                    Prima invita il nuovo amministratore. Dopo che avrà accettato, selezionalo come nuovo responsabile e conferma il trasferimento.
+                  </p>
+
+                  <div class="admin-candidate-fields">
+                    <label class="field-label">
+                      <span data-i18n="admin.invitations.newAdminTarget">Nuovo amministratore</span>
+                      <select data-admin-candidate-select></select>
+                    </label>
+                    <button type="button" class="secondary-action" data-admin-candidate-new-person data-i18n="admin.people.newPerson">Nuova persona</button>
+                  </div>
+
+                  <button type="button" class="secondary-action admin-inline-action" data-admin-invitation-generate data-i18n="admin.invitations.generate">Invita amministratore</button>
+
+                  <p class="admin-invitation-status" data-admin-invitation-status aria-live="polite" hidden></p>
+                  <div class="admin-invitation-result" data-admin-invitation-result hidden>
+                    <label class="field-label">
+                      <span data-i18n="admin.invitations.linkToSend">Collegamento da inviare</span>
+                      <input type="url" data-admin-invitation-link readonly>
+                    </label>
+                    <button type="button" class="secondary-action" data-admin-invitation-copy data-i18n="common.actions.copy">Copia collegamento</button>
+                  </div>
+
+                  <section class="admin-invitation-management" data-admin-invitation-management hidden>
+                    <h3 data-i18n="admin.invitations.recent">Inviti recenti</h3>
+                    <p data-admin-invitation-management-status aria-live="polite">Nessun invito emesso</p>
+                    <div class="admin-invitation-list" data-admin-invitation-list></div>
+                  </section>
+
+                  <section class="admin-invitation-management" data-admin-account-management hidden>
+                    <h3 data-i18n="admin.accounts.active">Amministratori attivi</h3>
+                    <p data-admin-account-status aria-live="polite">Nessun altro amministratore attivo</p>
+                    <div class="admin-invitation-list" data-admin-account-list></div>
+                  </section>
+
+                  <div class="admin-succession-fields">
+                    <label class="field-label">
+                      <span data-i18n="admin.succession.newOwner">Nuovo responsabile</span>
+                      <select data-admin-successor-select></select>
+                    </label>
+                    <button type="button" class="danger-action" data-admin-transfer-ownership data-i18n="admin.succession.transfer">Trasferisci responsabilità</button>
+                  </div>
+                </section>
+              </div>
+
+              <section class="admin-control-section admin-person-editor" id="admin-person-editor" data-admin-mobile-section="people" tabindex="-1" aria-labelledby="admin-person-editor-title">
+                <div class="section-title">
+                  <h2 id="admin-person-editor-title" data-i18n="admin.people.title">Scheda persona</h2>
+                  <p data-admin-status>-</p>
+                </div>
+                <p class="admin-people-intro" data-i18n="admin.people.intro">Inserisci i commensali del centro e condividi il collegamento per accedere al calendario.</p>
+                <div class="admin-person-selector-row">
+                  <label class="field-label">
+                    <span data-i18n="week.operations.person">Persona</span>
+                    <select data-admin-participant-select></select>
+                  </label>
+                  <button type="button" class="secondary-action" data-admin-new-participant data-i18n="admin.people.add">Nuova persona</button>
+                </div>
+                <div class="admin-form-grid admin-person-fields">
+                  <label class="field-label admin-field-wide">
+                    <span data-i18n="admin.people.name">Nome</span>
+                    <input type="text" data-admin-participant-name maxlength="120" autocomplete="off" required>
+                  </label>
+                  <label class="field-label admin-person-field-signature">
+                    <span data-i18n="admin.people.signature">Sigla</span>
+                    <input type="text" data-admin-participant-signature minlength="2" maxlength="12" pattern="[A-Za-z0-9]{2,12}" autocomplete="off" required>
+                  </label>
+                  <label class="field-label admin-person-field-group">
+                    <span data-i18n="admin.people.group">Gruppo</span>
+                    <select data-admin-participant-group>
+                      <option value="group_residenti" data-i18n="role.residentPlural">Residenti</option>
+                      <option value="group_ospiti" data-i18n="role.guestPlural">Ospiti</option>
+                    </select>
+                  </label>
+                  <label class="field-label admin-person-field-diet">
+                    <span data-i18n="diet.option.label">Dieta</span>
+                    <span class="admin-diet-fields">
+                      <select data-admin-participant-diets></select>
+                      <input type="number" min="5" max="999" inputmode="numeric"
+                        data-admin-participant-diet-number aria-label="Numero dieta"
+                        placeholder="N." hidden disabled>
+                    </span>
+                  </label>
+                  <label class="field-label admin-person-field-phone">
+                    <span data-i18n="admin.people.phone">Telefono</span>
+                    <input type="tel" data-admin-phone-input placeholder="+39..." inputmode="tel">
+                  </label>
+                </div>
+                <div class="admin-option-grid">
+                  <label class="checkbox-row" data-admin-role-option>
+                    <input type="checkbox" data-admin-participant-liturgy>
+                    <span data-i18n="admin.people.liturgicalRole">Celebrazioni liturgiche</span>
+                  </label>
+                  <label class="checkbox-row" data-admin-role-option>
+                    <input type="checkbox" data-admin-participant-vice>
+                    <span data-i18n="role.vice">Vice amministratore</span>
+                  </label>
+                  <label class="checkbox-row">
+                    <input type="checkbox" data-admin-phone-consent>
+                    <span data-i18n="admin.people.phoneConsent">Puoi chiamare questa persona</span>
+                  </label>
+                  <label class="checkbox-row">
+                    <input type="checkbox" data-admin-whatsapp-enabled>
+                    <span data-i18n="admin.people.whatsappEnabled">Raggiungibile anche su WhatsApp</span>
+                  </label>
+                </div>
+                <div class="admin-participant-actions">
+                  <button type="button" class="save-button" data-i18n="admin.people.save" data-admin-save-button>Salva persona</button>
+                  <button type="button" class="secondary-action" data-i18n="common.actions.cancel" data-admin-cancel-participant>Annulla</button>
+                  <button type="button" class="danger-action" data-admin-delete-participant data-i18n="admin.people.delete" hidden>Elimina persona</button>
+                </div>
+              </section>
+
+              <section class="admin-people-overview admin-control-section admin-people-directory" data-admin-mobile-section="people" aria-labelledby="admin-people-overview-title">
+                <div class="section-title">
+                  <h2 id="admin-people-overview-title" data-i18n="admin.people.overview.title">Elenco persone</h2>
+                  <p data-i18n="admin.people.overview.subtitle">Scegli una persona per modificarne la scheda</p>
+                </div>
+                <div class="admin-people-list" data-admin-people-list></div>
+                <div class="admin-guest-adder">
+                  <label class="field-label">
+                    <span data-i18n="admin.guest.label">Ospite</span>
+                    <select data-admin-guest-preset>
+                      <option value="1">Ospite 1</option>
+                      <option value="2">Ospite 2</option>
+                      <option value="3">Ospite 3</option>
+                      <option value="4">Ospite 4</option>
+                      <option value="other">Altro numero...</option>
+                    </select>
+                  </label>
+                  <label class="field-label" data-admin-guest-custom-wrap hidden>
+                    <span data-i18n="admin.guest.customNumber">Numero ospite</span>
+                    <input type="number" data-admin-guest-custom min="1" max="999" inputmode="numeric">
+                  </label>
+                  <button type="button" class="secondary-action" data-admin-add-guest data-i18n="admin.guest.add">Aggiungi ospite</button>
+                  <p data-admin-guest-status aria-live="polite">-</p>
+                </div>
+              </section>
+
+              <section class="admin-control-section admin-calendar-extension" id="admin-activity-section" data-admin-mobile-section="activity" tabindex="-1" data-admin-calendar-extension hidden aria-labelledby="admin-calendar-extension-title">
+                <div class="section-title">
+                  <h2 id="admin-calendar-extension-title" data-i18n="admin.overview.calendar">Calendario prenotazioni</h2>
+                  <p data-admin-calendar-extension-status aria-live="polite">Verifico la copertura disponibile.</p>
+                  <p class="admin-option-help" data-i18n="admin.calendar.extensionHelp">Calendario annuale. Prima della scadenza, usa questo comando per aggiungere un altro anno.</p>
+                </div>
+                <button type="button" class="secondary-action" data-bootstrap-button data-i18n="admin.calendar.extendAction">Estendi calendario prenotazioni</button>
+              </section>
+
+              <section class="admin-control-section admin-audit-section" data-admin-mobile-section="activity" data-admin-audit-section hidden aria-labelledby="admin-audit-title">
+                <div class="section-title">
+                  <h2 id="admin-audit-title" data-i18n="admin.activity.audit">Attività recenti</h2>
+                  <p data-admin-audit-status aria-live="polite">Caricate solo quando servono.</p>
+                </div>
+                <button type="button" class="tertiary-action" data-admin-audit-load data-i18n="common.actions.loading">Mostra attività</button>
+                <div class="admin-audit-list" data-admin-audit-list></div>
+              </section>
+
+              <div class="admin-tools-row" data-admin-mobile-section="activity" data-admin-tools>
+                <div class="admin-export-copy">
+                  <strong data-i18n="admin.backup.title">Archivio di sicurezza</strong>
+                  <p data-i18n="admin.backup.description">Copia dei dati del centro per il ripristino.</p>
+                </div>
+                <button type="button" class="secondary-action admin-download-action" data-admin-export-button aria-label="Scarica copia dei dati del centro" data-i18n-aria-label="admin.backup.ariaLabel">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <path d="M5 21h14"></path>
+                  </svg>
+                  <span data-i18n="admin.backup.downloadAction">Scarica</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </details>
+      <button type="button" class="primary-action footer-exit-button" data-forget-device hidden aria-label="Esci" data-i18n-aria-label="common.actions.exit" title="Esci">
+        <svg class="exit-icon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <span class="btn-label" data-i18n="common.actions.exit">Esci</span>
+      </button>
+      </div>
+    </main>
+
+    <dialog class="password-setup-dialog" data-admin-password-setup-dialog aria-labelledby="admin-password-setup-title">
+      <form class="password-setup-content" data-admin-password-setup-form>
+        <h2 id="admin-password-setup-title">Scegli la password definitiva</h2>
+        <p>La password temporanea dell'invito deve essere sostituita prima di continuare.</p>
+        <label class="field-label">
+          Nuova password
+          <span class="password-field">
+            <input type="password" data-admin-password-setup-input minlength="6" autocomplete="new-password" required>
+            <button type="button" class="password-toggle tertiary-action" data-password-toggle="required-admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+          </span>
+        </label>
+        <button type="submit" class="primary-action" data-admin-password-setup-save data-i18n="admin.configuration.password.set">Imposta password e continua</button>
+        <p data-admin-password-setup-status aria-live="polite">Minimo 6 caratteri.</p>
+      </form>
+    </dialog>
+
+    <dialog class="action-dialog" data-action-dialog aria-labelledby="action-dialog-title" aria-describedby="action-dialog-message">
+      <form class="action-dialog-content" data-action-dialog-form method="dialog">
+        <h2 id="action-dialog-title" data-action-dialog-title data-i18n="confirm.delete.title">Conferma operazione</h2>
+        <p id="action-dialog-message" data-action-dialog-message></p>
+        <label class="field-label" data-action-dialog-text-wrap hidden>
+          <span data-action-dialog-text-label>Testo di conferma</span>
+          <input type="text" data-action-dialog-text autocomplete="off" spellcheck="false">
+        </label>
+        <label class="choice-row" data-action-dialog-checkbox-wrap hidden>
+          <input type="checkbox" data-action-dialog-checkbox>
+          <span data-action-dialog-checkbox-label></span>
+        </label>
+        <div class="action-dialog-actions">
+          <button type="submit" value="cancel" class="secondary-action" data-i18n="common.actions.cancel">Annulla</button>
+          <button type="submit" value="confirm" class="primary-action" data-action-dialog-confirm data-i18n="common.actions.confirm">Conferma</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var view = params.get('view') || 'participant';
+        if (params.get('access') !== 'friendly' && view !== 'participant' && view !== 'week') {
+          return;
+        }
+        var login = document.querySelector('[data-resident-login]');
+        var participant = document.querySelector('[data-participant-panel]');
+        var week = document.querySelector('[data-week-panel]');
+        var summary = document.querySelector('[data-summary-panel]');
+        if (login) login.hidden = false;
+        if (participant) participant.hidden = true;
+        if (week) week.hidden = true;
+        if (summary) summary.hidden = true;
+      }());
+    </script>
+
+  <script type="module" src="/app.js?v=20260815d"></script>
+  </body>
+</html>

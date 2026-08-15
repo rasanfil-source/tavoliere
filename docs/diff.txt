@@ -1,0 +1,854 @@
+diff --git a/prototypes/firebase-spark-pwa/firestore.rules b/prototypes/firebase-spark-pwa/firestore.rules
+index 378cea2c1c6e13acc81c337cb9a4e7914d08019a..7da6dc34f9122be31fa38914a7944dd5ec4487c2 100644
+--- a/prototypes/firebase-spark-pwa/firestore.rules
++++ b/prototypes/firebase-spark-pwa/firestore.rules
+@@ -168,51 +168,58 @@ service cloud.firestore {
+             'updatedAt'
+           ])
+           && request.resource.data.keys().hasOnly([
+             'centerId',
+             'scope',
+             'targetType',
+             'participantId',
+             'groupId',
+             'tokenId',
+             'status',
+             'expiresAt',
+             'createdAt',
+             'updatedAt'
+           ])
+           && request.resource.data.centerId == centerId
+           && request.resource.data.status == 'ACTIVE'
+           && request.resource.data.expiresAt == tokenData(centerId, request.resource.data.tokenId).expiresAt
+           && request.resource.data.createdAt == request.time
+           && request.resource.data.updatedAt == request.time
+           && tokenIsUsable(centerId, request.resource.data.tokenId)
+           && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
+           && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
+           && (
+             (
+               request.resource.data.scope == 'PUBLIC'
+-              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
++              && !request.resource.data.keys().hasAny(['groupId'])
++              && (
++                !request.resource.data.keys().hasAny(['participantId'])
++                || (
++                  request.resource.data.participantId is string
++                  && participantExists(centerId, request.resource.data.participantId)
++                )
++              )
+             )
+             || (
+               request.resource.data.scope == 'KITCHEN'
+               && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+             )
+             || (
+               request.resource.data.scope == 'PERSONAL'
+               && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
+               && !request.resource.data.keys().hasAny(['groupId'])
+             )
+           );
+         allow update: if signedIn()
+           && request.auth.uid == authUid
+           && resource.data.status == 'ACTIVE'
+           && request.time < resource.data.expiresAt
+           && request.resource.data.centerId == resource.data.centerId
+           && request.resource.data.scope == resource.data.scope
+           && request.resource.data.targetType == resource.data.targetType
+           && request.resource.data.tokenId == resource.data.tokenId
+           && request.resource.data.status == resource.data.status
+           && request.resource.data.expiresAt == resource.data.expiresAt
+           && request.resource.data.createdAt == resource.data.createdAt
+           && request.resource.data.updatedAt == request.time
+           && (
+             request.resource.data.diff(resource.data).changedKeys().hasOnly(['updatedAt'])
+
+
+diff --git a/prototypes/firebase-spark-pwa/public/app.js b/prototypes/firebase-spark-pwa/public/app.js
+index d2bb569f860b9fc64dd8227fbf8e5b9f611cc032..37b11515f0bfa13199cee8f24309c539df6b7b00 100644
+--- a/prototypes/firebase-spark-pwa/public/app.js
++++ b/prototypes/firebase-spark-pwa/public/app.js
+@@ -1,128 +1,140 @@
+ import {
+   getRecommendedRefreshDelayMs
+ } from './refresh-schedule.js';
+ import {
+   getCurrentUser,
+   isFirebaseConfigured,
+   missingFirebaseConfigValues,
+   signInWithGoogle,
+   signOutCurrentUser,
+   watchAuth
+ } from './firebase-client.js';
+ import {
+   BOOTSTRAP_ADMIN_UID,
+   bootstrapDemoData
+ } from './bootstrap-demo.js';
+ import { loadKitchenCounts } from './kitchen-data.js';
+ import {
+-  ensurePublicDemoSession,
++  forgetResidentDevice,
++  restoreFriendlyResidentSession,
++  signInFriendlyResident,
+   listAdminParticipants,
+   listPublicParticipants,
+   loadCenterContactSettings,
+   loadParticipantDaySummaries,
+   loadParticipantMealSummary,
+   loadParticipantMeals,
+   loadParticipantWeek,
+   saveParticipantMeal,
+   saveParticipantDay,
+   selectPublicParticipant,
+   updateCenterContactSettings,
+   updateParticipantContact
+ } from './participant-data.js';
+ 
+ const state = {
+   timerId: 0,
+   nextRefreshAt: 0,
+   refreshCount: 0,
+   meals: [],
+   mode: resolveMode(),
+   participants: [],
+   selectedParticipant: null,
++  residentAccessReady: false,
+   participantMeals: [],
+   participantWeek: [],
+   participantMonth: [],
+   participantSummary: null,
+   todayOverview: [],
+   selectedSummaryDate: formatDateId(new Date()),
+   weekStartDate: startOfWeek(new Date()),
+   monthDate: startOfMonth(new Date()),
+   adminParticipants: [],
+   adminParticipantId: '',
+   centerContactSettings: {
+     participantContactSharingEnabled: false
+   }
+ };
+ 
+ const elements = {
+   cards: document.querySelector('[data-meal-cards]'),
+   status: document.querySelector('[data-status]'),
+   refreshButton: document.querySelector('[data-refresh-button]'),
+   adminShell: document.querySelector('[data-admin-shell]'),
+   authButton: document.querySelector('[data-auth-button]'),
+   bootstrapButton: document.querySelector('[data-bootstrap-button]'),
+   authStatus: document.querySelector('[data-auth-status]'),
+   authUid: document.querySelector('[data-auth-uid]'),
+   adminPanel: document.querySelector('[data-admin-panel]'),
+   adminStatus: document.querySelector('[data-admin-status]'),
+   adminParticipantSelect: document.querySelector('[data-admin-participant-select]'),
+   adminPhoneInput: document.querySelector('[data-admin-phone-input]'),
+   adminPhoneConsent: document.querySelector('[data-admin-phone-consent]'),
+   adminWhatsappEnabled: document.querySelector('[data-admin-whatsapp-enabled]'),
+   adminContactSharingEnabled: document.querySelector('[data-admin-contact-sharing-enabled]'),
+   adminSaveButton: document.querySelector('[data-admin-save-button]'),
+   title: document.querySelector('[data-title]'),
+   kitchenPanel: document.querySelector('[data-kitchen-panel]'),
++  residentLogin: document.querySelector('[data-resident-login]'),
++  residentLoginForm: document.querySelector('[data-resident-login-form]'),
++  residentLoginStatus: document.querySelector('[data-resident-login-status]'),
++  residentSignatureInput: document.querySelector('[data-resident-signature-input]'),
++  residentPasswordInput: document.querySelector('[data-resident-password-input]'),
++  residentLoginButton: document.querySelector('[data-resident-login-button]'),
++  forgetDeviceButton: document.querySelector('[data-forget-device]'),
+   participantPanel: document.querySelector('[data-participant-panel]'),
+   summaryPanel: document.querySelector('[data-summary-panel]'),
+   participantStatus: document.querySelector('[data-participant-status]'),
+   summaryStatus: document.querySelector('[data-summary-status]'),
+   participantSelect: document.querySelector('[data-participant-select]'),
+   calendarStatus: document.querySelector('[data-calendar-status]'),
+   calendarDateInput: document.querySelector('[data-calendar-date-input]'),
+   calendarTodayButton: document.querySelector('[data-calendar-today]'),
+   calendarWeekPills: document.querySelector('[data-calendar-week-pills]'),
+   monthPrev: document.querySelector('[data-month-prev]'),
+   monthNext: document.querySelector('[data-month-next]'),
+   monthLabel: document.querySelector('[data-month-label]'),
+   monthGrid: document.querySelector('[data-month-grid]'),
+   todayOverview: document.querySelector('[data-today-overview]'),
+   participantMeals: document.querySelector('[data-participant-meals]'),
+   participantSummary: document.querySelector('[data-participant-summary]'),
+   weekPrev: document.querySelector('[data-week-prev]'),
+   weekNext: document.querySelector('[data-week-next]'),
+   weekLabel: document.querySelector('[data-week-label]'),
+   demoLinks: document.querySelector('[data-demo-links]'),
+   publicLink: document.querySelector('[data-public-link]'),
+   summaryLink: document.querySelector('[data-summary-link]'),
+   summaryNavLink: document.querySelector('[data-summary-nav-link]'),
+   participantNavLink: document.querySelector('[data-participant-nav-link]')
+ };
+ 
+ elements.refreshButton.addEventListener('click', () => refreshNow('manuale'));
+ elements.authButton.addEventListener('click', handleAuthButton);
+ elements.bootstrapButton.addEventListener('click', handleBootstrapButton);
++elements.residentLoginForm.addEventListener('submit', handleResidentLogin);
++elements.forgetDeviceButton.addEventListener('click', handleForgetDevice);
+ elements.participantSelect.addEventListener('change', handleParticipantChange);
+ elements.calendarTodayButton.addEventListener('click', handleCalendarToday);
+ elements.calendarDateInput.addEventListener('change', handleCalendarDateInput);
+ elements.monthPrev.addEventListener('click', () => shiftMonth(-1));
+ elements.monthNext.addEventListener('click', () => shiftMonth(1));
+ elements.weekPrev.addEventListener('click', () => shiftWeek(-7));
+ elements.weekNext.addEventListener('click', () => shiftWeek(7));
+ elements.adminParticipantSelect.addEventListener('change', handleAdminParticipantChange);
+ elements.adminSaveButton.addEventListener('click', handleAdminSaveContact);
+ elements.adminPhoneConsent.addEventListener('change', syncAdminCheckboxes);
+ elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
+ document.addEventListener('visibilitychange', () => {
+   if (!document.hidden && Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
+     refreshNow('ripresa');
+   }
+ });
+ 
+ registerServiceWorker();
+ initializeDemoLinks();
+ initializeAuthPanel();
+ renderMode();
+ refreshNow('avvio');
+ 
+ function initializeDemoLinks() {
+   elements.publicLink.href = window.location.origin + '/?view=participant&t=public_demo';
+@@ -228,90 +240,147 @@ async function refreshNow(source) {
+   state.timerId = window.setTimeout(() => refreshNow('timer'), delayMs);
+ 
+   if (state.mode === 'participant' || state.mode === 'summary') {
+     await refreshParticipant(source);
+     return;
+   }
+ 
+   elements.status.textContent = 'Aggiorno...';
+ 
+   try {
+     state.meals = await loadKitchenCounts(now);
+     renderMeals();
+     elements.status.textContent = source + ' #' + state.refreshCount;
+   } catch (error) {
+     state.meals = [];
+     renderMeals(getKitchenErrorMessage(error));
+     elements.status.textContent = error.message || 'Dati non disponibili';
+   }
+ 
+ }
+ 
+ async function refreshParticipant(source) {
+   setParticipantStatus('Aggiorno...');
+ 
+   try {
+-    await ensurePublicDemoSession();
+-    state.participants = await listPublicParticipants();
++    if (!state.residentAccessReady) {
++      const restored = await restoreFriendlyResidentSession();
++      if (!restored) {
++        showResidentLogin('Accesso richiesto sul dispositivo');
++        return;
++      }
++      state.residentAccessReady = true;
++      state.participants = restored.participants;
++      state.selectedParticipant = restored.participant;
++      hideResidentLogin();
++    } else {
++      state.participants = await listPublicParticipants();
++    }
++
+     state.todayOverview = await loadParticipantDaySummaries(new Date());
+     renderParticipantOptions();
+     if (!state.selectedParticipant && state.participants.length > 0) {
+       await setSelectedParticipant(state.participants[0].participantId);
+     } else if (state.selectedParticipant) {
+       await loadCurrentParticipantCalendar();
+     }
+     renderParticipantMeals();
+     setParticipantStatus(formatRefreshLabel(source));
+   } catch (error) {
+-    setParticipantStatus(error.message || 'Prenotazione non disponibile');
++    showResidentLogin(error.message || 'Prenotazione non disponibile');
++  }
++}
++
++async function handleResidentLogin(event) {
++  event.preventDefault();
++  elements.residentLoginButton.disabled = true;
++  elements.residentLoginStatus.textContent = 'Verifica accesso...';
++
++  try {
++    const result = await signInFriendlyResident(
++      elements.residentSignatureInput.value,
++      elements.residentPasswordInput.value
++    );
++    elements.residentPasswordInput.value = '';
++    state.residentAccessReady = true;
++    state.participants = result.participants;
++    state.selectedParticipant = result.participant;
++    hideResidentLogin();
++    await refreshParticipant('avvio');
++  } catch (error) {
++    elements.residentLoginStatus.textContent = error.message || 'Accesso non riuscito';
++  } finally {
++    elements.residentLoginButton.disabled = false;
+   }
+ }
+ 
++async function handleForgetDevice() {
++  await forgetResidentDevice();
++  state.residentAccessReady = false;
++  state.selectedParticipant = null;
++  state.participantWeek = [];
++  renderParticipantMeals();
++  showResidentLogin('Dispositivo dimenticato: inserisci di nuovo sigla e password comune.');
++}
++
++function showResidentLogin(message) {
++  state.residentAccessReady = false;
++  elements.residentLogin.hidden = false;
++  elements.participantPanel.hidden = true;
++  elements.summaryPanel.hidden = true;
++  elements.residentLoginStatus.textContent = message;
++}
++
++function hideResidentLogin() {
++  elements.residentLogin.hidden = true;
++  renderMode();
++}
++
+ async function refreshAdminParticipants() {
+   try {
+     state.adminParticipants = await listAdminParticipants();
+     state.centerContactSettings = await loadCenterContactSettings();
+     renderAdminParticipantOptions();
+     syncAdminContactForm();
+     elements.adminContactSharingEnabled.checked = state.centerContactSettings.participantContactSharingEnabled;
+     elements.adminStatus.textContent = 'Pronto';
+   } catch (error) {
+     elements.adminStatus.textContent = error.message || 'Contatti non disponibili';
+   }
+ }
+ 
+ function renderMode() {
+   const isParticipant = state.mode === 'participant';
+   const isSummary = state.mode === 'summary';
+   const isKitchen = state.mode === 'kitchen';
+   elements.title.textContent = isParticipant
+     ? 'Prenotazioni'
+     : isSummary
+       ? "Chi c'e oggi"
+       : 'Cucina';
+-  elements.participantPanel.hidden = !isParticipant;
+-  elements.summaryPanel.hidden = !isSummary;
++  elements.participantPanel.hidden = !state.residentAccessReady || !isParticipant;
++  elements.summaryPanel.hidden = !state.residentAccessReady || !isSummary;
+   elements.kitchenPanel.hidden = !isKitchen;
+ }
+ 
+ function renderParticipantOptions() {
+   elements.participantSelect.innerHTML = state.participants.map((participant) => {
+     const selected = state.selectedParticipant && state.selectedParticipant.participantId === participant.participantId
+       ? ' selected'
+       : '';
+     return '<option value="' + participant.participantId + '"' + selected + '>' + participant.displayName + '</option>';
+   }).join('');
+ }
+ 
+ function renderAdminParticipantOptions() {
+   elements.adminParticipantSelect.innerHTML = state.adminParticipants.map((participant) => {
+     const selectedId = state.adminParticipantId || state.adminParticipants[0]?.participantId;
+     const selected = participant.participantId === selectedId ? ' selected' : '';
+     return '<option value="' + participant.participantId + '"' + selected + '>' + participant.displayName + '</option>';
+   }).join('');
+ 
+   if (!state.adminParticipantId && state.adminParticipants[0]) {
+     state.adminParticipantId = state.adminParticipants[0].participantId;
+   }
+ }
+ 
+ async function handleParticipantChange() {
+
+
+diff --git a/prototypes/firebase-spark-pwa/public/firebase-client.js b/prototypes/firebase-spark-pwa/public/firebase-client.js
+index 81fd3d82130cc098fad089b9b6dd20ca7b01784f..21b599118bf80e5b1fa48fdaf1da7e2e7f7a60f4 100644
+--- a/prototypes/firebase-spark-pwa/public/firebase-client.js
++++ b/prototypes/firebase-spark-pwa/public/firebase-client.js
+@@ -1,69 +1,83 @@
+ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js';
+ import {
+   GoogleAuthProvider,
++  browserLocalPersistence,
+   getAuth,
+   onAuthStateChanged,
++  setPersistence,
+   signInAnonymously,
++  signInWithEmailAndPassword,
+   signInWithPopup,
+   signOut
+ } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js';
+ import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
+ 
+ export const firebaseConfig = {
+   apiKey: 'xxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   authDomain: 'tavola-comune.firebaseapp.com',
+   projectId: 'tavola-comune',
+   storageBucket: 'tavola-comune.firebasestorage.app',
+   messagingSenderId: '116770230630',
+   appId: '1:116770230630:web:766fc9f384c0b60fb178a7'
+ };
+ 
+ const missingConfigValues = Object.entries(firebaseConfig)
+   .filter(([, value]) => value.startsWith('INSERISCI_'))
+   .map(([key]) => key);
+ 
+ export const isFirebaseConfigured = missingConfigValues.length === 0;
+ export const missingFirebaseConfigValues = missingConfigValues;
+ 
+ export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+ export const auth = app ? getAuth(app) : null;
+ export const db = app ? getFirestore(app) : null;
+ 
+ const googleProvider = new GoogleAuthProvider();
+ 
+ export function watchAuth(callback) {
+   if (!auth) {
+     callback(null);
+     return () => undefined;
+   }
+ 
+   return onAuthStateChanged(auth, callback);
+ }
+ 
+-export function signInWithGoogle() {
++export async function signInWithGoogle() {
+   if (!auth) {
+     return Promise.reject(new Error('Firebase non configurato'));
+   }
+ 
++  await setPersistence(auth, browserLocalPersistence);
+   return signInWithPopup(auth, googleProvider);
+ }
+ 
++export async function signInResidentTechnicalUser(email, password) {
++  if (!auth) {
++    return Promise.reject(new Error('Firebase non configurato'));
++  }
++
++  await setPersistence(auth, browserLocalPersistence);
++  return signInWithEmailAndPassword(auth, email, password);
++}
++
+ export function signOutCurrentUser() {
+   if (!auth) {
+     return Promise.resolve();
+   }
+ 
+   return signOut(auth);
+ }
+ 
+ export function getCurrentUser() {
+   return auth ? auth.currentUser : null;
+ }
+ 
+-export function signInAnonymousUser() {
++export async function signInAnonymousUser() {
+   if (!auth) {
+     return Promise.reject(new Error('Firebase non configurato'));
+   }
+ 
++  await setPersistence(auth, browserLocalPersistence);
+   return signInAnonymously(auth);
+ }
+
+
+diff --git a/prototypes/firebase-spark-pwa/public/index.html b/prototypes/firebase-spark-pwa/public/index.html
+index 19fff6e4efaba4e339ea4175c2df93a1da031cc5..f8f75ef01cff78619ee0b8769f6d8aa27a24b0dd 100644
+--- a/prototypes/firebase-spark-pwa/public/index.html
++++ b/prototypes/firebase-spark-pwa/public/index.html
+@@ -23,57 +23,77 @@
+ 
+         if ('caches' in window) {
+           caches.keys()
+             .then(function (keys) {
+               return Promise.all(keys
+                 .filter(function (key) { return key.indexOf('tavola-comune-spark-gate-') === 0; })
+                 .map(function (key) { return caches.delete(key); }));
+             })
+             .catch(function () {});
+         }
+       }());
+     </script>
+     <main class="app-shell">
+       <header class="topbar">
+         <div>
+           <p class="eyebrow">Tavola Comune</p>
+           <h1 data-title>Prenotazioni</h1>
+         </div>
+         <div class="header-actions">
+           <button class="icon-button" type="button" data-refresh-button aria-label="Aggiorna">
+             <span aria-hidden="true">↻</span>
+           </button>
+         </div>
+       </header>
+ 
++
++      <section class="resident-login" data-resident-login hidden>
++        <div class="section-title">
++          <h2>Accesso residenti</h2>
++          <p data-resident-login-status>Inserisci sigla e password comune solo al primo utilizzo.</p>
++        </div>
++        <form class="resident-login-form" data-resident-login-form>
++          <label class="field-label">
++            Sigla
++            <input type="text" data-resident-signature-input autocomplete="username" autocapitalize="characters">
++          </label>
++          <label class="field-label">
++            Password comune
++            <input type="password" data-resident-password-input autocomplete="current-password">
++          </label>
++          <button type="submit" class="save-button" data-resident-login-button>Entra</button>
++        </form>
++      </section>
++
+       <section class="participant-panel" data-participant-panel>
+         <div class="section-title">
+           <h2>Segna i pasti</h2>
+           <p data-participant-status>-</p>
+         </div>
+         <nav class="panel-links" aria-label="Navigazione partecipante">
+           <a class="panel-link" data-summary-nav-link href="/?view=summary">Chi c'e oggi</a>
++          <button type="button" class="panel-link" data-forget-device>Dimentica questo dispositivo</button>
+         </nav>
+         <label class="field-label">
+           Persona
+           <select data-participant-select></select>
+         </label>
+         <section class="calendar-panel" aria-label="Calendario prenotazioni future">
+           <div class="section-title">
+             <h2>Calendario</h2>
+             <p data-calendar-status>Settimana corrente</p>
+           </div>
+           <div class="calendar-toolbar">
+             <button type="button" class="panel-link" data-calendar-today>Oggi</button>
+             <label class="field-label field-label-inline">
+               <span>Vai alla data</span>
+               <input type="date" data-calendar-date-input>
+             </label>
+           </div>
+           <div class="calendar-week-pills" data-calendar-week-pills></div>
+           <div class="month-toolbar">
+             <button type="button" class="icon-button" data-month-prev aria-label="Mese precedente">
+               <span aria-hidden="true">←</span>
+             </button>
+             <strong data-month-label>Mese</strong>
+             <button type="button" class="icon-button" data-month-next aria-label="Mese successivo">
+               <span aria-hidden="true">→</span>
+
+
+diff --git a/prototypes/firebase-spark-pwa/public/participant-data.js b/prototypes/firebase-spark-pwa/public/participant-data.js
+index aedbcc043a3d1ca1194908ad09f69fdcde6b29a3..d8ba388fda9f508054e1b350ef8f9de6f844edab 100644
+--- a/prototypes/firebase-spark-pwa/public/participant-data.js
++++ b/prototypes/firebase-spark-pwa/public/participant-data.js
+@@ -1,109 +1,182 @@
+ import {
+   collection,
+   doc,
+   getDoc,
+   getDocs,
+   query,
+   serverTimestamp,
+   setDoc,
+   writeBatch,
+   where
+ } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
+-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser } from './firebase-client.js';
++import { db, getCurrentUser, signInResidentTechnicalUser, signOutCurrentUser } from './firebase-client.js';
+ import { DEMO_CENTER_ID } from './bootstrap-demo.js';
+ 
+ export const PUBLIC_DEMO_TOKEN_ID = 'public_demo';
++export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
++export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
+ const PUBLIC_DEMO_EXPIRES_AT = new Date('2026-12-31T22:59:59Z');
+ let currentSession = null;
+ 
+-export async function ensurePublicDemoSession() {
++export function normalizeResidentSignature(value) {
++  return String(value || '').trim().replace(/\s+/g, '').toUpperCase();
++}
++
++export function loadStoredResidentSignature() {
++  return normalizeResidentSignature(window.localStorage.getItem(RESIDENT_SIGNATURE_STORAGE_KEY));
++}
++
++export function storeResidentSignature(signature) {
++  window.localStorage.setItem(RESIDENT_SIGNATURE_STORAGE_KEY, normalizeResidentSignature(signature));
++}
++
++export async function forgetResidentDevice() {
++  window.localStorage.removeItem(RESIDENT_SIGNATURE_STORAGE_KEY);
++  await signOutCurrentUser();
++  currentSession = null;
++}
++
++export async function signInFriendlyResident(signature, commonPassword) {
++  const normalizedSignature = normalizeResidentSignature(signature);
++  if (!normalizedSignature) {
++    throw new Error('Inserisci la sigla.');
++  }
++
++  if (!commonPassword) {
++    throw new Error('Inserisci la password comune.');
++  }
++
++  await signInResidentTechnicalUser(RESIDENT_TECHNICAL_EMAIL, commonPassword);
++  const participants = await listPublicParticipants();
++  const participant = findParticipantBySignature(participants, normalizedSignature);
++  if (!participant) {
++    await signOutCurrentUser();
++    throw new Error('Sigla non trovata tra i residenti attivi.');
++  }
++
++  storeResidentSignature(normalizedSignature);
++  await ensurePublicDemoSession(participant.participantId);
++  return { participant, participants };
++}
++
++export async function restoreFriendlyResidentSession() {
++  const signature = loadStoredResidentSignature();
++  const user = getCurrentUser();
++  if (!user || !signature) {
++    return null;
++  }
++
++  const participants = await listPublicParticipants();
++  const participant = findParticipantBySignature(participants, signature);
++  if (!participant) {
++    window.localStorage.removeItem(RESIDENT_SIGNATURE_STORAGE_KEY);
++    return null;
++  }
++
++  await ensurePublicDemoSession(participant.participantId);
++  return { participant, participants };
++}
++
++export async function ensurePublicDemoSession(participantId) {
+   if (!db) {
+     throw new Error('Firebase non configurato');
+   }
+ 
+-  let user = getCurrentUser();
++  const user = getCurrentUser();
+   if (!user) {
+-    const credential = await signInAnonymousUser();
+-    user = credential.user;
++    throw new Error('Accesso richiesto');
+   }
+ 
+   const sessionRef = doc(db, 'centers', DEMO_CENTER_ID, 'accessSessions', user.uid);
+   const sessionSnap = await getDoc(sessionRef);
+-  if (sessionSnap.exists() && sessionSnap.data().scope !== 'PUBLIC' && user.isAnonymous) {
+-    await signOutCurrentUser();
+-    const credential = await signInAnonymousUser();
+-    user = credential.user;
+-    return createPublicSession(user.uid, false);
+-  }
+-
+   if (sessionSnap.exists()) {
+     currentSession = sessionSnap.data();
++    if (participantId && currentSession.participantId !== participantId) {
++      await selectPublicParticipant(participantId);
++    }
+     return user;
+   }
+ 
+-  return createPublicSession(user.uid, sessionSnap.exists());
++  return createPublicSession(user.uid, false, participantId);
+ }
+ 
+-async function createPublicSession(authUid, sessionExists) {
++async function createPublicSession(authUid, sessionExists, participantId) {
+   const tokenId = getTokenIdFromUrl(PUBLIC_DEMO_TOKEN_ID);
+   const sessionRef = doc(db, 'centers', DEMO_CENTER_ID, 'accessSessions', authUid);
+   const payload = sessionExists ? {
+     updatedAt: serverTimestamp()
+   } : {
+     centerId: DEMO_CENTER_ID,
+     scope: 'PUBLIC',
+     targetType: 'CENTER',
+     tokenId,
+     status: 'ACTIVE',
+     expiresAt: PUBLIC_DEMO_EXPIRES_AT,
+     createdAt: serverTimestamp(),
+     updatedAt: serverTimestamp()
+   };
+ 
++  if (participantId) {
++    payload.participantId = participantId;
++  }
++
+   await setDoc(sessionRef, payload, { merge: true });
+   currentSession = payload;
+ 
+   return getCurrentUser();
+ }
+ 
+ export async function listPublicParticipants() {
+   const snapshot = await getDocs(collection(db, 'centers', DEMO_CENTER_ID, 'publicParticipants'));
+   return snapshot.docs
+     .map((docSnap) => ({ participantId: docSnap.id, ...docSnap.data() }))
+     .filter((participant) => participant.status === 'ACTIVE')
+     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+ }
+ 
+ export async function listAdminParticipants() {
+   const snapshot = await getDocs(collection(db, 'centers', DEMO_CENTER_ID, 'participants'));
+   return snapshot.docs
+     .map((docSnap) => ({ participantId: docSnap.id, ...docSnap.data() }))
+     .filter((participant) => participant.status === 'ACTIVE')
+     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+ }
+ 
++function findParticipantBySignature(participants, signature) {
++  return participants.find((participant) => {
++    const candidates = [
++      participant.signature,
++      participant.sigla,
++      participant.code,
++      participant.participantId,
++      participant.displayName
++    ];
++    return candidates.some((candidate) => normalizeResidentSignature(candidate) === signature);
++  }) || null;
++}
++
+ export async function selectPublicParticipant(participantId) {
+   const user = getCurrentUser();
+   if (!user) {
+     throw new Error('Sessione pubblica non pronta');
+   }
+ 
+   if (currentSession && currentSession.participantId === participantId) {
+     return;
+   }
+ 
+   await setDoc(doc(db, 'centers', DEMO_CENTER_ID, 'accessSessions', user.uid), {
+     participantId,
+     updatedAt: serverTimestamp()
+   }, { merge: true });
+   currentSession = { ...currentSession, participantId };
+ }
+ 
+ export async function loadParticipantMeals(participantId, date = new Date()) {
+   const mealDate = formatDateId(date);
+   const [mealTypes, windows, overrides] = await Promise.all([
+     getMealTypes(),
+     getMealWindows(mealDate),
+     getOwnOverrides(participantId, mealDate)
+   ]);
+   const windowByMeal = new Map(windows.map((item) => [item.mealTypeId, item])); 
+
+
+diff --git a/prototypes/firebase-spark-pwa/public/styles.css b/prototypes/firebase-spark-pwa/public/styles.css
+index 7f61a1c2e85a9e840b3b2fc42b539ebb4ccfd9f8..126cdde1b838d1aff1cf23b0faca5a8f96409f35 100644
+--- a/prototypes/firebase-spark-pwa/public/styles.css
++++ b/prototypes/firebase-spark-pwa/public/styles.css
+@@ -868,25 +868,39 @@ h2 {
+   .week-header {
+     display: none;
+   }
+ 
+   .day-row {
+     grid-template-columns: 1fr;
+     padding: 12px;
+   }
+ 
+   .day-meals {
+     grid-template-columns: 1fr;
+   }
+ 
+   .auth-actions {
+     display: grid;
+   }
+ 
+   .admin-shell-summary {
+     align-items: start;
+   }
+ 
+   .meal-card {
+     min-height: 104px;
+   }
+ }
++
++.resident-login {
++  background: #fffaf0;
++  border: 1px solid #f0d7a1;
++  border-radius: 1rem;
++  box-shadow: 0 12px 30px rgba(28, 49, 46, 0.08);
++  margin: 1rem 0;
++  padding: 1rem;
++}
++
++.resident-login-form {
++  display: grid;
++  gap: 0.85rem;
++}
+
+
+diff --git a/tests/firebase-spark/firestore-rules-static.test.mjs b/tests/firebase-spark/firestore-rules-static.test.mjs
+index 90be28fdf940adf85a06529852fe9a3164f6c846..3ce0754d92e6567776982cadae74a4e837bc1a08 100644
+--- a/tests/firebase-spark/firestore-rules-static.test.mjs
++++ b/tests/firebase-spark/firestore-rules-static.test.mjs
+@@ -1,52 +1,52 @@
+ import { readFileSync } from 'node:fs';
+ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ 
+ const rules = readFileSync(
+   new URL('../../prototypes/firebase-spark-pwa/firestore.rules', import.meta.url),
+   'utf8'
+ );
+ 
+ test('active access sessions expire with request.time', () => {
+   assert.match(
+     rules,
+     /function hasSession\(centerId\)[\s\S]*request\.time < get\([\s\S]*accessSessions[\s\S]*\.data\.expiresAt;/
+   );
+ });
+ 
+ test('access session create copies token expiry into the session', () => {
+   assert.match(
+     rules,
+     /request\.resource\.data\.expiresAt == tokenData\(centerId, request\.resource\.data\.tokenId\)\.expiresAt/
+   );
+ });
+ 
+-test('public sessions cannot choose participantId during creation', () => {
++test('public sessions may bind a valid participantId during creation', () => {
+   assert.match(
+     rules,
+-    /request\.resource\.data\.scope == 'PUBLIC'[\s\S]*!request\.resource\.data\.keys\(\)\.hasAny\(\['participantId', 'groupId'\]\)/
++    /request\.resource\.data\.scope == 'PUBLIC'[\s\S]*!request\.resource\.data\.keys\(\)\.hasAny\(\['groupId'\]\)[\s\S]*participantExists\(centerId, request\.resource\.data\.participantId\)/
+   );
+ });
+ 
+ test('session update keeps immutable session fields unchanged', () => {
+   for (const field of [
+     'centerId',
+     'scope',
+     'targetType',
+     'tokenId',
+     'status',
+     'expiresAt',
+     'createdAt'
+   ]) {
+     assert.match(
+       rules,
+       new RegExp(`request\\.resource\\.data\\.${field} == resource\\.data\\.${field}`)
+     );
+   }
+ });
+ 
+ test('kitchen and selected public sessions can read reservation rules for counts', () => {
+   assert.match(
+     rules,
+     /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'KITCHEN'\)/
+   );
+
+
+

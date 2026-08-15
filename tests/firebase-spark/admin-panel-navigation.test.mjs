@@ -1,0 +1,278 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const projectRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
+const [html, css, app, firebaseClient, centerSettings, adminCenter, administratorAuth] = await Promise.all([
+  readFile(new URL('index.html', projectRoot), 'utf8'),
+  readFile(new URL('styles.css', projectRoot), 'utf8'),
+  readFile(new URL('app.js', projectRoot), 'utf8'),
+  readFile(new URL('firebase-client.js', projectRoot), 'utf8'),
+  readFile(new URL('center-settings.js', projectRoot), 'utf8'),
+  readFile(new URL('admin-center.js', projectRoot), 'utf8'),
+  import(new URL('domain/administrator-auth.mjs', projectRoot))
+]);
+
+test('il riepilogo amministrativo non richiede il vecchio indicatore visivo del calendario', () => {
+  assert.doesNotMatch(html, /data-admin-overview-calendar/);
+  assert.match(app, /if \(elements\.adminOverviewCalendar\) \{[\s\S]*elements\.adminOverviewCalendar\.textContent/);
+});
+
+test('ordine operativo delle schede amministrative', () => {
+  const navigation = html.match(/<nav class="admin-section-nav"[\s\S]*?<\/nav>/)?.[0] || '';
+  const sections = [...navigation.matchAll(/data-admin-section-id="([^"]+)"/g)].map((match) => match[1]);
+
+  assert.deepEqual(sections, ['configuration', 'people', 'overview', 'adaptations', 'access', 'activity']);
+  assert.match(navigation, /role="tablist"/);
+  assert.match(navigation, />Link per accedere<\/a>/);
+  assert.match(navigation, />Manutenzione<\/a>/);
+  assert.doesNotMatch(navigation, />Attività<\/a>/);
+  assert.doesNotMatch(navigation, /data-admin-week-link/);
+});
+
+test('il Pannello proprietario usa didascalie grammaticalmente coerenti', () => {
+  assert.match(html, /<h2>Pannello Proprietario<\/h2>[\s\S]*Genera il collegamento per il responsabile del centro[\s\S]*Gestisce centri e amministratori\./);
+  assert.doesNotMatch(html, />Gestisci centri e amministratori\.</);
+});
+
+test('la configurazione presenta responsabile salvataggio e icona nell ordine operativo', () => {
+  const configuration = html.match(/id="admin-configuration-section"[\s\S]*?<div class="admin-role-stack"/)?.[0] || '';
+  const responsible = configuration.indexOf('Responsabile del centro');
+  const save = configuration.indexOf('data-admin-center-settings-save');
+  const avatar = configuration.indexOf('Icona del centro');
+
+  assert.ok(responsible >= 0 && responsible < save);
+  assert.ok(save < avatar);
+  assert.doesNotMatch(configuration, /data-admin-center-settings-cancel/);
+  assert.doesNotMatch(configuration, /data-bootstrap-button/);
+});
+
+test('agenda centro vive nella vista settimana e sostituisce il vecchio collegamento', () => {
+  assert.doesNotMatch(html, /data-admin-week-link|>Settimana operativa<\/a>/);
+  assert.match(html, /<details class="week-operations"[\s\S]*class="agenda-center-toggle"[\s\S]*Agenda centro/);
+  assert.match(html, /class="week-operations-grid"[\s\S]*Ammalati[\s\S]*Note[\s\S]*Dieta occasionale/);
+  assert.match(css, /\.week-operations-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.week-operations-grid[\s\S]*grid-template-columns: 1fr/);
+});
+
+test('la palette colori usa un selettore nativo con anteprima immediata', () => {
+  const paletteSelect = html.match(/<select data-admin-theme-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
+  const paletteValues = [...paletteSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(paletteValues, ['smeraldo', 'giallino', 'beige', 'rosso-pallido', 'confetto']);
+  assert.match(html, /data-theme-select-preview/);
+  assert.doesNotMatch(html, /data-theme-select-trigger|data-admin-theme-radio/);
+  assert.match(app, /adminThemeSelect\.addEventListener\('change', handleThemeSelectChange\)/);
+  assert.match(app, /document\.documentElement\.dataset\.theme = selectedPalette/);
+  assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
+  assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'smeraldo'/);
+});
+
+test('i collegamenti operativi usano copia diretta e condivisione nativa o assistita', () => {
+  assert.match(html, /data-access-link="pasti"/);
+  assert.match(html, /data-access-link="cucina"/);
+  assert.doesNotMatch(html, /data-copy-access-link/);
+  assert.match(html, /data-share-access-link="pasti"/);
+  assert.match(html, /data-share-access-link="cucina"/);
+  assert.match(app, /btn\.addEventListener\('click', handleAccessLinkCopy\)/);
+  assert.doesNotMatch(app, /handleAccessLinkOpen/);
+  assert.match(app, /getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/);
+  assert.match(app, /const url = getCachedAccessLinkUrl\(scope\)/);
+  assert.match(app, /await navigator\.share\(shareData\)/);
+  assert.match(app, /openAccessShareDialog\(label, url\)/);
+  assert.match(app, /https:\/\/wa\.me\/\?text=/);
+  assert.match(app, /mailto:\?subject=/);
+  assert.match(app, /access-share-target/);
+  assert.match(app, /access-share-option/);
+  assert.match(app, /function handleAccessLinkCopy/);
+  assert.match(app, /function handleAccessLinkShare/);
+  assert.match(app, /navigator\.share/);
+  assert.match(html, /<svg aria-hidden="true" viewBox="0 0 24 24">/);
+  assert.doesNotMatch(html, /data-generate-links/);
+  assert.match(app, /ensureOperationalLinks\(\)/);
+  assert.match(app, /buildOperationalLink\('participant', links\.publicTokenId, centerId, 'friendly'\)/);
+  assert.match(app, /buildOperationalLink\('kitchen', links\.kitchenTokenId, centerId\)/);
+});
+
+test('Pasti Cucina ed Esci condividono il verde principale', () => {
+  assert.match(css, /\.access-link-btn:not\(:disabled\)\s*\{[\s\S]*?background: var\(--primary\);[\s\S]*?border-color: var\(--primary\);/);
+  assert.match(css, /\.primary-action\s*\{[\s\S]*?background: var\(--primary\) !important;/);
+  assert.doesNotMatch(css, /\.access-link-btn:not\(:disabled\)\s*\{[\s\S]*?#2e7d32/);
+});
+
+test('la navigazione precede il contenuto completo della panoramica', () => {
+  const navigationPosition = html.indexOf('data-admin-section-nav');
+  const overviewPosition = html.indexOf('class="admin-overview-content"');
+  const linksPosition = html.indexOf('data-operational-links');
+
+  assert.ok(navigationPosition >= 0);
+  assert.ok(overviewPosition > navigationPosition);
+  assert.ok(linksPosition > overviewPosition);
+});
+
+test('il primo accesso apre Configurazione e i successivi Panoramica', () => {
+  assert.match(app, /\? 'overview'\s*:\s*'configuration'/);
+  assert.match(app, /getCenterScopedStorageKey\(ADMIN_SECTION_VISIT_KEY\)/);
+});
+
+test('deep-link e capability governano la scheda richiesta', () => {
+  assert.match(app, /window\.addEventListener\('hashchange', handleAdminHashChange\)/);
+  assert.match(app, /function isAdminSectionAllowed\(section\)/);
+  assert.match(app, /CAPABILITIES\.MANAGE_CENTER_SETTINGS/);
+  assert.match(app, /CAPABILITIES\.MANAGE_PARTICIPANTS/);
+  assert.match(app, /CAPABILITIES\.VIEW_AUDIT_LOG/);
+});
+
+test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {
+  assert.match(css, /Modalità schedario: una sola scheda amministrativa visibile alla volta/);
+  assert.match(css, /\.admin-panel\[data-admin-section="overview"\]/);
+  assert.doesNotMatch(css, /\.admin-panel\[data-mobile-section=/);
+  assert.match(css, /display: none !important/);
+});
+
+test('la navigazione dichiara controlli e stato accessibili', () => {
+  const tabs = [...html.matchAll(/data-admin-section-id="([^"]+)"[^>]*role="tab"[^>]*aria-controls="([^"]+)"/g)];
+  assert.equal(tabs.length, 6);
+  assert.match(app, /aria-selected/);
+});
+
+test('il proprietario esce con un azione primaria e l amministrazione non usa sigle residenti', () => {
+  assert.match(html, /class="primary-action owner-panel-exit"[^>]*data-owner-exit/);
+  assert.doesNotMatch(html, /data-change-signature|Cambia sigla/);
+  assert.doesNotMatch(app, /handleChangeSignature|changeSignatureButton/);
+});
+
+test('il primo accesso richiede i dati del responsabile e riusa la email autenticata', () => {
+  const profile = html.match(/<fieldset class="admin-administrator-profile"[\s\S]*?<\/fieldset>/)?.[0] || '';
+  assert.match(profile, /data-admin-administrator-name[^>]*required/);
+  assert.match(profile, /data-admin-administrator-signature[^>]*required/);
+  assert.match(profile, /data-admin-administrator-email[^>]*required/);
+  assert.match(profile, /data-admin-administrator-password/);
+  assert.match(profile, /Richiesti per iniziare · modificabili in seguito/);
+  assert.match(app, /adminAdministratorEmail\.value = user\.email \|\| ''/);
+  assert.match(app, /requiresAdministratorPassword\(user\)/);
+  assert.match(app, /Inserisci la password amministratore/);
+  assert.match(app, /!isAdministratorProfileComplete\(\) && section !== 'configuration'/);
+});
+
+test('Google non mostra e non richiede la password amministratore', () => {
+  const googleUser = { providerData: [{ providerId: 'google.com' }] };
+  const linkedUser = { providerData: [{ providerId: 'password' }, { providerId: 'google.com' }] };
+  const passwordUser = { providerData: [{ providerId: 'password' }] };
+
+  assert.equal(administratorAuth.requiresAdministratorPassword(googleUser), false);
+  assert.equal(administratorAuth.requiresAdministratorPassword(linkedUser), false);
+  assert.equal(administratorAuth.requiresAdministratorPassword(passwordUser), true);
+  assert.match(app, /adminAdministratorPasswordRow\.hidden = state\.adminRole !== 'OWNER'[\s\S]*!requiresAdministratorPassword\(getCurrentUser\(\)\)/);
+  assert.doesNotMatch(app, /administratorPasswordRequired === true\s*\|\|/);
+});
+
+test('il salvataggio del responsabile crea o aggiorna automaticamente la Persona', () => {
+  assert.match(app, /saveAdministratorAsParticipant\(\{/);
+  assert.match(app, /participantWithPreviousSignature \|\| participantWithNextSignature/);
+  assert.match(app, /groupId: participant\?\.groupId \|\| 'group_residenti'/);
+  assert.match(app, /state\.adminParticipants = await listAdminParticipants\(\)/);
+  assert.match(app, /state\.adminParticipantId = administratorParticipantId/);
+  assert.match(app, /Configurazione e scheda Persona salvate/);
+});
+
+test('i campi del responsabile restano contenuti nelle rispettive colonne', () => {
+  assert.match(css, /\.admin-administrator-profile-fields input\s*\{[\s\S]*?width: 100%;[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
+});
+
+test('l invito email usa una credenziale temporanea e richiede la password definitiva', () => {
+  assert.match(html, /data-admin-password-label/);
+  assert.match(app, /elements\.adminPassword\.value = invitePassword/);
+  assert.match(app, /elements\.adminPassword\.readOnly = true/);
+  assert.match(app, /Password temporanea dell\\'invito/);
+  assert.match(app, /elements\.initializerPassword\.required = isEmailAuth/);
+  assert.match(app, /await updateAdministratorPassword\(newPassword\)/);
+  assert.match(app, /elements\.adminAdministratorEmail\.value = user\.email \|\| ''/);
+});
+
+test('un amministratore già registrato può usare la password personale con un nuovo invito', () => {
+  assert.match(html, /data-admin-email-mode-toggle/);
+  assert.match(app, /adminInviteEmailMode: 'create'/);
+  assert.match(app, /Password personale/);
+  assert.match(app, /Hai già un account\? Accedi/);
+  assert.match(app, /state\.adminInviteEmailMode = 'signin'/);
+  assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
+  assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
+  assert.match(app, /else if \(!getAdminInvitationId\(\)\)/);
+});
+
+test('un amministratore può recuperare la password senza perdere il link di invito', () => {
+  assert.match(html, /data-admin-password-reset/);
+  assert.match(app, /handleAdministratorPasswordReset/);
+  assert.match(app, /await sendAdminPasswordResetEmail\(email\)/);
+  assert.match(app, /Se questo account usa una password, riceverai il collegamento/);
+  assert.match(app, /Se usa Google, accedi con Google\./);
+  assert.match(firebaseClient, /url: window\.location\.href/);
+});
+
+test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona associata', () => {
+  assert.doesNotMatch(html, /data-admin-role-badge/);
+  assert.doesNotMatch(app, /adminRoleBadge/);
+  assert.match(html, /Prima invita il nuovo amministratore[\s\S]*conferma il trasferimento/);
+  assert.match(html, /data-admin-invitation-result/);
+  assert.match(html, /data-admin-invitation-link/);
+  assert.match(html, /data-admin-invitation-copy/);
+  assert.match(app, /invitationUrl\.searchParams\.set\('adminInvite', invitation\.invitationId\)/);
+  assert.match(app, /elements\.adminInvitationLink\.value = invitationUrl\.toString\(\)/);
+  assert.match(app, /admin\.participantId[\s\S]*activeParticipantIds\.has\(admin\.participantId\)/);
+  assert.match(app, /const successors = state\.adminAccounts\.filter/);
+  assert.doesNotMatch(app, /const successors = state\.adminInvitations/);
+  assert.match(adminCenter, /administratorName: String\(successorParticipant\.displayName/);
+  assert.match(adminCenter, /administratorSignature: String\(successorParticipant\.signature/);
+  assert.match(adminCenter, /adminEmail: String\(successor\.email/);
+  assert.match(adminCenter, /administratorPasswordRequired: successor\.administratorPasswordRequired === true/);
+  assert.match(adminCenter, /administratorPasswordRequired: requiresAdministratorPassword\(user\)/);
+});
+
+test('l autenticazione del candidato non accetta automaticamente l invito', () => {
+  const pendingBranch = adminCenter.slice(
+    adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'),
+    adminCenter.indexOf('const profileSnapshot = await getDoc')
+  );
+  assert.match(html, /Sì, accetto/);
+  assert.match(adminCenter, /invitationPending: true/);
+  assert.doesNotMatch(pendingBranch, /claimRoleInvitation/);
+  assert.match(adminCenter, /export async function acceptAdministratorInvitation/);
+  assert.match(app, /await acceptAdministratorInvitation\(\)/);
+  assert.match(app, /Invito in attesa della tua risposta/);
+  assert.match(app, /'Accettato'/);
+  assert.match(app, /'Rifiutato'/);
+});
+
+test('una sola risposta viene conservata e completata dopo l identificazione', () => {
+  assert.match(app, /ADMIN_INVITATION_DECISION_STORAGE_PREFIX/);
+  assert.match(app, /storeAdminInvitationDecision\('ACCEPT'\)/);
+  assert.match(app, /storeAdminInvitationDecision\('REJECT'\)/);
+  assert.match(app, /const storedDecision = access\.invitationPending/);
+  assert.match(app, /storedDecision === 'ACCEPT'[\s\S]*acceptAdministratorInvitation/);
+  assert.match(app, /storedDecision === 'REJECT'[\s\S]*rejectAdministratorInvitation/);
+  assert.match(app, /clearAdminInvitationDecision\(roleInvitationId\)/);
+  assert.match(app, /Ora identificati una sola volta/);
+});
+
+test('un nuovo account email deve sostituire la password temporanea prima di continuare', () => {
+  assert.match(html, /data-admin-password-setup-dialog/);
+  assert.match(html, /La password temporanea dell'invito deve essere sostituita/);
+  assert.match(app, /showRequiredAdminPasswordSetup\(user, access\.passwordSetupRequired === true\)/);
+  assert.match(app, /elements\.adminPasswordSetupDialog\.showModal\(\)/);
+  assert.match(app, /await updateAdministratorPassword\(password\)/);
+  assert.match(app, /await completeAdministratorPasswordSetup\(\)/);
+  assert.match(app, /requiresAdministratorPassword\(user\)/);
+  assert.match(app, /addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
+  assert.doesNotMatch(app, /ADMIN_PASSWORD_SETUP_STORAGE_PREFIX/);
+  assert.match(adminCenter, /passwordSetupRequired: requiresAdministratorPassword\(user\)/);
+  assert.match(adminCenter, /export async function completeAdministratorPasswordSetup/);
+});
+
+test('il precedente responsabile sceglie se restare amministratore o essere revocato', () => {
+  assert.match(app, /checkboxLabel: 'Revoca il mio precedente accesso al centro'/);
+  assert.match(app, /const revokePrevious = decision\.checked/);
+  assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
+  assert.match(adminCenter, /const revokePrevious = options\?\.revokePrevious === true/);
+  assert.match(adminCenter, /revokePrevious[\s\S]*batch\.delete\(currentMembershipRef\)/);
+  assert.match(adminCenter, /revokePrevious \? \{ status: 'DISABLED' \}/);
+});

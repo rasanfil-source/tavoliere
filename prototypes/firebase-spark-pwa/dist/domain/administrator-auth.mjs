@@ -1,0 +1,1 @@
+function e(o){return!!o?.providerData?.some(r=>r.providerId==="google.com")}function s(o){return e(o)?!1:!!o?.providerData?.some(r=>r.providerId==="password")}export{s as requiresAdministratorPassword,e as usesGoogleAdministratorAccess};
