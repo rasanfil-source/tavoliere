@@ -17,9 +17,7 @@ const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
 const CENTER_AVATAR_MAX_LENGTH = 300000;
 const ALLOWED_THEME_PALETTES = new Set([
   'smeraldo',
-  'giallino',
-  'beige',
-  'rosso-pallido',
+  'terracotta',
   'confetto'
 ]);
 let centerContactSettingsCache = null;

@@ -265,9 +265,9 @@
   --mass-yes-bg: color-mix(in srgb, var(--good) 26%, var(--surface));
   --mass-yes-border: color-mix(in srgb, var(--good) 58%, var(--line));
   --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
-  --mass-no-bg: color-mix(in srgb, #b3261e 24%, var(--surface));
-  --mass-no-border: color-mix(in srgb, #b3261e 60%, var(--line));
-  --mass-no-ink: #981f19;
+  --mass-no-bg: color-mix(in srgb, var(--danger) 24%, var(--surface));
+  --mass-no-border: color-mix(in srgb, var(--danger) 60%, var(--line));
+  --mass-no-ink: color-mix(in srgb, var(--danger) 90%, var(--ink));
 }
 
 .summary-layout-classic .summary-matrix-people-label {
@@ -352,35 +352,6 @@
 .summary-matrix-contact-popover .summary-matrix-whatsapp img {
   width: 24px;
   height: 24px;
-}
-
-html[data-theme="giallino"] {
-  --bg: #fffdf5;
-  --surface: #fffefa;
-  --line: #eadfb9;
-  --calendar-heading-bg: #fff7d4;
-  --calendar-heading-border: #e7d898;
-}
-
-html[data-theme="beige"] {
-  --surface: #fffdfb;
-  --line: #dfd4c8;
-}
-
-html[data-theme="rosso-pallido"] {
-  --surface: #fffafa;
-  --line: #ead2ce;
-  --mass-yes-bg: #fff;
-  --mass-no-bg: #fff;
-}
-
-html[data-theme="confetto"] {
-  --surface: #fffafb;
-  --line: #f0d5dd;
-}
-
-.theme-swatch-giallino {
-  background: linear-gradient(135deg, #927000 60%, #fff7d4 60%);
 }
 
 .kitchen-notes,

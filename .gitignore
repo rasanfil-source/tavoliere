@@ -4,6 +4,7 @@ package-lock.json.tmp
 
 .firebase/
 .firebase-cache/
+private-backups/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
