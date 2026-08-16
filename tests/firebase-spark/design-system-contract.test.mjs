@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const styles = await readFile('prototypes/firebase-spark-pwa/public/styles.css', 'utf8');
+const summaryStyles = await readFile('prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css', 'utf8');
 
 test('l attivazione del centro evita la testata amministrativa duplicata', () => {
   assert.match(
@@ -51,7 +52,9 @@ test('stati positivi e settimana completa si armonizzano con ogni palette', () =
   assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--good: #4f7049/);
   assert.match(styles, /html\[data-theme="confetto"\][\s\S]*--good: #47785f/);
   assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--good\)/);
-  assert.match(styles, /\.month-week-action-row\.month-week-complete \{[\s\S]*border-color: var\(--complete-line\);[\s\S]*background: var\(--complete-surface\)/);
+  assert.match(summaryStyles, /--week-complete-surface: color-mix\(in srgb, var\(--primary\)/);
+  assert.match(summaryStyles, /\.month-week-action-row\.month-week-complete \{[\s\S]*border-color: var\(--week-complete-line\);[\s\S]*background: var\(--week-complete-surface\)/);
+  assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--calendar-heading-bg: #f3e3d7/);
 });
 
 test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {

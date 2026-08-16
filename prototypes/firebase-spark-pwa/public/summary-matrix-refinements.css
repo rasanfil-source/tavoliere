@@ -262,12 +262,23 @@
   --summary-day-next-strong: color-mix(in srgb, var(--primary) 9%, var(--surface));
   --summary-day-following: color-mix(in srgb, var(--primary) 10%, var(--surface));
   --summary-day-following-strong: color-mix(in srgb, var(--primary) 15%, var(--surface));
+  /* La fascia della settimana completata deve seguire la palette attiva,
+     non il verde di stato globale (--good). */
+  --week-complete-surface: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  --week-complete-line: color-mix(in srgb, var(--primary) 34%, var(--line));
   --mass-yes-bg: color-mix(in srgb, var(--good) 26%, var(--surface));
   --mass-yes-border: color-mix(in srgb, var(--good) 58%, var(--line));
   --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
   --mass-no-bg: color-mix(in srgb, var(--danger) 24%, var(--surface));
   --mass-no-border: color-mix(in srgb, var(--danger) 60%, var(--line));
   --mass-no-ink: color-mix(in srgb, var(--danger) 90%, var(--ink));
+}
+
+/* Colonna destra della vista mese: quando la settimana è tutta prenotata,
+   usa una tinta della palette corrente anche su Terracotta e Confetto. */
+.month-week-action-row.month-week-complete {
+  border-color: var(--week-complete-line);
+  background: var(--week-complete-surface);
 }
 
 .summary-layout-classic .summary-matrix-people-label {

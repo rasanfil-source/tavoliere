@@ -1712,9 +1712,11 @@ html[data-theme="terracotta"] {
   --warn: #96630f;
   --danger: #a5322a;
   --info: #3f6e78;
-  --calendar-heading-bg: #e7eef0;
-  --calendar-heading-border: #b9ccd0;
-  --calendar-heading-ink: #3f6e78;
+  /* Intestazioni di calendario calde e materiche: il blu-grigio
+     appartiene alla palette Smeraldo e stonava sulle superfici terracotta. */
+  --calendar-heading-bg: #f3e3d7;
+  --calendar-heading-border: #d8ad98;
+  --calendar-heading-ink: #8e492f;
   --today-surface: #f8e7df;
   --today-line: #d39a84;
   --today-ink: #b1502f;
