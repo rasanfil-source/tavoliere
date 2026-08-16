@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816m';
+} from './i18n/i18n.mjs?v=20260816n';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -38,10 +38,11 @@ import {
   loadCenterContactSettings,
   removeCenterAvatar,
   saveCenterAvatar,
+  synchronizeCenterOwnerEmail,
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816g';
+} from './center-settings.js?v=20260816h';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -51,7 +52,7 @@ import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
-import { toUserMessage } from './core/user-error.mjs?v=20260816h';
+import { toUserMessage } from './core/user-error.mjs?v=20260816i';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
@@ -66,7 +67,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816i';
+} from './summary-matrix-view.js?v=20260816j';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -76,13 +77,13 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816j',
+  admin: './admin-center.js?v=20260816k',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816g',
   daily: './daily-operations.js?v=20260816h',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816g',
-  participant: './participant-data.js?v=20260816j'
+  participant: './participant-data.js?v=20260816k'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -1777,9 +1778,14 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   const storedDecision = access.invitationPending
     ? loadAdminInvitationDecision(roleInvitationId)
     : '';
-  if (storedDecision === 'ACCEPT') {
+  const emailVerificationPending = requiresAdministratorPassword(user)
+    && user.emailVerified !== true;
+  if (storedDecision === 'ACCEPT' && emailVerificationPending) {
+    elements.adminEmailStatus.textContent = state.adminAuthNotice
+      || 'Ti abbiamo inviato un’email di verifica. Conferma il tuo indirizzo per completare l’attivazione.';
+  } else if (storedDecision === 'ACCEPT') {
     try {
-      elements.adminEmailStatus.textContent = 'Accettazione in corso...';
+      elements.adminEmailStatus.textContent = 'Attivazione in corso...';
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
@@ -1959,7 +1965,7 @@ function setSignedOutState() {
   elements.adminEmailCreate.hidden = !hasAdministratorInvitation || usesExistingEmailAccount;
   elements.adminEmailSignIn.hidden = hasAdministratorInvitation && !usesExistingEmailAccount;
   elements.adminEmailModeToggle.hidden = !hasAdministratorInvitation;
-  elements.adminPasswordReset.hidden = !usesExistingEmailAccount;
+  elements.adminPasswordReset.hidden = !(usesExistingEmailAccount || hasAdministratorInvitation);
   elements.adminEmailModeToggle.textContent = usesExistingEmailAccount
     ? 'Devi creare un account? Torna indietro'
     : 'Hai già un account? Accedi';
@@ -2073,6 +2079,7 @@ function handleAuthButton() {
     return;
   }
 
+  storeImplicitAdministratorInvitationAcceptance();
   signInWithGoogle().catch(showAuthError);
 }
 
@@ -2083,6 +2090,7 @@ function handleOwnerExit() {
 
 async function handleAdministratorEmailSignIn() {
   state.adminAuthNotice = '';
+  storeImplicitAdministratorInvitationAcceptance();
   setAdministratorEmailButtonsDisabled(true);
   elements.adminEmailStatus.textContent = 'Accesso in corso...';
   try {
@@ -2126,10 +2134,13 @@ async function handleAdministratorPasswordReset() {
 }
 
 async function handleAdministratorEmailCreation() {
-  if (!getAdminInvitationId() && !getAdminRoleInvitationId()) {
+  const centerInvitationId = getAdminInvitationId();
+  const roleInvitationId = getAdminRoleInvitationId();
+  if (!centerInvitationId && !roleInvitationId) {
     elements.adminEmailStatus.textContent = 'Per creare un account serve un invito valido.';
     return;
   }
+  storeImplicitAdministratorInvitationAcceptance();
   setAdministratorEmailButtonsDisabled(true);
   const email = elements.adminEmail.value.trim();
   const password = elements.adminPassword.value;
@@ -2150,10 +2161,10 @@ async function handleAdministratorEmailCreation() {
       } catch (signInError) {
         if (signInError?.code === 'auth/email-not-verified') {
           elements.adminEmailStatus.textContent = 'Questo account esiste già ma l\'email non è stata verificata. Verifica la tua email.';
-        } else if (!getAdminInvitationId()) {
+        } else if (roleInvitationId || !centerInvitationId) {
           state.adminInviteEmailMode = 'signin';
           setSignedOutState();
-          elements.adminEmailStatus.textContent = 'Account già esistente. Usa Google oppure la password personale.';
+          elements.adminEmailStatus.textContent = 'Account già esistente con questa email. Inserisci la tua password personale oppure usa “Password dimenticata?”.';
         } else {
           try {
             elements.adminEmailStatus.textContent = 'Account già presente. Conferma la tua identità con Google...';
@@ -2986,6 +2997,19 @@ async function refreshAdminParticipants() {
       canManageRoles ? listAdministratorInvitations() : Promise.resolve([])
     ]);
     if (!requestCoordinator.isCurrentRequest(request)) return;
+    const authenticatedOwnerEmail = state.adminRole === 'OWNER'
+      ? String(getCurrentUser()?.email || '').trim().toLowerCase()
+      : '';
+    if (authenticatedOwnerEmail
+        && centerSettings.adminEmail.toLowerCase() !== authenticatedOwnerEmail) {
+      try {
+        centerSettings.adminEmail = await synchronizeCenterOwnerEmail(authenticatedOwnerEmail);
+      } catch {
+        // Il modulo resta utilizzabile: il salvataggio esplicito riproverà con
+        // l'identità autenticata del responsabile effettivo.
+        centerSettings.adminEmail = authenticatedOwnerEmail;
+      }
+    }
     state.adminParticipants = adminParticipants;
     state.adminAccounts = adminAccounts;
     populateAdminDietSelect(t('diet.option.STANDARD'));
@@ -3039,6 +3063,7 @@ function renderAdminLeadershipForm() {
   );
   const successors = state.adminAccounts.filter((admin) => (
     admin.role === 'ADMIN'
+    && admin.status === 'ACTIVE'
     && admin.participantId
     && admin.passwordSetupRequired !== true
     && activeParticipantIds.has(admin.participantId)
@@ -3241,6 +3266,13 @@ async function handleAdministratorInvitationCopy() {
   }
 }
 
+function storeImplicitAdministratorInvitationAcceptance() {
+  const roleInvitationId = getAdminRoleInvitationId();
+  if (roleInvitationId && !loadAdminInvitationDecision(roleInvitationId)) {
+    storeAdminInvitationDecision('ACCEPT');
+  }
+}
+
 async function handleAdministratorInvitationShare() {
   const value = elements.adminInvitationLink.value;
   if (!value) return;
@@ -3382,7 +3414,9 @@ function refreshAdminRolesWhenVisible() {
 }
 
 function renderAdminOverview() {
-  const hasCollaborator = state.adminAccounts.some((admin) => ['ADMIN', 'MANAGER'].includes(admin.role))
+  const hasCollaborator = state.adminAccounts.some((admin) => (
+    admin.status === 'ACTIVE' && ['ADMIN', 'MANAGER'].includes(admin.role)
+  ))
     || state.adminInvitations.some((invitation) => invitation.status === 'ACTIVE');
 
   const overview = buildAdminOverview({
@@ -3520,26 +3554,32 @@ function renderAdminAccountList() {
   if (!canManageAdministrators) return;
 
   const currentUid = getCurrentUser()?.uid || '';
-  const accounts = state.adminAccounts.filter((account) => account.role !== 'OWNER');
+  const accounts = state.adminAccounts.filter((account) => account.adminUid !== currentUid);
+  const activeAccounts = accounts.filter((account) => account.status === 'ACTIVE');
   elements.adminAccountList.innerHTML = accounts.map((account) => {
     const participant = state.adminParticipants.find((item) => (
       item.participantId === account.participantId
     ));
     const name = participant?.displayName || account.email || t('role.admin');
+    const active = account.status === 'ACTIVE';
+    const statusLabel = active ? t('status.active') : t('admin.accounts.revoked');
+    const roleLabel = account.role === 'OWNER'
+      ? t('admin.accounts.previousOwner')
+      : account.role === 'ADMIN' ? t('role.admin') : t('role.vice');
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(account.email || '')}</small></span>
-        <span class="admin-invitation-state admin-invitation-active">${escapeHtml(t('status.active'))}</span>
-        <span>${escapeHtml(account.role === 'ADMIN' ? t('role.admin') : t('role.vice'))}</span>
-        ${account.adminUid !== currentUid
+        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : 'admin-invitation-accepted'}">${escapeHtml(statusLabel)}</span>
+        <span>${escapeHtml(roleLabel)}</span>
+        ${active
           ? `<button type="button" class="danger-action" data-revoke-center-admin="${escapeHtml(account.adminUid)}">${escapeHtml(t('admin.accounts.revokeAccess'))}</button>`
           : ''}
       </article>`;
   }).join('');
   if (elements.adminAccountStatus) {
-    elements.adminAccountStatus.textContent = accounts.length === 0
+    elements.adminAccountStatus.textContent = activeAccounts.length === 0
       ? t('admin.accounts.noOtherAdmins')
-      : t('admin.accounts.activeCount', { count: accounts.length });
+      : t('admin.accounts.activeCount', { count: activeAccounts.length });
   }
 }
 
@@ -3626,7 +3666,9 @@ async function performAdminCenterSettingsSave() {
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorName,
       administratorSignature,
-      adminEmail: elements.adminAdministratorEmail?.value || '',
+      adminEmail: state.adminRole === 'OWNER'
+        ? getCurrentUser()?.email || ''
+        : elements.adminAdministratorEmail?.value || '',
       reservationCutoffs: {
         lunch: elements.adminCutoffLunch.value,
         dinner: elements.adminCutoffDinner.value,
@@ -3749,7 +3791,9 @@ function syncAdminCenterSettingsForm() {
   }
   if (elements.adminAdministratorEmail) {
     const currentUser = getCurrentUser();
-    elements.adminAdministratorEmail.value = state.centerContactSettings.adminEmail || currentUser?.email || '';
+    elements.adminAdministratorEmail.value = state.adminRole === 'OWNER'
+      ? currentUser?.email || state.centerContactSettings.adminEmail || ''
+      : state.centerContactSettings.adminEmail || currentUser?.email || '';
     elements.adminAdministratorEmail.readOnly = true;
   }
   if (elements.adminAdministratorPassword) {

@@ -26,6 +26,8 @@
   "admin.accounts.activeCount": "{count} active administrators",
   "admin.accounts.noOtherAdmins": "No other active administrators",
   "admin.accounts.revokeAccess": "Revoke access",
+  "admin.accounts.revoked": "Revoked",
+  "admin.accounts.previousOwner": "Previous manager",
   "admin.activity.audit": "Activity log",
   "admin.activity.noEvents": "No recent activity",
   "admin.activity.title": "Maintenance",

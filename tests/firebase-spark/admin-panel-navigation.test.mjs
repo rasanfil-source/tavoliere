@@ -232,7 +232,10 @@ test('un amministratore già registrato può usare la password personale con un 
   assert.match(app, /state\.adminInviteEmailMode = 'signin'/);
   assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
   assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
-  assert.match(app, /else if \(!getAdminInvitationId\(\)\)/);
+  assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
+  assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
+  assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
+  assert.match(app, /Account già esistente con questa email\. Inserisci la tua password personale oppure usa “Password dimenticata\?”/);
 });
 
 test('un amministratore può recuperare la password senza perdere il link di invito', () => {
@@ -313,6 +316,17 @@ test('una sola risposta viene conservata e completata dopo l identificazione', (
   assert.match(app, /Ora identificati una sola volta/);
 });
 
+test('l invito amministratore funziona anche con email non Google senza corse sulla verifica', () => {
+  assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
+  assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
+  assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
+  assert.match(app, /storeImplicitAdministratorInvitationAcceptance\(\)/);
+  assert.match(app, /emailVerificationPending = requiresAdministratorPassword\(user\)/);
+  assert.match(app, /storedDecision === 'ACCEPT' && emailVerificationPending/);
+  assert.match(app, /adminPasswordReset\.hidden = !\(usesExistingEmailAccount \|\| hasAdministratorInvitation\)/);
+  assert.doesNotMatch(app, /else if \(!getAdminInvitationId\(\)\)/);
+});
+
 test('un nuovo account email deve sostituire la password temporanea prima di continuare', () => {
   assert.match(html, /data-admin-password-setup-dialog/);
   assert.match(html, /La password temporanea dell'invito deve essere sostituita/);
@@ -338,4 +352,15 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(adminCenter, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
   assert.doesNotMatch(adminCenter, /publicParticipants[\s\S]*batch\.delete/);
+});
+
+test('il nuovo responsabile sincronizza la propria email e può ripulire un vecchio OWNER', () => {
+  assert.match(app, /synchronizeCenterOwnerEmail/);
+  assert.match(app, /state\.adminRole === 'OWNER'[\s\S]*getCurrentUser\(\)\?\.email/);
+  assert.match(app, /centerSettings\.adminEmail = await synchronizeCenterOwnerEmail/);
+  assert.match(app, /account\.adminUid !== currentUid/);
+  assert.match(app, /admin\.accounts\.previousOwner/);
+  assert.match(adminCenter, /const staleFormerOwner = membership\.role === 'OWNER'/);
+  assert.match(adminCenter, /targetProfileSnapshot\.data\(\)\?\.centerId === centerId/);
+  assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
 });

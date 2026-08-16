@@ -35,11 +35,11 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816g';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816h';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816g';
+} from './center-settings.js?v=20260816h';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816g';
+} from './center-settings.js?v=20260816h';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -559,7 +559,6 @@ export async function listCenterAdministrators() {
       dailyOperationsPermission: item.data().dailyOperationsPermission === true,
       passwordSetupRequired: item.data().passwordSetupRequired === true
     }))
-    .filter((item) => item.status === 'ACTIVE')
     .sort((left, right) => left.email.localeCompare(right.email, 'it'));
 }
 

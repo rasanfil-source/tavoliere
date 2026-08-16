@@ -26,6 +26,8 @@
   "admin.accounts.activeCount": "{count} aktive Administratoren",
   "admin.accounts.noOtherAdmins": "Keine weiteren aktiven Administratoren",
   "admin.accounts.revokeAccess": "Zugriff widerrufen",
+  "admin.accounts.revoked": "Widerrufen",
+  "admin.accounts.previousOwner": "Vorherige Leitung",
   "admin.activity.audit": "Aktivitatsprotokoll",
   "admin.activity.noEvents": "Keine recente Aktivitat",
   "admin.activity.title": "Wartung",

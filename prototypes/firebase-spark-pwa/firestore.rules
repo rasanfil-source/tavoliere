@@ -186,16 +186,32 @@ service cloud.firestore {
         || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
     }
 
-    function canUpdateCenterAdministrator(centerId) {
+    function canUpdateCenterAdministrator(centerId, adminUid) {
       return resource.data.get('role', '') != 'OWNER'
-        && (
-          isCenterOwner(centerId)
-            && request.resource.data.get('role', '') in ['ADMIN', 'MANAGER']
-          || isAdmin(centerId)
-            && adminRole(centerId) == 'ADMIN'
-            && resource.data.get('role', '') == 'MANAGER'
-            && request.resource.data.get('role', '') == 'MANAGER'
-        );
+          && (
+            isCenterOwner(centerId)
+              && request.resource.data.get('role', '') in ['ADMIN', 'MANAGER']
+            || isAdmin(centerId)
+              && adminRole(centerId) == 'ADMIN'
+              && resource.data.get('role', '') == 'MANAGER'
+              && request.resource.data.get('role', '') == 'MANAGER'
+          )
+        || isCenterOwner(centerId)
+          && getAfter(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid == request.auth.uid
+          && adminUid != request.auth.uid
+          && resource.data.get('role', '') == 'OWNER'
+          && resource.data.get('status', '') == 'ACTIVE'
+          && request.resource.data.get('role', '') == 'ADMIN'
+          && request.resource.data.get('status', '') == 'REVOKED'
+          && request.resource.data.get('massPermission', false) == false
+          && request.resource.data.get('dailyOperationsPermission', false) == false
+          && request.resource.data.get('revokedBy', '') == request.auth.uid
+          && request.resource.data.revokedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'role', 'massPermission', 'dailyOperationsPermission',
+            'revokedBy', 'revokedAt', 'updatedAt'
+          ]);
     }
 
     function canDeleteCenterAdministrator(centerId) {
@@ -543,6 +559,14 @@ service cloud.firestore {
               && request.resource.data.role == 'ADMIN'
               && request.resource.data.massPermission == false
               && request.resource.data.dailyOperationsPermission == false
+            || adminUid != request.auth.uid
+              && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid == request.auth.uid
+              && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(adminUid)).data.status == 'REVOKED'
+              && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(adminUid)).data.role == 'ADMIN'
+              && request.resource.data.status == 'REVOKED'
+              && request.resource.data.role == 'ADMIN'
+              && request.resource.data.massPermission == false
+              && request.resource.data.dailyOperationsPermission == false
           );
       allow delete: if false;
     }
@@ -710,7 +734,7 @@ service cloud.firestore {
 
       match /admins/{adminUid} {
         allow read: if isAdmin(centerId);
-        allow update: if canUpdateCenterAdministrator(centerId)
+        allow update: if canUpdateCenterAdministrator(centerId, adminUid)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'participantId', 'status', 'email', 'role', 'massPermission',
               'dailyOperationsPermission', 'administratorPasswordRequired',

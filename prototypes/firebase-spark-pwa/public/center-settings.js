@@ -97,6 +97,33 @@ export function invalidateCenterContactSettingsCache() {
   centerContactSettingsCache = null;
 }
 
+export async function synchronizeCenterOwnerEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+      || normalizedEmail.length > 254) {
+    throw new Error('Indirizzo email del responsabile non valido');
+  }
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'centers', getActiveCenterId()), {
+    adminEmail: normalizedEmail,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await commitWithRetry(() => batch.commit());
+
+  const cached = loadCachedCenterContactSettings();
+  if (cached) {
+    storeCachedCenterContactSettings({ ...cached, adminEmail: normalizedEmail });
+  }
+  if (centerContactSettingsCache) {
+    centerContactSettingsCache = {
+      value: { ...centerContactSettingsCache.value, adminEmail: normalizedEmail },
+      cachedAt: Date.now()
+    };
+  }
+  return normalizedEmail;
+}
+
 export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
   if (!forceRefresh && centerContactSettingsCache) {
     if (Date.now() - centerContactSettingsCache.cachedAt >= CENTER_SETTINGS_CACHE_MS) {

@@ -160,14 +160,15 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
   assert.match(
     rules,
-    /match \/admins\/\{adminUid\}[\s\S]*allow update: if canUpdateCenterAdministrator\(centerId\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
+    /match \/admins\/\{adminUid\}[\s\S]*allow update: if canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
   );
 });
 
 test('responsabile amministratore e vice hanno confini di scrittura distinti', () => {
   assert.match(rules, /function isCenterOwner\(centerId\)[\s\S]*adminRole\(centerId\) == 'OWNER'/);
   assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
-  assert.match(rules, /function canUpdateCenterAdministrator\(centerId\)[\s\S]*resource\.data\.get\('role', ''\) != 'OWNER'/);
+  assert.match(rules, /function canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*resource\.data\.get\('role', ''\) != 'OWNER'/);
+  assert.match(rules, /adminUid != request\.auth\.uid[\s\S]*resource\.data\.get\('role', ''\) == 'OWNER'[\s\S]*request\.resource\.data\.get\('status', ''\) == 'REVOKED'/);
   assert.match(rules, /match \/centers\/\{centerId\}[\s\S]*allow update: if canManageCenterConfiguration\(centerId\)/);
   assert.match(rules, /match \/participants\/\{participantId\}[\s\S]*allow delete: if canManageCenterConfiguration\(centerId\)/);
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);

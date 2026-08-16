@@ -26,6 +26,8 @@
   "admin.accounts.activeCount": "{count} amministratori attivi",
   "admin.accounts.noOtherAdmins": "Nessun altro amministratore attivo",
   "admin.accounts.revokeAccess": "Revoca accesso",
+  "admin.accounts.revoked": "Revocato",
+  "admin.accounts.previousOwner": "Responsabile precedente",
   "admin.activity.audit": "Registro attività",
   "admin.activity.noEvents": "Nessuna attività recente",
   "admin.activity.title": "Manutenzione",

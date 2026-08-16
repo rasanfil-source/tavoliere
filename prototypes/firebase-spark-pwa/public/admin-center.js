@@ -422,9 +422,18 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
     throw new Error('Amministratore non valido');
   }
   const membershipRef = doc(db, 'centers', centerId, 'admins', normalizedUid);
-  const membershipSnapshot = await getDoc(membershipRef);
+  const targetProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedUid);
+  const [membershipSnapshot, centerSnapshot, targetProfileSnapshot] = await Promise.all([
+    getDoc(membershipRef),
+    getDoc(doc(db, 'centers', centerId)),
+    getDoc(targetProfileRef)
+  ]);
   const membership = membershipSnapshot.exists() ? membershipSnapshot.data() : {};
-  if (membership.status !== 'ACTIVE' || membership.role === 'OWNER') {
+  const center = centerSnapshot.exists() ? centerSnapshot.data() : {};
+  const staleFormerOwner = membership.role === 'OWNER'
+    && center.ownerUid === user.uid
+    && normalizedUid !== center.ownerUid;
+  if (membership.status !== 'ACTIVE' || (membership.role === 'OWNER' && !staleFormerOwner)) {
     throw new Error('Questo amministratore non può essere revocato');
   }
 
@@ -432,10 +441,22 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
   const batch = writeBatch(db);
   batch.set(membershipRef, {
     status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
     revokedBy: user.uid,
     revokedAt: now,
     updatedAt: now
   }, { merge: true });
+  if (targetProfileSnapshot.data()?.centerId === centerId) {
+    batch.set(targetProfileRef, {
+      status: 'REVOKED',
+      role: 'ADMIN',
+      massPermission: false,
+      dailyOperationsPermission: false,
+      updatedAt: now
+    }, { merge: true });
+  }
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.REVOKE_ADMIN,
     targetType: 'ADMIN',

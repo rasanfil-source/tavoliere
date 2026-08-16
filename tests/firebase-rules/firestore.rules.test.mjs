@@ -833,6 +833,55 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
   });
 });
 
+test('il nuovo responsabile può revocare un vecchio OWNER rimasto nei dati storici', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(centerPath()).set({ ownerUid: CENTER_ADMIN_UID }, { merge: true });
+    await db.doc(adminPath(CENTER_ADMIN_UID)).set({
+      status: 'ACTIVE',
+      role: 'OWNER',
+      massPermission: true,
+      dailyOperationsPermission: true
+    }, { merge: true });
+    await db.doc(adminPath(ADMIN_UID)).set({
+      status: 'ACTIVE',
+      role: 'OWNER',
+      massPermission: true,
+      dailyOperationsPermission: true
+    }, { merge: true });
+    await db.doc(`adminProfiles/${ADMIN_UID}`).set({
+      centerId: CENTER_ID,
+      status: 'ACTIVE',
+      role: 'OWNER',
+      massPermission: true,
+      dailyOperationsPermission: true
+    });
+  });
+
+  const newOwnerDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
+  const batch = newOwnerDb.batch();
+  batch.set(newOwnerDb.doc(adminPath(ADMIN_UID)), {
+    status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
+    revokedBy: CENTER_ADMIN_UID,
+    revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(newOwnerDb.doc(`adminProfiles/${ADMIN_UID}`), {
+    status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  await assertSucceeds(batch.commit());
+
+  const oldOwnerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  await assertFails(oldOwnerDb.doc(centerPath()).get());
+});
+
 test('il registro attivita e consultabile dai responsabili e resta immutabile', async () => {
   const eventPath = `${centerPath()}/auditEvents/event_profile_update`;
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
