@@ -9,9 +9,9 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId } from './center-context.js?v=20260816b';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816b';
+import { db, getCurrentUser } from './firebase-client.js?v=20260816c';
+import { getActiveCenterId } from './center-context.js?v=20260816c';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816c';
 
 const SETTINGS_DOCUMENT_ID = 'operationalLinks';
 const LINK_LIFETIME_DAYS = 9000;

@@ -213,6 +213,20 @@ async function getResidentMaintenanceAuth() {
   return residentMaintenanceAuth;
 }
 
+// Verifica la password comune senza sostituire la sessione Firebase principale.
+// È essenziale quando un amministratore entra nelle viste operative e poi torna
+// al pannello di controllo.
+export async function verifyResidentCommonPassword(centerId, password) {
+  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const email = getResidentTechnicalEmail(centerId);
+  const technicalPassword = formatTechnicalAuthPassword(password);
+  try {
+    return await signInWithEmailAndPassword(maintenanceAuth, email, technicalPassword);
+  } finally {
+    await signOut(maintenanceAuth).catch(() => undefined);
+  }
+}
+
 // La seconda istanza Auth non modifica la sessione dell'amministratore.
 export async function setResidentTechnicalPassword(centerId, previousPassword, nextPassword) {
   const email = getResidentTechnicalEmail(centerId);

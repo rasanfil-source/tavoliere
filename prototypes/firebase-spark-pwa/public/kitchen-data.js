@@ -8,15 +8,15 @@ import {
   setDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816b';
+import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260816c';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816c';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20260816b';
-import { formatDateId } from './date-utils.mjs?v=20260816b';
-import { formatDietLabel } from './diet-utils.mjs?v=20260816b';
+} from './reservation-state.mjs?v=20260816c';
+import { formatDateId } from './date-utils.mjs?v=20260816c';
+import { formatDietLabel } from './diet-utils.mjs?v=20260816c';
 
 const KITCHEN_TOKEN_STORAGE_KEY = 'tavolaComune.kitchenToken';
 const KITCHEN_DEMO_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');

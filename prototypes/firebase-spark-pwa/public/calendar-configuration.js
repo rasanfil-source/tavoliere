@@ -5,15 +5,15 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, setResidentTechnicalPassword } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId } from './center-context.js?v=20260816b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816b';
+import { db, getCurrentUser, setResidentTechnicalPassword } from './firebase-client.js?v=20260816c';
+import { getActiveCenterId } from './center-context.js?v=20260816c';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816c';
 import {
   addDaysToDateId,
   buildMealWindowRecords,
   daysBetweenDateIds,
   normalizeReservationCutoffs
-} from './schedule-utils.mjs?v=20260816b';
+} from './schedule-utils.mjs?v=20260816c';
 
 const MEAL_TYPES = [
   { mealTypeId: 'breakfast' },

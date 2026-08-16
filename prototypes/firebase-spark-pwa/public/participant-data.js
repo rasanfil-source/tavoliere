@@ -13,23 +13,33 @@ import {
   runTransaction,
   startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, getResidentTechnicalEmail, signInAnonymousUser, signInResidentTechnicalUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816b';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816b';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260816b';
+import {
+  db,
+  getCurrentUser,
+  getResidentTechnicalEmail,
+  isResidentTechnicalEmail,
+  signInAnonymousUser,
+  signInResidentTechnicalUser,
+  signOutCurrentUser,
+  verifyResidentCommonPassword,
+  waitForAuthReady
+} from './firebase-client.js?v=20260816c';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816c';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816c';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816c';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260816c';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816b';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816b';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816b';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816b';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816b';
+} from './domain/participant-profile.mjs?v=20260816c';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816c';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816c';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816c';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816c';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816b';
+} from './center-settings.js?v=20260816c';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -37,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816b';
+} from './center-settings.js?v=20260816c';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -167,26 +177,65 @@ async function createPersonalTokenForParticipant(participantId) {
   return { tokenId, expiresAt };
 }
 
+async function getAuthorizedAdministratorUser() {
+  await waitForAuthReady();
+  const user = getCurrentUser();
+  if (!user || user.isAnonymous || isResidentTechnicalEmail(user.email)) {
+    return null;
+  }
+
+  try {
+    const adminSnapshot = await getDoc(doc(
+      db,
+      'centers',
+      getActiveCenterId(),
+      'admins',
+      user.uid
+    ));
+    if (!adminSnapshot.exists()) return null;
+    const admin = adminSnapshot.data();
+    const role = normalizeCenterRole(admin.role);
+    return admin.status === 'ACTIVE' && hasCapability(role, CAPABILITIES.OPEN_ADMIN_AREA)
+      ? user
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function signInFriendlyResident(signature, commonPassword) {
   const normalized = normalizeResidentSignature(signature);
   if (!normalized || !commonPassword) {
     throw new Error('Inserisci sigla e password comune.');
   }
 
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
   try {
-    await signInResidentTechnicalUser(getResidentTechnicalEmail(getActiveCenterId()), commonPassword);
+    if (authorizedAdministrator) {
+      await verifyResidentCommonPassword(getActiveCenterId(), commonPassword);
+    } else {
+      const currentUser = getCurrentUser();
+      if (currentUser && !currentUser.isAnonymous) {
+        await signOutCurrentUser();
+      }
+      await signInResidentTechnicalUser(getResidentTechnicalEmail(getActiveCenterId()), commonPassword);
+    }
     const participant = await loadPublicParticipantBySignature(normalized);
     if (!participant) {
       throw new Error('La tua sigla non risulta tra i residenti attivi.');
     }
 
     const token = await createPersonalTokenForParticipant(participant.participantId);
-    await createPersonalAnonymousSession(participant.participantId, token);
+    if (!authorizedAdministrator) {
+      await createPersonalAnonymousSession(participant.participantId, token);
+    }
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };
   } catch (error) {
     clearCurrentSession();
-    await signOutCurrentUser();
+    if (!authorizedAdministrator) {
+      await signOutCurrentUser();
+    }
     throw error;
   }
 }
@@ -200,7 +249,11 @@ export async function restoreFriendlyResidentSession() {
     return null;
   }
 
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
   try {
+    if (authorizedAdministrator) {
+      return restoreResidentIdentityForAuthorizedAdministrator();
+    }
     await ensurePersonalSession(participantId, token);
     const participant = await loadPublicParticipantById(participantId);
     if (!participant) {
@@ -221,7 +274,9 @@ export async function restoreFriendlyResidentSession() {
     }
     clearStoredResidentIdentity();
     clearCurrentSession();
-    await signOutCurrentUser();
+    if (!authorizedAdministrator) {
+      await signOutCurrentUser();
+    }
     return null;
   }
 }
@@ -274,6 +329,10 @@ async function createPersonalAnonymousSession(participantId, token) {
 }
 
 export async function ensureStoredResidentSession() {
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (authorizedAdministrator) {
+    return authorizedAdministrator;
+  }
   const participantId = loadStoredResidentParticipantId();
   const token = loadStoredResidentToken();
   if (!participantId || !token.tokenId || !token.expiresAt) {
@@ -344,6 +403,11 @@ async function ensurePersonalSession(participantId, token) {
 export async function ensurePublicDemoSession() {
   if (!db) {
     throw new Error('Firebase non configurato');
+  }
+
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (authorizedAdministrator) {
+    return authorizedAdministrator;
   }
 
   let user = getCurrentUser();

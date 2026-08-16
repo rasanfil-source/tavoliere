@@ -4,9 +4,9 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816b';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816b';
+import { db } from './firebase-client.js?v=20260816c';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816c';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816c';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -153,7 +153,7 @@ export async function updateCenterSettings({
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260816b');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260816c');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,

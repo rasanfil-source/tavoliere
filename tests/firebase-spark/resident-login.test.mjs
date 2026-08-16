@@ -22,6 +22,10 @@ const styles = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/styles.css', import.meta.url),
   'utf8'
 );
+const summaryStyles = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css', import.meta.url),
+  'utf8'
+);
 const adminCenter = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/admin-center.js', import.meta.url),
   'utf8'
@@ -424,7 +428,8 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(index, /summary-status-row[\s\S]*data-summary-status[\s\S]*data-refresh-button/);
   assert.match(index, /data-kitchen-panel[\s\S]*kitchen-status-row[\s\S]*data-status[\s\S]*data-refresh-button/);
   assert.equal((index.match(/data-participant-nav-link/g) || []).length, 2);
-  assert.match(index, /summary-status-row[\s\S]*compact-status-link[\s\S]*data-summary-status/);
+  assert.match(index, /summary-status-row[\s\S]*data-summary-status[\s\S]*data-refresh-button/);
+  assert.match(index, /data-summary-date-tabs[\s\S]*data-operational-view-switch[\s\S]*data-participant-nav-link/);
   assert.match(index, /kitchen-status-row[\s\S]*compact-status-link[\s\S]*data-status/);
   assert.match(styles, /\.summary-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
   assert.match(styles, /\.kitchen-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
@@ -440,6 +445,30 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(app, /elements\.adminCenterAvatarSave\.disabled = !state\.pendingCenterAvatarDataUrl \|\| !commonPasswordSet/);
   assert.match(centerSettings, /export async function saveCenterAvatar/);
   assert.doesNotMatch(participantData.match(/export async function forgetResidentDevice\(\)[\s\S]*?\n\}/)?.[0] || '', /CENTER_AVATAR/);
+});
+
+test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo', () => {
+  assert.match(firebaseClient, /export async function verifyResidentCommonPassword/);
+  assert.match(firebaseClient, /getResidentMaintenanceAuth\(\)[\s\S]*signInWithEmailAndPassword\(maintenanceAuth/);
+  assert.match(participantData, /async function getAuthorizedAdministratorUser\(\)/);
+  assert.match(participantData, /hasCapability\(role, CAPABILITIES\.OPEN_ADMIN_AREA\)/);
+  assert.match(participantData, /if \(authorizedAdministrator\) \{[\s\S]*verifyResidentCommonPassword/);
+  assert.match(participantData, /if \(!authorizedAdministrator\) \{[\s\S]*createPersonalAnonymousSession/);
+  assert.match(participantData, /export async function ensureStoredResidentSession\(\) \{[\s\S]*return authorizedAdministrator/);
+  assert.match(participantData, /export async function ensurePublicDemoSession\(\) \{[\s\S]*return authorizedAdministrator/);
+});
+
+test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
+  assert.equal((index.match(/data-operational-view-switch/g) || []).length, 3);
+  assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.header\.pasti"/);
+  assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*operational-view-switch-measure[\s\S]*data-i18n="summary\.view\.title"/);
+  assert.match(summaryStyles, /\.operational-view-switch > span \{[\s\S]*grid-area: 1 \/ 1/);
+  assert.match(summaryStyles, /@media \(max-width: 520px\)[\s\S]*\.meal-view-nav \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
+  assert.match(summaryStyles, /\[data-summary-panel\] \.summary-date-tabs \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
+});
+
+test('ogni nuovo ingresso nel riepilogo riparte da Oggi', () => {
+  assert.match(app, /if \(nextMode === 'summary'\) \{[\s\S]*state\.summaryDayOffset = 0/);
 });
 
 test('il pannello amministratore mantiene una gerarchia responsive senza duplicare i comandi', () => {

@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260816b">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816b">
+    <link rel="stylesheet" href="/styles.css?v=20260816c">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816c">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -113,7 +113,10 @@
               </a>
             </div>
           </div>
-          <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
+          <a class="panel-link secondary-action operational-view-switch" data-summary-nav-link data-operational-view-switch href="/?view=summary">
+            <span data-i18n="summary.view.title">Riepilogo</span>
+            <span class="operational-view-switch-measure" aria-hidden="true" data-i18n="app.header.pasti">Pasti</span>
+          </a>
         </nav>
         <section class="calendar-panel" data-calendar-panel aria-label="Calendario prenotazioni future" data-i18n-aria-label="a11y.futureBookingsCalendar">
           <p data-calendar-status hidden>Settimana corrente</p>
@@ -157,7 +160,10 @@
               </a>
             </div>
           </div>
-          <a class="panel-link secondary-action" data-summary-nav-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a>
+          <a class="panel-link secondary-action operational-view-switch" data-summary-nav-link data-operational-view-switch href="/?view=summary">
+            <span data-i18n="summary.view.title">Riepilogo</span>
+            <span class="operational-view-switch-measure" aria-hidden="true" data-i18n="app.header.pasti">Pasti</span>
+          </a>
         </nav>
         <div class="week-toolbar">
           <button type="button" class="icon-button" data-week-prev data-i18n-aria-label="week.previous" aria-label="Settimana precedente">
@@ -236,7 +242,6 @@
 
       <section class="participant-panel" data-summary-panel hidden>
         <div class="section-title summary-status-row">
-          <a class="panel-link secondary-action compact-status-link" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Pasti</a>
           <p data-summary-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna Oggi a tavola" title="Aggiorna">
             <span aria-hidden="true">↻</span>
@@ -247,6 +252,10 @@
             <button type="button" class="week-pill week-pill-active" data-summary-day="0" role="tab" aria-selected="true" data-i18n="time.today">Oggi</button>
             <button type="button" class="week-pill" data-summary-day="1" role="tab" aria-selected="false" data-i18n="time.tomorrow">Domani</button>
           </div>
+          <a class="panel-link secondary-action operational-view-switch" data-participant-nav-link data-operational-view-switch href="/?view=participant">
+            <span data-i18n="app.header.pasti">Pasti</span>
+            <span class="operational-view-switch-measure" aria-hidden="true" data-i18n="summary.view.title">Riepilogo</span>
+          </a>
         </div>
         <div class="today-overview" data-today-overview></div>
       </section>
@@ -908,6 +917,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260816b"></script>
+  <script type="module" src="/app.js?v=20260816c"></script>
   </body>
 </html>

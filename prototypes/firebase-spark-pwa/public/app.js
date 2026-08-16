@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816b';
+} from './i18n/i18n.mjs?v=20260816c';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260816b';
-import { escapeHtml } from './html-utils.js?v=20260816b';
+} from './refresh-schedule.js?v=20260816c';
+import { escapeHtml } from './html-utils.js?v=20260816c';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,12 +26,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816b';
+} from './firebase-client.js?v=20260816c';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816b';
+} from './center-context.js?v=20260816c';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -41,34 +41,34 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816b';
+} from './center-settings.js?v=20260816c';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816c';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260816b';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816b';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816b';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260816b';
-import { createStateStore } from './core/state-store.mjs?v=20260816b';
-import { toUserMessage } from './core/user-error.mjs?v=20260816b';
+} from './diet-utils.mjs?v=20260816c';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816c';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816c';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260816c';
+import { createStateStore } from './core/state-store.mjs?v=20260816c';
+import { toUserMessage } from './core/user-error.mjs?v=20260816c';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260816b';
+} from './core/connectivity.mjs?v=20260816c';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816b';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816b';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816b';
+} from './domain/participant-profile.mjs?v=20260816c';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816c';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816c';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816b';
+} from './summary-matrix-view.js?v=20260816c';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -77,14 +77,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816b',
-  admin: './admin-center.js?v=20260816b',
-  audit: './audit-log.js?v=20260816b',
-  bootstrap: './bootstrap-demo.js?v=20260816b',
-  daily: './daily-operations.js?v=20260816b',
-  kitchen: './kitchen-data.js?v=20260816b',
-  notes: './kitchen-notes.js?v=20260816b',
-  participant: './participant-data.js?v=20260816b'
+  accessLinks: './access-links.js?v=20260816c',
+  admin: './admin-center.js?v=20260816c',
+  audit: './audit-log.js?v=20260816c',
+  bootstrap: './bootstrap-demo.js?v=20260816c',
+  daily: './daily-operations.js?v=20260816c',
+  kitchen: './kitchen-data.js?v=20260816c',
+  notes: './kitchen-notes.js?v=20260816c',
+  participant: './participant-data.js?v=20260816c'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -1132,6 +1132,11 @@ function scheduleBackgroundRefresh(source) {
 
 function prepareMonthAutoScrollEntry(previousMode, nextMode) {
   if (previousMode === nextMode) return;
+  if (nextMode === 'summary') {
+    // Ogni nuovo ingresso nel riepilogo parte da Oggi. La scelta Domani vale
+    // soltanto durante la consultazione corrente.
+    state.summaryDayOffset = 0;
+  }
   cancelMonthAutoScroll();
   state.monthAutoScrollHandled = false;
   cancelOperationalAutoScroll();

@@ -5,10 +5,10 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260816b';
-import { getActiveCenterId } from './center-context.js?v=20260816b';
-import { formatDateId } from './date-utils.mjs?v=20260816b';
-import { normalizeDietCode } from './diet-utils.mjs?v=20260816b';
+import { db } from './firebase-client.js?v=20260816c';
+import { getActiveCenterId } from './center-context.js?v=20260816c';
+import { formatDateId } from './date-utils.mjs?v=20260816c';
+import { normalizeDietCode } from './diet-utils.mjs?v=20260816c';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
 const dailyOperationCache = new Map();
