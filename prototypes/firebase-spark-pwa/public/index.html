@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260816r">
+    <link rel="stylesheet" href="/styles.css?v=20260817a">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816j">
   </head>
   <body>
@@ -314,19 +314,22 @@
              <span data-i18n="admin.centerSwitcher.label">Centro amministrato</span>
              <select data-admin-center-select data-i18n-aria-label="admin.centerSwitcher.label" aria-label="Centro amministrato"></select>
            </label>
-            <div class="auth-actions" data-auth-actions>
-              <button type="button" class="primary-action" data-auth-button data-i18n="auth.google.signIn">Accedi con Google</button>
-            </div>
             <div class="admin-invite-accept-panel" data-admin-invite-accept-panel hidden>
               <p data-admin-invite-accept-text>
                 Sei stato invitato come amministratore del centro. Accedi per accettare o rifiutare.
               </p>
-              <div class="admin-invite-accept-actions">
-                <button type="button" class="primary-action" data-invite-accept>Sì, accetto</button>
-                <button type="button" class="danger-action" data-invite-reject>Rifiuto</button>
+              <div class="admin-invite-accept-actions" data-admin-invite-accept-actions>
+                <button type="button" class="primary-action" data-invite-accept data-i18n="admin.invitations.acceptAction">Sì, accetto</button>
+                <button type="button" class="danger-action" data-invite-reject data-i18n="admin.invitations.rejectAction">Rifiuto</button>
               </div>
             </div>
-            <div class="admin-email-auth" data-admin-email-auth>
+            <div class="admin-auth-methods" data-admin-auth-methods>
+              <div class="auth-actions" data-auth-actions>
+                <button type="button" class="primary-action" data-auth-button data-i18n="auth.google.signIn">Accedi con Google</button>
+              </div>
+              <button type="button" class="primary-action" data-admin-email-choice aria-expanded="false" aria-controls="admin-email-auth" data-i18n="auth.email.enter">Entra con email</button>
+            </div>
+            <div class="admin-email-auth" id="admin-email-auth" data-admin-email-auth hidden>
              <label class="field-label">
                <span data-i18n="auth.email.label">Email amministratore</span>
                <input type="email" data-admin-email autocomplete="username" inputmode="email">
@@ -340,8 +343,7 @@
               </label>
               <div class="admin-email-actions">
                 <button type="button" class="primary-action" data-admin-email-signin data-i18n="auth.email.signIn">Accedi con email</button>
-                <button type="button" class="primary-action" data-admin-email-create hidden data-i18n="auth.email.createWithInvite">Crea account con invito</button>
-                <button type="button" class="tertiary-action" data-admin-email-mode-toggle hidden data-i18n="auth.email.haveAccount">Hai già un account? Accedi</button>
+                <button type="button" class="primary-action" data-admin-email-create hidden data-i18n="auth.email.continue">Continua</button>
                 <button type="button" class="tertiary-action" data-admin-password-reset hidden data-i18n="auth.email.forgotPassword">Password dimenticata?</button>
               </div>
               <p data-admin-email-status aria-live="polite" data-i18n="auth.email.noGoogleNeeded">Puoi accedere anche senza un account Google.</p>
@@ -927,6 +929,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260816y"></script>
+  <script type="module" src="/app.js?v=20260817a"></script>
   </body>
 </html>

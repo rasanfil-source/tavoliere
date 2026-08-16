@@ -1426,6 +1426,26 @@ body[data-center-activation="true"] .admin-shell-body {
   gap: 8px;
 }
 
+.admin-auth-methods {
+  display: grid;
+  width: min(100%, 260px);
+  gap: 10px;
+}
+
+.admin-auth-methods .auth-actions,
+.admin-auth-methods .auth-actions > button,
+.admin-auth-methods > button {
+  width: 100%;
+}
+
+.admin-auth-methods button {
+  justify-content: center;
+}
+
+.admin-auth-methods [data-admin-email-choice][aria-expanded="true"] {
+  background: var(--primary-hover);
+}
+
 .auth-actions-signed-in {
   order: 100;
   display: none;
@@ -1443,6 +1463,18 @@ body[data-center-activation="true"] .admin-shell-body {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
+  animation: admin-email-reveal 160ms ease-out;
+}
+
+@keyframes admin-email-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .admin-email-actions {
@@ -2211,6 +2243,11 @@ html[data-theme="confetto"] {
   gap: 10px;
   margin-top: 12px;
   flex-wrap: wrap;
+}
+
+.admin-invite-accept-actions > button {
+  min-width: 126px;
+  justify-content: center;
 }
 
 .admin-tools-row {

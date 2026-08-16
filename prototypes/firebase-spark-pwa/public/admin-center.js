@@ -763,7 +763,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     massPermission: true,
     dailyOperationsPermission: true,
     administratorPasswordRequired: requiresAdministratorPassword(user),
-    passwordSetupRequired: requiresAdministratorPassword(user),
+    // Nel flusso di successione la persona sceglie già la propria password.
+    passwordSetupRequired: false,
     createdAt: now,
     updatedAt: now
   });
