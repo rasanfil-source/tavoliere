@@ -1138,6 +1138,11 @@ h2 {
   margin: 28px 0 12px;
 }
 
+body[data-resident-login-visible="true"] .account-footer {
+  width: min(100%, 420px);
+  margin-inline: auto;
+}
+
 .footer-exit-button {
   display: inline-flex;
   align-items: center;

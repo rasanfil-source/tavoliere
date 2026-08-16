@@ -1966,7 +1966,7 @@ function setSignedOutState() {
       : 'Inserisci la tua email e premi "Crea account con invito".')
     : state.adminAuthNotice || 'Puoi accedere anche senza un account Google.';
   elements.authStatus.textContent = 'Accesso richiesto';
-  elements.ownerExitButton.hidden = true;
+  elements.ownerExitButton.hidden = state.mode !== 'admin' || Boolean(getAdminInvitationId());
   elements.adminRoleChip.hidden = true;
   elements.adminRoleChip.textContent = '';
   elements.authUid.hidden = true;
@@ -2042,7 +2042,7 @@ function handleAuthButton() {
 
 function handleOwnerExit() {
   if (!isFirebaseConfigured) return;
-  signOutCurrentUser().catch(showAuthError);
+  handleForgetDevice().catch(showAuthError);
 }
 
 async function handleAdministratorEmailSignIn() {
@@ -3977,6 +3977,7 @@ function renderMode() {
     && !isResidentTechnicalEmail(currentUser.email);
   const showResidentLogin = needsResidentLogin
     && !isAdminView;
+  document.body.dataset.residentLoginVisible = showResidentLogin ? 'true' : 'false';
   const sessionRole = state.platformOwner
     ? t('role.platformOwner')
     : state.adminRole === 'OWNER'
@@ -4028,8 +4029,7 @@ function renderMode() {
     elements.kitchenPanel.hidden = true;
   }
   const isOrdinaryView = isParticipant || isWeek || isSummary;
-  const hasResidentIdentity = state.residentReady || Boolean(loadStoredResidentSignature());
-  const showResidentExit = isOrdinaryView && !needsResidentLogin && hasResidentIdentity;
+  const showResidentExit = isOrdinaryView;
   const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
   const canOpenControlPanel = hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA)
@@ -4041,7 +4041,7 @@ function renderMode() {
     || isCenterActivation
     || state.platformOwner;
   elements.forgetDeviceButton.hidden = !showResidentExit;
-  elements.ownerExitButton.hidden = !state.platformOwner && !authenticatedAdministrator;
+  elements.ownerExitButton.hidden = !isAdminView || isCenterActivation;
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
     elements.authActions.hidden = true;
