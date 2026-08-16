@@ -1,10 +1,10 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260816e";
-import { escapeHtml } from "./html-utils.js?v=20260816e";
-import { formatDietLabel } from "./diet-utils.mjs?v=20260816e";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260816f";
+import { escapeHtml } from "./html-utils.js?v=20260816f";
+import { formatDietLabel } from "./diet-utils.mjs?v=20260816f";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260816e";
+} from "./summary-matrix-model.js?v=20260816f";
 
 let contactPopupSequence = 0;
 

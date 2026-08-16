@@ -32,6 +32,8 @@ test('la fascia Messa distingue visivamente Sì e No in ogni palette', () => {
   assert.match(styles, /--mass-no-bg:/);
   assert.match(styles, /\.summary-matrix-mass-band\.summary-mass-state-yes/);
   assert.match(styles, /\.summary-international-mass-group\.summary-mass-state-no/);
+  assert.match(styles, /\.summary-matrix-mass-yes,[\s\S]*\.summary-matrix-mass-no \{[\s\S]*border-radius: 999px/);
+  assert.match(styles, /html\[data-theme="rosso-pallido"\][\s\S]*--mass-yes-bg: #fff;[\s\S]*--mass-no-bg: #fff/);
 });
 
 test('la Cucina non mostra Prevista e il riepilogo mantiene nomi e contatti', () => {
@@ -65,7 +67,8 @@ test('Classic e Internazionale aprono i contatti dal nome del commensale', () =>
   assert.match(styles, /\.summary-matrix-contact-popover::backdrop/);
   assert.match(styles, /text-underline-offset: 3px;\s*}\s*\.summary-matrix-person-trigger \.summary-matrix-person-name/);
   assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column, \{ compactActions: true \}\)/);
-  assert.match(styles, /\.summary-international-names \.summary-matrix-names \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
+  assert.match(styles, /\.summary-international-names \.summary-matrix-names \{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap/);
+  assert.match(styles, /\.summary-international-names \.summary-matrix-names > li \{[\s\S]*flex: 0 1 auto/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 30px;[\s\S]*line-height: 1\.05/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 34px/);
 });

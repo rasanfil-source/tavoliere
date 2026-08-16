@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260816e">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816e">
+    <link rel="stylesheet" href="/styles.css?v=20260816f">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816f">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -51,7 +51,7 @@
           </div>
         </div>
         <p class="admin-role-chip" data-admin-role-chip hidden></p>
-        <nav class="topbar-context-nav" aria-label="Navigazione area personale">
+        <nav class="topbar-context-nav" data-topbar-context-nav aria-label="Navigazione area personale">
           <a class="topbar-context-action" data-control-panel-entry href="/?view=admin" hidden
             aria-label="Pannello di controllo" data-i18n-aria-label="app.header.controlPanel"
             title="Pannello di controllo" data-i18n-title="app.header.controlPanel">
@@ -181,7 +181,13 @@
         <div data-participant-summary hidden></div>
         <details class="week-operations" data-week-operations hidden>
           <summary class="agenda-center-toggle">
-            <strong data-i18n="week.agenda.title">Agenda centro</strong>
+            <span class="agenda-center-heading">
+              <svg class="agenda-center-icon" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path>
+                <path d="M8 2v3M16 2v3M4 8h16M9 14l2 2 4-5"></path>
+              </svg>
+              <strong data-i18n="week.agenda.title">Agenda centro</strong>
+            </span>
             <span data-week-operations-status aria-live="polite">-</span>
           </summary>
           <div class="agenda-center-content">
@@ -192,7 +198,7 @@
             </label>
           </div>
           <div class="week-operations-grid">
-            <details class="week-operation-section" open>
+            <details class="week-operation-section" data-week-health-section>
               <summary data-i18n="week.operations.sick">Ammalati</summary>
               <p class="operation-status" data-week-health-status aria-live="polite">-</p>
               <div class="week-health-list" data-week-health-list></div>
@@ -207,6 +213,7 @@
                 <textarea data-week-kitchen-note-input rows="3" maxlength="1000" placeholder="Per esempio: pranzo servito alle 12:30" data-i18n-placeholder="placeholder.specialNotes"></textarea>
               </label>
               <button type="button" class="save-button" data-week-kitchen-note-save data-i18n="common.actions.save">Salva nota</button>
+              <div class="week-kitchen-note-list" data-week-kitchen-note-list></div>
             </details>
 
             <details class="week-operation-section">
@@ -262,7 +269,6 @@
 
       <section class="board" aria-label="Conteggi pasti" data-kitchen-panel hidden>
         <div class="section-title kitchen-status-row">
-          <a class="panel-link secondary-action compact-status-link" data-participant-nav-link href="/?view=participant" data-i18n="app.header.pasti">Pasti</a>
           <h2 class="sr-only" data-kitchen-day-title>Oggi</h2>
           <p data-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna cucina" title="Aggiorna">
@@ -917,6 +923,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260816e"></script>
+  <script type="module" src="/app.js?v=20260816f"></script>
   </body>
 </html>

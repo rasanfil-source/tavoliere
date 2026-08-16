@@ -14,6 +14,10 @@ const app = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url),
   'utf8'
 );
+const kitchenNotes = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/kitchen-notes.js', import.meta.url),
+  'utf8'
+);
 const index = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/index.html', import.meta.url),
   'utf8'
@@ -159,6 +163,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(index, /class="primary-action footer-exit-button" data-forget-device/);
   assert.match(styles, /\.auth-actions-signed-in \{[\s\S]*?order: 100;[\s\S]*?display: none/);
   assert.match(app, /if \(authenticatedAdministrator\) \{[\s\S]*auth-actions-signed-in[\s\S]*common\.actions\.exit[\s\S]*adminEmailAuth\.hidden = true/);
+  assert.match(app, /if \(authenticatedAdministrator\) \{[\s\S]*elements\.authActions\.hidden = true/);
   assert.match(index, /data-resident-login-form/);
   assert.match(index, /data-resident-signature-input/);
   assert.match(index, /data-resident-password-input/);
@@ -430,10 +435,13 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(index, /participant-status-row[\s\S]*data-refresh-button/);
   assert.match(index, /summary-status-row[\s\S]*data-summary-status[\s\S]*data-refresh-button/);
   assert.match(index, /data-kitchen-panel[\s\S]*kitchen-status-row[\s\S]*data-status[\s\S]*data-refresh-button/);
-  assert.equal((index.match(/data-participant-nav-link/g) || []).length, 2);
+  assert.equal((index.match(/data-participant-nav-link/g) || []).length, 1);
   assert.match(index, /summary-status-row[\s\S]*data-summary-status[\s\S]*data-refresh-button/);
-  assert.match(index, /data-summary-date-tabs[\s\S]*data-operational-view-switch[\s\S]*data-participant-nav-link/);
-  assert.match(index, /kitchen-status-row[\s\S]*compact-status-link[\s\S]*data-status/);
+  assert.match(index, /data-summary-date-tabs[\s\S]*data-participant-nav-link[\s\S]*data-operational-view-switch/);
+  const kitchenPanel = index.match(/<section class="board"[\s\S]*?<\/section>/)?.[0] || '';
+  assert.doesNotMatch(kitchenPanel, /data-participant-nav-link|compact-status-link|<a\b/);
+  assert.match(app, /const monthHref = buildOperationalLink\('participant'/);
+  assert.match(app, /elements\.monthNavLinks\.forEach\(\(link\) => \{\s*link\.href = monthHref/);
   assert.match(styles, /\.summary-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
   assert.match(styles, /\.kitchen-status-row > p \{[\s\S]*?justify-self: end;[\s\S]*?text-align: right;/);
   assert.match(app, /elements\.refreshButtons\.forEach/);
@@ -608,16 +616,28 @@ test('la messa si programma nella vista settimana per i ruoli autorizzati', () =
 
 test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e cucina', () => {
   assert.match(index, /data-week-operations/);
+  assert.match(index, /class="agenda-center-icon"/);
+  assert.match(index, /data-week-health-section/);
+  assert.doesNotMatch(index, /data-week-health-section[^>]*\sopen/);
   assert.match(index, /data-week-health-list/);
   assert.match(index, /data-week-health-save/);
   assert.match(index, /data-week-diet-participant/);
   assert.match(index, /data-week-diet-duration/);
   assert.match(index, /data-week-kitchen-note-input/);
+  assert.match(index, /data-week-kitchen-note-list/);
   assert.doesNotMatch(index, /data-admin-health-day/);
   assert.doesNotMatch(index, /data-admin-kitchen-note-day/);
   assert.match(index, /data-kitchen-sick/);
   assert.match(app, /loadDailyHealth/);
   assert.match(app, /saveSickPeople/);
+  assert.match(app, /data-week-sick-select/);
+  assert.match(app, /elements\.weekHealthSection\.open = sickCount > 0/);
+  assert.match(app, /removeKitchenNoteMessage/);
+  assert.match(app, /data-week-kitchen-note-remove/);
+  assert.doesNotMatch(app, /weekKitchenNoteInput\.value = state\.weekOperationalNote/);
+  assert.match(kitchenNotes, /export async function removeKitchenNoteMessage/);
+  assert.match(kitchenNotes, /nextMessages = \[\.\.\.messages/);
+  assert.match(kitchenNotes, /runTransaction/);
   assert.match(app, /saveDietAssignments/);
   assert.match(app, /function applyDailyDietsToSummary/);
   assert.match(app, /function applyDailyDietsToKitchenMeals/);

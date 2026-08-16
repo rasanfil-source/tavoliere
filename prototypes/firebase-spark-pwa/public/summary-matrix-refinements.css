@@ -163,10 +163,15 @@
 }
 
 .summary-international-names .summary-matrix-names {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  column-gap: 12px;
-  row-gap: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 14px;
+}
+
+.summary-international-names .summary-matrix-names > li {
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 .summary-international-names .summary-matrix-name-with-popup {
@@ -174,6 +179,8 @@
 }
 
 .summary-international-names .summary-matrix-person-trigger {
+  width: auto;
+  max-width: 100%;
   min-height: 30px;
   padding-block: 0;
   line-height: 1.05;
@@ -255,12 +262,12 @@
   --summary-day-next-strong: color-mix(in srgb, var(--primary) 9%, var(--surface));
   --summary-day-following: color-mix(in srgb, var(--primary) 10%, var(--surface));
   --summary-day-following-strong: color-mix(in srgb, var(--primary) 15%, var(--surface));
-  --mass-yes-bg: color-mix(in srgb, var(--good) 14%, var(--surface));
-  --mass-yes-border: color-mix(in srgb, var(--good) 42%, var(--line));
+  --mass-yes-bg: color-mix(in srgb, var(--good) 26%, var(--surface));
+  --mass-yes-border: color-mix(in srgb, var(--good) 58%, var(--line));
   --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
-  --mass-no-bg: color-mix(in srgb, var(--muted) 8%, var(--surface));
-  --mass-no-border: color-mix(in srgb, var(--muted) 24%, var(--line));
-  --mass-no-ink: color-mix(in srgb, var(--muted) 90%, var(--ink));
+  --mass-no-bg: color-mix(in srgb, #b3261e 24%, var(--surface));
+  --mass-no-border: color-mix(in srgb, #b3261e 60%, var(--line));
+  --mass-no-ink: #981f19;
 }
 
 .summary-layout-classic .summary-matrix-people-label {
@@ -363,6 +370,8 @@ html[data-theme="beige"] {
 html[data-theme="rosso-pallido"] {
   --surface: #fffafa;
   --line: #ead2ce;
+  --mass-yes-bg: #fff;
+  --mass-no-bg: #fff;
 }
 
 html[data-theme="confetto"] {
@@ -692,6 +701,12 @@ html[data-theme="confetto"] {
     width: 16px;
     height: 16px;
   }
+}
+
+[data-summary-panel] .summary-date-tabs > .operational-view-switch {
+  box-sizing: border-box;
+  height: 42px !important;
+  min-height: 42px !important;
 }
 
 .week-meal-button.meal-state-present {
@@ -1203,6 +1218,27 @@ html[data-theme="confetto"] {
 .summary-mass-state-no .summary-international-mass-segment > span:first-child,
 .summary-matrix-mass-no {
   color: var(--mass-no-ink);
+}
+
+.summary-matrix-mass-yes,
+.summary-matrix-mass-no {
+  display: inline-grid;
+  box-sizing: border-box;
+  min-width: 36px;
+  min-height: 36px;
+  place-items: center;
+  padding: 3px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.summary-matrix-mass-yes {
+  background: var(--mass-yes-bg);
+}
+
+.summary-matrix-mass-no {
+  background: var(--mass-no-bg);
 }
 
 .kitchen-notes {

@@ -1047,7 +1047,7 @@ h1,
 
 .kitchen-status-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 30px;
   align-items: center;
   gap: 8px;
 }
@@ -3477,18 +3477,35 @@ button[aria-busy="true"]:disabled {
 }
 
 .mass-card-content span {
+  display: inline-grid;
+  min-width: 36px;
+  min-height: 36px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
   font-size: 1.05rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .mass-card.mass-card-yes {
-  border-color: #afd0b6;
-  background: #e9f5e9;
+  border-color: var(--mass-yes-border, #afd0b6);
+  background: color-mix(in srgb, var(--mass-yes-bg, #e9f5e9) 50%, var(--surface));
+  color: var(--mass-yes-ink, var(--good));
+}
+
+.mass-card.mass-card-yes .mass-card-content span {
+  background: var(--mass-yes-bg, #e9f5e9);
 }
 
 .mass-card.mass-card-no {
-  border-color: #dfbeb8;
-  background: #faece9;
+  border-color: var(--mass-no-border, #dfbeb8);
+  background: color-mix(in srgb, var(--mass-no-bg, #faece9) 50%, var(--surface));
+  color: var(--mass-no-ink, #8d453b);
+}
+
+.mass-card.mass-card-no .mass-card-content span {
+  background: var(--mass-no-bg, #faece9);
 }
 
 .today-grid > .mass-card {
@@ -3642,6 +3659,16 @@ button[aria-busy="true"]:disabled {
   color: var(--ink);
 }
 
+.week-mass-button > strong {
+  display: inline-grid;
+  min-width: 34px;
+  min-height: 34px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  line-height: 1;
+}
+
 .week-scope-button,
 .week-meal-heading,
 .week-mass-heading,
@@ -3729,15 +3756,23 @@ button[aria-busy="true"]:disabled {
 }
 
 .week-mass-button-yes {
-  border-color: #afd0b6;
-  background: #e9f5e9;
-  color: var(--good);
+  border-color: var(--mass-yes-border, #afd0b6);
+  background: color-mix(in srgb, var(--mass-yes-bg, #e9f5e9) 45%, var(--surface));
+  color: var(--mass-yes-ink, var(--good));
+}
+
+.week-mass-button-yes > strong {
+  background: var(--mass-yes-bg, #e9f5e9);
 }
 
 .week-mass-button-no {
-  border-color: #dfbeb8;
-  background: #faece9;
-  color: #8d453b;
+  border-color: var(--mass-no-border, #dfbeb8);
+  background: color-mix(in srgb, var(--mass-no-bg, #faece9) 45%, var(--surface));
+  color: var(--mass-no-ink, #8d453b);
+}
+
+.week-mass-button-no > strong {
+  background: var(--mass-no-bg, #faece9);
 }
 
 .week-mass-button-locked,
@@ -4096,12 +4131,24 @@ button[aria-busy="true"]:disabled {
   justify-content: space-between;
   gap: 12px;
   padding: 0 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--calendar-heading-border);
   border-radius: 8px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--calendar-heading-bg) 78%, var(--surface));
   color: var(--ink);
   cursor: pointer;
   list-style: none;
+}
+
+.agenda-center-heading {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.agenda-center-icon {
+  flex: 0 0 auto;
+  color: var(--primary);
 }
 
 .agenda-center-toggle::-webkit-details-marker {
@@ -4156,6 +4203,23 @@ button[aria-busy="true"]:disabled {
   color: var(--ink);
   cursor: pointer;
   font-weight: 700;
+  list-style: none;
+}
+
+.week-operation-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.week-operation-section summary::after {
+  margin-left: auto;
+  color: var(--primary);
+  content: "⌄";
+  font-size: 1.1rem;
+  transition: transform 120ms ease-out;
+}
+
+.week-operation-section[open] > summary::after {
+  transform: rotate(180deg);
 }
 
 .week-operation-section .field-label {
@@ -4171,16 +4235,44 @@ button[aria-busy="true"]:disabled {
 
 .week-health-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 2px 8px;
-  max-height: 220px;
+  gap: 8px;
   margin: 6px 0 10px;
-  overflow-y: auto;
 }
 
-.week-health-list .checkbox-row {
+.week-health-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.week-health-picker select,
+.week-health-picker button {
   min-height: 42px;
+}
+
+.week-health-selected,
+.week-kitchen-note-list {
+  display: grid;
+  gap: 5px;
+}
+
+.week-health-selected-row,
+.week-kitchen-note-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.week-kitchen-note-list {
+  margin-top: 10px;
+}
+
+.week-kitchen-note-row p {
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .week-diet-list {

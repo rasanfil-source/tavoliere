@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816e';
+} from './i18n/i18n.mjs?v=20260816f';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260816e';
-import { escapeHtml } from './html-utils.js?v=20260816e';
+} from './refresh-schedule.js?v=20260816f';
+import { escapeHtml } from './html-utils.js?v=20260816f';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,12 +26,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816e';
+} from './firebase-client.js?v=20260816f';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816e';
+} from './center-context.js?v=20260816f';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -41,34 +41,34 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816e';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816e';
+} from './center-settings.js?v=20260816f';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816f';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260816e';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816e';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816e';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260816e';
-import { createStateStore } from './core/state-store.mjs?v=20260816e';
-import { toUserMessage } from './core/user-error.mjs?v=20260816e';
+} from './diet-utils.mjs?v=20260816f';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816f';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816f';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260816f';
+import { createStateStore } from './core/state-store.mjs?v=20260816f';
+import { toUserMessage } from './core/user-error.mjs?v=20260816f';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260816e';
+} from './core/connectivity.mjs?v=20260816f';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816e';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816e';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816e';
+} from './domain/participant-profile.mjs?v=20260816f';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816f';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816f';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816e';
+} from './summary-matrix-view.js?v=20260816f';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -77,14 +77,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816e',
-  admin: './admin-center.js?v=20260816e',
-  audit: './audit-log.js?v=20260816e',
-  bootstrap: './bootstrap-demo.js?v=20260816e',
-  daily: './daily-operations.js?v=20260816e',
-  kitchen: './kitchen-data.js?v=20260816e',
-  notes: './kitchen-notes.js?v=20260816e',
-  participant: './participant-data.js?v=20260816e'
+  accessLinks: './access-links.js?v=20260816f',
+  admin: './admin-center.js?v=20260816f',
+  audit: './audit-log.js?v=20260816f',
+  bootstrap: './bootstrap-demo.js?v=20260816f',
+  daily: './daily-operations.js?v=20260816f',
+  kitchen: './kitchen-data.js?v=20260816f',
+  notes: './kitchen-notes.js?v=20260816f',
+  participant: './participant-data.js?v=20260816f'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -140,6 +140,7 @@ const ensureKitchenDemoSession = callDomain('kitchen', 'ensureKitchenDemoSession
 const loadKitchenCounts = callDomain('kitchen', 'loadKitchenCounts');
 const loadKitchenNote = callDomain('notes', 'loadKitchenNote');
 const saveKitchenNote = callDomain('notes', 'saveKitchenNote');
+const removeKitchenNoteMessage = callDomain('notes', 'removeKitchenNoteMessage');
 const loadDailyOperation = callDomain('daily', 'loadDailyOperation');
 const loadDailyOperations = callDomain('daily', 'loadDailyOperations');
 const loadDailyHealth = callDomain('daily', 'loadDailyHealth');
@@ -279,7 +280,11 @@ function populateDietSelect(select, emptyLabel) {
   getDietOptions({ emptyLabel }).forEach(({ value, label }) => {
     const option = document.createElement('option');
     option.value = value;
-    option.textContent = label;
+    option.textContent = value === 'STANDARD'
+      ? emptyLabel
+      : /^\d+$/.test(value)
+        ? `${t('diet.option.label')} ${value}`
+        : t(`diet.option.${value}`, {}, { fallback: label });
     fragment.append(option);
   });
   select.replaceChildren(fragment);
@@ -478,6 +483,7 @@ const elements = {
   refreshButtons: document.querySelectorAll('[data-refresh-button]'),
   offlineBanner: document.querySelector('[data-offline-banner]'),
   accountFooter: document.querySelector('[data-account-footer]'),
+  topbarContextNav: document.querySelector('[data-topbar-context-nav]'),
   controlPanelEntry: document.querySelector('[data-control-panel-entry]'),
   mealsReturnEntry: document.querySelector('[data-meals-return-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
@@ -639,6 +645,7 @@ const elements = {
   weekOperations: document.querySelector('[data-week-operations]'),
   weekOperationsStatus: document.querySelector('[data-week-operations-status]'),
   weekOperationsDay: document.querySelector('[data-week-operations-day]'),
+  weekHealthSection: document.querySelector('[data-week-health-section]'),
   weekHealthList: document.querySelector('[data-week-health-list]'),
   weekHealthSave: document.querySelector('[data-week-health-save]'),
   weekHealthStatus: document.querySelector('[data-week-health-status]'),
@@ -652,6 +659,7 @@ const elements = {
   weekKitchenNoteStatus: document.querySelector('[data-week-kitchen-note-status]'),
   weekKitchenNoteInput: document.querySelector('[data-week-kitchen-note-input]'),
   weekKitchenNoteSave: document.querySelector('[data-week-kitchen-note-save]'),
+  weekKitchenNoteList: document.querySelector('[data-week-kitchen-note-list]'),
   residentLogin: document.querySelector('[data-resident-login]'),
   residentLoginForm: document.querySelector('[data-resident-login-form]'),
   residentLoginStatus: document.querySelector('[data-resident-login-status]'),
@@ -986,6 +994,7 @@ elements.kitchenPanel.addEventListener('click', handleKitchenPanelClick);
 window.addEventListener('beforeunload', handleBeforeUnload);
 window.addEventListener('hashchange', handleAdminHashChange);
 elements.weekOperationsDay.addEventListener('change', () => refreshWeekOperations(true));
+elements.weekHealthList.addEventListener('click', handleWeekHealthListClick);
 elements.weekHealthSave.addEventListener('click', handleWeekHealthSave);
 elements.weekDietType.addEventListener('change', () => {
   syncCustomDietNumber(elements.weekDietType, elements.weekDietNumber);
@@ -993,6 +1002,7 @@ elements.weekDietType.addEventListener('change', () => {
 elements.weekDietSave.addEventListener('click', handleWeekDietSave);
 elements.weekDietList.addEventListener('click', handleWeekDietListClick);
 elements.weekKitchenNoteSave.addEventListener('click', handleWeekKitchenNoteSave);
+elements.weekKitchenNoteList.addEventListener('click', handleWeekKitchenNoteListClick);
 elements.adminPhoneConsent.addEventListener('change', syncAdminCheckboxes);
 elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
 elements.operationalLinks.addEventListener('click', handleOperationalLinksClick);
@@ -1354,7 +1364,8 @@ function initializeOperationalLinks() {
       : state.operationalLinks.kitchenTokenId;
   const centerId = getActiveCenterId();
   const personalAccess = 'friendly';
-  elements.publicLink.href = buildOperationalLink('participant', publicToken, centerId, personalAccess);
+  const monthHref = buildOperationalLink('participant', publicToken, centerId, personalAccess);
+  elements.publicLink.href = monthHref;
   elements.summaryLink.href = buildOperationalLink('summary', publicToken, centerId);
   elements.kitchenLink.href = buildOperationalLink('kitchen', kitchenToken, centerId);
   elements.summaryNavLinks.forEach((link) => {
@@ -1369,7 +1380,7 @@ function initializeOperationalLinks() {
     link.href = weekHref;
   });
   elements.monthNavLinks.forEach((link) => {
-    link.href = elements.publicLink.href;
+    link.href = monthHref;
   });
   const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
   adminEntryUrl.searchParams.set('view', 'admin');
@@ -1778,6 +1789,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   elements.adminShell.dataset.platformOwner = isPlatformOwner ? 'true' : 'false';
   elements.adminShell.open = isAdmin || invitationPending || access.needsInitialization || state.platformOwner || state.mode === 'admin';
   elements.authActions.classList.add('auth-actions-signed-in');
+  elements.authActions.hidden = true;
   elements.authButton.textContent = t('common.actions.exit');
   elements.adminEmailAuth.hidden = true;
   elements.authStatus.textContent = isPlatformOwner
@@ -1892,6 +1904,7 @@ function setSignedOutState() {
   elements.adminShell.dataset.adminOwner = 'false';
   elements.adminShell.dataset.platformOwner = 'false';
   elements.authActions.classList.remove('auth-actions-signed-in');
+  elements.authActions.hidden = false;
   const hasAdministratorInvitation = Boolean(getAdminInvitationId() || getAdminRoleInvitationId());
   const usesExistingEmailAccount = hasAdministratorInvitation && state.adminInviteEmailMode === 'signin';
   elements.authButton.textContent = hasAdministratorInvitation ? 'Crea account con Google' : 'Accedi con Google';
@@ -1996,6 +2009,7 @@ function handleAdminCenterChange(event) {
 
 function showAuthenticatedAdministratorControls() {
   elements.authActions.classList.add('auth-actions-signed-in');
+  elements.authActions.hidden = true;
   elements.authButton.textContent = t('common.actions.exit');
   elements.adminEmailAuth.hidden = true;
   elements.ownerExitButton.hidden = false;
@@ -2615,7 +2629,11 @@ async function performRefresh(source) {
     state.kitchenDays = kitchenPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
     state.kitchenOperations = kitchenPayloads.map(({ dateId, kitchenNote, dailyOperation, dailyHealth }) => ({
       dateId,
-      notes: kitchenNote ? [kitchenNote] : [],
+      notes: Array.isArray(kitchenNote?.messages) && kitchenNote.messages.length > 0
+        ? kitchenNote.messages
+        : kitchenNote?.text
+          ? [kitchenNote]
+          : [],
       dailyOperation,
       dailyHealth
     }));
@@ -3937,6 +3955,7 @@ function renderMode() {
   elements.weekPanel.hidden = !isWeek || needsResidentLogin || state.platformOwner;
   elements.summaryPanel.hidden = !isSummary || needsResidentLogin || state.platformOwner;
   elements.kitchenPanel.hidden = !isKitchen;
+  elements.topbarContextNav.hidden = isKitchen;
   if (isCenterActivation) {
     elements.residentLogin.hidden = true;
     elements.participantPanel.hidden = true;
@@ -3961,6 +3980,7 @@ function renderMode() {
   elements.ownerExitButton.hidden = !state.platformOwner && !authenticatedAdministrator;
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
+    elements.authActions.hidden = true;
     elements.authButton.textContent = t('common.actions.exit');
     elements.adminEmailAuth.hidden = true;
   }
@@ -5613,12 +5633,24 @@ function renderWeekOperations() {
 
   const activeParticipants = state.adminParticipants.filter((participant) => participant.status === 'ACTIVE');
   const selectedSickIds = new Set((state.weekOperationalHealth?.sickPeople || []).map((person) => person.participantId));
-  elements.weekHealthList.innerHTML = activeParticipants.map((participant) => `
-    <label class="checkbox-row">
-      <input type="checkbox" data-week-sick-person="${escapeHtml(participant.participantId)}"${selectedSickIds.has(participant.participantId) ? ' checked' : ''}>
-      <span>${escapeHtml(participant.displayName)}${participant.groupId === 'group_ospiti' ? ' · ospite' : ''}</span>
-    </label>
-  `).join('') || '<p class="empty-state">Nessuna persona disponibile</p>';
+  const availableParticipants = activeParticipants.filter((participant) => !selectedSickIds.has(participant.participantId));
+  const selectedParticipants = activeParticipants.filter((participant) => selectedSickIds.has(participant.participantId));
+  elements.weekHealthList.innerHTML = activeParticipants.length > 0 ? `
+    <div class="week-health-picker">
+      <select data-week-sick-select aria-label="${escapeHtml(t('week.operations.person'))}"${availableParticipants.length ? '' : ' disabled'}>
+        ${availableParticipants.map((participant) => `<option value="${escapeHtml(participant.participantId)}">${escapeHtml(participant.displayName)}${participant.groupId === 'group_ospiti' ? ' · ospite' : ''}</option>`).join('')}
+      </select>
+      <button type="button" class="secondary-action" data-week-sick-add${availableParticipants.length ? '' : ' disabled'}>${escapeHtml(t('common.actions.add'))}</button>
+    </div>
+    <div class="week-health-selected">
+      ${selectedParticipants.map((participant) => `
+        <div class="week-health-selected-row" data-week-sick-selected="${escapeHtml(participant.participantId)}">
+          <span>${escapeHtml(participant.displayName)}${participant.groupId === 'group_ospiti' ? ' · ospite' : ''}</span>
+          <button type="button" class="tertiary-action" data-week-sick-remove="${escapeHtml(participant.participantId)}">${escapeHtml(t('common.actions.delete'))}</button>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<p class="empty-state">Nessuna persona disponibile</p>';
 
   const selectedParticipantId = elements.weekDietParticipant.value;
   elements.weekDietParticipant.innerHTML = activeParticipants.map((participant) => (
@@ -5629,12 +5661,54 @@ function renderWeekOperations() {
   }
 
   const sickCount = selectedSickIds.size;
+  elements.weekHealthSection.open = sickCount > 0;
   elements.weekHealthStatus.textContent = sickCount > 0
     ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
     : 'Nessun ammalato';
-  elements.weekKitchenNoteInput.value = state.weekOperationalNote?.text || '';
-  elements.weekKitchenNoteStatus.textContent = state.weekOperationalNote?.text ? t('week.operations.note.present') : t('week.operations.note.empty');
+  renderWeekKitchenNotes();
   renderWeekDietAssignments();
+}
+
+function renderWeekKitchenNotes() {
+  const messages = Array.isArray(state.weekOperationalNote?.messages)
+    ? state.weekOperationalNote.messages
+    : state.weekOperationalNote?.text
+      ? [{ id: 'legacy', text: state.weekOperationalNote.text }]
+      : [];
+  elements.weekKitchenNoteList.innerHTML = messages.map((message) => `
+    <div class="week-kitchen-note-row">
+      <p>${escapeHtml(message.text)}</p>
+      <button type="button" class="tertiary-action" data-week-kitchen-note-remove="${escapeHtml(message.id)}">${escapeHtml(t('common.actions.delete'))}</button>
+    </div>
+  `).join('');
+  elements.weekKitchenNoteStatus.textContent = messages.length > 0
+    ? t('week.operations.note.present')
+    : t('week.operations.note.empty');
+}
+
+function handleWeekHealthListClick(event) {
+  const addButton = event.target.closest('[data-week-sick-add]');
+  const removeButton = event.target.closest('[data-week-sick-remove]');
+  if (!addButton && !removeButton) return;
+  const currentPeople = Array.isArray(state.weekOperationalHealth?.sickPeople)
+    ? [...state.weekOperationalHealth.sickPeople]
+    : [];
+  if (addButton) {
+    const participantId = elements.weekHealthList.querySelector('[data-week-sick-select]')?.value;
+    const participant = state.adminParticipants.find((item) => item.participantId === participantId);
+    if (participant && !currentPeople.some((person) => person.participantId === participantId)) {
+      currentPeople.push({
+        participantId: participant.participantId,
+        displayName: participant.displayName,
+        groupId: participant.groupId
+      });
+    }
+  } else {
+    const participantId = removeButton.dataset.weekSickRemove;
+    currentPeople.splice(0, currentPeople.length, ...currentPeople.filter((person) => person.participantId !== participantId));
+  }
+  state.weekOperationalHealth = { ...(state.weekOperationalHealth || {}), sickPeople: currentPeople };
+  renderWeekOperations();
 }
 
 function renderWeekDietAssignments() {
@@ -5657,8 +5731,8 @@ function renderWeekDietAssignments() {
 
 async function handleWeekHealthSave() {
   const selectedIds = new Set(Array.from(
-    elements.weekHealthList.querySelectorAll('[data-week-sick-person]:checked'),
-    (input) => input.dataset.weekSickPerson
+    elements.weekHealthList.querySelectorAll('[data-week-sick-selected]'),
+    (row) => row.dataset.weekSickSelected
   ));
   const sickPeople = state.adminParticipants
     .filter((participant) => selectedIds.has(participant.participantId))
@@ -5735,20 +5809,43 @@ async function handleWeekDietListClick(event) {
 }
 
 async function handleWeekKitchenNoteSave() {
+  const noteText = elements.weekKitchenNoteInput.value.trim();
+  if (!noteText) {
+    elements.weekKitchenNoteStatus.textContent = t('week.operations.note.empty');
+    return;
+  }
   elements.weekKitchenNoteSave.disabled = true;
   elements.weekKitchenNoteStatus.textContent = t('week.operations.note.saving');
   try {
     state.weekOperationalNote = await saveKitchenNote(
       parseDateId(state.weekOperationalDateId),
-      elements.weekKitchenNoteInput.value
+      noteText
     );
-    elements.weekKitchenNoteStatus.textContent = elements.weekKitchenNoteInput.value.trim()
-      ? t('week.operations.note.saved')
-      : t('week.operations.note.removed');
+    elements.weekKitchenNoteInput.value = '';
+    renderWeekKitchenNotes();
+    elements.weekKitchenNoteStatus.textContent = t('week.operations.note.saved');
   } catch (error) {
     elements.weekKitchenNoteStatus.textContent = friendlyErrorMessage(error, 'Salvataggio non riuscito');
   } finally {
     elements.weekKitchenNoteSave.disabled = false;
+  }
+}
+
+async function handleWeekKitchenNoteListClick(event) {
+  const button = event.target.closest('[data-week-kitchen-note-remove]');
+  if (!button) return;
+  button.disabled = true;
+  elements.weekKitchenNoteStatus.textContent = t('common.actions.deleting');
+  try {
+    state.weekOperationalNote = await removeKitchenNoteMessage(
+      parseDateId(state.weekOperationalDateId),
+      button.dataset.weekKitchenNoteRemove
+    );
+    renderWeekKitchenNotes();
+    elements.weekKitchenNoteStatus.textContent = t('week.operations.note.removed');
+  } catch (error) {
+    elements.weekKitchenNoteStatus.textContent = friendlyErrorMessage(error, 'Nota non rimossa');
+    button.disabled = false;
   }
 }
 
@@ -5966,7 +6063,9 @@ function renderKitchenMass() {
 }
 
 function renderKitchenNote() {
-  const text = state.kitchenNote?.text?.trim() || '';
+  const text = Array.isArray(state.kitchenNote?.messages)
+    ? state.kitchenNote.messages.map((message) => message.text).filter(Boolean).join('\n')
+    : state.kitchenNote?.text?.trim() || '';
   elements.kitchenNote.hidden = !text;
   elements.kitchenNoteText.textContent = text;
 }

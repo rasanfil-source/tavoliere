@@ -978,11 +978,13 @@ service cloud.firestore {
           || canManageDailyOperations(centerId);
         allow create, update: if canManageDailyOperations(centerId)
           && request.resource.data.keys().hasAll(['centerId', 'mealDate', 'text', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['centerId', 'mealDate', 'text', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'mealDate', 'text', 'messages', 'updatedAt'])
           && request.resource.data.centerId == centerId
           && request.resource.data.mealDate == mealDate
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 1000
+          && request.resource.data.get('messages', []) is list
+          && request.resource.data.get('messages', []).size() <= 50
           && request.resource.data.updatedAt == request.time;
         allow delete: if canManageDailyOperations(centerId);
       }

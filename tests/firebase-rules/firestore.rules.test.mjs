@@ -1361,6 +1361,7 @@ test('admin writes kitchen notes, kitchen reads them, and public sessions cannot
     centerId: CENTER_ID,
     mealDate: '2026-08-05',
     text: 'Pranzo alle 12:30',
+    messages: [{ id: 'note-1', text: 'Pranzo alle 12:30', createdAt: '2026-08-05T09:00:00.000Z' }],
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
   await assertSucceeds(kitchenDb.doc(notePath).get());
