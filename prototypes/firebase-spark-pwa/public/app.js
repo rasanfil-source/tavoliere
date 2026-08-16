@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816d';
+} from './i18n/i18n.mjs?v=20260816e';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260816d';
-import { escapeHtml } from './html-utils.js?v=20260816d';
+} from './refresh-schedule.js?v=20260816e';
+import { escapeHtml } from './html-utils.js?v=20260816e';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,12 +26,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816d';
+} from './firebase-client.js?v=20260816e';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816d';
+} from './center-context.js?v=20260816e';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -41,34 +41,34 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816d';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816d';
+} from './center-settings.js?v=20260816e';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816e';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260816d';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816d';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816d';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260816d';
-import { createStateStore } from './core/state-store.mjs?v=20260816d';
-import { toUserMessage } from './core/user-error.mjs?v=20260816d';
+} from './diet-utils.mjs?v=20260816e';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816e';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816e';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260816e';
+import { createStateStore } from './core/state-store.mjs?v=20260816e';
+import { toUserMessage } from './core/user-error.mjs?v=20260816e';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260816d';
+} from './core/connectivity.mjs?v=20260816e';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816d';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816d';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816d';
+} from './domain/participant-profile.mjs?v=20260816e';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816e';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816e';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816d';
+} from './summary-matrix-view.js?v=20260816e';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -77,14 +77,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816d',
-  admin: './admin-center.js?v=20260816d',
-  audit: './audit-log.js?v=20260816d',
-  bootstrap: './bootstrap-demo.js?v=20260816d',
-  daily: './daily-operations.js?v=20260816d',
-  kitchen: './kitchen-data.js?v=20260816d',
-  notes: './kitchen-notes.js?v=20260816d',
-  participant: './participant-data.js?v=20260816d'
+  accessLinks: './access-links.js?v=20260816e',
+  admin: './admin-center.js?v=20260816e',
+  audit: './audit-log.js?v=20260816e',
+  bootstrap: './bootstrap-demo.js?v=20260816e',
+  daily: './daily-operations.js?v=20260816e',
+  kitchen: './kitchen-data.js?v=20260816e',
+  notes: './kitchen-notes.js?v=20260816e',
+  participant: './participant-data.js?v=20260816e'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -1216,7 +1216,11 @@ function cancelOperationalAutoScroll(markHandled = false) {
   if (markHandled) state.operationalAutoScrollHandled = true;
 }
 
-function scheduleOperationalAutoScroll() {
+function scheduleOperationalAutoScroll({ reset = false, delayMs = OPERATIONAL_AUTO_SCROLL_DELAY_MS } = {}) {
+  if (reset) {
+    cancelOperationalAutoScroll();
+    state.operationalAutoScrollHandled = false;
+  }
   const target = state.mode === 'summary'
     ? elements.summaryDateTabs
     : state.mode === 'kitchen'
@@ -1257,7 +1261,7 @@ function scheduleOperationalAutoScroll() {
     ) return;
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     target.scrollIntoView({ behavior, block: 'start' });
-  }, OPERATIONAL_AUTO_SCROLL_DELAY_MS);
+  }, delayMs);
 }
 
 function updateConnectivityState() {
@@ -3992,8 +3996,7 @@ function renderCenterAvatar(showInCurrentMode, centerName) {
 }
 
 function handleSummaryDayChange(offset) {
-  state.summaryDayOffset = offset === 1 ? 1 : 0;
-  selectSummaryMatrixDay(state.summaryDayOffset, { smooth: true });
+  selectSummaryMatrixDay(offset, { smooth: true });
   renderMode();
   if (state.summaryDays.length === 0) {
     refreshNow('riepilogo');
@@ -4001,8 +4004,7 @@ function handleSummaryDayChange(offset) {
 }
 
 function handleKitchenDayChange(offset) {
-  state.kitchenDayOffset = offset === 1 ? 1 : 0;
-  selectKitchenMatrixDay(state.kitchenDayOffset, { smooth: true });
+  selectKitchenMatrixDay(offset, { smooth: true });
   renderKitchenHeading();
   if (state.kitchenDays.length === 0) {
     refreshNow('giorno');
@@ -4010,6 +4012,7 @@ function handleKitchenDayChange(offset) {
 }
 
 function selectSummaryMatrixDay(offset, { smooth = false, scroll = true } = {}) {
+  const previousOffset = state.summaryDayOffset;
   state.summaryDayOffset = offset === 1 ? 1 : 0;
   state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || state.todayOverview;
   state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || state.summaryDailyOperation;
@@ -4022,9 +4025,13 @@ function selectSummaryMatrixDay(offset, { smooth = false, scroll = true } = {}) 
   if (scroll) {
     scrollSummaryMatrix(elements.todayOverview, state.summaryDayOffset, { smooth });
   }
+  if (previousOffset !== state.summaryDayOffset) {
+    scheduleOperationalAutoScroll({ reset: true, delayMs: 220 });
+  }
 }
 
 function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) {
+  const previousOffset = state.kitchenDayOffset;
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
   state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
   state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || state.kitchenNote;
@@ -4037,6 +4044,9 @@ function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) 
   });
   if (scroll) {
     scrollSummaryMatrix(elements.cards, state.kitchenDayOffset, { kitchen: true, smooth });
+  }
+  if (previousOffset !== state.kitchenDayOffset) {
+    scheduleOperationalAutoScroll({ reset: true, delayMs: 220 });
   }
 }
 

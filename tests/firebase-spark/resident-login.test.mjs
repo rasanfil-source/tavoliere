@@ -307,6 +307,9 @@ test('riepilogo e cucina portano il selettore giorni in primo piano solo quando 
   assert.match(app, /const needsMoreRoom = panelRect\.bottom > window\.innerHeight && targetRect\.top > 8/);
   assert.match(app, /target\.scrollIntoView\(\{ behavior, block: 'start' \}\)/);
   assert.match(app, /scheduleOperationalAutoScroll\(\)/);
+  assert.match(app, /scheduleOperationalAutoScroll\(\{ reset: true, delayMs: 220 \}\)/);
+  assert.match(app, /previousOffset !== state\.summaryDayOffset/);
+  assert.match(app, /previousOffset !== state\.kitchenDayOffset/);
 });
 
 test('una sessione residente non viene presentata come accesso amministratore', () => {
@@ -472,6 +475,7 @@ test('sul mobile selettori e pulsante operativo restano affiancati e stabili', (
   assert.match(summaryStyles, /\.operational-view-switch \{[\s\S]*height: 42px !important;[\s\S]*min-height: 42px !important/);
   assert.match(summaryStyles, /@media \(max-width: 520px\)[\s\S]*\.meal-view-nav \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
   assert.match(summaryStyles, /\[data-summary-panel\] \.summary-date-tabs \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
+  assert.match(summaryStyles, /@media \(min-width: 621px\)[\s\S]*\[data-summary-panel\] \.summary-date-tabs > \[data-participant-nav-link\] \{[\s\S]*margin-left: auto/);
 });
 
 test('ogni nuovo ingresso nel riepilogo riparte da Oggi', () => {

@@ -66,7 +66,8 @@ test('Classic e Internazionale aprono i contatti dal nome del commensale', () =>
   assert.match(styles, /text-underline-offset: 3px;\s*}\s*\.summary-matrix-person-trigger \.summary-matrix-person-name/);
   assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column, \{ compactActions: true \}\)/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-names \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
-  assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 40px/);
+  assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 30px;[\s\S]*line-height: 1\.05/);
+  assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 34px/);
 });
 
 test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {
@@ -96,10 +97,11 @@ test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () 
 });
 
 test('il selettore Oggi Domani scorre con la stessa animazione nelle due direzioni', () => {
-  assert.match(app, /selectSummaryMatrixDay\(state\.summaryDayOffset, \{ smooth: true \}\)/);
-  assert.match(app, /selectKitchenMatrixDay\(state\.kitchenDayOffset, \{ smooth: true \}\)/);
+  assert.match(app, /selectSummaryMatrixDay\(offset, \{ smooth: true \}\)/);
+  assert.match(app, /selectKitchenMatrixDay\(offset, \{ smooth: true \}\)/);
   assert.match(app, /function selectSummaryMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
   assert.match(app, /function selectKitchenMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
+  assert.match(app, /scheduleOperationalAutoScroll\(\{ reset: true, delayMs: 220 \}\)/);
   assert.match(view, /behavior: smooth \? "smooth" : "auto"/);
 });
 

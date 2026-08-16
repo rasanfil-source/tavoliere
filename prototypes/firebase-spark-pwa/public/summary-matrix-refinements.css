@@ -166,7 +166,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   column-gap: 12px;
-  row-gap: 1px;
+  row-gap: 0;
 }
 
 .summary-international-names .summary-matrix-name-with-popup {
@@ -174,9 +174,9 @@
 }
 
 .summary-international-names .summary-matrix-person-trigger {
-  min-height: 40px;
-  padding-block: 3px;
-  line-height: 1.2;
+  min-height: 30px;
+  padding-block: 0;
+  line-height: 1.05;
 }
 
 [data-kitchen-panel] .summary-international-card > header {
@@ -753,6 +753,12 @@ html[data-theme="confetto"] {
   pointer-events: none;
 }
 
+@media (min-width: 621px) {
+  [data-summary-panel] .summary-date-tabs > [data-participant-nav-link] {
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 520px) {
   .meal-view-nav {
     display: grid;
@@ -776,6 +782,12 @@ html[data-theme="confetto"] {
     min-width: 0;
     margin-left: 0;
     padding-inline: clamp(8px, 3vw, 14px);
+  }
+}
+
+@media (max-width: 620px) {
+  .summary-international-names .summary-matrix-person-trigger {
+    min-height: 34px;
   }
 }
 
