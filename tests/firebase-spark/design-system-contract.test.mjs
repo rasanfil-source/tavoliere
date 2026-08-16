@@ -39,6 +39,21 @@ test('focus e movimento ridotto fanno parte del sistema grafico', () => {
   assert.match(styles, /outline:[^;]+;/);
 });
 
+test('hover e focus seguono la palette selezionata', () => {
+  assert.match(styles, /--primary-hover: color-mix\(in srgb, var\(--primary\)/);
+  assert.match(styles, /--hover-surface: color-mix\(in srgb, var\(--primary\)/);
+  assert.match(styles, /\.primary-action:hover,[\s\S]*background: var\(--primary-hover\) !important/);
+  assert.match(styles, /\.secondary-action:hover,[\s\S]*background: var\(--hover-surface\) !important/);
+  assert.doesNotMatch(styles, /\.primary-action:hover,[\s\S]{0,120}#0f514b/);
+});
+
+test('stati positivi e settimana completa si armonizzano con ogni palette', () => {
+  assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--good: #4f7049/);
+  assert.match(styles, /html\[data-theme="confetto"\][\s\S]*--good: #47785f/);
+  assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--good\)/);
+  assert.match(styles, /\.month-week-action-row\.month-week-complete \{[\s\S]*border-color: var\(--complete-line\);[\s\S]*background: var\(--complete-surface\)/);
+});
+
 test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
   assert.match(app, /const visibleMark = isPresent \? '✓'/);
   assert.match(app, /aria-pressed="\$\{isPresent\}"/);

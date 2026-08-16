@@ -24,7 +24,7 @@ import {
   verifyResidentCommonPassword,
   waitForAuthReady
 } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816g';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import { normalizeDietTags } from './diet-utils.mjs?v=20260816g';
@@ -33,13 +33,13 @@ import {
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20260816g';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816g';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816h';
 import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816i';
+} from './center-settings.js?v=20260816j';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816i';
+} from './center-settings.js?v=20260816j';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -267,7 +267,7 @@ export async function restoreFriendlyResidentSession() {
       throw new Error('Sigla non attiva');
     }
     if (normalizeResidentSignature(participant.signature) !== signature) {
-      throw new Error('Identita del dispositivo non coerente');
+      throw new Error('Identità del dispositivo non coerente');
     }
     rememberResidentIdentity(participant, signature, {
       tokenId: token.tokenId,
@@ -883,7 +883,7 @@ export async function saveAdminParticipant(participantId, profile) {
   ));
   const duplicate = duplicateSnapshot.docs.find((item) => item.id !== participantId);
   if (duplicate) {
-    throw new Error('Questa sigla e gia utilizzata');
+    throw new Error('Questa sigla è già utilizzata');
   }
 
   const resolvedId = participantId || `participant_${crypto.randomUUID?.() || createRequestId()}`;
@@ -910,7 +910,7 @@ export async function saveAdminParticipant(participantId, profile) {
     const participantSnapshot = await transaction.get(participantRef);
     const ruleSnapshot = await transaction.get(ruleRef);
     if (participantId && !participantSnapshot.exists()) {
-      const error = new Error('La persona non esiste piu. Aggiorna l’elenco.');
+      const error = new Error('La persona non esiste più. Aggiorna l’elenco.');
       error.code = 'aborted';
       throw error;
     }
@@ -1049,7 +1049,7 @@ export async function deleteAdminParticipant(participantId) {
   ]);
 
   if (!participantSnapshot.exists()) {
-    throw new Error('La persona non esiste piu');
+    throw new Error('La persona non esiste più');
   }
 
   const disableBatch = writeBatch(db);

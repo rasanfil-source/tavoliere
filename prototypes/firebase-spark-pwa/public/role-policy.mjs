@@ -86,9 +86,9 @@ export function getRoleCapabilities(role, options = {}) {
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }
-  // Il vice amministratore non richiede piu' un account amministratore
+  // Il vice amministratore non richiede più un account amministratore
   // separato: la spunta "Vice amministratore" sulla scheda persona
-  // sblocca direttamente la gestione quotidiana per chi e' collegato
+  // sblocca direttamente la gestione quotidiana per chi è collegato
   // come quel residente, mentre "Celebrazioni liturgiche" sblocca
   // esclusivamente la gestione delle Messe.
   if (options.viceAdminRole === true) {

@@ -7,7 +7,7 @@ export function assertCurrentRevision(currentValue, expectedValue) {
   const current = normalizeRevision(currentValue);
   const expected = normalizeRevision(expectedValue);
   if (current !== expected) {
-    const error = new Error('La scheda e stata modificata da un altro amministratore. Aggiorna prima di salvare.');
+    const error = new Error('La scheda è stata modificata da un altro amministratore. Aggiorna prima di salvare.');
     error.code = 'aborted';
     throw error;
   }

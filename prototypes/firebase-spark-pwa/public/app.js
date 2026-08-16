@@ -31,7 +31,7 @@ import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816g';
+} from './center-context.js?v=20260816h';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -42,14 +42,14 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816i';
+} from './center-settings.js?v=20260816j';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
 } from './diet-utils.mjs?v=20260816g';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816h';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import { toUserMessage } from './core/user-error.mjs?v=20260816i';
@@ -77,13 +77,13 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816k',
+  admin: './admin-center.js?v=20260816l',
   audit: './audit-log.js?v=20260816g',
-  bootstrap: './bootstrap-demo.js?v=20260816g',
+  bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260816h',
   kitchen: './kitchen-data.js?v=20260816g',
-  notes: './kitchen-notes.js?v=20260816g',
-  participant: './participant-data.js?v=20260816k'
+  notes: './kitchen-notes.js?v=20260816h',
+  participant: './participant-data.js?v=20260816l'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -192,7 +192,7 @@ function readInvitationId(parameterName) {
     try {
       window.sessionStorage.setItem(CENTER_INVITATION_STORAGE_KEY, value);
     } catch {
-      // L URL resta la fonte autorevole quando la sessione del browser non è scrivibile.
+      // L'URL resta la fonte autorevole quando la sessione del browser non è scrivibile.
     }
     return value;
   }
@@ -2236,7 +2236,7 @@ async function handleRequiredAdminPasswordSetup(event) {
 
 async function handleCenterInvitationGeneration() {
   elements.ownerInvitationGenerate.disabled = true;
-  elements.ownerInvitationStatus.textContent = 'Genero l invito...';
+  elements.ownerInvitationStatus.textContent = t('admin.invitations.generating');
   try {
     const invitation = await createCenterInvitation();
     const url = new URL('/', window.location.origin);
@@ -2413,7 +2413,7 @@ function handleBootstrapButton() {
 
 async function performBootstrap() {
   if (!hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR)) {
-    elements.authStatus.textContent = 'Non hai l autorizzazione per estendere il calendario';
+    elements.authStatus.textContent = 'Non hai l\'autorizzazione per estendere il calendario';
     return;
   }
   const isFirstCalendarCreation = !state.adminCalendarCoverage?.through
@@ -3746,7 +3746,7 @@ async function saveAdministratorAsParticipant({
 
   if (participantWithNextSignature && participantWithPreviousSignature
       && participantWithNextSignature.participantId !== participantWithPreviousSignature.participantId) {
-    throw new Error('La nuova sigla appartiene gia a un altra persona');
+    throw new Error('La nuova sigla appartiene già a un\'altra persona');
   }
 
   const participant = participantWithPreviousSignature || participantWithNextSignature || null;
@@ -5374,7 +5374,7 @@ async function handleDayBulkButton(button) {
   const effect = button.dataset.dayEffect;
   const optimistic = beginOptimisticBulkSelection([day], effect);
   if (optimistic.meals.length === 0) {
-    setParticipantStatus('Era gia tutto impostato cosi');
+    setParticipantStatus('Era già tutto impostato così');
     return;
   }
 
@@ -5390,7 +5390,7 @@ async function handleDayBulkButton(button) {
     );
     optimistic.commit();
     state.selectedSummaryDate = button.dataset.dayDate;
-    setParticipantStatus(updatedMeals > 0 ? 'Giornata aggiornata' : 'Era gia tutto impostato cosi');
+    setParticipantStatus(updatedMeals > 0 ? 'Giornata aggiornata' : 'Era già tutto impostato così');
   } catch (error) {
     optimistic.rollback();
     setParticipantStatus(friendlyErrorMessage(error, 'Salvataggio riga non riuscito'));

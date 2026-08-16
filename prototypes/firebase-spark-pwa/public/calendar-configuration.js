@@ -6,7 +6,7 @@ import {
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser, setResidentTechnicalPassword } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId } from './center-context.js?v=20260816g';
+import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   addDaysToDateId,

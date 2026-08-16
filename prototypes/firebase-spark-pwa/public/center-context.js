@@ -32,7 +32,7 @@ export function createOwnedCenterId(userUid, suffix = '') {
   const normalizedSuffix = String(suffix || createCenterIdSuffix()).trim().toLowerCase();
   const centerId = `center_${normalizedUid}_${normalizedSuffix}`;
   if (!CENTER_ID_PATTERN.test(centerId)) {
-    throw new Error('Impossibile generare l identificativo del centro');
+    throw new Error('Impossibile generare l\'identificativo del centro');
   }
   return centerId;
 }
