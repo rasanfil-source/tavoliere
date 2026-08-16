@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816j';
+} from './i18n/i18n.mjs?v=20260816k';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -68,7 +68,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816g';
+} from './summary-matrix-view.js?v=20260816h';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -78,7 +78,7 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816h',
+  admin: './admin-center.js?v=20260816i',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816g',
   daily: './daily-operations.js?v=20260816g',
@@ -1037,6 +1037,8 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('online', handleConnectivityChange);
 window.addEventListener('offline', handleConnectivityChange);
+window.addEventListener('focus', refreshAdminRolesWhenVisible);
+document.addEventListener('visibilitychange', refreshAdminRolesWhenVisible);
 
 function handleSummaryPanelClick(event) {
   const button = event.target.closest('[data-summary-day]');
@@ -1606,6 +1608,9 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
     renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
+  }
+  if (section === 'access') {
+    queueMicrotask(refreshAdminRolesWhenVisible);
   }
   renderAdminSectionVisibility();
   renderAdminMobileSection();
@@ -3273,9 +3278,33 @@ function renderAuditEvents(events) {
 
 async function refreshAdminInvitationList() {
   if (!hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) return;
-  state.adminInvitations = await listAdministratorInvitations();
+  const [invitations, accounts] = await Promise.all([
+    listAdministratorInvitations(),
+    listCenterAdministrators()
+  ]);
+  state.adminInvitations = invitations;
+  state.adminAccounts = accounts;
+  renderAdminLeadershipForm();
   renderAdminInvitationList();
+  renderAdminAccountList();
   renderAdminOverview();
+}
+
+function refreshAdminRolesWhenVisible() {
+  if (document.visibilityState === 'hidden'
+      || state.mode !== 'admin'
+      || !state.adminRole
+      || !hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+    return;
+  }
+  operationGuard.run('admin:role-state-refresh', refreshAdminInvitationList).catch((error) => {
+    if (elements.adminInvitationManagementStatus) {
+      elements.adminInvitationManagementStatus.textContent = friendlyErrorMessage(
+        error,
+        t('admin.invitations.refreshFailed')
+      );
+    }
+  });
 }
 
 function renderAdminOverview() {
@@ -3350,17 +3379,21 @@ function renderAdminInvitationList() {
     const expired = Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now;
     const active = invitation.status === 'ACTIVE' && !expired;
     const statusLabel = active
-      ? 'In attesa'
+      ? t('admin.invitations.pending')
       : invitation.status === 'USED'
-        ? 'Accettato'
+        ? t('admin.invitations.accepted')
         : invitation.status === 'REJECTED'
-          ? 'Rifiutato'
+          ? t('admin.invitations.rejected')
           : expired && invitation.status === 'ACTIVE'
-            ? 'Scaduto'
-            : 'Revocato';
-    const roleLabel = invitation.role === 'ADMIN' ? 'Amministratore' : 'Vice amministratore';
+            ? t('admin.invitations.expired')
+            : t('admin.invitations.revoked');
+    const roleLabel = invitation.role === 'ADMIN' ? t('role.admin') : t('role.vice');
     const participant = state.adminParticipants.find((item) => item.participantId === invitation.participantId);
     const targetLabel = participant?.displayName || (invitation.role === 'ADMIN' ? 'Nuovo amministratore' : invitation.participantId);
+    const createdAt = invitation.createdAt?.toDate?.() || new Date(invitation.createdAt || 0);
+    const createdLabel = !Number.isNaN(createdAt.getTime())
+      ? formatDateTime(createdAt, { dateStyle: 'medium' }, getLocale())
+      : '';
     const expiryLabel = !Number.isNaN(expiresAt.getTime())
       ? formatDateTime(expiresAt, { dateStyle: 'medium' }, getLocale())
       : '';
@@ -3369,7 +3402,10 @@ function renderAdminInvitationList() {
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(roleLabel)}</strong><small>${escapeHtml(targetLabel)}</small></span>
         <span class="admin-invitation-state ${active ? 'admin-invitation-active' : ''}">${escapeHtml(statusLabel)}</span>
-        <time>${escapeHtml(expiryLabel)}</time>
+        <span class="admin-invitation-dates">
+          ${createdLabel ? `<time datetime="${escapeHtml(createdAt.toISOString())}">${escapeHtml(t('admin.invitations.sentOn', { date: createdLabel }))}</time>` : ''}
+          ${active && expiryLabel ? `<small>${escapeHtml(t('admin.invitations.expiresOn', { date: expiryLabel }))}</small>` : ''}
+        </span>
         ${canRevoke ? `<button type="button" class="tertiary-action" data-revoke-admin-invitation="${escapeHtml(invitation.invitationId)}">${escapeHtml(t('admin.invitations.revoke'))}</button>` : ''}
       </article>`;
   }).join('');

@@ -471,6 +471,41 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/admins/$(adminUid)).data.role == request.resource.data.role;
     }
 
+    function invitationMembershipClaimIsValid(centerId, adminUid) {
+      return hasVerifiedAdministratorIdentity()
+        && adminUid == request.auth.uid
+        && request.resource.data.centerId == centerId
+        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
+        && request.resource.data.dailyOperationsPermission == true
+        && (
+          request.resource.data.role != 'ADMIN'
+          || request.resource.data.get('administratorPasswordRequired', false)
+            == (request.auth.token.firebase.sign_in_provider == 'password')
+            && request.resource.data.get('passwordSetupRequired', false)
+              == (request.auth.token.firebase.sign_in_provider == 'password')
+        )
+        && request.resource.data.participantId is string
+        && (
+          request.resource.data.role == 'ADMIN'
+            && (
+              request.resource.data.participantId == ''
+              || participantExists(centerId, request.resource.data.participantId)
+                && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
+            )
+          || request.resource.data.role == 'MANAGER'
+            && participantExists(centerId, request.resource.data.participantId)
+            && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.get('viceAdminRole', false) == true
+        )
+        && adminInvitationClaimsRole(
+          request.resource.data.invitationId,
+          centerId,
+          adminUid,
+          request.resource.data.role
+        );
+    }
+
     match /adminProfiles/{adminUid} {
       allow read: if signedIn() && request.auth.uid == adminUid || isBootstrapOwner();
       allow create: if hasVerifiedAdministratorIdentity()
@@ -683,6 +718,14 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'passwordSetupRequired', 'updatedAt'
             ])
+          || resource.data.status == 'REVOKED'
+            && invitationMembershipClaimIsValid(centerId, adminUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'centerId', 'participantId', 'invitationId', 'status', 'email',
+              'role', 'massPermission', 'dailyOperationsPermission',
+              'administratorPasswordRequired', 'passwordSetupRequired',
+              'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'
+            ])
           || isOwnershipRoleChange(centerId, adminUid)
           || isOwnershipRevocation(centerId, adminUid);
         allow delete: if canDeleteCenterAdministrator(centerId)
@@ -696,35 +739,7 @@ service cloud.firestore {
             'createdAt', 'updatedAt'
           ])
           && (canCreateCenterAdministrator(centerId, request.resource.data.role)
-          || (
-            hasVerifiedAdministratorIdentity()
-            && adminUid == request.auth.uid
-            && request.resource.data.centerId == centerId
-            && request.resource.data.role in ['ADMIN', 'MANAGER']
-            && request.resource.data.status == 'ACTIVE'
-            && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
-            && request.resource.data.dailyOperationsPermission == true
-            && (
-              request.resource.data.role != 'ADMIN'
-              || request.resource.data.get('administratorPasswordRequired', false)
-                == (request.auth.token.firebase.sign_in_provider == 'password')
-                && request.resource.data.get('passwordSetupRequired', false)
-                  == (request.auth.token.firebase.sign_in_provider == 'password')
-            )
-            && request.resource.data.participantId is string
-            && (
-              request.resource.data.role == 'ADMIN'
-                && (
-                  request.resource.data.participantId == ''
-                  || participantExists(centerId, request.resource.data.participantId)
-                    && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-                )
-              || request.resource.data.role == 'MANAGER'
-                && participantExists(centerId, request.resource.data.participantId)
-                && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.get('viceAdminRole', false) == true
-            )
-            && adminInvitationClaimsRole(request.resource.data.invitationId, centerId, adminUid, request.resource.data.role)
-          )
+          || invitationMembershipClaimIsValid(centerId, adminUid)
           || (
             isBootstrapOwner()
             && adminUid == request.auth.uid

@@ -1,4 +1,4 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260816j";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260816k";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
 import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260816g";
 import {
@@ -403,8 +403,8 @@ function getMassDateGroups(screen) {
 function renderNotes(screen) {
   if (screen.notesByDate.length === 0) return "";
   return `
-    <section class="kitchen-notes" aria-label="${escapeHtml(t("kitchen.notes"))}">
-      <h3>${escapeHtml(t("kitchen.notes"))}</h3>
+    <section class="kitchen-notes" aria-label="${escapeHtml(t("kitchen.notes.title"))}">
+      <h3>${escapeHtml(t("kitchen.notes.title"))}</h3>
       ${screen.notesByDate
         .map(
           (group) => `

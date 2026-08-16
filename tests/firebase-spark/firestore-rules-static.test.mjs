@@ -64,10 +64,21 @@ test('the common password can mint only bounded personal tokens', () => {
 
 test('l autoiscrizione dei vice usa uno schema chiuso e non concede la gestione Messe', () => {
   const adminCreate = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
+  const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(adminCreate, /keys\(\)\.hasOnly\(\[/);
-  assert.match(adminCreate, /request\.resource\.data\.centerId == centerId/);
-  assert.match(adminCreate, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
-  assert.match(adminCreate, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
+  assert.match(adminCreate, /invitationMembershipClaimIsValid\(centerId, adminUid\)/);
+  assert.match(invitationClaim, /request\.resource\.data\.centerId == centerId/);
+  assert.match(invitationClaim, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
+  assert.match(invitationClaim, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
+});
+
+test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {
+  const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
+  const adminRules = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
+  assert.match(invitationClaim, /adminUid == request\.auth\.uid/);
+  assert.match(invitationClaim, /adminInvitationClaimsRole\(/);
+  assert.match(adminRules, /resource\.data\.status == 'REVOKED'[\s\S]*invitationMembershipClaimIsValid\(centerId, adminUid\)/);
+  assert.match(adminRules, /'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'/);
 });
 
 test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insieme', () => {

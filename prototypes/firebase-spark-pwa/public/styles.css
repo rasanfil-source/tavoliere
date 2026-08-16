@@ -1946,6 +1946,18 @@ html[data-theme="confetto"] {
   color: var(--muted);
 }
 
+.admin-invitation-dates {
+  display: grid;
+  gap: 2px;
+  min-width: max-content;
+}
+
+.admin-invitation-dates time,
+.admin-invitation-dates small {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .admin-invitation-state {
   font-weight: 700;
 }
@@ -2584,8 +2596,9 @@ button[aria-busy="true"]:disabled {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .admin-invitation-row time {
+  .admin-invitation-dates {
     grid-column: 1;
+    min-width: 0;
   }
 
   .owner-invitation-panel > .section-title {

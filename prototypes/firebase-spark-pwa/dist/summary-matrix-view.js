@@ -1,4 +1,4 @@
-import{t as n,getLocale as x}from"./i18n/i18n.mjs?v=20260816j";import{escapeHtml as e}from"./html-utils.js?v=20260816g";import{formatDietLabel as q,normalizeDietCode as E}from"./diet-utils.mjs?v=20260816g";import{buildKitchenMatrixScreens as z,buildSummaryMatrixScreens as G}from"./summary-matrix-model.js?v=20260816g";let H=0;function ia(a,{days:t=[],operationDays:s=[],kitchen:r=!1,layout:m="classic",activeIndex:i=0,onActiveIndexChange:o=()=>{}}={}){const l=r?z(t,s):G(t,[],s);if(l.every(c=>c.columns.length===0)){a.innerHTML=`<p class="empty-state">${e(n("summary.noMeal"))}</p>`;return}const u=r?"kitchen":"summary",f=m==="international"?V:F;a.innerHTML=`
+import{t as n,getLocale as x}from"./i18n/i18n.mjs?v=20260816k";import{escapeHtml as e}from"./html-utils.js?v=20260816g";import{formatDietLabel as q,normalizeDietCode as E}from"./diet-utils.mjs?v=20260816g";import{buildKitchenMatrixScreens as z,buildSummaryMatrixScreens as G}from"./summary-matrix-model.js?v=20260816g";let H=0;function ia(a,{days:t=[],operationDays:s=[],kitchen:r=!1,layout:m="classic",activeIndex:i=0,onActiveIndexChange:o=()=>{}}={}){const l=r?z(t,s):G(t,[],s);if(l.every(c=>c.columns.length===0)){a.innerHTML=`<p class="empty-state">${e(n("summary.noMeal"))}</p>`;return}const u=r?"kitchen":"summary",f=m==="international"?V:F;a.innerHTML=`
     <div class="summary-matrix-track summary-layout-${m}${r?" summary-layout-kitchen":" summary-layout-diners"}" data-${u}-matrix-track aria-label="${e(n("summary.screensLabel"))}">
       ${l.map(c=>f(c,{kitchen:r,activeIndex:i})).join("")}
     </div>
@@ -114,8 +114,8 @@ import{t as n,getLocale as x}from"./i18n/i18n.mjs?v=20260816j";import{escapeHtml
           </div>`).join("")}
       </div>
     </section>`}function j(a){return a.dateGroups.map(t=>{const s=a.columns.find(r=>r.dateId===t.dateId);return{...t,massStatus:s?.dayMassStatus||"UNKNOWN"}})}function B(a){return a.notesByDate.length===0?"":`
-    <section class="kitchen-notes" aria-label="${e(n("kitchen.notes"))}">
-      <h3>${e(n("kitchen.notes"))}</h3>
+    <section class="kitchen-notes" aria-label="${e(n("kitchen.notes.title"))}">
+      <h3>${e(n("kitchen.notes.title"))}</h3>
       ${a.notesByDate.map(t=>`
         <div class="kitchen-notes-group">
           <time datetime="${e(t.dateId)}">${e(b(t.dateId))}</time>

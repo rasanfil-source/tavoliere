@@ -14,6 +14,11 @@ test('riepilogo e cucina conservano Classic e Internazionale come viste distinte
   assert.match(styles, /\.summary-international-grid[\s\S]*grid-template-columns: repeat\(3/);
 });
 
+test('le note cucina usano sempre una chiave traducibile completa', () => {
+  assert.match(view, /t\("kitchen\.notes\.title"\)/);
+  assert.doesNotMatch(view, /t\("kitchen\.notes"\)/);
+});
+
 test('le due giornate sono schermate intere con snap orizzontale', () => {
   assert.match(styles, /\.summary-matrix-track[\s\S]*scroll-snap-type: inline mandatory/);
   assert.match(styles, /\.summary-matrix-screen[\s\S]*flex: 0 0 100%/);

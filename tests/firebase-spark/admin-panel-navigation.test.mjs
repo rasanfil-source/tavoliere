@@ -264,6 +264,14 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.match(adminCenter, /administratorPasswordRequired: requiresAdministratorPassword\(user\)/);
 });
 
+test('inviti e amministratori si aggiornano al ritorno nel pannello e mostrano invio e scadenza', () => {
+  assert.match(app, /const \[invitations, accounts\] = await Promise\.all\(\[[\s\S]*listAdministratorInvitations\(\)[\s\S]*listCenterAdministrators\(\)/);
+  assert.match(app, /window\.addEventListener\('focus', refreshAdminRolesWhenVisible\)/);
+  assert.match(app, /document\.addEventListener\('visibilitychange', refreshAdminRolesWhenVisible\)/);
+  assert.match(app, /invitation\.createdAt[\s\S]*admin\.invitations\.sentOn/);
+  assert.match(app, /invitation\.expiresAt[\s\S]*admin\.invitations\.expiresOn/);
+});
+
 test('l autenticazione del candidato non accetta automaticamente l invito', () => {
   const pendingBranch = adminCenter.slice(
     adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'),
@@ -275,8 +283,8 @@ test('l autenticazione del candidato non accetta automaticamente l invito', () =
   assert.match(adminCenter, /export async function acceptAdministratorInvitation/);
   assert.match(app, /await acceptAdministratorInvitation\(\)/);
   assert.match(app, /Invito in attesa della tua risposta/);
-  assert.match(app, /'Accettato'/);
-  assert.match(app, /'Rifiutato'/);
+  assert.match(app, /t\('admin\.invitations\.accepted'\)/);
+  assert.match(app, /t\('admin\.invitations\.rejected'\)/);
 });
 
 test('una sola risposta viene conservata e completata dopo l identificazione', () => {
