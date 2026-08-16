@@ -8,7 +8,7 @@ import {
   formatTime,
   resolveLocale,
   applyTranslations
-} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260816h';
+} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260816i';
 import { toUserMessage, classifyApplicationError } from '../../prototypes/firebase-spark-pwa/public/core/user-error.mjs';
 
 // Setup mock DOM environment for node test

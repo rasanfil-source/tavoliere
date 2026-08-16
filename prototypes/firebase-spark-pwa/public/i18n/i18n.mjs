@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260816h';
+const CATALOG_RELEASE = '20260816i';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -38,6 +38,38 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.action.book': 'Prenota',
     'app.header.bookings': 'Prenotazioni',
     'app.header.pasti': 'Pasti',
+    'summary.breakfastNotPlanned': 'Non prevista',
+    'summary.breakfastPlanned': 'Prevista',
+    'summary.callPerson': 'Chiama {name}',
+    'summary.contactPerson': 'Contatta {name}',
+    'summary.cover.one': 'coperto',
+    'summary.cover.other': 'coperti',
+    'summary.dayAfterTomorrow': 'Dopodomani',
+    'summary.diningMeals': 'Pasti in sala',
+    'summary.followingDay': 'Giorno successivo',
+    'summary.guests': 'Ospiti',
+    'summary.includedDiets': 'Incluse diete',
+    'summary.item': 'Voce',
+    'summary.mass': 'Messa',
+    'summary.messagePerson': 'Scrivi a {name} su WhatsApp',
+    'summary.names': 'Commensali',
+    'summary.no': 'No',
+    'summary.noDiet': 'Nessuna dieta',
+    'summary.noMeal': 'Nessun pasto disponibile.',
+    'summary.noName': 'Nessun nome',
+    'summary.notSet': 'Non impostato',
+    'summary.screensLabel': 'Riepilogo su due schermate',
+    'summary.sickDiets': 'Diete ammalati',
+    'summary.sickMeals': 'Pasti per ammalati',
+    'summary.swipeHint': 'Scorri orizzontalmente per passare da oggi a domani.',
+    'summary.today': 'Oggi',
+    'summary.tomorrow': 'Domani',
+    'summary.tray.one': 'vassoio',
+    'summary.tray.other': 'vassoi',
+    'summary.view.loading': 'Caricamento riepilogo…',
+    'summary.view.noData': 'Nessun dato disponibile',
+    'summary.view.title': 'Riepilogo',
+    'summary.yes': 'Sì',
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
     'admin.adaptations.title': 'Impostazioni',

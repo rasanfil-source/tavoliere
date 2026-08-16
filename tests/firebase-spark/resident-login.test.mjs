@@ -279,6 +279,7 @@ test('il comando mensile compatto sostituisce la barra doppia', () => {
   assert.match(styles, /\.month-day-today \{[\s\S]*?background: var\(--today-surface\)/);
   assert.match(styles, /\.month-day-number-today \{[\s\S]*?border: 1px solid var\(--today-line\)/);
   assert.match(styles, /\.month-day > \.month-day-number-today \{[\s\S]*?background: var\(--today-surface\)/);
+  assert.match(styles, /\.month-day-number-today \.month-day-number-value \{[\s\S]*?border-radius: 50%;[\s\S]*?background: var\(--today-ink\);[\s\S]*?color: #fff/);
   assert.match(styles, /\.month-week-mobile-header \.month-day-number-today \{[\s\S]*?height: 27px;[\s\S]*?border-bottom: 0;[\s\S]*?background: var\(--today-surface\)/);
   assert.match(styles, /\.month-day-today \{[\s\S]*?border-top: 0;[\s\S]*?background: var\(--today-surface\)/);
   assert.match(app, /renderMonthDayNumber\(day, 'month-day-number-inline'\)/);
