@@ -73,11 +73,12 @@ test('telefono e disattivazione centro hanno comportamento trasparente e difensi
   assert.match(operations, /l'azione non è presentata come cancellazione definitiva/);
 });
 
-test('la spunta Attiva usa una transazione dedicata e conserva la revisione', () => {
+test('la spunta Attiva usa una transazione dedicata e revoca le sessioni senza bloccare la UI', () => {
   assert.match(participantData, /export async function setAdminParticipantActiveStatus/);
   assert.match(participantData, /runTransaction\(db/);
   assert.match(participantData, /transaction\.update\(participantRef, \{ status, revision/);
-  assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, normalizedId\)/);
+  assert.match(participantData, /void deleteParticipantAccessCredentials\(centerId, normalizedId\)\.catch/);
+  assert.doesNotMatch(participantData, /await deleteParticipantAccessCredentials\(centerId, normalizedId\)/);
   assert.match(app, /const nextActive = toggle\.checked/);
   assert.match(app, /setAdminParticipantActiveStatus\([\s\S]*participant\.revision/);
 });

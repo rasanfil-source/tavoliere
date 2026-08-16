@@ -1015,7 +1015,11 @@ export async function setAdminParticipantActiveStatus(participantId, active, exp
   });
 
   if (status === 'DISABLED') {
-    await deleteParticipantAccessCredentials(centerId, normalizedId);
+    // Lo stato DISABLED blocca immediatamente nuove prenotazioni nelle regole.
+    // La revoca fisica delle vecchie sessioni prosegue senza trattenere la UI.
+    void deleteParticipantAccessCredentials(centerId, normalizedId).catch((error) => {
+      console.warn('Pulizia differita delle credenziali non completata', error);
+    });
   }
   participantRulesCache.delete(normalizedId);
   publicParticipantsCache = null;

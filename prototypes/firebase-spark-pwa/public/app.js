@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816i';
+} from './i18n/i18n.mjs?v=20260816j';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -84,7 +84,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260816g',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816g',
-  participant: './participant-data.js?v=20260816g'
+  participant: './participant-data.js?v=20260816h'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -413,6 +413,7 @@ const state = {
   adminParticipantId: '',
   adminPersonDirty: false,
   pendingAdminParticipantStatusIds: new Set(),
+  pendingAdminParticipantDeleteIds: new Set(),
   adminCenterDirty: false,
   adminMobileSection: '',
   adminActiveSection: '',
@@ -4164,7 +4165,8 @@ function renderAdminPeopleList() {
     })),
     administratorSignature: state.centerContactSettings.administratorSignature,
     canDeleteParticipants,
-    pendingStatusIds: [...state.pendingAdminParticipantStatusIds].sort()
+    pendingStatusIds: [...state.pendingAdminParticipantStatusIds].sort(),
+    pendingDeleteIds: [...state.pendingAdminParticipantDeleteIds].sort()
   });
   if (elements.adminPeopleList.dataset.renderKey === renderKey
       && elements.adminPeopleList.childElementCount > 0) {
@@ -4196,10 +4198,11 @@ function renderAdminPeopleList() {
     const selected = participant.participantId === state.adminParticipantId;
     const isActive = participant.status === 'ACTIVE';
     const statusPending = state.pendingAdminParticipantStatusIds.has(participant.participantId);
+    const deletePending = state.pendingAdminParticipantDeleteIds.has(participant.participantId);
     const deleteLabel = `${t('admin.people.delete')}: ${participant.displayName || t('admin.people.unnamed')}`;
     return `
-      <div class="admin-person-row${selected ? ' admin-person-row-selected' : ''}" data-admin-person-row="${participantId}">
-        <button type="button" class="admin-person-name" data-admin-person-open="${participantId}"${selected ? ' aria-current="true"' : ''}>
+      <div class="admin-person-row${selected ? ' admin-person-row-selected' : ''}${deletePending ? ' admin-person-row-deleting' : ''}" data-admin-person-row="${participantId}"${deletePending ? ' aria-busy="true"' : ''}>
+        <button type="button" class="admin-person-name" data-admin-person-open="${participantId}"${selected ? ' aria-current="true"' : ''}${deletePending ? ' disabled' : ''}>
           <strong>
             <span class="admin-person-signature" title="${escapeHtml(t('admin.people.signatureTitle'))}">${signature}</span>
             <span class="admin-person-display">${displayName}</span>
@@ -4209,12 +4212,12 @@ function renderAdminPeopleList() {
         <label class="checkbox-row admin-person-toggle-active">
           <input type="checkbox"
             data-admin-person-toggle-active="${participantId}"
-            ${statusPending ? 'disabled aria-busy="true"' : ''}
+            ${statusPending || deletePending ? 'disabled aria-busy="true"' : ''}
             ${isActive ? 'checked' : ''}>
           <span style="${isActive ? '' : 'color: #8f342d;'}">${statusLabel}</span>
         </label>
         ${canDeleteParticipants ? `
-          <button type="button" class="admin-person-delete" data-admin-person-delete="${participantId}"
+          <button type="button" class="admin-person-delete" data-admin-person-delete="${participantId}"${deletePending ? ' disabled aria-busy="true"' : ''}
             aria-label="${escapeHtml(deleteLabel)}" title="${escapeHtml(deleteLabel)}">
             <span aria-hidden="true">🗑</span>
           </button>` : ''}
@@ -4262,13 +4265,15 @@ async function handleAdminPeopleListChange(event) {
   const nextActive = toggle.checked;
   const previousStatus = participant.status;
   const previousRevision = participant.revision;
-  if (state.pendingAdminParticipantStatusIds.has(participantId)) return;
+  if (state.pendingAdminParticipantStatusIds.has(participantId)
+      || state.pendingAdminParticipantDeleteIds.has(participantId)) return;
 
   state.pendingAdminParticipantStatusIds.add(participantId);
   participant.status = nextActive ? 'ACTIVE' : 'DISABLED';
-  elements.adminStatus.textContent = nextActive
-    ? `${participant.displayName}: riattivazione in corso…`
-    : `${participant.displayName}: sospensione in corso…`;
+  elements.adminStatus.textContent = t(
+    nextActive ? 'admin.people.reactivating' : 'admin.people.suspending',
+    { name: participant.displayName }
+  );
   renderAdminParticipantOptions();
   renderAdminPeopleList();
 
@@ -4280,9 +4285,10 @@ async function handleAdminPeopleListChange(event) {
     );
     participant.status = result.status;
     participant.revision = result.revision;
-    elements.adminStatus.textContent = nextActive
-      ? `${participant.displayName} riabilitata alle prenotazioni`
-      : `${participant.displayName} sospesa`;
+    elements.adminStatus.textContent = t(
+      nextActive ? 'admin.people.reactivated' : 'admin.people.suspended',
+      { name: participant.displayName }
+    );
   } catch (error) {
     participant.status = previousStatus;
     participant.revision = previousRevision;
@@ -5614,7 +5620,6 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     title: t('dialog.deletePerson.title'), // title: 'Elimina definitivamente la persona'
     message: t('dialog.deletePerson.message', { name: participant.displayName }),
     confirmLabel: t('admin.people.delete'),
-    requiredText: 'ELIMINA',
     destructive: true
   });
   if (!decision.confirmed) {
@@ -5622,35 +5627,44 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     return;
   }
 
+  const previousAdminParticipants = state.adminParticipants;
+  const previousParticipants = state.participants;
+  const previousSelectedParticipantId = state.adminParticipantId;
+  const previousPersonDirty = state.adminPersonDirty;
+  state.pendingAdminParticipantDeleteIds.add(participant.participantId);
+  state.adminParticipants = state.adminParticipants.filter((item) => (
+    item.participantId !== participant.participantId
+  ));
+  state.participants = state.participants.filter((item) => (
+    item.participantId !== participant.participantId
+  ));
+  if (state.adminParticipantId === participant.participantId) {
+    state.adminParticipantId = '';
+    state.adminPersonDirty = false;
+  }
   elements.adminSaveButton.disabled = true;
   elements.adminDeleteParticipant.disabled = true;
-  if (triggerButton) {
-    triggerButton.disabled = true;
-  }
+  renderAdminParticipantOptions();
+  renderAdminPeopleList();
+  syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.deleting');
   try {
     await deleteAdminParticipant(participant.participantId);
-    if (state.adminParticipantId === participant.participantId) {
-      state.adminParticipantId = '';
-    }
-    state.adminParticipants = state.adminParticipants.filter((item) => (
-      item.participantId !== participant.participantId
-    ));
-    state.participants = state.participants.filter((item) => (
-      item.participantId !== participant.participantId
-    ));
+    elements.adminStatus.textContent = t('admin.people.deleted', { name: participant.displayName });
+  } catch (error) {
+    state.adminParticipants = previousAdminParticipants;
+    state.participants = previousParticipants;
+    state.adminParticipantId = previousSelectedParticipantId;
+    state.adminPersonDirty = previousPersonDirty;
     renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
-    elements.adminStatus.textContent = t('admin.people.deleted', { name: participant.displayName });
-  } catch (error) {
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');
   } finally {
+    state.pendingAdminParticipantDeleteIds.delete(participant.participantId);
     elements.adminSaveButton.disabled = false;
     elements.adminDeleteParticipant.disabled = !state.adminParticipantId;
-    if (triggerButton !== elements.adminDeleteParticipant && triggerButton?.isConnected) {
-      triggerButton.disabled = false;
-    }
+    renderAdminPeopleList();
   }
 }
 

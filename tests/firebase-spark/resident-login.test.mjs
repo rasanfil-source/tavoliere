@@ -192,7 +192,7 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
   assert.match(index, /chiedila al responsabile del centro/);
   assert.match(app, /elements\.residentPasswordInput\.focus\(\)/);
   assert.match(index, /data-action-dialog/);
-  assert.match(app, /requiredText: 'ELIMINA'/);
+  assert.match(app, /requiredText: 'TRASFERISCI'/);
   assert.match(app, /function showActionDialog/);
   const monthBulkHandler = app.match(/async function handleMonthBulkButton\(button\)[\s\S]*?\n}/)?.[0] || '';
   assert.doesNotMatch(monthBulkHandler, /showActionDialog|dialog\.clearSelection/);
@@ -556,9 +556,14 @@ test('il pannello amministratore distingue sospensione ed eliminazione definitiv
   assert.match(app, /data-admin-person-delete/);
   assert.match(index, /data-admin-delete-participant[^>]*hidden>Elimina persona/);
   assert.match(app, /handleAdminDeleteParticipant/);
-  assert.match(app, /title: 'Elimina definitivamente la persona'[\s\S]*requiredText: 'ELIMINA'/);
+  assert.match(app, /title: 'Elimina definitivamente la persona'[\s\S]*destructive: true/);
+  const deleteHandler = app.match(/async function deleteParticipantFromAdminPanel[\s\S]*?\n}/)?.[0] || '';
+  assert.doesNotMatch(deleteHandler, /requiredText/);
   assert.match(app, /pendingAdminParticipantStatusIds: new Set\(\)/);
+  assert.match(app, /pendingAdminParticipantDeleteIds: new Set\(\)/);
   assert.match(app, /participant\.status = nextActive \? 'ACTIVE' : 'DISABLED'[\s\S]*renderAdminPeopleList\(\)[\s\S]*setAdminParticipantActiveStatus/);
+  assert.match(deleteHandler, /state\.adminParticipants = state\.adminParticipants\.filter[\s\S]*deleteAdminParticipant/);
+  assert.match(deleteHandler, /catch \(error\)[\s\S]*state\.adminParticipants = previousAdminParticipants/);
 });
 
 test('la condivisione contatti appartiene alla configurazione del centro', () => {

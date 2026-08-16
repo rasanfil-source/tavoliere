@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260816i';
+const CATALOG_RELEASE = '20260816j';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -70,6 +70,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'summary.view.noData': 'Nessun dato disponibile',
     'summary.view.title': 'Riepilogo',
     'summary.yes': 'Sì',
+    'kitchen.notes.none': 'Nessuna nota per questa data',
+    'kitchen.notes.title': 'Note per la cucina',
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
     'admin.adaptations.title': 'Impostazioni',
