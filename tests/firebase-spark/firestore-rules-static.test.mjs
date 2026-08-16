@@ -279,13 +279,16 @@ test('admin participant list keeps disabled people available for reactivation', 
 
 test('l amministratore puo eliminare una persona e i dati operativi collegati', () => {
   assert.match(participantData, /export async function deleteAdminParticipant/);
-  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions', 'linkTokens'\]/);
+  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions'\]/);
+  assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
-  assert.match(participantData, /Promise\.all\(\['accessSessions', 'linkTokens'\]/);
-  assert.match(participantData, /const \[ruleSnapshot, \.\.\.cleanupSnapshots\] = relatedSnapshots/);
+  assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
+  assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
+  assert.match(participantData, /const \[ruleSnapshot, overrideSnapshot, sessionSnapshot\] = relatedSnapshots/);
   assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);
   assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
   assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow delete: if isAdmin\(centerId\)/);
+  assert.match(rules, /function tokenIsUsable\(centerId, tokenId\)[\s\S]*scope != 'PERSONAL'[\s\S]*participantIsActive/);
 });
 
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {

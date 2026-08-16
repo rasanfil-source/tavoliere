@@ -1041,7 +1041,7 @@ export async function deleteAdminParticipant(participantId) {
   const [participantSnapshot, publicParticipantSnapshot, ...relatedSnapshots] = await Promise.all([
     getDoc(participantRef),
     getDoc(publicParticipantRef),
-    ...['reservationRules', 'reservationOverrides', 'accessSessions', 'linkTokens'].map((collectionName) => (
+    ...['reservationRules', 'reservationOverrides', 'accessSessions'].map((collectionName) => (
       getDocs(query(
         collection(db, 'centers', centerId, collectionName),
         where('participantId', '==', normalizedId)
@@ -1063,9 +1063,16 @@ export async function deleteAdminParticipant(participantId) {
   });
   await commitWithRetry(() => disableBatch.commit());
 
-  const [ruleSnapshot, ...cleanupSnapshots] = relatedSnapshots;
+  const [ruleSnapshot, overrideSnapshot, sessionSnapshot] = relatedSnapshots;
   const ruleRefs = ruleSnapshot.docs.map((item) => item.ref);
-  const relatedRefs = cleanupSnapshots.flatMap((snapshot) => snapshot.docs.map((item) => item.ref));
+  const personalTokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
+    String(item.data().tokenId || '').trim()
+  )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
+  const relatedRefs = [
+    ...overrideSnapshot.docs.map((item) => item.ref),
+    ...sessionSnapshot.docs.map((item) => item.ref),
+    ...personalTokenRefs
+  ];
   for (let index = 0; index < relatedRefs.length; index += ADMIN_DELETE_BATCH_SIZE) {
     const batch = writeBatch(db);
     relatedRefs.slice(index, index + ADMIN_DELETE_BATCH_SIZE).forEach((ref) => batch.delete(ref));
@@ -1099,13 +1106,17 @@ export async function deleteAdminParticipant(participantId) {
 }
 
 async function deleteParticipantAccessCredentials(centerId, participantId) {
-  const snapshots = await Promise.all(['accessSessions', 'linkTokens'].map((collectionName) => (
-    getDocs(query(
-      collection(db, 'centers', centerId, collectionName),
-      where('participantId', '==', participantId)
-    ))
-  )));
-  const refs = snapshots.flatMap((snapshot) => snapshot.docs.map((item) => item.ref));
+  const sessionSnapshot = await getDocs(query(
+    collection(db, 'centers', centerId, 'accessSessions'),
+    where('participantId', '==', participantId)
+  ));
+  const tokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
+    String(item.data().tokenId || '').trim()
+  )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
+  const refs = [
+    ...sessionSnapshot.docs.map((item) => item.ref),
+    ...tokenRefs
+  ];
   for (let index = 0; index < refs.length; index += ADMIN_DELETE_BATCH_SIZE) {
     const batch = writeBatch(db);
     refs.slice(index, index + ADMIN_DELETE_BATCH_SIZE).forEach((ref) => batch.delete(ref));

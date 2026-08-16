@@ -351,7 +351,12 @@ service cloud.firestore {
       return centerIsActive(centerId)
         && tokenExists(centerId, tokenId)
         && tokenData(centerId, tokenId).status == 'ACTIVE'
-        && request.time < tokenData(centerId, tokenId).expiresAt;
+        && request.time < tokenData(centerId, tokenId).expiresAt
+        && (
+          tokenData(centerId, tokenId).scope != 'PERSONAL'
+          || tokenData(centerId, tokenId).participantId is string
+            && participantIsActive(centerId, tokenData(centerId, tokenId).participantId)
+        );
     }
 
     function mealWindowIsOpen(centerId, mealWindowId) {

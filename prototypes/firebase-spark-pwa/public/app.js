@@ -84,7 +84,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260816g',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816g',
-  participant: './participant-data.js?v=20260816h'
+  participant: './participant-data.js?v=20260816i'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
