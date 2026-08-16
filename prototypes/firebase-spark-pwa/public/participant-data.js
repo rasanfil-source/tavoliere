@@ -13,23 +13,23 @@ import {
   runTransaction,
   startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, getResidentTechnicalEmail, signInAnonymousUser, signInResidentTechnicalUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260815q';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260815q';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260815q';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260815q';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260815q';
+import { db, getCurrentUser, getResidentTechnicalEmail, signInAnonymousUser, signInResidentTechnicalUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260816b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816b';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816b';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260816b';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260815q';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260815q';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260815q';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260815q';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260815q';
+} from './domain/participant-profile.mjs?v=20260816b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816b';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816b';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260815q';
+} from './center-settings.js?v=20260816b';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -37,7 +37,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260815q';
+} from './center-settings.js?v=20260816b';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

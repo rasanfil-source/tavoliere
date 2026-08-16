@@ -103,6 +103,61 @@
   min-height: 40px;
 }
 
+.topbar-context-nav {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: auto;
+}
+
+.topbar-context-action {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--primary);
+  background: var(--surface);
+  text-align: center;
+  text-decoration: none;
+}
+
+.topbar-context-action svg {
+  width: 23px;
+  height: 23px;
+}
+
+.topbar-meals-return {
+  min-width: 92px;
+  flex-direction: column;
+  padding: 5px 9px;
+}
+
+.topbar-meals-return small {
+  max-width: 110px;
+  overflow: hidden;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .topbar-context-action {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .topbar-meals-return {
+    min-width: 76px;
+    padding-inline: 6px;
+  }
+}
+
 .topbar-brand,
 .topbar > div:first-child {
   min-width: 0;

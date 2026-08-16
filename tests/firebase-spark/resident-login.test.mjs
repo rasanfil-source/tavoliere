@@ -149,7 +149,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
   assert.match(app, /elements\.ownerExitButton\.hidden = !state\.platformOwner/);
-  assert.match(app, /elements\.accountFooter\.hidden = elements\.adminShell\.hidden[\s\S]*elements\.ownerExitButton\.hidden/);
+  assert.match(app, /const hasVisibleAdminFooter = hasAdminInterface/);
   assert.match(styles, /\.account-footer \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /\.footer-exit-button \{[\s\S]*?width: 100%/);
   assert.match(index, /class="primary-action footer-exit-button" data-forget-device/);
@@ -158,10 +158,14 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(index, /data-resident-login-form/);
   assert.match(index, /data-resident-signature-input/);
   assert.match(index, /data-resident-password-input/);
-  assert.match(index, /data-admin-entry-link[^>]+href="\/\?view=admin"/);
-  assert.match(index, /data-agenda-admin-entry[^>]+href="\/\?view=admin"/);
-  assert.match(app, /elements\.adminEntryLink\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
-  assert.match(app, /agendaAdminUrl\.searchParams\.set\('c', centerId\)/);
+  assert.doesNotMatch(index, /data-admin-entry-link/);
+  assert.doesNotMatch(index, /data-agenda-admin-entry/);
+  assert.match(index, /data-control-panel-entry[^>]+href="\/\?view=admin"/);
+  assert.match(index, /data-meals-return-entry/);
+  assert.match(app, /elements\.controlPanelEntry\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
+  assert.match(app, /selectedResidentCanOpenControlPanel\(\)/);
+  assert.match(app, /state\.selectedParticipant\?\.viceAdminRole === true/);
+  assert.match(index, /needsAdminInterface[\s\S]*adminShell\.remove\(\)/);
 });
 
 test('il link operativo residente prevale anche su una sessione amministrativa', () => {

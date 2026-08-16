@@ -69,16 +69,21 @@ test('solo Classic compatta i commensali dietro il nome e una icona persone', ()
 
 test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {
   assert.equal((index.match(/class="summary-day-segment meal-view-segment"/g) || []).length, 2);
-  assert.equal((index.match(/data-preference-view="month"/g) || []).length, 2);
-  assert.equal((index.match(/data-preference-view="week"/g) || []).length, 2);
-  assert.equal((index.match(/data-view-preference-control/g) || []).length, 4);
+  assert.doesNotMatch(index, /data-preference-view=/);
+  assert.doesNotMatch(index, /data-view-preference-control/);
   assert.doesNotMatch(index, /data-view-pin-button/);
-  assert.match(index, /class="meal-view-pin"/);
-  assert.match(app, /VIEW_PREFERENCE_HOLD_MS = 650/);
-  assert.match(app, /addEventListener\('pointerdown', handleViewPreferenceHoldStart\)/);
-  assert.match(app, /savePreferredView\(selectedView\)/);
-  assert.match(styles, /\.week-pill\[data-preferred-view="true"\] \.meal-view-pin/);
+  assert.doesNotMatch(index, /class="meal-view-pin"/);
+  assert.doesNotMatch(app, /VIEW_PREFERENCE_HOLD_MS|savePreferredView|loadStoredPreferredView/);
+  assert.match(app, /return loadCachedDefaultView\(\) === 'week' \? 'week' : 'participant'/);
   assert.match(styles, /\.week-meal-button\.meal-state-present[\s\S]*background: var\(--primary\)/);
+});
+
+test('il pannello viene escluso dalle viste operative e monta una sola scheda alla volta', () => {
+  assert.match(index, /needsAdminInterface[\s\S]*adminShell\.remove\(\)/);
+  assert.match(app, /function initializeAdminProgressiveSections\(\)/);
+  assert.match(app, /function mountAdminSection\(section\)/);
+  assert.match(app, /node\.remove\(\)/);
+  assert.match(app, /applyTranslations\(node\)/);
 });
 
 test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () => {

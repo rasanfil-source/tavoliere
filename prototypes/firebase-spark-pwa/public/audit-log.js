@@ -7,8 +7,8 @@ import {
   query,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260815q';
-import { getActiveCenterId } from './center-context.js?v=20260815q';
+import { db, getCurrentUser } from './firebase-client.js?v=20260816b';
+import { getActiveCenterId } from './center-context.js?v=20260816b';
 
 export const AUDIT_ACTIONS = Object.freeze({
   DELETE_PARTICIPANT: 'DELETE_PARTICIPANT',

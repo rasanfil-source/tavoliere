@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260815o">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260815o">
+    <link rel="stylesheet" href="/styles.css?v=20260816b">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816b">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -51,6 +51,26 @@
           </div>
         </div>
         <p class="admin-role-chip" data-admin-role-chip hidden></p>
+        <nav class="topbar-context-nav" aria-label="Navigazione area personale">
+          <a class="topbar-context-action" data-control-panel-entry href="/?view=admin" hidden
+            aria-label="Pannello di controllo" data-i18n-aria-label="app.header.controlPanel"
+            title="Pannello di controllo" data-i18n-title="app.header.controlPanel">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2V9.6h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2h4v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.13.38.34.72.6 1 .3.27.68.41 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"></path>
+            </svg>
+          </a>
+          <a class="topbar-context-action topbar-meals-return" data-meals-return-entry href="/?view=participant&amp;access=friendly" hidden
+            aria-label="Prenotazione pasti" data-i18n-aria-label="app.title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="8" r="3"></circle>
+              <circle cx="17" cy="9" r="2.5"></circle>
+              <path d="M3 20c.4-4 2.4-6 6-6s5.6 2 6 6"></path>
+              <path d="M14 14.5c3.8-.5 6.1 1.3 6.5 5.5"></path>
+            </svg>
+            <small data-i18n="app.title">Prenotazione pasti</small>
+          </a>
+        </nav>
       </header>
       <p class="offline-banner" data-offline-banner role="status" aria-live="polite" data-i18n="common.status.noConnection" hidden>
         Connessione assente. Le modifiche sono sospese finche torni online.
@@ -72,10 +92,6 @@
           <p class="field-help" data-i18n="auth.resident.password.help">Se non ricordi la password comune, chiedila al responsabile del centro.</p>
           <button type="submit" class="save-button primary-action" data-resident-login-button data-i18n="auth.resident.submit">Entra</button>
         </form>
-        <a class="secondary-action resident-admin-entry" data-admin-entry-link href="/?view=admin">
-          <span aria-hidden="true">⚙</span>
-          <span data-i18n="app.header.controlPanel">Pannello di controllo</span>
-        </a>
       </section>
 
       <section class="participant-panel" data-participant-panel>
@@ -89,13 +105,11 @@
         <nav class="meal-view-nav" aria-label="Navigazione partecipante" data-i18n-aria-label="a11y.participantNavigation">
           <div class="meal-view-preference meal-view-preference-month">
             <div class="summary-day-segment meal-view-segment" role="tablist">
-              <a class="week-pill week-pill-active" data-month-nav-link data-view-preference-control data-preference-view="month" href="/?view=participant" role="tab" aria-selected="true" aria-current="page">
+              <a class="week-pill week-pill-active" data-month-nav-link href="/?view=participant" role="tab" aria-selected="true" aria-current="page">
                 <span data-i18n="month.view.short">Mese</span>
-                <span class="meal-view-pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg></span>
               </a>
-              <a class="week-pill" data-participant-week-nav-link data-view-preference-control data-preference-view="week" href="/?view=week" role="tab" aria-selected="false">
+              <a class="week-pill" data-participant-week-nav-link href="/?view=week" role="tab" aria-selected="false">
                 <span data-i18n="week.view.short">Settimana</span>
-                <span class="meal-view-pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg></span>
               </a>
             </div>
           </div>
@@ -135,13 +149,11 @@
         <nav class="meal-view-nav" aria-label="Navigazione settimanale" data-i18n-aria-label="a11y.weekNavigation">
           <div class="meal-view-preference meal-view-preference-week">
             <div class="summary-day-segment meal-view-segment" role="tablist">
-              <a class="week-pill" data-month-nav-link data-view-preference-control data-preference-view="month" href="/?view=participant" role="tab" aria-selected="false">
+              <a class="week-pill" data-month-nav-link href="/?view=participant" role="tab" aria-selected="false">
                 <span data-i18n="month.view.short">Mese</span>
-                <span class="meal-view-pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg></span>
               </a>
-              <a class="week-pill week-pill-active" data-participant-week-nav-link data-view-preference-control data-preference-view="week" href="/?view=week" role="tab" aria-selected="true" aria-current="page">
+              <a class="week-pill week-pill-active" data-participant-week-nav-link href="/?view=week" role="tab" aria-selected="true" aria-current="page">
                 <span data-i18n="week.view.short">Settimana</span>
-                <span class="meal-view-pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" focusable="false"><path d="M12 2a5 5 0 0 0-5 5c0 2.5 2 4.6 4 5.2V21a1 1 0 0 0 2 0v-8.8c2-.6 4-2.7 4-5.2a5 5 0 0 0-5-5z" fill="currentColor"/></svg></span>
               </a>
             </div>
           </div>
@@ -172,10 +184,6 @@
               <span data-i18n="week.operations.day">Giorno</span>
               <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
             </label>
-            <a class="secondary-action agenda-admin-entry" data-agenda-admin-entry href="/?view=admin" hidden>
-              <span aria-hidden="true">⚙</span>
-              <span data-i18n="app.header.controlPanel">Pannello di controllo</span>
-            </a>
           </div>
           <div class="week-operations-grid">
             <details class="week-operation-section" open>
@@ -576,7 +584,7 @@
                       <option value="month" data-i18n="viewPreference.option.month">Vista mese</option>
                       <option value="week" data-i18n="viewPreference.option.week">Vista settimana</option>
                     </select>
-                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per chi non ha ancora fissato una preferenza personale.</small>
+                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per tutte le persone del centro.</small>
                   </label>
 
                   <fieldset class="admin-layout-settings-card" data-admin-layout-pickers>
@@ -885,6 +893,21 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260815q"></script>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var view = params.get('view');
+        var needsAdminInterface = view === 'admin'
+          || params.has('invite')
+          || params.has('adminInvite');
+        if (needsAdminInterface) return;
+        var adminShell = document.querySelector('[data-admin-shell]');
+        var passwordDialog = document.querySelector('[data-admin-password-setup-dialog]');
+        if (adminShell) adminShell.remove();
+        if (passwordDialog) passwordDialog.remove();
+      }());
+    </script>
+
+  <script type="module" src="/app.js?v=20260816b"></script>
   </body>
 </html>

@@ -4,13 +4,12 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260815q';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260815q';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260815q';
+import { db } from './firebase-client.js?v=20260816b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816b';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
-export const PREFERRED_VIEW_STORAGE_KEY = 'tavolaComune.preferredView';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
@@ -94,33 +93,6 @@ export function cacheDefaultView(value) {
   }
 }
 
-export function loadStoredPreferredView() {
-  try {
-    const raw = window.localStorage.getItem(getCenterScopedStorageKey(PREFERRED_VIEW_STORAGE_KEY));
-    return ALLOWED_VIEW_VALUES.has(raw) ? raw : '';
-  } catch {
-    return '';
-  }
-}
-
-export function savePreferredView(value) {
-  const normalized = ALLOWED_VIEW_VALUES.has(value) ? value : 'month';
-  try {
-    window.localStorage.setItem(getCenterScopedStorageKey(PREFERRED_VIEW_STORAGE_KEY), normalized);
-  } catch {
-    // Se la persistenza locale non è disponibile, la preferenza vale solo per questa sessione.
-  }
-  return normalized;
-}
-
-export function clearPreferredView() {
-  try {
-    window.localStorage.removeItem(getCenterScopedStorageKey(PREFERRED_VIEW_STORAGE_KEY));
-  } catch {
-    // Nessun effetto bloccante.
-  }
-}
-
 export function invalidateCenterContactSettingsCache() {
   centerContactSettingsCache = null;
 }
@@ -181,7 +153,7 @@ export async function updateCenterSettings({
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260815q');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260816b');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,

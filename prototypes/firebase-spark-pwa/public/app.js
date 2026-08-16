@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260815q';
+} from './i18n/i18n.mjs?v=20260816b';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260815q';
-import { escapeHtml } from './html-utils.js?v=20260815q';
+} from './refresh-schedule.js?v=20260816b';
+import { escapeHtml } from './html-utils.js?v=20260816b';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,12 +26,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260815q';
+} from './firebase-client.js?v=20260816b';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260815q';
+} from './center-context.js?v=20260816b';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -40,37 +40,35 @@ import {
   saveCenterAvatar,
   updateCenterSettings,
   loadCachedDefaultView,
-  loadStoredPreferredView,
-  savePreferredView,
   cacheDefaultView
-} from './center-settings.js?v=20260815q';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260815q';
+} from './center-settings.js?v=20260816b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816b';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260815q';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260815q';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260815q';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260815q';
-import { createStateStore } from './core/state-store.mjs?v=20260815q';
-import { toUserMessage } from './core/user-error.mjs?v=20260815q';
+} from './diet-utils.mjs?v=20260816b';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816b';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260816b';
+import { createStateStore } from './core/state-store.mjs?v=20260816b';
+import { toUserMessage } from './core/user-error.mjs?v=20260816b';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260815q';
+} from './core/connectivity.mjs?v=20260816b';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260815q';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260815q';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260815q';
+} from './domain/participant-profile.mjs?v=20260816b';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816b';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816b';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260815q';
+} from './summary-matrix-view.js?v=20260816b';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -79,14 +77,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260815q',
-  admin: './admin-center.js?v=20260815q',
-  audit: './audit-log.js?v=20260815q',
-  bootstrap: './bootstrap-demo.js?v=20260815q',
-  daily: './daily-operations.js?v=20260815q',
-  kitchen: './kitchen-data.js?v=20260815q',
-  notes: './kitchen-notes.js?v=20260815q',
-  participant: './participant-data.js?v=20260815q'
+  accessLinks: './access-links.js?v=20260816b',
+  admin: './admin-center.js?v=20260816b',
+  audit: './audit-log.js?v=20260816b',
+  bootstrap: './bootstrap-demo.js?v=20260816b',
+  daily: './daily-operations.js?v=20260816b',
+  kitchen: './kitchen-data.js?v=20260816b',
+  notes: './kitchen-notes.js?v=20260816b',
+  participant: './participant-data.js?v=20260816b'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -266,13 +264,9 @@ const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
 const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
-const VIEW_PREFERENCE_HOLD_MS = 650;
 const MEAL_VIEW_SWIPE_MIN_X = 72;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
-let viewPreferenceHoldTimer = 0;
-let viewPreferenceHoldControl = null;
-let viewPreferenceHoldTriggered = false;
 let mealViewSwipeStart = null;
 
 function readDietCode(select, numberInput) {
@@ -484,8 +478,8 @@ const elements = {
   refreshButtons: document.querySelectorAll('[data-refresh-button]'),
   offlineBanner: document.querySelector('[data-offline-banner]'),
   accountFooter: document.querySelector('[data-account-footer]'),
-  adminEntryLink: document.querySelector('[data-admin-entry-link]'),
-  agendaAdminEntry: document.querySelector('[data-agenda-admin-entry]'),
+  controlPanelEntry: document.querySelector('[data-control-panel-entry]'),
+  mealsReturnEntry: document.querySelector('[data-meals-return-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
   authActions: document.querySelector('[data-auth-actions]'),
   authButton: document.querySelector('[data-auth-button]'),
@@ -683,7 +677,6 @@ const elements = {
   adminAdministratorPassword: document.querySelector('[data-admin-administrator-password]'),
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
   title: document.querySelector('[data-title]'),
-  viewPreferenceControls: document.querySelectorAll('[data-view-preference-control]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
   sessionRole: document.querySelector('[data-session-role]'),
@@ -736,6 +729,59 @@ const elements = {
   participantNavLinks: document.querySelectorAll('[data-participant-nav-link]'),
   summaryDayButtons: document.querySelectorAll('[data-summary-day]')
 };
+
+const hasAdminInterface = Boolean(elements.adminShell);
+const inertElement = createInertElement();
+Object.keys(elements).forEach((key) => {
+  if (elements[key] == null) elements[key] = inertElement;
+});
+
+function createInertElement() {
+  const noOp = () => undefined;
+  const target = {
+    hidden: true,
+    open: false,
+    disabled: true,
+    checked: false,
+    value: '',
+    textContent: '',
+    innerHTML: '',
+    returnValue: '',
+    dataset: {},
+    style: {},
+    classList: Object.freeze({
+      add: noOp,
+      remove: noOp,
+      toggle: () => false,
+      contains: () => false
+    }),
+    options: [],
+    files: [],
+    addEventListener: noOp,
+    removeEventListener: noOp,
+    append: noOp,
+    replaceChildren: noOp,
+    setAttribute: noOp,
+    removeAttribute: noOp,
+    getAttribute: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    closest: () => null,
+    focus: noOp,
+    scrollIntoView: noOp,
+    showModal: noOp,
+    close: noOp
+  };
+  return new Proxy(target, {
+    get(object, property) {
+      return property in object ? object[property] : undefined;
+    },
+    set(object, property, value) {
+      object[property] = value;
+      return true;
+    }
+  });
+}
 
 function showActionDialog({
   title,
@@ -797,13 +843,6 @@ document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
 elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
-elements.viewPreferenceControls.forEach((control) => {
-  control.addEventListener('pointerdown', handleViewPreferenceHoldStart);
-  control.addEventListener('pointerup', handleViewPreferenceHoldEnd);
-  control.addEventListener('pointercancel', handleViewPreferenceHoldCancel);
-  control.addEventListener('pointerleave', handleViewPreferenceHoldCancel);
-  control.addEventListener('contextmenu', handleViewPreferenceContextMenu);
-});
 elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
 elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
 elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
@@ -1028,7 +1067,7 @@ async function bootstrapApp() {
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
-  initializeAuthPanel();
+  if (hasAdminInterface) initializeAuthPanel();
   initializeResidentAccess();
   renderMode();
   hideStartupSplash();
@@ -1239,11 +1278,6 @@ function updateConnectivityState() {
 
 function handleInAppNavigation(event) {
   const link = event.currentTarget;
-  if (link.dataset.suppressNextClick === 'true') {
-    event.preventDefault();
-    delete link.dataset.suppressNextClick;
-    return;
-  }
   const targetUrl = new URL(link.href, window.location.href);
   const targetMode = targetUrl.searchParams.get('view');
   if (!state.friendlyAccess || !['participant', 'week', 'summary'].includes(targetMode)) {
@@ -1259,51 +1293,6 @@ function handleInAppNavigation(event) {
   state.friendlyAccess = true;
   renderMode();
   refreshNow('navigazione');
-}
-
-function handleViewPreferenceHoldStart(event) {
-  if (!state.residentReady || (event.pointerType === 'mouse' && event.button !== 0)) return;
-  clearViewPreferenceHold();
-  viewPreferenceHoldControl = event.currentTarget;
-  viewPreferenceHoldTriggered = false;
-  viewPreferenceHoldControl.classList.add('meal-view-preference-pressing');
-  viewPreferenceHoldTimer = window.setTimeout(() => {
-    const control = viewPreferenceHoldControl;
-    if (!control) return;
-    const selectedView = control.dataset.preferenceView === 'week' ? 'week' : 'month';
-    savePreferredView(selectedView);
-    viewPreferenceHoldTriggered = true;
-    control.dataset.suppressNextClick = 'true';
-    renderViewPreference();
-    initializeOperationalLinks();
-  }, VIEW_PREFERENCE_HOLD_MS);
-}
-
-function handleViewPreferenceHoldEnd(event) {
-  const control = event.currentTarget;
-  if (viewPreferenceHoldTriggered && control === viewPreferenceHoldControl) {
-    control.dataset.suppressNextClick = 'true';
-  }
-  clearViewPreferenceHold();
-}
-
-function handleViewPreferenceHoldCancel() {
-  clearViewPreferenceHold();
-}
-
-function handleViewPreferenceContextMenu(event) {
-  if (event.currentTarget.dataset.preferredView === 'true'
-      || event.currentTarget.dataset.suppressNextClick === 'true') {
-    event.preventDefault();
-  }
-}
-
-function clearViewPreferenceHold() {
-  window.clearTimeout(viewPreferenceHoldTimer);
-  viewPreferenceHoldTimer = 0;
-  viewPreferenceHoldControl?.classList.remove('meal-view-preference-pressing');
-  viewPreferenceHoldControl = null;
-  viewPreferenceHoldTriggered = false;
 }
 
 function handleMealViewSwipeStart(event) {
@@ -1367,17 +1356,14 @@ function initializeOperationalLinks() {
   });
   const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
   adminEntryUrl.searchParams.set('view', 'admin');
-  if (elements.adminEntryLink) {
-    // L'accesso iniziale non deve conservare l'ID di un centro eventualmente
-    // cancellato: dopo il login il profilo amministratore sceglie quello attivo.
-    elements.adminEntryLink.href = adminEntryUrl.pathname + adminEntryUrl.search;
-  }
-  if (elements.agendaAdminEntry) {
-    // Dall'Agenda, invece, il centro è già stato validato e va mantenuto.
-    const agendaAdminUrl = new URL(adminEntryUrl);
-    if (centerId) agendaAdminUrl.searchParams.set('c', centerId);
-    elements.agendaAdminEntry.href = agendaAdminUrl.pathname + agendaAdminUrl.search;
-  }
+  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
+  elements.controlPanelEntry.href = adminEntryUrl.pathname + adminEntryUrl.search;
+  elements.mealsReturnEntry.href = buildOperationalLink(
+    entryMode,
+    publicToken,
+    centerId,
+    personalAccess
+  );
   const mealsAccessButton = document.querySelector('[data-access-link="pasti"]');
   const kitchenAccessButton = document.querySelector('[data-access-link="cucina"]');
   const mealsShareButton = document.querySelector('[data-share-access-link="pasti"]');
@@ -1496,6 +1482,38 @@ const ADMIN_SECTION_TARGETS = Object.freeze({
 const ADMIN_SECTION_BY_TARGET = Object.freeze(Object.fromEntries(
   Object.entries(ADMIN_SECTION_TARGETS).map(([section, target]) => [target, section])
 ));
+const adminSectionMounts = new Map();
+
+function initializeAdminProgressiveSections() {
+  if (!hasAdminInterface || elements.adminPanel === inertElement) return;
+  const sections = [...elements.adminPanel.querySelectorAll('[data-admin-mobile-section]')];
+  sections.forEach((node) => {
+    const section = node.dataset.adminMobileSection;
+    if (!ADMIN_SECTIONS.includes(section)) return;
+    const marker = document.createComment(`admin-section:${section}`);
+    node.before(marker);
+    const mounts = adminSectionMounts.get(section) || [];
+    mounts.push({ marker, node });
+    adminSectionMounts.set(section, mounts);
+  });
+  mountAdminSection(resolveInitialAdminSection());
+}
+
+function mountAdminSection(section) {
+  if (adminSectionMounts.size === 0) return;
+  adminSectionMounts.forEach((mounts, mountedSection) => {
+    mounts.forEach(({ marker, node }) => {
+      if (mountedSection === section) {
+        if (!node.isConnected && marker.isConnected) marker.after(node);
+        applyTranslations(node);
+      } else if (node.isConnected) {
+        node.remove();
+      }
+    });
+  });
+}
+
+initializeAdminProgressiveSections();
 
 function getAdminSectionVisitKey() {
   return getCenterScopedStorageKey(ADMIN_SECTION_VISIT_KEY);
@@ -1545,6 +1563,7 @@ function markCalendarOnboardingCompleted() {
 function selectAdminSection(section, { focus = false, updateHash = false } = {}) {
   if (!ADMIN_SECTIONS.includes(section) || !isAdminSectionAllowed(section)) return;
 
+  mountAdminSection(section);
   state.adminActiveSection = section;
   state.adminMobileSection = section;
   if (section === 'people') {
@@ -1581,6 +1600,7 @@ function renderAdminSectionVisibility() {
 }
 
 function renderAdminMobileSection() {
+  mountAdminSection(state.adminMobileSection);
   state.adminActiveSection = state.adminMobileSection;
   renderAdminSectionVisibility();
   const links = [
@@ -3662,7 +3682,6 @@ async function handleAdminAdaptationsSave() {
     await setLocale(languageToSave);
     applyTranslations(document);
     renderMode();
-    renderViewPreference();
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
   } catch (error) {
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = friendlyErrorMessage(error, 'Errore durante il salvataggio');
@@ -3913,6 +3932,14 @@ function renderMode() {
   const showResidentExit = isOrdinaryView && !needsResidentLogin && hasResidentIdentity;
   const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
+  const canOpenControlPanel = hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA)
+    || selectedResidentCanOpenControlPanel();
+  elements.controlPanelEntry.hidden = !isOrdinaryView
+    || needsResidentLogin
+    || !canOpenControlPanel;
+  elements.mealsReturnEntry.hidden = !isAdminView
+    || isCenterActivation
+    || state.platformOwner;
   elements.forgetDeviceButton.hidden = !showResidentExit;
   elements.ownerExitButton.hidden = !state.platformOwner && !authenticatedAdministrator;
   if (authenticatedAdministrator) {
@@ -3920,14 +3947,13 @@ function renderMode() {
     elements.authButton.textContent = t('common.actions.exit');
     elements.adminEmailAuth.hidden = true;
   }
-  elements.accountFooter.hidden = elements.adminShell.hidden
+  const hasVisibleAdminFooter = hasAdminInterface
+    && (!elements.adminShell.hidden || !elements.ownerExitButton.hidden);
+  elements.accountFooter.hidden = !hasVisibleAdminFooter
     && elements.forgetDeviceButton.hidden
-    && elements.ownerExitButton.hidden;
+    && (!hasAdminInterface || elements.ownerExitButton.hidden);
   if (isAdminView) {
     elements.adminShell.open = true;
-  }
-  if (elements.agendaAdminEntry) {
-    elements.agendaAdminEntry.hidden = !hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA);
   }
   if (elements.participantRefreshButton) {
     elements.participantRefreshButton.hidden = true;
@@ -3935,23 +3961,6 @@ function renderMode() {
   if (isKitchen) {
     renderKitchenHeading();
   }
-  renderViewPreference();
-}
-
-function renderViewPreference() {
-  const isRelevantMode = state.mode === 'participant' || state.mode === 'week';
-  const canChoosePreference = isRelevantMode && state.residentReady;
-  const effectivePreference = loadStoredPreferredView()
-    || state.centerContactSettings.defaultView
-    || loadCachedDefaultView();
-  elements.viewPreferenceControls.forEach((control) => {
-    const viewKey = control.dataset.preferenceView === 'week' ? 'week' : 'month';
-    const isPinned = effectivePreference === viewKey;
-    const text = t(`viewPreference.pin.${viewKey}`);
-    control.dataset.preferredView = canChoosePreference && isPinned ? 'true' : 'false';
-    control.setAttribute('aria-description', text);
-    control.title = text;
-  });
 }
 
 function renderCenterAvatar(showInCurrentMode, centerName) {
@@ -4660,6 +4669,13 @@ function selectedParticipantIsCenterAdministrator() {
   return Boolean(participantSignature && participantSignature === administratorSignature);
 }
 
+function selectedResidentCanOpenControlPanel() {
+  return state.residentReady && (
+    selectedParticipantIsCenterAdministrator()
+    || state.selectedParticipant?.viceAdminRole === true
+  );
+}
+
 function canUseWeekWithoutParticipant() {
   return canManageMass() || canManageDailyOperations();
 }
@@ -5018,14 +5034,10 @@ function resolveMode() {
   if (view === 'week') return 'week';
   if (view === 'participant') return 'participant';
   if (view === 'admin') return 'admin';
-  const personal = loadStoredPreferredView();
-  if (personal) return personal === 'week' ? 'week' : 'participant';
   return loadCachedDefaultView() === 'week' ? 'week' : 'participant';
 }
 
 function resolveEntryView() {
-  const personal = loadStoredPreferredView();
-  if (personal) return personal;
   return state?.centerContactSettings?.defaultView || loadCachedDefaultView();
 }
 

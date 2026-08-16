@@ -575,27 +575,6 @@ html[data-theme="confetto"] {
   gap: 12px;
 }
 
-.agenda-admin-entry,
-.resident-admin-entry {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  box-sizing: border-box;
-  text-align: center;
-  text-decoration: none;
-}
-
-.agenda-admin-entry {
-  flex: 0 0 auto;
-  min-height: 44px;
-}
-
-.resident-admin-entry {
-  width: 100%;
-  margin-top: 14px;
-}
-
 @media (max-width: 620px) {
   .summary-matrix col.summary-matrix-label-column {
     width: 23%;
@@ -653,8 +632,7 @@ html[data-theme="confetto"] {
     flex-direction: column;
   }
 
-  .agenda-center-toolbar .week-operations-day,
-  .agenda-admin-entry {
+  .agenda-center-toolbar .week-operations-day {
     width: 100%;
   }
 
@@ -728,32 +706,6 @@ html[data-theme="confetto"] {
   touch-action: manipulation;
   user-select: none;
   -webkit-touch-callout: none;
-}
-
-.meal-view-pin {
-  display: none;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: var(--primary);
-  transform: rotate(-24deg);
-}
-
-.meal-view-pin svg {
-  display: block;
-}
-
-.meal-view-segment .week-pill[data-preferred-view="true"] .meal-view-pin {
-  display: inline-flex;
-}
-
-.meal-view-segment .week-pill-active[data-preferred-view="true"] .meal-view-pin,
-.meal-view-segment .week-pill.meal-view-preference-pressing {
-  color: var(--surface);
-}
-
-.meal-view-segment .week-pill.meal-view-preference-pressing {
-  background: var(--primary);
 }
 
 [data-participant-panel],
@@ -1222,11 +1174,6 @@ html[data-theme="confetto"] {
 .kitchen-notes ul {
   margin: 8px 0 0;
   padding-left: 22px;
-}
-
-/* Accesso, impostazioni, manutenzione e Agenda centro. */
-.resident-login .resident-admin-entry {
-  margin-top: 16px;
 }
 
 .admin-calendar-extension {
