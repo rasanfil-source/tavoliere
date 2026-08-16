@@ -77,7 +77,7 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816l',
+  admin: './admin-center.js?v=20260817a',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260816h',
@@ -428,7 +428,7 @@ const state = {
   adminCenters: [],
   platformOwner: false,
   adminAuthNotice: '',
-  adminInviteEmailMode: 'create',
+  adminInviteEmailExpanded: false,
   adminParticipants: [],
   adminAccounts: [],
   adminInvitations: [],
@@ -512,15 +512,16 @@ const elements = {
   controlPanelEntry: document.querySelector('[data-control-panel-entry]'),
   mealsReturnEntry: document.querySelector('[data-meals-return-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
+  adminAuthMethods: document.querySelector('[data-admin-auth-methods]'),
   authActions: document.querySelector('[data-auth-actions]'),
   authButton: document.querySelector('[data-auth-button]'),
+  adminEmailChoice: document.querySelector('[data-admin-email-choice]'),
   adminEmailAuth: document.querySelector('[data-admin-email-auth]'),
   adminEmail: document.querySelector('[data-admin-email]'),
   adminPasswordLabel: document.querySelector('[data-admin-password-label]'),
   adminPassword: document.querySelector('[data-admin-password]'),
   adminEmailSignIn: document.querySelector('[data-admin-email-signin]'),
   adminEmailCreate: document.querySelector('[data-admin-email-create]'),
-  adminEmailModeToggle: document.querySelector('[data-admin-email-mode-toggle]'),
   adminPasswordReset: document.querySelector('[data-admin-password-reset]'),
   adminPasswordSetupDialog: document.querySelector('[data-admin-password-setup-dialog]'),
   adminPasswordSetupForm: document.querySelector('[data-admin-password-setup-form]'),
@@ -625,6 +626,7 @@ const elements = {
   adminInviteAcceptText: document.querySelector('[data-admin-invite-accept-text]'),
   inviteAccept: document.querySelector('[data-invite-accept]'),
   inviteReject: document.querySelector('[data-invite-reject]'),
+  inviteAcceptActions: document.querySelector('[data-admin-invite-accept-actions]'),
   adminInvitationGenerate: document.querySelector('[data-admin-invitation-generate]'),
   adminInvitationStatus: document.querySelector('[data-admin-invitation-status]'),
   adminInvitationResult: document.querySelector('[data-admin-invitation-result]'),
@@ -889,9 +891,9 @@ elements.weekPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passiv
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
 elements.ownerExitButton.addEventListener('click', handleOwnerExit);
+elements.adminEmailChoice.addEventListener('click', handleAdministratorEmailChoice);
 elements.adminEmailSignIn.addEventListener('click', handleAdministratorEmailSignIn);
 elements.adminEmailCreate.addEventListener('click', handleAdministratorEmailCreation);
-elements.adminEmailModeToggle.addEventListener('click', handleAdministratorEmailModeToggle);
 elements.adminPasswordReset.addEventListener('click', handleAdministratorPasswordReset);
 elements.ownerInvitationGenerate.addEventListener('click', handleCenterInvitationGeneration);
 elements.ownerInvitationCopy.addEventListener('click', handleCenterInvitationCopy);
@@ -1843,6 +1845,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   elements.adminShell.open = isAdmin || invitationPending || access.needsInitialization || state.platformOwner || state.mode === 'admin';
   elements.authActions.classList.add('auth-actions-signed-in');
   elements.authActions.hidden = true;
+  elements.adminAuthMethods.hidden = true;
   elements.authButton.textContent = t('common.actions.exit');
   elements.adminEmailAuth.hidden = true;
   elements.authStatus.textContent = isPlatformOwner
@@ -1957,57 +1960,66 @@ function setSignedOutState() {
   elements.adminShell.dataset.adminOwner = 'false';
   elements.adminShell.dataset.platformOwner = 'false';
   elements.authActions.classList.remove('auth-actions-signed-in');
-  elements.authActions.hidden = false;
-  const hasAdministratorInvitation = Boolean(getAdminInvitationId() || getAdminRoleInvitationId());
-  const usesExistingEmailAccount = hasAdministratorInvitation && state.adminInviteEmailMode === 'signin';
-  elements.authButton.textContent = hasAdministratorInvitation ? 'Crea account con Google' : 'Accedi con Google';
-  elements.adminEmailAuth.hidden = false;
-  elements.adminEmailCreate.hidden = !hasAdministratorInvitation || usesExistingEmailAccount;
-  elements.adminEmailSignIn.hidden = hasAdministratorInvitation && !usesExistingEmailAccount;
-  elements.adminEmailModeToggle.hidden = !hasAdministratorInvitation;
-  elements.adminPasswordReset.hidden = !(usesExistingEmailAccount || hasAdministratorInvitation);
-  elements.adminEmailModeToggle.textContent = usesExistingEmailAccount
-    ? 'Devi creare un account? Torna indietro'
-    : 'Hai già un account? Accedi';
+  const centerInvitationId = getAdminInvitationId();
+  const roleInvitationId = getAdminRoleInvitationId();
+  const hasCenterInvitation = Boolean(centerInvitationId);
+  const hasRoleInvitation = Boolean(roleInvitationId);
+  const hasAdministratorInvitation = hasCenterInvitation || hasRoleInvitation;
+  const storedDecision = hasRoleInvitation ? loadAdminInvitationDecision(roleInvitationId) : '';
+  const invitationNeedsDecision = hasRoleInvitation && !storedDecision;
 
-  if (hasAdministratorInvitation && !usesExistingEmailAccount) {
-    const invitePassword = getAdminInvitationId() || getAdminRoleInvitationId();
+  elements.adminAuthMethods.hidden = invitationNeedsDecision;
+  elements.authActions.hidden = invitationNeedsDecision;
+  elements.adminEmailChoice.hidden = invitationNeedsDecision;
+  elements.adminEmailChoice.textContent = t('auth.email.enter');
+  elements.adminEmailChoice.setAttribute('aria-expanded', state.adminInviteEmailExpanded ? 'true' : 'false');
+  elements.authButton.textContent = hasCenterInvitation
+    ? t('auth.google.createWithInvite', {}, { fallback: 'Crea account con Google' })
+    : t('auth.google.signIn');
+  elements.adminEmailAuth.hidden = invitationNeedsDecision || !state.adminInviteEmailExpanded;
+  elements.adminEmailCreate.hidden = !hasAdministratorInvitation;
+  elements.adminEmailSignIn.hidden = hasAdministratorInvitation;
+  elements.adminEmailCreate.textContent = hasRoleInvitation
+    ? t('auth.email.continue')
+    : t('auth.email.createWithInvite');
+  elements.adminPasswordReset.hidden = hasCenterInvitation;
+
+  if (hasCenterInvitation) {
     elements.adminPasswordLabel.textContent = 'Password temporanea dell\'invito';
-    elements.adminPassword.value = invitePassword;
+    elements.adminPassword.value = centerInvitationId;
     elements.adminPassword.readOnly = true;
     elements.adminPassword.autocomplete = 'new-password';
     elements.adminPassword.placeholder = 'Password derivata dall\'invito';
   } else {
-    elements.adminPasswordLabel.textContent = usesExistingEmailAccount ? 'Password personale' : 'Password';
-    elements.adminPassword.value = '';
+    elements.adminPasswordLabel.textContent = t('auth.password.label');
     elements.adminPassword.readOnly = false;
-    elements.adminPassword.autocomplete = 'current-password';
+    elements.adminPassword.autocomplete = hasRoleInvitation ? 'new-password' : 'current-password';
     elements.adminPassword.placeholder = '';
   }
 
-  const hasRoleInvitation = Boolean(getAdminRoleInvitationId());
   if (hasRoleInvitation) {
     if (elements.adminInviteAcceptPanel) elements.adminInviteAcceptPanel.hidden = false;
-    const storedDecision = loadAdminInvitationDecision();
     elements.adminInviteAcceptText.textContent = storedDecision === 'ACCEPT'
-      ? 'Hai scelto di accettare. Identificati con Google oppure con email per completare.'
+      ? t('admin.invitations.acceptedIdentify')
       : storedDecision === 'REJECT'
-        ? 'Hai scelto di rifiutare. Identificati con Google oppure con email per comunicare la risposta.'
-        : 'Sei stato invitato come amministratore del centro. Vuoi accettare questo incarico?';
-    elements.inviteAccept.disabled = false;
-    elements.inviteReject.disabled = false;
-    elements.adminEmailAuth.hidden = false;
+        ? t('admin.invitations.rejectedIdentify')
+        : t('admin.invitations.acceptPrompt');
+    elements.inviteAcceptActions.hidden = Boolean(storedDecision);
+    elements.inviteAccept.disabled = invitationNeedsDecision === false;
+    elements.inviteReject.disabled = invitationNeedsDecision === false;
   } else {
     if (elements.adminInviteAcceptPanel) elements.adminInviteAcceptPanel.hidden = true;
-    elements.adminEmailAuth.hidden = false;
+    elements.inviteAcceptActions.hidden = false;
   }
 
-  elements.adminEmailStatus.textContent = hasAdministratorInvitation
-    ? state.adminAuthNotice || (usesExistingEmailAccount
-      ? 'Inserisci la password del tuo account già esistente.'
-      : 'Inserisci la tua email e premi "Crea account con invito".')
-    : state.adminAuthNotice || 'Puoi accedere anche senza un account Google.';
-  elements.authStatus.textContent = 'Accesso richiesto';
+  elements.adminEmailStatus.textContent = state.adminAuthNotice || (hasRoleInvitation
+    ? t('auth.email.inviteHelp')
+    : hasCenterInvitation
+      ? t('auth.email.centerInviteHelp', {}, {
+        fallback: 'Inserisci la tua email per creare l’account collegato all’invito.'
+      })
+      : t('auth.email.noGoogleNeeded'));
+  elements.authStatus.textContent = t('app.header.accessRequired', {}, { fallback: 'Accesso richiesto' });
   elements.ownerExitButton.hidden = state.mode !== 'admin' || Boolean(getAdminInvitationId());
   elements.adminRoleChip.hidden = true;
   elements.adminRoleChip.textContent = '';
@@ -2103,13 +2115,12 @@ async function handleAdministratorEmailSignIn() {
   }
 }
 
-function handleAdministratorEmailModeToggle() {
+function handleAdministratorEmailChoice() {
   state.adminAuthNotice = '';
-  state.adminInviteEmailMode = state.adminInviteEmailMode === 'signin' ? 'create' : 'signin';
-  setSignedOutState();
-  if (state.adminInviteEmailMode === 'signin') {
-    elements.adminPassword.focus();
-  } else {
+  state.adminInviteEmailExpanded = !state.adminInviteEmailExpanded;
+  elements.adminEmailAuth.hidden = !state.adminInviteEmailExpanded;
+  elements.adminEmailChoice.setAttribute('aria-expanded', state.adminInviteEmailExpanded ? 'true' : 'false');
+  if (state.adminInviteEmailExpanded) {
     elements.adminEmail.focus();
   }
 }
@@ -2144,27 +2155,37 @@ async function handleAdministratorEmailCreation() {
   setAdministratorEmailButtonsDisabled(true);
   const email = elements.adminEmail.value.trim();
   const password = elements.adminPassword.value;
-  elements.adminEmailStatus.textContent = 'Verifico le credenziali...';
+  if (!email) {
+    elements.adminEmailStatus.textContent = t('auth.email.required');
+    elements.adminEmail.focus();
+    setAdministratorEmailButtonsDisabled(false);
+    return;
+  }
+  if (roleInvitationId && password.length < 6) {
+    elements.adminEmailStatus.textContent = t('auth.password.minimum');
+    elements.adminPassword.focus();
+    setAdministratorEmailButtonsDisabled(false);
+    return;
+  }
+  elements.adminEmailStatus.textContent = t('auth.email.verifying');
 
   try {
     await createAdministratorWithEmail(email, password);
     elements.adminPassword.value = '';
-    state.adminAuthNotice = 'Ti abbiamo inviato un email di verifica. Conferma il tuo indirizzo per procedere.';
+    state.adminAuthNotice = t('auth.email.verificationSent');
     elements.adminEmailStatus.textContent = state.adminAuthNotice;
   } catch (error) {
     if (error?.code === 'auth/email-already-in-use') {
       try {
-        elements.adminEmailStatus.textContent = 'Indirizzo già registrato. Accedo...';
+        elements.adminEmailStatus.textContent = t('auth.email.existingSigningIn');
         await signInAdministratorWithEmail(email, password);
         elements.adminPassword.value = '';
-        elements.adminEmailStatus.textContent = 'Accesso effettuato!';
+        elements.adminEmailStatus.textContent = t('auth.email.signedIn');
       } catch (signInError) {
         if (signInError?.code === 'auth/email-not-verified') {
-          elements.adminEmailStatus.textContent = 'Questo account esiste già ma l\'email non è stata verificata. Verifica la tua email.';
+          elements.adminEmailStatus.textContent = t('auth.email.unverified');
         } else if (roleInvitationId || !centerInvitationId) {
-          state.adminInviteEmailMode = 'signin';
-          setSignedOutState();
-          elements.adminEmailStatus.textContent = 'Account già esistente con questa email. Inserisci la tua password personale oppure usa “Password dimenticata?”.';
+          elements.adminEmailStatus.textContent = t('auth.email.existingAccountHelp');
         } else {
           try {
             elements.adminEmailStatus.textContent = 'Account già presente. Conferma la tua identità con Google...';
@@ -2172,8 +2193,6 @@ async function handleAdministratorEmailCreation() {
             elements.adminPassword.value = '';
             elements.adminEmailStatus.textContent = 'Account riconosciuto. Puoi attivare il nuovo centro.';
           } catch (reuseError) {
-            state.adminInviteEmailMode = 'signin';
-            setSignedOutState();
             elements.adminEmailStatus.textContent = reuseError?.code === 'auth/popup-closed-by-user'
               ? 'Accesso annullato. Usa Google oppure la password personale associata a questo indirizzo.'
               : friendlyErrorMessage(reuseError, 'Account già esistente. Usa Google oppure la password personale.');
@@ -2190,9 +2209,9 @@ async function handleAdministratorEmailCreation() {
 }
 
 function setAdministratorEmailButtonsDisabled(disabled) {
+  elements.adminEmailChoice.disabled = disabled;
   elements.adminEmailSignIn.disabled = disabled;
   elements.adminEmailCreate.disabled = disabled;
-  elements.adminEmailModeToggle.disabled = disabled;
   elements.adminPasswordReset.disabled = disabled;
 }
 
@@ -3145,8 +3164,8 @@ function handleInviteAccept() {
           elements.adminEmailStatus.textContent = 'Non riesco a conservare la risposta in questo browser.';
           return;
         }
-        elements.adminInviteAcceptText.textContent = 'Hai scelto di accettare. Identificati con Google oppure con email per completare.';
-        elements.adminEmailStatus.textContent = 'La risposta è pronta. Ora identificati una sola volta.';
+        state.adminInviteEmailExpanded = false;
+        setSignedOutState();
         return;
       }
       elements.inviteAccept.disabled = true;
@@ -3189,8 +3208,8 @@ function handleInviteReject() {
           elements.adminEmailStatus.textContent = 'Non riesco a conservare la risposta in questo browser.';
           return;
         }
-        elements.adminInviteAcceptText.textContent = 'Hai scelto di rifiutare. Identificati con Google oppure con email per comunicare la risposta.';
-        elements.adminEmailStatus.textContent = 'La risposta è pronta. Ora identificati una sola volta.';
+        state.adminInviteEmailExpanded = false;
+        setSignedOutState();
         return;
       }
       elements.inviteAccept.disabled = true;

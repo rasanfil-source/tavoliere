@@ -219,7 +219,7 @@ test('i campi del responsabile restano contenuti nelle rispettive colonne', () =
 
 test('l invito email usa una credenziale temporanea e richiede la password definitiva', () => {
   assert.match(html, /data-admin-password-label/);
-  assert.match(app, /elements\.adminPassword\.value = invitePassword/);
+  assert.match(app, /elements\.adminPassword\.value = centerInvitationId/);
   assert.match(app, /elements\.adminPassword\.readOnly = true/);
   assert.match(app, /Password temporanea dell\\'invito/);
   assert.match(app, /elements\.initializerPassword\.required = isEmailAuth/);
@@ -227,18 +227,25 @@ test('l invito email usa una credenziale temporanea e richiede la password defin
   assert.match(app, /elements\.adminAdministratorEmail\.value = user\.email \|\| ''/);
 });
 
-test('un amministratore già registrato può usare la password personale con un nuovo invito', () => {
-  assert.match(html, /data-admin-email-mode-toggle/);
-  assert.match(app, /adminInviteEmailMode: 'create'/);
-  assert.match(app, /Password personale/);
-  assert.match(app, /Hai già un account\? Accedi/);
-  assert.match(app, /state\.adminInviteEmailMode = 'signin'/);
+test('l invito di successione separa decisione e identificazione senza percorsi duplicati', () => {
+  assert.match(html, /data-admin-auth-methods/);
+  assert.match(html, /data-admin-email-choice/);
+  assert.match(html, /data-admin-invite-accept-actions/);
+  assert.doesNotMatch(html, /data-admin-email-mode-toggle/);
+  assert.match(app, /adminInviteEmailExpanded: false/);
+  assert.match(app, /const invitationNeedsDecision = hasRoleInvitation && !storedDecision/);
+  assert.match(app, /elements\.adminAuthMethods\.hidden = invitationNeedsDecision/);
+  assert.match(app, /elements\.inviteAcceptActions\.hidden = Boolean\(storedDecision\)/);
+  assert.match(app, /t\('admin\.invitations\.acceptedIdentify'\)/);
+  assert.match(app, /t\('auth\.email\.inviteHelp'\)/);
+  assert.match(app, /error\?\.code === 'auth\/email-already-in-use'[\s\S]*signInAdministratorWithEmail\(email, password\)/);
+  assert.doesNotMatch(app, /adminInviteEmailMode/);
   assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
   assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
   assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
   assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
   assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
-  assert.match(app, /Account già esistente con questa email\. Inserisci la tua password personale oppure usa “Password dimenticata\?”/);
+  assert.match(app, /t\('auth\.email\.existingAccountHelp'\)/);
 });
 
 test('un amministratore può recuperare la password senza perdere il link di invito', () => {
@@ -316,7 +323,7 @@ test('una sola risposta viene conservata e completata dopo l identificazione', (
   assert.match(app, /storedDecision === 'ACCEPT'[\s\S]*acceptAdministratorInvitation/);
   assert.match(app, /storedDecision === 'REJECT'[\s\S]*rejectAdministratorInvitation/);
   assert.match(app, /clearAdminInvitationDecision\(roleInvitationId\)/);
-  assert.match(app, /Ora identificati una sola volta/);
+  assert.match(app, /state\.adminInviteEmailExpanded = false;[\s\S]*setSignedOutState\(\)/);
 });
 
 test('l invito amministratore funziona anche con email non Google senza corse sulla verifica', () => {
@@ -326,13 +333,12 @@ test('l invito amministratore funziona anche con email non Google senza corse su
   assert.match(app, /storeImplicitAdministratorInvitationAcceptance\(\)/);
   assert.match(app, /emailVerificationPending = requiresAdministratorPassword\(user\)/);
   assert.match(app, /storedDecision === 'ACCEPT' && emailVerificationPending/);
-  assert.match(app, /adminPasswordReset\.hidden = !\(usesExistingEmailAccount \|\| hasAdministratorInvitation\)/);
+  assert.match(app, /adminPasswordReset\.hidden = hasCenterInvitation/);
   assert.doesNotMatch(app, /else if \(!getAdminInvitationId\(\)\)/);
 });
 
-test('un nuovo account email deve sostituire la password temporanea prima di continuare', () => {
+test('il nuovo amministratore sceglie subito la password e non deve sostituirne una temporanea', () => {
   assert.match(html, /data-admin-password-setup-dialog/);
-  assert.match(html, /La password temporanea dell'invito deve essere sostituita/);
   assert.match(app, /showRequiredAdminPasswordSetup\(user, access\.passwordSetupRequired === true\)/);
   assert.match(app, /elements\.adminPasswordSetupDialog\.showModal\(\)/);
   assert.match(app, /await updateAdministratorPassword\(password\)/);
@@ -340,7 +346,7 @@ test('un nuovo account email deve sostituire la password temporanea prima di con
   assert.match(app, /requiresAdministratorPassword\(user\)/);
   assert.match(app, /addEventListener\('cancel', \(event\) => event\.preventDefault\(\)\)/);
   assert.doesNotMatch(app, /ADMIN_PASSWORD_SETUP_STORAGE_PREFIX/);
-  assert.match(adminCenter, /passwordSetupRequired: requiresAdministratorPassword\(user\)/);
+  assert.match(adminCenter, /passwordSetupRequired: false/);
   assert.match(adminCenter, /export async function completeAdministratorPasswordSetup/);
 });
 
