@@ -1,4 +1,4 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260816l";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260816m";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
 import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260816g";
 import {

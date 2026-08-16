@@ -32,6 +32,24 @@
   box-shadow: inset 0 0 0 1px var(--primary);
 }
 
+.admin-section-nav a.admin-nav-attention {
+  position: relative;
+  padding-right: 30px;
+}
+
+.admin-section-nav a.admin-nav-attention::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--good) 30%, transparent);
+}
+
 .operational-link-meta {
   margin: -2px 0 2px;
   color: var(--muted);
@@ -1969,6 +1987,14 @@ html[data-theme="confetto"] {
 
 .admin-invitation-active {
   color: var(--good);
+}
+
+.admin-invitation-accepted {
+  color: var(--good);
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--good) 45%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--good) 12%, var(--surface));
 }
 
 .admin-invitation-result {

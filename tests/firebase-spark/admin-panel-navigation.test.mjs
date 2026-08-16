@@ -265,6 +265,17 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.match(adminCenter, /administratorPasswordRequired: requiresAdministratorPassword\(user\)/);
 });
 
+test('l’accettazione dell’invito accende una spia senza listener permanente', () => {
+  assert.match(app, /admin\.succession\.acceptanceReady/);
+  assert.match(app, /admin-nav-attention/);
+  assert.match(app, /invitation\.status === 'USED'/);
+  assert.match(app, /invitation\.createdBy === currentUid/);
+  assert.match(app, /queueMicrotask\(refreshAdminRolesWhenVisible\)/);
+  assert.doesNotMatch(adminCenter, /\bonSnapshot\s*\(/);
+  assert.match(css, /\.admin-section-nav a\.admin-nav-attention::after/);
+  assert.match(css, /\.admin-invitation-accepted/);
+});
+
 test('inviti e amministratori si aggiornano al ritorno nel pannello e mostrano invio e scadenza', () => {
   assert.match(app, /const \[invitations, accounts\] = await Promise\.all\(\[[\s\S]*listAdministratorInvitations\(\)[\s\S]*listCenterAdministrators\(\)/);
   assert.match(app, /window\.addEventListener\('focus', refreshAdminRolesWhenVisible\)/);

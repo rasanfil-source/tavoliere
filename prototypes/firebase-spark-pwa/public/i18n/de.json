@@ -191,6 +191,7 @@
   "admin.people.whatsappEnabled": "Auch über WhatsApp erreichbar",
   "admin.succession.newOwner": "Neuer Zentrumsleiter",
   "admin.succession.inviteAnother": "Laden Sie eine andere Person ein, Ihnen als Administrator nachzufolgen.",
+  "admin.succession.acceptanceReady": "{name} hat die Aufgabe angenommen. Sie können die Übergabe abschließen.",
   "admin.succession.transfer": "Verantwortung übertragen",
   "app.header.checkingAccess": "Zugang wird geprüft",
   "app.action.book": "Buchen",

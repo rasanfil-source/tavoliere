@@ -35,7 +35,7 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816g';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816g';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816h';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings

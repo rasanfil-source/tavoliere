@@ -191,6 +191,7 @@
   "admin.people.whatsappEnabled": "Also reachable on WhatsApp",
   "admin.succession.newOwner": "New center manager",
   "admin.succession.inviteAnother": "Invite someone else to succeed you as administrator.",
+  "admin.succession.acceptanceReady": "{name} has accepted the role. You can complete the transfer.",
   "admin.succession.transfer": "Transfer responsibility",
   "app.header.checkingAccess": "Verifying access",
   "app.action.book": "Book",

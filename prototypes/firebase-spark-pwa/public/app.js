@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816l';
+} from './i18n/i18n.mjs?v=20260816m';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -51,7 +51,7 @@ import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
-import { toUserMessage } from './core/user-error.mjs?v=20260816g';
+import { toUserMessage } from './core/user-error.mjs?v=20260816h';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
@@ -66,7 +66,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816h';
+} from './summary-matrix-view.js?v=20260816i';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -82,7 +82,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260816h',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816g',
-  participant: './participant-data.js?v=20260816i'
+  participant: './participant-data.js?v=20260816j'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -3053,7 +3053,40 @@ function renderAdminLeadershipForm() {
   elements.adminSuccessorSelect.disabled = !canTransferOwnership || successors.length === 0;
   elements.adminTransferOwnership.disabled = !canTransferOwnership || successors.length === 0;
 
-  if (canManageAdministrators && successors.length === 0) {
+  const currentUid = getCurrentUser()?.uid || '';
+  const acceptedInvitation = state.adminRole === 'OWNER'
+    ? state.adminInvitations.find((invitation) => (
+      invitation.status === 'USED'
+      && invitation.createdBy === currentUid
+      && invitation.consumedBy
+      && invitation.consumedBy !== currentUid
+      && successors.some((admin) => admin.adminUid === invitation.consumedBy)
+    ))
+    : null;
+  const acceptedSuccessor = acceptedInvitation
+    ? successors.find((admin) => admin.adminUid === acceptedInvitation.consumedBy)
+    : null;
+  const acceptedParticipant = acceptedInvitation
+    ? state.adminParticipants.find((participant) => participant.participantId === acceptedInvitation.participantId)
+    : null;
+  const acceptedName = acceptedParticipant?.displayName
+    || acceptedSuccessor?.email
+    || t('role.admin');
+  const acceptanceMessage = acceptedInvitation
+    ? t('admin.succession.acceptanceReady', { name: acceptedName })
+    : '';
+
+  elements.adminNavAccess.classList.toggle('admin-nav-attention', Boolean(acceptedInvitation));
+  if (acceptedInvitation) {
+    elements.adminNavAccess.setAttribute('title', acceptanceMessage);
+    elements.adminNavAccess.setAttribute('aria-label', `${t('admin.access.title')}. ${acceptanceMessage}`);
+    elements.adminLeadershipStatus.textContent = acceptanceMessage;
+  } else {
+    elements.adminNavAccess.removeAttribute('title');
+    elements.adminNavAccess.removeAttribute('aria-label');
+  }
+
+  if (canManageAdministrators && !acceptedInvitation && successors.length === 0) {
     elements.adminLeadershipStatus.textContent = t('admin.succession.inviteAnother');
   }
 
@@ -3442,7 +3475,7 @@ function renderAdminInvitationList() {
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(roleLabel)}</strong><small>${escapeHtml(targetLabel)}</small></span>
-        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : ''}">${escapeHtml(statusLabel)}</span>
+        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : invitation.status === 'USED' ? 'admin-invitation-accepted' : ''}">${escapeHtml(statusLabel)}</span>
         <span class="admin-invitation-dates">
           ${createdLabel ? `<time datetime="${escapeHtml(createdAt.toISOString())}">${escapeHtml(t('admin.invitations.sentOn', { date: createdLabel }))}</time>` : ''}
           ${active && expiryLabel ? `<small>${escapeHtml(t('admin.invitations.expiresOn', { date: expiryLabel }))}</small>` : ''}

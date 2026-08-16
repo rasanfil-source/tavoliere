@@ -191,6 +191,7 @@
   "admin.people.whatsappEnabled": "Également joignable sur WhatsApp",
   "admin.succession.newOwner": "Nouveau responsable",
   "admin.succession.inviteAnother": "Invitez une autre personne à vous succéder comme administrateur.",
+  "admin.succession.acceptanceReady": "{name} a accepté la fonction. Vous pouvez terminer le transfert.",
   "admin.succession.transfer": "Transférer la responsabilité",
   "app.header.checkingAccess": "Accès en cours de vérification",
   "app.action.book": "Réserver",
