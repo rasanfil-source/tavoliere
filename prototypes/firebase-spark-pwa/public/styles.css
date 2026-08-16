@@ -2281,8 +2281,8 @@ button[aria-busy="true"]:disabled {
 
 .admin-person-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: 'identity toggle';
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'identity toggle delete';
   gap: 8px;
   align-items: center;
   min-height: 44px;
@@ -2342,6 +2342,33 @@ button[aria-busy="true"]:disabled {
 
 .admin-person-toggle-active input {
   accent-color: var(--good);
+}
+
+.admin-person-delete {
+  grid-area: delete;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--danger, #8f342d) 45%, transparent);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--danger, #8f342d);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.admin-person-delete:hover,
+.admin-person-delete:focus-visible {
+  background: color-mix(in srgb, var(--danger, #8f342d) 9%, transparent);
+}
+
+.admin-person-delete:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .admin-person-name strong,
@@ -2687,8 +2714,8 @@ button[aria-busy="true"]:disabled {
   }
 
   .admin-person-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'identity toggle';
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'identity toggle delete';
     gap: 4px 6px;
     padding: 3px 0;
   }

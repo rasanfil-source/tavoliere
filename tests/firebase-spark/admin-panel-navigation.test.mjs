@@ -309,6 +309,7 @@ test('il precedente responsabile sceglie se restare amministratore o essere revo
   assert.match(app, /const revokePrevious = decision\.checked/);
   assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
   assert.match(adminCenter, /const revokePrevious = options\?\.revokePrevious === true/);
-  assert.match(adminCenter, /revokePrevious[\s\S]*batch\.delete\(currentMembershipRef\)/);
-  assert.match(adminCenter, /revokePrevious \? \{ status: 'DISABLED' \}/);
+  assert.match(adminCenter, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
+  assert.match(adminCenter, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
+  assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
 });

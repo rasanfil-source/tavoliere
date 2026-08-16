@@ -78,7 +78,7 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816g',
+  admin: './admin-center.js?v=20260816h',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816g',
   daily: './daily-operations.js?v=20260816g',
@@ -412,6 +412,7 @@ const state = {
   adminCalendarCoverage: null,
   adminParticipantId: '',
   adminPersonDirty: false,
+  pendingAdminParticipantStatusIds: new Set(),
   adminCenterDirty: false,
   adminMobileSection: '',
   adminActiveSection: '',
@@ -4140,6 +4141,7 @@ function renderAdminParticipantOptions() {
 }
 
 function renderAdminPeopleList() {
+  const canDeleteParticipants = hasCurrentCapability(CAPABILITIES.DELETE_PARTICIPANTS);
   const renderKey = JSON.stringify({
     locale: getLocale(),
     selectedParticipantId: state.adminParticipantId,
@@ -4160,7 +4162,9 @@ function renderAdminPeopleList() {
       role: account.role,
       status: account.status
     })),
-    administratorSignature: state.centerContactSettings.administratorSignature
+    administratorSignature: state.centerContactSettings.administratorSignature,
+    canDeleteParticipants,
+    pendingStatusIds: [...state.pendingAdminParticipantStatusIds].sort()
   });
   if (elements.adminPeopleList.dataset.renderKey === renderKey
       && elements.adminPeopleList.childElementCount > 0) {
@@ -4191,6 +4195,8 @@ function renderAdminPeopleList() {
       : '';
     const selected = participant.participantId === state.adminParticipantId;
     const isActive = participant.status === 'ACTIVE';
+    const statusPending = state.pendingAdminParticipantStatusIds.has(participant.participantId);
+    const deleteLabel = `${t('admin.people.delete')}: ${participant.displayName || t('admin.people.unnamed')}`;
     return `
       <div class="admin-person-row${selected ? ' admin-person-row-selected' : ''}" data-admin-person-row="${participantId}">
         <button type="button" class="admin-person-name" data-admin-person-open="${participantId}"${selected ? ' aria-current="true"' : ''}>
@@ -4203,9 +4209,15 @@ function renderAdminPeopleList() {
         <label class="checkbox-row admin-person-toggle-active">
           <input type="checkbox"
             data-admin-person-toggle-active="${participantId}"
+            ${statusPending ? 'disabled aria-busy="true"' : ''}
             ${isActive ? 'checked' : ''}>
           <span style="${isActive ? '' : 'color: #8f342d;'}">${statusLabel}</span>
         </label>
+        ${canDeleteParticipants ? `
+          <button type="button" class="admin-person-delete" data-admin-person-delete="${participantId}"
+            aria-label="${escapeHtml(deleteLabel)}" title="${escapeHtml(deleteLabel)}">
+            <span aria-hidden="true">🗑</span>
+          </button>` : ''}
       </div>`;
   }).join('') || `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
   elements.adminPeopleList.dataset.renderKey = renderKey;
@@ -4248,31 +4260,50 @@ async function handleAdminPeopleListChange(event) {
   if (!participant) return;
 
   const nextActive = toggle.checked;
-  const previousChecked = !toggle.checked;
-  toggle.disabled = true;
+  const previousStatus = participant.status;
+  const previousRevision = participant.revision;
+  if (state.pendingAdminParticipantStatusIds.has(participantId)) return;
+
+  state.pendingAdminParticipantStatusIds.add(participantId);
+  participant.status = nextActive ? 'ACTIVE' : 'DISABLED';
+  elements.adminStatus.textContent = nextActive
+    ? `${participant.displayName}: riattivazione in corso…`
+    : `${participant.displayName}: sospensione in corso…`;
+  renderAdminParticipantOptions();
+  renderAdminPeopleList();
 
   try {
     const result = await setAdminParticipantActiveStatus(
       participantId,
       nextActive,
-      participant.revision
+      previousRevision
     );
     participant.status = result.status;
     participant.revision = result.revision;
     elements.adminStatus.textContent = nextActive
       ? `${participant.displayName} riabilitata alle prenotazioni`
       : `${participant.displayName} sospesa`;
-    renderAdminParticipantOptions();
-    renderAdminPeopleList();
   } catch (error) {
-    toggle.checked = previousChecked;
+    participant.status = previousStatus;
+    participant.revision = previousRevision;
     elements.adminStatus.textContent = friendlyErrorMessage(error, t('errors.statusUpdateFailed'));
   } finally {
-    toggle.disabled = false;
+    state.pendingAdminParticipantStatusIds.delete(participantId);
+    renderAdminParticipantOptions();
+    renderAdminPeopleList();
   }
 }
 
 async function handleAdminPeopleListClick(event) {
+  const deleteButton = event.target.closest('[data-admin-person-delete]');
+  if (deleteButton) {
+    event.preventDefault();
+    const participant = state.adminParticipants.find((item) => (
+      item.participantId === deleteButton.dataset.adminPersonDelete
+    ));
+    await deleteParticipantFromAdminPanel(participant, deleteButton);
+    return;
+  }
   const openButton = event.target.closest('[data-admin-person-open]');
   if (!openButton) return;
   if (!await confirmAdminPersonTransition()) return;
@@ -5602,7 +5633,15 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     if (state.adminParticipantId === participant.participantId) {
       state.adminParticipantId = '';
     }
-    await refreshAdminParticipants();
+    state.adminParticipants = state.adminParticipants.filter((item) => (
+      item.participantId !== participant.participantId
+    ));
+    state.participants = state.participants.filter((item) => (
+      item.participantId !== participant.participantId
+    ));
+    renderAdminParticipantOptions();
+    renderAdminPeopleList();
+    syncAdminContactForm();
     elements.adminStatus.textContent = t('admin.people.deleted', { name: participant.displayName });
   } catch (error) {
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');

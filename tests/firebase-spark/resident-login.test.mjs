@@ -353,7 +353,7 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.ok(requestedCenterCheck >= 0 && requestedCenterCheck < profileFallback);
   assert.doesNotMatch(adminCenter, /Questo account gestisce già il centro/);
   assert.match(adminCenter, /await saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
-  assert.match(adminCenter, /currentProfileSnapshot\.data\(\)\?\.centerId === centerId/);
+  assert.doesNotMatch(adminCenter, /batch\.set\(currentProfileRef/);
   assert.match(adminCenter, /successorProfileSnapshot\.data\(\)\?\.centerId === centerId/);
 });
 
@@ -551,9 +551,12 @@ test('il responsabile salvato viene collegato alla Persona senza una nuova casel
 
 test('il pannello amministratore distingue sospensione ed eliminazione definitiva', () => {
   assert.match(app, /data-admin-person-toggle-active/);
+  assert.match(app, /data-admin-person-delete/);
   assert.match(index, /data-admin-delete-participant[^>]*hidden>Elimina persona/);
   assert.match(app, /handleAdminDeleteParticipant/);
   assert.match(app, /title: 'Elimina definitivamente la persona'[\s\S]*requiredText: 'ELIMINA'/);
+  assert.match(app, /pendingAdminParticipantStatusIds: new Set\(\)/);
+  assert.match(app, /participant\.status = nextActive \? 'ACTIVE' : 'DISABLED'[\s\S]*renderAdminPeopleList\(\)[\s\S]*setAdminParticipantActiveStatus/);
 });
 
 test('la condivisione contatti appartiene alla configurazione del centro', () => {
@@ -572,10 +575,11 @@ test('la condivisione contatti appartiene alla configurazione del centro', () =>
   assert.doesNotMatch(app, /saveRequests\.push\(updateCenterContactSettings/);
 });
 
-test('la scheda persona e il solo punto di modifica anagrafica', () => {
+test('la scheda persona modifica i dati e l’elenco consente la cancellazione rapida', () => {
   assert.match(app, /data-admin-person-open/);
   assert.doesNotMatch(app, /data-admin-person-save/);
-  assert.doesNotMatch(app, /data-admin-person-delete aria-label/);
+  assert.match(app, /data-admin-person-delete="\$\{participantId\}"/);
+  assert.match(app, /deleteParticipantFromAdminPanel\(participant, deleteButton\)/);
   assert.match(index, /Scegli una persona per modificarne la scheda/);
 });
 
@@ -660,6 +664,8 @@ test('il responsabile invita amministratori e trasferisce la responsabilita con 
   assert.match(adminCenter, /export async function createAdministratorInvitation/);
   assert.match(adminCenter, /export async function transferCenterOwnership/);
   assert.match(adminCenter, /role: 'ADMIN'/);
+  assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
+  assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
   assert.match(app, /CAPABILITIES\.TRANSFER_OWNERSHIP/);
   assert.match(app, /requiredText: 'TRASFERISCI'/);
   assert.match(index, /data-admin-invitation-status/);

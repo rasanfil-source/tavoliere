@@ -717,14 +717,11 @@ test('la responsabilita passa atomicamente a un amministratore attivo', async ()
     dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
-  batch.set(ownerDb.doc(`adminProfiles/${ADMIN_UID}`), {
-    centerId: CENTER_ID,
-    status: 'ACTIVE',
-    role: 'ADMIN',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
   batch.set(ownerDb.doc(`adminProfiles/${CENTER_ADMIN_UID}`), {
+    status: 'ACTIVE',
     role: 'OWNER',
+    massPermission: true,
+    dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
   await assertSucceeds(batch.commit());
@@ -770,29 +767,52 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
     administratorPasswordRequired: false,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
-  batch.delete(ownerDb.doc(adminPath(ADMIN_UID)));
+  batch.set(ownerDb.doc(adminPath(ADMIN_UID)), {
+    status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
+    revokedBy: ADMIN_UID,
+    revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
   batch.set(ownerDb.doc(adminPath(CENTER_ADMIN_UID)), {
     role: 'OWNER',
     massPermission: true,
     dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
-  batch.set(ownerDb.doc(`adminProfiles/${ADMIN_UID}`), {
-    status: 'DISABLED',
-    role: 'ADMIN',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
   batch.set(ownerDb.doc(`adminProfiles/${CENTER_ADMIN_UID}`), {
+    status: 'ACTIVE',
     role: 'OWNER',
+    massPermission: true,
+    dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
   await assertSucceeds(batch.commit());
 
+  const previousOwnerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const nextOwnerDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
+  await assertFails(previousOwnerDb.doc(centerPath()).get());
+  await assertFails(previousOwnerDb.doc(centerPath()).set({
+    name: 'Modifica non autorizzata',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(nextOwnerDb.doc(centerPath()).set({
+    name: 'Modifica del nuovo responsabile',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
-    const oldMembership = await db.doc(adminPath(ADMIN_UID)).get();
-    const oldProfile = (await db.doc(`adminProfiles/${ADMIN_UID}`).get()).data();
-    if (oldMembership.exists || oldProfile.status !== 'DISABLED') {
+    const oldMembership = (await db.doc(adminPath(ADMIN_UID)).get()).data();
+    const nextMembership = (await db.doc(adminPath(CENTER_ADMIN_UID)).get()).data();
+    const center = (await db.doc(centerPath()).get()).data();
+    if (oldMembership.status !== 'REVOKED'
+        || oldMembership.massPermission !== false
+        || oldMembership.dailyOperationsPermission !== false
+        || nextMembership.role !== 'OWNER'
+        || center.ownerUid !== CENTER_ADMIN_UID) {
       throw new Error('Il precedente responsabile conserva ancora accesso al centro');
     }
   });
@@ -2016,7 +2036,7 @@ function anonymousToken() {
 
 function residentTechnicalToken() {
   return {
-    email: 'residenti@tavola-comune.local',
+    email: `residenti+${CENTER_ID}@tavola-comune.local`,
     email_verified: false,
     firebase: {
       sign_in_provider: 'password'

@@ -499,11 +499,9 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     throw new Error('Seleziona un amministratore diverso dal responsabile attuale');
   }
   const successorRef = doc(db, 'centers', centerId, 'admins', normalizedSuccessorUid);
-  const currentProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
   const successorProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedSuccessorUid);
-  const [successorSnapshot, currentProfileSnapshot, successorProfileSnapshot] = await Promise.all([
+  const [successorSnapshot, successorProfileSnapshot] = await Promise.all([
     getDoc(successorRef),
-    getDoc(currentProfileRef),
     getDoc(successorProfileRef)
   ]);
   const successor = successorSnapshot.exists() ? successorSnapshot.data() : {};
@@ -535,7 +533,17 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   }, { merge: true });
   const currentMembershipRef = doc(db, 'centers', centerId, 'admins', user.uid);
   if (revokePrevious) {
-    batch.delete(currentMembershipRef);
+    // La revoca resta registrata nel database: non affidarsi alla sola assenza
+    // del documento o alla sessione corrente per togliere i privilegi.
+    batch.set(currentMembershipRef, {
+      status: 'REVOKED',
+      role: 'ADMIN',
+      massPermission: false,
+      dailyOperationsPermission: false,
+      revokedBy: user.uid,
+      revokedAt: now,
+      updatedAt: now
+    }, { merge: true });
   } else {
     batch.set(currentMembershipRef, {
       role: 'ADMIN',
@@ -550,16 +558,15 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     dailyOperationsPermission: true,
     updatedAt: now
   }, { merge: true });
-  if (currentProfileSnapshot.data()?.centerId === centerId) {
-    batch.set(currentProfileRef, {
-      role: 'ADMIN',
-      ...(revokePrevious ? { status: 'DISABLED' } : {}),
-      updatedAt: now
-    }, { merge: true });
-  }
+  // adminProfiles e' soltanto un indice di navigazione. I permessi effettivi
+  // dipendono sempre dalla membership del centro, per supportare piu' centri
+  // senza riattivare accidentalmente un ruolo revocato.
   if (successorProfileSnapshot.data()?.centerId === centerId) {
     batch.set(successorProfileRef, {
+      status: 'ACTIVE',
       role: 'OWNER',
+      massPermission: true,
+      dailyOperationsPermission: true,
       updatedAt: now
     }, { merge: true });
   }

@@ -72,11 +72,12 @@ test('l autoiscrizione dei vice usa uno schema chiuso e non concede la gestione 
 
 test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insieme', () => {
   assert.match(rules, /function isCoordinatedOwnershipTransfer\(centerId\)/);
-  assert.match(rules, /nextOwnerUid[\s\S]*role == 'OWNER'[\s\S]*request\.auth\.uid[\s\S]*role == 'ADMIN'/);
+  assert.match(rules, /nextOwnerUid[\s\S]*role == 'OWNER'[\s\S]*request\.auth\.uid[\s\S]*status == 'REVOKED'/);
   assert.match(rules, /function isOwnershipRoleChange\(centerId, adminUid\)/);
+  assert.match(rules, /function isOwnershipRevocation\(centerId, adminUid\)/);
   assert.match(rules, /affectedKeys\(\)\.hasOnly\(\[[\s\S]*'ownerUid'[\s\S]*'administratorName'[\s\S]*'administratorSignature'[\s\S]*'adminEmail'[\s\S]*'administratorPasswordRequired'[\s\S]*'updatedAt'[\s\S]*\]\)/);
   assert.match(rules, /!existsAfter\([\s\S]*admins\/\$\(request\.auth\.uid\)/);
-  assert.match(rules, /request\.resource\.data\.status == 'DISABLED'[\s\S]*request\.resource\.data\.role == 'ADMIN'/);
+  assert.match(rules, /request\.resource\.data\.status == 'REVOKED'[\s\S]*massPermission == false[\s\S]*dailyOperationsPermission == false/);
 });
 
 test('public sessions are read only for participant reservations', () => {

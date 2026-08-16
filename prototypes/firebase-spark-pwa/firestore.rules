@@ -222,6 +222,10 @@ service cloud.firestore {
           !existsAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
           || getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE'
             && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.role == 'ADMIN'
+          || getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'REVOKED'
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.role == 'ADMIN'
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.massPermission == false
+            && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.dailyOperationsPermission == false
         );
     }
 
@@ -242,6 +246,24 @@ service cloud.firestore {
             && resource.data.role == 'ADMIN'
             && request.resource.data.role == 'OWNER'
         );
+    }
+
+    function isOwnershipRevocation(centerId, adminUid) {
+      return isCoordinatedOwnershipTransfer(centerId)
+        && adminUid == request.auth.uid
+        && resource.data.status == 'ACTIVE'
+        && resource.data.role == 'OWNER'
+        && request.resource.data.status == 'REVOKED'
+        && request.resource.data.role == 'ADMIN'
+        && request.resource.data.massPermission == false
+        && request.resource.data.dailyOperationsPermission == false
+        && request.resource.data.revokedBy == request.auth.uid
+        && request.resource.data.revokedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'role', 'massPermission', 'dailyOperationsPermission',
+          'revokedBy', 'revokedAt', 'updatedAt'
+        ]);
     }
 
     function adminCanManageMass(centerId) {
@@ -466,14 +488,11 @@ service cloud.firestore {
           && request.resource.data.centerId == resource.data.centerId
           && request.resource.data.status == 'ACTIVE'
           && request.resource.data.role == 'OWNER'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])
-        || signedIn()
-          && request.auth.uid == adminUid
-          && isCoordinatedOwnershipTransfer(resource.data.centerId)
-          && request.resource.data.centerId == resource.data.centerId
-          && request.resource.data.status == 'DISABLED'
-          && request.resource.data.role == 'ADMIN'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role', 'updatedAt']);
+          && request.resource.data.massPermission == true
+          && request.resource.data.dailyOperationsPermission == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'role', 'massPermission', 'dailyOperationsPermission', 'updatedAt'
+          ]);
       allow delete: if false;
     }
 
@@ -664,7 +683,8 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'passwordSetupRequired', 'updatedAt'
             ])
-          || isOwnershipRoleChange(centerId, adminUid);
+          || isOwnershipRoleChange(centerId, adminUid)
+          || isOwnershipRevocation(centerId, adminUid);
         allow delete: if canDeleteCenterAdministrator(centerId)
           || adminUid == request.auth.uid
             && resource.data.role == 'OWNER'
