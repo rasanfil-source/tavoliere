@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260816f">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816f">
+    <link rel="stylesheet" href="/styles.css?v=20260816g">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816g">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -136,7 +136,7 @@
           <div class="month-grid" data-month-grid></div>
           <details class="month-actions-legend">
             <summary data-i18n="month.legend.summary">Come funzionano i comandi</summary>
-            <p><strong>M</strong> <span data-i18n="month.legend.desc.month">riempie o svuota il mese;</span> <strong>▦</strong> <span data-i18n="month.legend.desc.week">agisce sulla settimana;</span> <strong>☕</strong>, <strong>🍝</strong> e <strong>🍽</strong> <span data-i18n="month.legend.desc.meals">selezionano colazione, pranzo e cena.</span></p>
+            <p><strong>M</strong> <span data-i18n="month.legend.desc.month">riempie o svuota il mese;</span> <strong>▦</strong> <span data-i18n="month.legend.desc.week">agisce sulla settimana;</span> <strong>☕</strong>, <strong>🍝</strong> e <strong>🍲</strong> <span data-i18n="month.legend.desc.meals">selezionano colazione, pranzo e cena.</span></p>
           </details>
         </section>
       </section>
@@ -452,14 +452,14 @@
 
                 <div class="access-links-explanation">
                   <p class="access-link-row">
-                    <span data-i18n="admin.overview.residentLinkHelp">Link per le prenotazioni dei residenti</span>
+                    <span data-i18n="admin.overview.residentLinkHelp">Link prenotazioni residenti</span>
                     <span class="access-link-controls">
                       <button type="button" class="access-link-btn" data-access-link="pasti" disabled data-i18n="app.header.pasti">Pasti</button>
                       <button type="button" class="share-access-link icon-button" data-share-access-link="pasti" disabled aria-label="Condividi link Pasti" title="Condividi link Pasti" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
                     </span>
                   </p>
                   <p class="access-link-row">
-                    <span data-i18n="admin.overview.kitchenLinkHelp">Link da dare alla Cucina</span>
+                    <span data-i18n="admin.overview.kitchenLinkHelp">Link per la Cucina</span>
                     <span class="access-link-controls">
                       <button type="button" class="access-link-btn" data-access-link="cucina" disabled data-i18n="role.kitchen">Cucina</button>
                       <button type="button" class="share-access-link icon-button" data-share-access-link="cucina" disabled aria-label="Condividi link Cucina" title="Condividi link Cucina" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
@@ -662,10 +662,10 @@
               <div class="admin-role-stack" id="admin-access-section" data-admin-mobile-section="access" tabindex="-1">
                 <section class="admin-control-section" data-admin-leadership hidden>
                   <div class="section-title">
-                    <h2 data-i18n="admin.access.title">Amministratore</h2>
+                    <h2 data-i18n="admin.access.handoverTitle">Amministratore: passaggio di consegne</h2>
                   </div>
                   <p data-admin-leadership-status aria-live="polite" data-i18n="admin.access.leadershipHelp">
-                    Prima invita il nuovo amministratore. Dopo che avrà accettato, selezionalo come nuovo responsabile e conferma il trasferimento.
+                    Per trasferire il ruolo di amministratore di questo sistema, prima invita il nuovo amministratore. Dopo che avrà accettato, selezionalo come nuovo responsabile e conferma il trasferimento.
                   </p>
 
                   <div class="admin-candidate-fields">
@@ -684,7 +684,13 @@
                       <span data-i18n="admin.invitations.linkToSend">Collegamento da inviare</span>
                       <input type="url" data-admin-invitation-link readonly>
                     </label>
-                    <button type="button" class="secondary-action" data-admin-invitation-copy data-i18n="common.actions.copy">Copia collegamento</button>
+                    <div class="admin-invitation-actions">
+                      <button type="button" class="secondary-action" data-admin-invitation-copy data-i18n="common.actions.copy">Copia</button>
+                      <button type="button" class="secondary-action admin-invitation-share" data-admin-invitation-share aria-label="Condividi invito" data-i18n-aria-label="common.actions.share">
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg>
+                        <span data-i18n="common.actions.share">Condividi</span>
+                      </button>
+                    </div>
                   </div>
 
                   <section class="admin-invitation-management" data-admin-invitation-management hidden>
@@ -923,6 +929,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260816f"></script>
+  <script type="module" src="/app.js?v=20260816g"></script>
   </body>
 </html>

@@ -1,10 +1,10 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260816f";
-import { escapeHtml } from "./html-utils.js?v=20260816f";
-import { formatDietLabel } from "./diet-utils.mjs?v=20260816f";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260816g";
+import { escapeHtml } from "./html-utils.js?v=20260816g";
+import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260816g";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260816f";
+} from "./summary-matrix-model.js?v=20260816g";
 
 let contactPopupSequence = 0;
 
@@ -151,7 +151,7 @@ function renderCaption(screen, kitchen) {
 }
 
 function mealIcon(mealTypeId) {
-  return { breakfast: "☕", lunch: "🍝", dinner: "🍽" }[mealTypeId] || "•";
+  return { breakfast: "☕", lunch: "🍝", dinner: "🍲" }[mealTypeId] || "•";
 }
 
 function localizedMealLabel(column) {
@@ -185,7 +185,7 @@ function renderSickMealCell(column) {
 
 function renderSickDietCell(column) {
   if (column.sickDiets.length === 0) return renderEmpty(t("summary.noDiet"));
-  return `<ul class="summary-matrix-diets">${column.sickDiets.map((tag) => `<li>${escapeHtml(formatDietLabel(tag))}</li>`).join("")}</ul>`;
+  return renderDietItems(column.sickDiets);
 }
 
 function renderMassCell(column) {
@@ -223,7 +223,7 @@ function renderMassBandRow(screen) {
   const cells = getMassDateGroups(screen)
     .map(
       (group) =>
-        `<td class="summary-matrix-mass-band${dateClasses(group, screen)}${massStateClass(group.massStatus)}" colspan="${group.span}"><span class="summary-matrix-mass-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>${renderMassCell(group)}</td>`,
+        `<td class="summary-matrix-mass-band${dateClasses(group, screen)}${massStateClass(group.massStatus)}" colspan="${group.span}">${renderMassControl(group)}</td>`,
     )
     .join("");
   return `
@@ -247,25 +247,39 @@ function renderDietCell(column) {
   if (column.specialDiets.participantCount === 0)
     return renderEmpty(t("summary.noDiet"));
   const diets = [...column.specialDiets.items].sort((left, right) =>
-    formatDietLabel(left.tag).localeCompare(
-      formatDietLabel(right.tag),
+    formatDietIdentifier(left.tag).localeCompare(
+      formatDietIdentifier(right.tag),
       getLocale(),
+      { numeric: true },
     ),
   );
-  return `<ul class="summary-matrix-diets">${diets.map((diet) => `<li>${escapeHtml(formatDietLabel(diet.tag))}</li>`).join("")}</ul>`;
+  return renderDietItems(diets);
 }
 
 function renderKitchenDietCell(column) {
   if (column.specialDiets.participantCount === 0)
     return renderEmpty(t("summary.noDiet"));
-  const labels = [...new Set(column.specialDiets.items.map((diet) => formatKitchenDietLabel(diet.tag)))].sort(
-    (left, right) => left.localeCompare(right, getLocale()),
-  );
-  return `<ul class="summary-matrix-diets summary-matrix-kitchen-diets">${labels.map((label) => `<li>${escapeHtml(label)}</li>`).join("")}</ul>`;
+  return renderDietItems(column.specialDiets.items, " summary-matrix-kitchen-diets");
 }
 
-function formatKitchenDietLabel(tag) {
-  const value = String(tag || "").trim();
+function renderDietItems(items, extraClass = "") {
+  const sorted = [...items].sort((left, right) =>
+    formatDietIdentifier(left.tag).localeCompare(
+      formatDietIdentifier(right.tag),
+      getLocale(),
+      { numeric: true },
+    ),
+  );
+  return `<ul class="summary-matrix-diets${extraClass}">${sorted.map((diet) => {
+    const identifier = formatDietIdentifier(diet.tag);
+    const count = Math.max(0, Math.floor(Number(diet.count) || 0));
+    const label = count > 1 ? `${identifier} (${count})` : identifier;
+    return `<li>${escapeHtml(label)}</li>`;
+  }).join("")}</ul>`;
+}
+
+function formatDietIdentifier(tag) {
+  const value = normalizeDietCode(tag);
   return /^\d+$/.test(value) ? value : formatDietLabel(value);
 }
 
@@ -273,7 +287,7 @@ function renderNamesCell(column, { compactActions = false } = {}) {
   if (column.names.length === 0) return renderEmpty(t("summary.noName"));
   return `<ul class="summary-matrix-names">${column.names
     .map((participant) => {
-      const diets = participant.dietTags.map((tag) => formatDietLabel(tag));
+      const diets = participant.dietTags.map((tag) => formatDietIdentifier(tag));
       const phone = normalizePhone(participant.phone);
       const displayName = escapeHtml(participant.displayName);
       const dietSuffix = diets.length
@@ -365,8 +379,7 @@ function renderInternationalMass(screen, kitchen) {
           <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${dateClasses(group, screen)}${massStateClass(group.massStatus)}" style="--mass-segment-span:${group.span}">
             ${index === 0 ? `<strong class="summary-international-mass-title">${escapeHtml(t("summary.mass"))}</strong>` : ""}
             <div class="summary-international-mass-segment">
-              <span>${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
-              ${renderMassCell(group)}
+              ${renderMassControl(group)}
             </div>
           </div>`,
           )
@@ -412,6 +425,14 @@ function renderEmpty(label) {
 
 function nextDateClass(column, screen) {
   return column.dayIndex > screen.index ? " summary-matrix-next-date" : "";
+}
+
+function renderMassControl(group) {
+  return `
+    <span class="summary-mass-control">
+      <span class="summary-mass-control-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
+      <span class="summary-mass-control-state">${renderMassCell(group)}</span>
+    </span>`;
 }
 
 function dateClasses(item, screen) {

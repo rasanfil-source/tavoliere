@@ -246,10 +246,12 @@ test('un amministratore può recuperare la password senza perdere il link di inv
 test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona associata', () => {
   assert.doesNotMatch(html, /data-admin-role-badge/);
   assert.doesNotMatch(app, /adminRoleBadge/);
-  assert.match(html, /Prima invita il nuovo amministratore[\s\S]*conferma il trasferimento/);
+  assert.match(html, /Per trasferire il ruolo di amministratore di questo sistema, prima invita[\s\S]*conferma il trasferimento/);
   assert.match(html, /data-admin-invitation-result/);
   assert.match(html, /data-admin-invitation-link/);
   assert.match(html, /data-admin-invitation-copy/);
+  assert.match(html, /data-admin-invitation-share/);
+  assert.match(app, /handleAdministratorInvitationShare/);
   assert.match(app, /invitationUrl\.searchParams\.set\('adminInvite', invitation\.invitationId\)/);
   assert.match(app, /elements\.adminInvitationLink\.value = invitationUrl\.toString\(\)/);
   assert.match(app, /admin\.participantId[\s\S]*activeParticipantIds\.has\(admin\.participantId\)/);

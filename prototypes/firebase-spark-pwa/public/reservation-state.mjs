@@ -1,7 +1,7 @@
 export const PRESENT = 'PRESENT';
 export const ABSENT = 'ABSENT';
 
-import { normalizeDietTags } from './diet-utils.mjs?v=20260816f';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260816g';
 
 const VALID_EFFECTS = new Set([PRESENT, ABSENT]);
 

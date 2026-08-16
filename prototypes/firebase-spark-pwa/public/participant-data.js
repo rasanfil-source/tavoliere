@@ -23,23 +23,23 @@ import {
   signOutCurrentUser,
   verifyResidentCommonPassword,
   waitForAuthReady
-} from './firebase-client.js?v=20260816f';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816f';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816f';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816f';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260816f';
+} from './firebase-client.js?v=20260816g';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816g';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260816g';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816f';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816f';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816f';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816f';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816f';
+} from './domain/participant-profile.mjs?v=20260816g';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816g';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816g';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816f';
+} from './center-settings.js?v=20260816g';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816f';
+} from './center-settings.js?v=20260816g';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

@@ -181,7 +181,7 @@ function buildColumn(
     ).length,
     specialDiets: summarizeSpecialDiets(diningParticipants),
     sickCount: sickMeal.count,
-    sickDiets: sickMeal.dietLabels,
+    sickDiets: sickMeal.diets,
     massStatus: getMassStatus(operationDay.dailyOperation, meal.mealTypeId),
     dayMassStatus: getDayMassStatus(operationDay.dailyOperation),
     breakfastPlanned:
@@ -276,15 +276,10 @@ function findSickMeal(
     : [];
   const item = meals.find((meal) => meal.mealTypeId === mealTypeId);
   if (item) {
+    const dietLabels = Array.isArray(item.dietLabels) ? item.dietLabels : [];
     return {
       count: Math.max(0, Math.floor(Number(item.count) || 0)),
-      dietLabels: [
-        ...new Set(
-          (Array.isArray(item.dietLabels) ? item.dietLabels : [])
-            .map((label) => String(label || "").trim())
-            .filter(Boolean),
-        ),
-      ],
+      diets: summarizeDietLabels(dietLabels),
     };
   }
 
@@ -307,18 +302,29 @@ function findSickMeal(
       mealDirectory.get(sickPerson.participantId) ||
       participantDirectory.get(sickPerson.participantId) ||
       sickPerson;
-    getSpecialDietTags(participant).forEach((tag) => dietLabels.push(tag));
+    const participantDiets = new Set(getSpecialDietTags(participant));
     const occasionalDiet = assignmentByParticipant.get(
       sickPerson.participantId,
     );
     if (occasionalDiet && occasionalDiet.toUpperCase() !== STANDARD_DIET_TAG) {
-      dietLabels.push(occasionalDiet);
+      participantDiets.add(occasionalDiet);
     }
+    participantDiets.forEach((tag) => dietLabels.push(tag));
   });
   return {
     count: sickPeople.length,
-    dietLabels: [...new Set(dietLabels.filter(Boolean))],
+    diets: summarizeDietLabels(dietLabels),
   };
+}
+
+function summarizeDietLabels(labels) {
+  const counts = new Map();
+  (Array.isArray(labels) ? labels : []).forEach((label) => {
+    const tag = String(label || "").trim();
+    if (!tag || tag.toUpperCase() === STANDARD_DIET_TAG) return;
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  });
+  return [...counts.entries()].map(([tag, count]) => ({ tag, count }));
 }
 
 function getMassStatus(dailyOperation, mealTypeId) {

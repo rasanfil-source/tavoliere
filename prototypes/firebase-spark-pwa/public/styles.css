@@ -1627,6 +1627,9 @@ html[data-theme="smeraldo"] {
   --calendar-heading-bg: #eef4f6;
   --calendar-heading-border: #cfdee3;
   --calendar-heading-ink: #2f5963;
+  --today-surface: #e2f3fb;
+  --today-line: #72b9d8;
+  --today-ink: #195f82;
 }
 html[data-theme="giallino"] {
   --primary: #927000;
@@ -1635,6 +1638,9 @@ html[data-theme="giallino"] {
   --calendar-heading-bg: #fff7d4;
   --calendar-heading-border: #e7d898;
   --calendar-heading-ink: #5a4600;
+  --today-surface: #fff2b8;
+  --today-line: #d9b52d;
+  --today-ink: #654d00;
 }
 html[data-theme="beige"] {
   --primary: #7c6853;
@@ -1643,6 +1649,9 @@ html[data-theme="beige"] {
   --calendar-heading-bg: #f2ece4;
   --calendar-heading-border: #dcd2c5;
   --calendar-heading-ink: #4d4033;
+  --today-surface: #eee3d6;
+  --today-line: #b89d7e;
+  --today-ink: #5c4632;
 }
 html[data-theme="rosso-pallido"] {
   --primary: #9e4a40;
@@ -1651,6 +1660,9 @@ html[data-theme="rosso-pallido"] {
   --calendar-heading-bg: #faebe9;
   --calendar-heading-border: #e6c8c4;
   --calendar-heading-ink: #612c25;
+  --today-surface: #fce4e1;
+  --today-line: #d99b93;
+  --today-ink: #7a3129;
 }
 html[data-theme="confetto"] {
   --primary: #a92b52;
@@ -1659,6 +1671,9 @@ html[data-theme="confetto"] {
   --calendar-heading-bg: #ffe9d6;
   --calendar-heading-border: #ffd1a6;
   --calendar-heading-ink: #9c4b6b;
+  --today-surface: #eee5ff;
+  --today-line: #b39adc;
+  --today-ink: #674496;
 }
 
 .admin-theme-picker {
@@ -1945,6 +1960,29 @@ html[data-theme="confetto"] {
   gap: 10px;
   align-items: end;
   margin-top: 10px;
+}
+
+.admin-invitation-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.admin-invitation-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.admin-invitation-share svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .admin-invitation-result .field-label {
@@ -2300,6 +2338,10 @@ button[aria-busy="true"]:disabled {
   justify-self: end;
   font-size: 0.82rem;
   white-space: nowrap;
+}
+
+.admin-person-toggle-active input {
+  accent-color: var(--good);
 }
 
 .admin-person-name strong,
@@ -3043,6 +3085,12 @@ button[aria-busy="true"]:disabled {
   box-shadow: none;
 }
 
+.month-day-past:not(.month-day-today),
+.month-day-closed:not(.month-day-today) {
+  opacity: 0.46;
+  filter: saturate(0.2);
+}
+
 .month-day-selected {
   /* Il giorno identifica il contesto di navigazione, mentre lo stato appartiene al pasto. */
   border-color: #d9ddd3;
@@ -3735,8 +3783,20 @@ button[aria-busy="true"]:disabled {
 }
 
 .week-matrix-row-today .week-day-button {
-  border-color: rgba(159, 199, 187, 0.8);
-  box-shadow: none;
+  border-color: var(--today-line);
+  background: var(--today-surface);
+  color: var(--today-ink);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--today-line) 58%, transparent);
+}
+
+.week-matrix-row-today {
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--today-line) 72%, transparent);
+}
+
+.week-matrix-row-subdued {
+  opacity: 0.44;
+  filter: saturate(0.18);
 }
 
 .week-meal-button {
@@ -5575,4 +5635,57 @@ button[aria-busy="true"]:disabled {
   background: none;
   border: none;
   cursor: pointer;
+}
+
+/* Pannello autenticato: l'email vive nella testata principale, senza fascia duplicata. */
+.admin-shell[data-admin-active="true"] > .admin-shell-summary {
+  display: none;
+}
+
+body[data-mode="admin"] .account-footer {
+  margin-top: 8px;
+}
+
+body[data-mode="admin"] .admin-shell-body {
+  padding-top: 4px;
+  border-top: 0;
+}
+
+/* Il passato resta consultabile, ma non compete visivamente con oggi. */
+.month-day-past:not(.month-day-today),
+.month-day-closed:not(.month-day-today),
+.week-matrix-row-subdued {
+  opacity: 0.44;
+  filter: saturate(0.18);
+}
+
+@media (max-width: 620px) {
+  .admin-person-selector-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .admin-person-selector-row > .secondary-action {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .admin-invitation-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .admin-invitation-actions > button {
+    width: 100%;
+  }
+
+  .access-link-controls {
+    grid-template-columns: minmax(0, 1fr) 46px;
+    width: 100%;
+  }
+
+  .access-link-btn {
+    width: 100%;
+  }
 }

@@ -8,11 +8,11 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816f';
+} from './i18n/i18n.mjs?v=20260816g';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260816f';
-import { escapeHtml } from './html-utils.js?v=20260816f';
+} from './refresh-schedule.js?v=20260816g';
+import { escapeHtml } from './html-utils.js?v=20260816g';
 import {
   getCurrentUser,
   isFirebaseConfigured,
@@ -26,12 +26,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816f';
+} from './firebase-client.js?v=20260816g';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816f';
+} from './center-context.js?v=20260816g';
 import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
@@ -41,34 +41,34 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816f';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816f';
+} from './center-settings.js?v=20260816g';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   getDietOptions,
   normalizeDietCode,
   resolveDietSelection
-} from './diet-utils.mjs?v=20260816f';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816f';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816f';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260816f';
-import { createStateStore } from './core/state-store.mjs?v=20260816f';
-import { toUserMessage } from './core/user-error.mjs?v=20260816f';
+} from './diet-utils.mjs?v=20260816g';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
+import { createStateStore } from './core/state-store.mjs?v=20260816g';
+import { toUserMessage } from './core/user-error.mjs?v=20260816g';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260816f';
+} from './core/connectivity.mjs?v=20260816g';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816f';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816f';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816f';
+} from './domain/participant-profile.mjs?v=20260816g';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816g';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816f';
+} from './summary-matrix-view.js?v=20260816g';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -77,14 +77,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816f',
-  admin: './admin-center.js?v=20260816f',
-  audit: './audit-log.js?v=20260816f',
-  bootstrap: './bootstrap-demo.js?v=20260816f',
-  daily: './daily-operations.js?v=20260816f',
-  kitchen: './kitchen-data.js?v=20260816f',
-  notes: './kitchen-notes.js?v=20260816f',
-  participant: './participant-data.js?v=20260816f'
+  accessLinks: './access-links.js?v=20260816g',
+  admin: './admin-center.js?v=20260816g',
+  audit: './audit-log.js?v=20260816g',
+  bootstrap: './bootstrap-demo.js?v=20260816g',
+  daily: './daily-operations.js?v=20260816g',
+  kitchen: './kitchen-data.js?v=20260816g',
+  notes: './kitchen-notes.js?v=20260816g',
+  participant: './participant-data.js?v=20260816g'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -604,6 +604,7 @@ const elements = {
   adminInvitationResult: document.querySelector('[data-admin-invitation-result]'),
   adminInvitationLink: document.querySelector('[data-admin-invitation-link]'),
   adminInvitationCopy: document.querySelector('[data-admin-invitation-copy]'),
+  adminInvitationShare: document.querySelector('[data-admin-invitation-share]'),
   adminInvitationManagement: document.querySelector('[data-admin-invitation-management]'),
   adminInvitationManagementStatus: document.querySelector('[data-admin-invitation-management-status]'),
   adminInvitationList: document.querySelector('[data-admin-invitation-list]'),
@@ -910,6 +911,9 @@ if (elements.inviteReject) {
 }
 if (elements.adminInvitationCopy) {
   elements.adminInvitationCopy.addEventListener('click', handleAdministratorInvitationCopy);
+}
+if (elements.adminInvitationShare) {
+  elements.adminInvitationShare.addEventListener('click', handleAdministratorInvitationShare);
 }
 elements.adminTransferOwnership.addEventListener('click', handleOwnershipTransfer);
 if (elements.adminInvitationList) {
@@ -3155,6 +3159,26 @@ async function handleAdministratorInvitationCopy() {
   }
 }
 
+async function handleAdministratorInvitationShare() {
+  const value = elements.adminInvitationLink.value;
+  if (!value) return;
+  if (typeof navigator.share !== 'function') {
+    openAccessShareDialog(t('admin.access.title'), value);
+    return;
+  }
+  try {
+    await navigator.share({
+      title: t('admin.access.title'),
+      text: t('admin.invitations.linkToSend'),
+      url: value
+    });
+  } catch (error) {
+    if (error?.name !== 'AbortError') {
+      openAccessShareDialog(t('admin.access.title'), value);
+    }
+  }
+}
+
 function handleOwnershipTransfer() {
   return operationGuard.run('admin:ownership-transfer', performOwnershipTransfer);
 }
@@ -3943,8 +3967,10 @@ function renderMode() {
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
   elements.titleCenter.textContent = isAdminView ? t('app.header.controlPanel') : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
-  elements.sessionRole.textContent = '';
-  elements.sessionRole.hidden = true;
+  elements.sessionRole.textContent = isAdminView && authenticatedAdministrator
+    ? currentUser.email || ''
+    : '';
+  elements.sessionRole.hidden = !elements.sessionRole.textContent;
   renderCenterAvatar(isParticipant || isWeek || isSummary || isKitchen, centerName);
   const browserTitle = isSummary && centerName
     ? `${elements.title.textContent} - ${centerName}`
@@ -4630,9 +4656,13 @@ function renderParticipantMeals() {
         const dayEffect = getBulkSelectionEffect(day.meals);
         const dayHasOpenMeals = day.meals.some((meal) => meal.isOpen);
         const todayClass = day.isToday ? ' week-matrix-row-today' : '';
+        const subduedClass = !day.isToday
+          && (day.date < formatDateId(getCenterToday()) || !dayHasOpenMeals)
+          ? ' week-matrix-row-subdued'
+          : '';
         const dayAction = dayEffect === 'PRESENT' ? 'Prenota tutta la giornata' : 'Svuota tutta la giornata';
         return `
-          <article class="week-matrix-row${todayClass}" data-day-date="${day.date}">
+          <article class="week-matrix-row${todayClass}${subduedClass}" data-day-date="${day.date}">
             <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
               <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
               ${day.isToday ? '<span>Oggi</span>' : ''}
@@ -4761,7 +4791,7 @@ function getMealIcon(mealTypeId) {
   return {
     breakfast: '☕',
     lunch: '🍝',
-    dinner: '🍽'
+    dinner: '🍲'
   }[mealTypeId] || '•';
 }
 
@@ -4781,7 +4811,7 @@ function renderTodayOverview() {
     return;
   }
 
-  const mealIcons = { breakfast: '☕', lunch: '🍝', dinner: '🍽' };
+  const mealIcons = { breakfast: '☕', lunch: '🍝', dinner: '🍲' };
   elements.todayOverview.innerHTML = `
     <section class="today-panel">
       <p class="today-date">${formatSummaryDate(getSummaryDate())}</p>
@@ -4963,7 +4993,9 @@ function renderMonthGrid() {
                 const classes = [
                   'month-day',
                   day.inCurrentMonth ? 'month-day-current' : 'month-day-outside',
-                  day.isToday ? 'month-day-today' : ''
+                  day.isToday ? 'month-day-today' : '',
+                  day.isPast ? 'month-day-past' : '',
+                  day.isClosed ? 'month-day-closed' : ''
                 ].filter(Boolean).join(' ');
                 return `
                   <article class="${classes}">
@@ -5025,7 +5057,7 @@ function renderMonthScopeButtons(label, weekStart, mealTypeId) {
     Settimana: '▦',
     Colazione: '☕',
     Pranzo: '🍝',
-    Cena: '🍽'
+    Cena: '🍲'
   }[label] || '•';
   const effect = getMonthScopeEffect(weekStart, mealTypeId);
   const action = effect === 'PRESENT' ? 'prenota' : 'libera';
@@ -6588,12 +6620,6 @@ function daysInMonth(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
-function isSameDate(left, right) {
-  return left.getFullYear() === right.getFullYear()
-    && left.getMonth() === right.getMonth()
-    && left.getDate() === right.getDate();
-}
-
 function formatMonthId(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
 }
@@ -6623,17 +6649,21 @@ function buildMonthCells(monthDate, monthDays) {
   const firstDay = startOfMonth(monthDate);
   const gridStart = new Date(firstDay);
   gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+  const todayId = formatDateId(getCenterToday());
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
     const dateId = formatDateId(date);
     const monthEntry = monthDays.find((item) => item.date === dateId) || null;
+    const meals = monthEntry ? monthEntry.meals : [];
     return {
       date: dateId,
       dayNumber: date.getDate(),
       inCurrentMonth: date.getMonth() === monthDate.getMonth(),
-      isToday: isSameDate(date, getCenterToday()),
-      meals: monthEntry ? monthEntry.meals : []
+      isToday: dateId === todayId,
+      isPast: dateId < todayId,
+      isClosed: meals.length > 0 && meals.every((meal) => !meal.isOpen),
+      meals
     };
   });
 }

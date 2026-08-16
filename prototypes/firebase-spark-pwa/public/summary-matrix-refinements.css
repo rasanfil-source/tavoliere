@@ -1432,3 +1432,101 @@ html[data-theme="confetto"] {
     justify-self: stretch;
   }
 }
+
+/* Messa: giorno e scelta formano un unico controllo compatto, quasi quadrato. */
+.summary-mass-control {
+  display: inline-grid;
+  width: clamp(62px, 7vw, 76px);
+  min-width: 62px;
+  aspect-ratio: 1;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: var(--surface);
+  vertical-align: middle;
+}
+
+.summary-mass-control-day {
+  display: grid;
+  min-height: 24px;
+  place-items: center;
+  padding: 3px 5px;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.summary-mass-control-state {
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  padding: 4px;
+}
+
+.summary-mass-state-yes .summary-mass-control {
+  border-color: var(--mass-yes-border);
+  background: var(--mass-yes-bg);
+  color: var(--mass-yes-ink);
+}
+
+.summary-mass-state-no .summary-mass-control {
+  border-color: var(--mass-no-border);
+  background: var(--mass-no-bg);
+  color: var(--mass-no-ink);
+}
+
+.summary-mass-control .summary-matrix-mass-yes,
+.summary-mass-control .summary-matrix-mass-no {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.summary-international-mass-segment {
+  place-items: center;
+}
+
+.week-mass-button > strong {
+  border-radius: 7px;
+}
+
+@media (max-width: 620px) {
+  .summary-mass-control {
+    width: 58px;
+    min-width: 58px;
+  }
+
+  .summary-international-mass-segment {
+    min-height: 66px;
+  }
+
+  .admin-calendar-extension > .section-title {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 8px;
+  }
+
+  .admin-calendar-extension > .section-title > h2,
+  .admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+    margin: 0;
+  }
+
+  .admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+    justify-self: start;
+    color: var(--primary);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .admin-calendar-extension > .section-title > .admin-option-help {
+    grid-column: 1 / -1;
+  }
+}

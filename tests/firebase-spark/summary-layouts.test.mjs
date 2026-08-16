@@ -32,7 +32,9 @@ test('la fascia Messa distingue visivamente Sì e No in ogni palette', () => {
   assert.match(styles, /--mass-no-bg:/);
   assert.match(styles, /\.summary-matrix-mass-band\.summary-mass-state-yes/);
   assert.match(styles, /\.summary-international-mass-group\.summary-mass-state-no/);
-  assert.match(styles, /\.summary-matrix-mass-yes,[\s\S]*\.summary-matrix-mass-no \{[\s\S]*border-radius: 999px/);
+  assert.match(styles, /\.summary-mass-control \{[\s\S]*aspect-ratio: 1/);
+  assert.match(styles, /\.summary-mass-control-day \{[\s\S]*border-bottom:/);
+  assert.match(styles, /\.summary-mass-control \.summary-matrix-mass-yes,[\s\S]*border-radius: 0/);
   assert.match(styles, /html\[data-theme="rosso-pallido"\][\s\S]*--mass-yes-bg: #fff;[\s\S]*--mass-no-bg: #fff/);
 });
 
@@ -71,6 +73,13 @@ test('Classic e Internazionale aprono i contatti dal nome del commensale', () =>
   assert.match(styles, /\.summary-international-names \.summary-matrix-names > li \{[\s\S]*flex: 0 1 auto/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 30px;[\s\S]*line-height: 1\.05/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 34px/);
+});
+
+test('le diete operative mostrano solo identificatore e molteplicità', () => {
+  assert.match(view, /function formatDietIdentifier\(tag\)/);
+  assert.match(view, /count > 1 \? `\$\{identifier\} \(\$\{count\}\)` : identifier/);
+  assert.match(view, /participant\.dietTags\.map\(\(tag\) => formatDietIdentifier\(tag\)\)/);
+  assert.match(view, /dinner: "🍲"/);
 });
 
 test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {
