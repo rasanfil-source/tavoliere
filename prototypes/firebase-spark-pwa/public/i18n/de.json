@@ -186,6 +186,7 @@
   "app.header.invitationInvalid": "Einladung ungültig oder abgelaufen",
   "app.header.invitationPending": "Einladung wartet auf Ihre Antwort",
   "app.header.invitationRejected": "Einladung abgelehnt",
+  "app.header.bookings": "Buchungen",
   "app.header.pasti": "Mahlzeiten",
   "app.header.role": "Rolle",
   "app.header.signedInAs": "Angemeldet: {email}",

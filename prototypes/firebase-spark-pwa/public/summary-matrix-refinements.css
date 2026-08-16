@@ -164,7 +164,19 @@
 
 .summary-international-names .summary-matrix-names {
   display: grid;
-  gap: 5px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  column-gap: 12px;
+  row-gap: 1px;
+}
+
+.summary-international-names .summary-matrix-name-with-popup {
+  min-width: 0;
+}
+
+.summary-international-names .summary-matrix-person-trigger {
+  min-height: 40px;
+  padding-block: 3px;
+  line-height: 1.2;
 }
 
 [data-kitchen-panel] .summary-international-card > header {
@@ -725,6 +737,8 @@ html[data-theme="confetto"] {
 .operational-view-switch {
   display: grid;
   box-sizing: border-box;
+  height: 42px !important;
+  min-height: 42px !important;
   align-items: center;
   justify-items: center;
   white-space: nowrap;

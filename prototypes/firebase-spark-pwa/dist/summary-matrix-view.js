@@ -1,4 +1,4 @@
-import{t as r,getLocale as x}from"./i18n/i18n.mjs?v=20260816c";import{escapeHtml as e}from"./html-utils.js?v=20260816c";import{formatDietLabel as y}from"./diet-utils.mjs?v=20260816c";import{buildKitchenMatrixScreens as R,buildSummaryMatrixScreens as q}from"./summary-matrix-model.js?v=20260816c";let E=0;function ra(a,{days:t=[],operationDays:s=[],kitchen:n=!1,layout:m="classic",activeIndex:i=0,onActiveIndexChange:o=()=>{}}={}){const l=n?R(t,s):q(t,[],s);if(l.every(c=>c.columns.length===0)){a.innerHTML=`<p class="empty-state">${e(r("summary.noMeal"))}</p>`;return}const u=n?"kitchen":"summary",f=m==="international"?_:G;a.innerHTML=`
+import{t as r,getLocale as x}from"./i18n/i18n.mjs?v=20260816d";import{escapeHtml as e}from"./html-utils.js?v=20260816d";import{formatDietLabel as y}from"./diet-utils.mjs?v=20260816d";import{buildKitchenMatrixScreens as R,buildSummaryMatrixScreens as q}from"./summary-matrix-model.js?v=20260816d";let E=0;function ra(a,{days:t=[],operationDays:s=[],kitchen:n=!1,layout:m="classic",activeIndex:i=0,onActiveIndexChange:o=()=>{}}={}){const l=n?R(t,s):q(t,[],s);if(l.every(c=>c.columns.length===0)){a.innerHTML=`<p class="empty-state">${e(r("summary.noMeal"))}</p>`;return}const u=n?"kitchen":"summary",f=m==="international"?_:G;a.innerHTML=`
     <div class="summary-matrix-track summary-layout-${m}${n?" summary-layout-kitchen":" summary-layout-diners"}" data-${u}-matrix-track aria-label="${e(r("summary.screensLabel"))}">
       ${l.map(c=>f(c,{kitchen:n,activeIndex:i})).join("")}
     </div>
@@ -100,7 +100,7 @@ import{t as r,getLocale as x}from"./i18n/i18n.mjs?v=20260816c";import{escapeHtml
         ${a.sickCount>0?`<div><dt>${e(r("summary.sickMeals"))}</dt><dd>${D(a)}</dd></div>`:""}
         ${a.sickDiets.length>0?`<div><dt>${e(r("summary.sickDiets"))}</dt><dd>${I(a)}</dd></div>`:""}
       </dl>
-      ${t?"":`<section class="summary-international-names"><h3>${e(r("summary.names"))}</h3>${j(a)}</section>`}
+      ${t?"":`<section class="summary-international-names"><h3>${e(r("summary.names"))}</h3>${j(a,{compactActions:!0})}</section>`}
     </article>
   `}function V(a,t){const s=B(a);return s.length===0?"":`
     <section class="summary-international-mass${t?" summary-international-mass-kitchen":""}">

@@ -23,23 +23,23 @@ import {
   signOutCurrentUser,
   verifyResidentCommonPassword,
   waitForAuthReady
-} from './firebase-client.js?v=20260816c';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816c';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816c';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816c';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260816c';
+} from './firebase-client.js?v=20260816d';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816d';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816d';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816d';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260816d';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816c';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816c';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816c';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816c';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816c';
+} from './domain/participant-profile.mjs?v=20260816d';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816d';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816d';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816d';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816d';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816c';
+} from './center-settings.js?v=20260816d';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816c';
+} from './center-settings.js?v=20260816d';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -177,30 +177,33 @@ async function createPersonalTokenForParticipant(participantId) {
   return { tokenId, expiresAt };
 }
 
+function getStrongAuthenticatedUser() {
+  const user = getCurrentUser();
+  return user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)
+    ? user
+    : null;
+}
+
 async function getAuthorizedAdministratorUser() {
   await waitForAuthReady();
-  const user = getCurrentUser();
-  if (!user || user.isAnonymous || isResidentTechnicalEmail(user.email)) {
+  const user = getStrongAuthenticatedUser();
+  if (!user) {
     return null;
   }
 
-  try {
-    const adminSnapshot = await getDoc(doc(
-      db,
-      'centers',
-      getActiveCenterId(),
-      'admins',
-      user.uid
-    ));
-    if (!adminSnapshot.exists()) return null;
-    const admin = adminSnapshot.data();
-    const role = normalizeCenterRole(admin.role);
-    return admin.status === 'ACTIVE' && hasCapability(role, CAPABILITIES.OPEN_ADMIN_AREA)
-      ? user
-      : null;
-  } catch {
-    return null;
-  }
+  const adminSnapshot = await getDoc(doc(
+    db,
+    'centers',
+    getActiveCenterId(),
+    'admins',
+    user.uid
+  ));
+  if (!adminSnapshot.exists()) return null;
+  const admin = adminSnapshot.data();
+  const role = normalizeCenterRole(admin.role);
+  return admin.status === 'ACTIVE' && hasCapability(role, CAPABILITIES.OPEN_ADMIN_AREA)
+    ? user
+    : null;
 }
 
 export async function signInFriendlyResident(signature, commonPassword) {
@@ -209,15 +212,15 @@ export async function signInFriendlyResident(signature, commonPassword) {
     throw new Error('Inserisci sigla e password comune.');
   }
 
+  const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (strongAuthenticatedUser && !authorizedAdministrator) {
+    throw new Error('Account amministratore non autorizzato per questo centro');
+  }
   try {
     if (authorizedAdministrator) {
       await verifyResidentCommonPassword(getActiveCenterId(), commonPassword);
     } else {
-      const currentUser = getCurrentUser();
-      if (currentUser && !currentUser.isAnonymous) {
-        await signOutCurrentUser();
-      }
       await signInResidentTechnicalUser(getResidentTechnicalEmail(getActiveCenterId()), commonPassword);
     }
     const participant = await loadPublicParticipantBySignature(normalized);
@@ -249,7 +252,11 @@ export async function restoreFriendlyResidentSession() {
     return null;
   }
 
+  const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (strongAuthenticatedUser && !authorizedAdministrator) {
+    throw new Error('Account amministratore non autorizzato per questo centro');
+  }
   try {
     if (authorizedAdministrator) {
       return restoreResidentIdentityForAuthorizedAdministrator();
@@ -329,9 +336,13 @@ async function createPersonalAnonymousSession(participantId, token) {
 }
 
 export async function ensureStoredResidentSession() {
+  const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
   if (authorizedAdministrator) {
     return authorizedAdministrator;
+  }
+  if (strongAuthenticatedUser) {
+    throw new Error('Account amministratore non autorizzato per questo centro');
   }
   const participantId = loadStoredResidentParticipantId();
   const token = loadStoredResidentToken();

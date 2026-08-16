@@ -1,10 +1,10 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260816c";
-import { escapeHtml } from "./html-utils.js?v=20260816c";
-import { formatDietLabel } from "./diet-utils.mjs?v=20260816c";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260816d";
+import { escapeHtml } from "./html-utils.js?v=20260816d";
+import { formatDietLabel } from "./diet-utils.mjs?v=20260816d";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260816c";
+} from "./summary-matrix-model.js?v=20260816d";
 
 let contactPopupSequence = 0;
 
@@ -348,7 +348,7 @@ function renderInternationalCard(column, { kitchen }) {
         ${column.sickCount > 0 ? `<div><dt>${escapeHtml(t("summary.sickMeals"))}</dt><dd>${renderSickMealCell(column)}</dd></div>` : ""}
         ${column.sickDiets.length > 0 ? `<div><dt>${escapeHtml(t("summary.sickDiets"))}</dt><dd>${renderSickDietCell(column)}</dd></div>` : ""}
       </dl>
-      ${kitchen ? "" : `<section class="summary-international-names"><h3>${escapeHtml(t("summary.names"))}</h3>${renderNamesCell(column)}</section>`}
+      ${kitchen ? "" : `<section class="summary-international-names"><h3>${escapeHtml(t("summary.names"))}</h3>${renderNamesCell(column, { compactActions: true })}</section>`}
     </article>
   `;
 }

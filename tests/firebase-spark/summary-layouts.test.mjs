@@ -49,13 +49,13 @@ test('il mobile usa la stessa struttura per le due schermate anche senza situazi
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-row-meals td \{\s*height: 62px/);
 });
 
-test('telefono e WhatsApp sono separati e WhatsApp resta leggermente piu piccola', () => {
+test('telefono e WhatsApp restano ben distinti nel popup', () => {
   assert.match(styles, /\.summary-matrix-contact-actions \{[\s\S]*gap: 8px/);
   assert.match(styles, /\.summary-matrix-whatsapp img \{[\s\S]*width: 18px;[\s\S]*height: 18px/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.summary-matrix-contact-actions \{\s*gap: 6px/);
 });
 
-test('solo Classic compatta i commensali dietro il nome e una icona persone', () => {
+test('Classic e Internazionale aprono i contatti dal nome del commensale', () => {
   assert.match(view, /renderClassicNamesRow\(screen\)/);
   assert.match(view, /summary-matrix-people-icon/);
   assert.match(view, /renderNamesCell\(column, \{ compactActions: true \}\)/);
@@ -64,7 +64,9 @@ test('solo Classic compatta i commensali dietro il nome e una icona persone', ()
   assert.match(view, /summary\.contactPerson/);
   assert.match(styles, /\.summary-matrix-contact-popover::backdrop/);
   assert.match(styles, /text-underline-offset: 3px;\s*}\s*\.summary-matrix-person-trigger \.summary-matrix-person-name/);
-  assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column\)/);
+  assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column, \{ compactActions: true \}\)/);
+  assert.match(styles, /\.summary-international-names \.summary-matrix-names \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\)/);
+  assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 40px/);
 });
 
 test('mese e settimana condividono il selettore segmentato e la spunta verde', () => {

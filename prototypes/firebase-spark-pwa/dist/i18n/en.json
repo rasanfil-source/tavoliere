@@ -186,6 +186,7 @@
   "app.header.invitationInvalid": "Invitation invalid or expired",
   "app.header.invitationPending": "Invitation awaiting your reply",
   "app.header.invitationRejected": "Invitation declined",
+  "app.header.bookings": "Bookings",
   "app.header.pasti": "Meals",
   "app.header.role": "Role",
   "app.header.signedInAs": "Signed in: {email}",

@@ -140,7 +140,8 @@
   max-width: 110px;
   overflow: hidden;
   font-size: 0.68rem;
-  font-weight: 700;
+  color: var(--muted);
+  font-weight: 400;
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -153,7 +154,7 @@
   }
 
   .topbar-meals-return {
-    min-width: 76px;
+    min-width: 88px;
     padding-inline: 6px;
   }
 }
@@ -2162,7 +2163,7 @@ html[data-theme="confetto"] {
 }
 
 .admin-shell[data-admin-owner="true"] {
-  margin-top: 32px;
+  margin-top: 10px;
 }
 
 .admin-shell[data-platform-owner="true"] > .admin-shell-summary,

@@ -450,12 +450,18 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
 test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo', () => {
   assert.match(firebaseClient, /export async function verifyResidentCommonPassword/);
   assert.match(firebaseClient, /getResidentMaintenanceAuth\(\)[\s\S]*signInWithEmailAndPassword\(maintenanceAuth/);
+  assert.match(participantData, /function getStrongAuthenticatedUser\(\)/);
   assert.match(participantData, /async function getAuthorizedAdministratorUser\(\)/);
   assert.match(participantData, /hasCapability\(role, CAPABILITIES\.OPEN_ADMIN_AREA\)/);
+  const adminCheck = participantData.match(/async function getAuthorizedAdministratorUser\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.doesNotMatch(adminCheck, /catch\s*\{/);
   assert.match(participantData, /if \(authorizedAdministrator\) \{[\s\S]*verifyResidentCommonPassword/);
   assert.match(participantData, /if \(!authorizedAdministrator\) \{[\s\S]*createPersonalAnonymousSession/);
+  assert.match(participantData, /if \(strongAuthenticatedUser && !authorizedAdministrator\) \{[\s\S]*non autorizzato per questo centro/);
   assert.match(participantData, /export async function ensureStoredResidentSession\(\) \{[\s\S]*return authorizedAdministrator/);
   assert.match(participantData, /export async function ensurePublicDemoSession\(\) \{[\s\S]*return authorizedAdministrator/);
+  assert.match(app, /elements\.controlPanelEntry,[\s\S]*elements\.mealsReturnEntry[\s\S]*handleInAppNavigation/);
+  assert.match(app, /const isControlPanelTarget = targetMode === 'admin'/);
 });
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
@@ -463,6 +469,7 @@ test('sul mobile selettori e pulsante operativo restano affiancati e stabili', (
   assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.header\.pasti"/);
   assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*operational-view-switch-measure[\s\S]*data-i18n="summary\.view\.title"/);
   assert.match(summaryStyles, /\.operational-view-switch > span \{[\s\S]*grid-area: 1 \/ 1/);
+  assert.match(summaryStyles, /\.operational-view-switch \{[\s\S]*height: 42px !important;[\s\S]*min-height: 42px !important/);
   assert.match(summaryStyles, /@media \(max-width: 520px\)[\s\S]*\.meal-view-nav \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
   assert.match(summaryStyles, /\[data-summary-panel\] \.summary-date-tabs \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
 });
@@ -488,6 +495,9 @@ test('il pannello desktop usa soltanto la larghezza necessaria ed è centrato', 
   assert.match(styles, /@media \(min-width: 900px\)[\s\S]*?body\[data-mode="admin"\] \.admin-shell\s*\{[\s\S]*?width: min\(100%, 820px\);[\s\S]*?margin-inline: auto;/);
   assert.match(styles, /body\[data-mode="admin"\] \.admin-section-nav\s*\{[\s\S]*?flex-wrap: nowrap;[\s\S]*?justify-content: center;/);
   assert.match(styles, /\.admin-panel > \.admin-overview-content,[\s\S]*?\.admin-panel > \.admin-dashboard-grid\s*\{[\s\S]*?max-width: 720px;[\s\S]*?margin-inline: auto;/);
+  assert.match(styles, /\.admin-shell\[data-admin-owner="true"\] \{[\s\S]*?margin-top: 10px;/);
+  assert.match(index, /data-meals-return-entry[\s\S]*data-i18n-aria-label="app\.header\.bookings"[\s\S]*data-i18n="app\.header\.bookings">Prenotazioni/);
+  assert.match(styles, /\.topbar-meals-return small \{[\s\S]*?color: var\(--muted\);[\s\S]*?font-weight: 400;/);
 });
 
 test('il riepilogo mostra telefono e WhatsApp soltanto con consenso', () => {

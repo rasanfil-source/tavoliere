@@ -186,6 +186,7 @@
   "app.header.invitationInvalid": "Invitación no válida o caducada",
   "app.header.invitationPending": "Invitación pendiente de tu respuesta",
   "app.header.invitationRejected": "Invitación rechazada",
+  "app.header.bookings": "Reservas",
   "app.header.pasti": "Comidas",
   "app.header.role": "Rol",
   "app.header.signedInAs": "Sesión: {email}",

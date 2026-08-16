@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260816c';
+const CATALOG_RELEASE = '20260816d';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -35,6 +35,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copia',
     'common.actions.share': 'Condividi',
     'common.actions.refresh': 'Aggiorna',
+    'app.header.bookings': 'Prenotazioni',
     'app.header.pasti': 'Pasti',
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
@@ -56,6 +57,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copy',
     'common.actions.share': 'Share',
     'common.actions.refresh': 'Refresh',
+    'app.header.bookings': 'Bookings',
     'app.header.pasti': 'Meals',
     'auth.resident.title': 'Resident access',
     'admin.overview.title': 'Administration area',
@@ -77,6 +79,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copier',
     'common.actions.share': 'Partager',
     'common.actions.refresh': 'Actualiser',
+    'app.header.bookings': 'Réservations',
     'app.header.pasti': 'Repas',
     'auth.resident.title': 'Accès résidents',
     'admin.overview.title': 'Espace administration',
@@ -98,6 +101,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copiar',
     'common.actions.share': 'Compartir',
     'common.actions.refresh': 'Actualizar',
+    'app.header.bookings': 'Reservas',
     'app.header.pasti': 'Comidas',
     'auth.resident.title': 'Acceso residentes',
     'admin.overview.title': 'Área de administración',
@@ -119,6 +123,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Kopieren',
     'common.actions.share': 'Teilen',
     'common.actions.refresh': 'Aktualisieren',
+    'app.header.bookings': 'Buchungen',
     'app.header.pasti': 'Mahlzeiten',
     'auth.resident.title': 'Bewohner-Zugang',
     'admin.overview.title': 'Verwaltungsbereich',
