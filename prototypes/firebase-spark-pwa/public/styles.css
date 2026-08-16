@@ -5044,6 +5044,7 @@ button[aria-busy="true"]:disabled {
     width: min(100%, 980px);
   }
 
+  body[data-mode="admin"] .topbar,
   body[data-mode="admin"] .admin-shell {
     width: min(100%, 820px);
     margin-inline: auto;

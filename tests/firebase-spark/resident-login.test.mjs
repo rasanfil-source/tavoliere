@@ -506,6 +506,7 @@ test('il pannello amministratore mantiene una gerarchia responsive senza duplica
 });
 
 test('il pannello desktop usa soltanto la larghezza necessaria ed è centrato', () => {
+  assert.match(styles, /body\[data-mode="admin"\] \.topbar,[\s\S]*?body\[data-mode="admin"\] \.admin-shell\s*\{[\s\S]*?width: min\(100%, 820px\);[\s\S]*?margin-inline: auto;/);
   assert.match(styles, /@media \(min-width: 900px\)[\s\S]*?body\[data-mode="admin"\] \.admin-shell\s*\{[\s\S]*?width: min\(100%, 820px\);[\s\S]*?margin-inline: auto;/);
   assert.match(styles, /body\[data-mode="admin"\] \.admin-section-nav\s*\{[\s\S]*?flex-wrap: nowrap;[\s\S]*?justify-content: center;/);
   assert.match(styles, /\.admin-panel > \.admin-overview-content,[\s\S]*?\.admin-panel > \.admin-dashboard-grid\s*\{[\s\S]*?max-width: 720px;[\s\S]*?margin-inline: auto;/);
