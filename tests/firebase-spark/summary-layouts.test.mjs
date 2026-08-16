@@ -34,6 +34,7 @@ test('la fascia Messa distingue visivamente Sì e No in ogni palette', () => {
   assert.match(styles, /\.summary-international-mass-group\.summary-mass-state-no/);
   assert.match(styles, /\.summary-mass-control \{[\s\S]*aspect-ratio: 1/);
   assert.match(styles, /\.summary-mass-control-day \{[\s\S]*border-bottom:/);
+  assert.match(styles, /\.summary-layout-classic \.summary-day-tone-2 \.summary-mass-control-day \{[\s\S]*font-size: 0\.56rem/);
   assert.match(styles, /\.summary-mass-control \.summary-matrix-mass-yes,[\s\S]*border-radius: 0/);
   assert.match(styles, /html\[data-theme="rosso-pallido"\][\s\S]*--mass-yes-bg: #fff;[\s\S]*--mass-no-bg: #fff/);
 });

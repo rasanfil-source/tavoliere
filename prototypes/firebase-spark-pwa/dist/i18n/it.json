@@ -182,6 +182,7 @@
   "admin.succession.newOwner": "Nuovo responsabile",
   "admin.succession.transfer": "Trasferisci responsabilità",
   "app.header.checkingAccess": "Accesso in verifica",
+  "app.action.book": "Prenota",
   "app.header.controlPanel": "Pannello di controllo",
   "app.header.initYourCenter": "Inizializza il tuo centro",
   "app.header.invitationInvalid": "Invito non valido o scaduto",

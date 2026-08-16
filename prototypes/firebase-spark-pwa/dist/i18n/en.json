@@ -182,6 +182,7 @@
   "admin.succession.newOwner": "New center manager",
   "admin.succession.transfer": "Transfer responsibility",
   "app.header.checkingAccess": "Verifying access",
+  "app.action.book": "Book",
   "app.header.controlPanel": "Control panel",
   "app.header.initYourCenter": "Initialize your center",
   "app.header.invitationInvalid": "Invitation invalid or expired",

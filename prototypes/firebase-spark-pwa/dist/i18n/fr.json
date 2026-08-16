@@ -182,6 +182,7 @@
   "admin.succession.newOwner": "Nouveau responsable",
   "admin.succession.transfer": "Transférer la responsabilité",
   "app.header.checkingAccess": "Accès en cours de vérification",
+  "app.action.book": "Réserver",
   "app.header.controlPanel": "Panneau de contrôle",
   "app.header.initYourCenter": "Initialisez votre centre",
   "app.header.invitationInvalid": "Invitation invalide ou expirée",

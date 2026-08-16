@@ -1458,6 +1458,13 @@ html[data-theme="confetto"] {
   line-height: 1;
 }
 
+/* Nel Classic il terzo giorno deve restare leggibile nel controllo compatto. */
+.summary-layout-classic .summary-day-tone-2 .summary-mass-control-day {
+  padding-inline: 2px;
+  font-size: 0.56rem;
+  letter-spacing: -0.015em;
+}
+
 .summary-mass-control-state {
   display: grid;
   min-height: 0;

@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260816g';
+const CATALOG_RELEASE = '20260816h';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -35,6 +35,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copia',
     'common.actions.share': 'Condividi',
     'common.actions.refresh': 'Aggiorna',
+    'app.action.book': 'Prenota',
     'app.header.bookings': 'Prenotazioni',
     'app.header.pasti': 'Pasti',
     'auth.resident.title': 'Accesso residenti',
@@ -57,6 +58,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copy',
     'common.actions.share': 'Share',
     'common.actions.refresh': 'Refresh',
+    'app.action.book': 'Book',
     'app.header.bookings': 'Bookings',
     'app.header.pasti': 'Meals',
     'auth.resident.title': 'Resident access',
@@ -79,6 +81,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copier',
     'common.actions.share': 'Partager',
     'common.actions.refresh': 'Actualiser',
+    'app.action.book': 'Réserver',
     'app.header.bookings': 'Réservations',
     'app.header.pasti': 'Repas',
     'auth.resident.title': 'Accès résidents',
@@ -101,6 +104,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copiar',
     'common.actions.share': 'Compartir',
     'common.actions.refresh': 'Actualizar',
+    'app.action.book': 'Reservar',
     'app.header.bookings': 'Reservas',
     'app.header.pasti': 'Comidas',
     'auth.resident.title': 'Acceso residentes',
@@ -123,6 +127,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Kopieren',
     'common.actions.share': 'Teilen',
     'common.actions.refresh': 'Aktualisieren',
+    'app.action.book': 'Buchen',
     'app.header.bookings': 'Buchungen',
     'app.header.pasti': 'Mahlzeiten',
     'auth.resident.title': 'Bewohner-Zugang',

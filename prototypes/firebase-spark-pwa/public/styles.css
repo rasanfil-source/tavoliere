@@ -3108,8 +3108,8 @@ button[aria-busy="true"]:disabled {
 
 .month-day-today {
   background: var(--today-surface);
-  border-color: rgba(159, 201, 221, 0.78);
-  box-shadow: none;
+  border-color: var(--today-line);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--today-line) 36%, transparent);
 }
 
 .month-day-past:not(.month-day-today),
@@ -5140,8 +5140,9 @@ button[aria-busy="true"]:disabled {
 }
 
 .month-day > .month-day-number-today {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--today-line);
+  background: var(--today-surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--today-line) 28%, transparent);
 }
 
 @media (max-width: 620px) {
@@ -5166,7 +5167,7 @@ button[aria-busy="true"]:disabled {
     border-top: 0;
     border-radius: 0 0 8px 8px;
     background: var(--today-surface);
-    box-shadow: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--today-line) 32%, transparent);
   }
 
   .month-day-number-inline,

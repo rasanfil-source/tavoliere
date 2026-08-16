@@ -182,6 +182,7 @@
   "admin.succession.newOwner": "Neuer Zentrumsleiter",
   "admin.succession.transfer": "Verantwortung übertragen",
   "app.header.checkingAccess": "Zugang wird geprüft",
+  "app.action.book": "Buchen",
   "app.header.controlPanel": "Kontrollzentrum",
   "app.header.initYourCenter": "Zentrum initialisieren",
   "app.header.invitationInvalid": "Einladung ungültig oder abgelaufen",

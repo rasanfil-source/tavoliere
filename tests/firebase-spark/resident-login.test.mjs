@@ -278,13 +278,13 @@ test('il comando mensile compatto sostituisce la barra doppia', () => {
   assert.match(styles, /--today-ink: #24698f/);
   assert.match(styles, /\.month-day-today \{[\s\S]*?background: var\(--today-surface\)/);
   assert.match(styles, /\.month-day-number-today \{[\s\S]*?border: 1px solid var\(--today-line\)/);
-  assert.match(styles, /\.month-day > \.month-day-number-today \{[\s\S]*?background: transparent/);
+  assert.match(styles, /\.month-day > \.month-day-number-today \{[\s\S]*?background: var\(--today-surface\)/);
   assert.match(styles, /\.month-week-mobile-header \.month-day-number-today \{[\s\S]*?height: 27px;[\s\S]*?border-bottom: 0;[\s\S]*?background: var\(--today-surface\)/);
   assert.match(styles, /\.month-day-today \{[\s\S]*?border-top: 0;[\s\S]*?background: var\(--today-surface\)/);
   assert.match(app, /renderMonthDayNumber\(day, 'month-day-number-inline'\)/);
   assert.match(styles, /\.month-day-number-inline,[\s\S]*?display: none !important/);
   assert.match(styles, /\.month-week-action-row\.month-week-complete \{[\s\S]*?box-shadow: none/);
-  assert.match(styles, /\.month-day-today \{[\s\S]*?box-shadow: none/);
+  assert.match(styles, /\.month-day-today \{[\s\S]*?box-shadow: 0 0 0 1px color-mix/);
   assert.match(styles, /--calendar-heading-bg: #eef4f6/);
   assert.match(styles, /\.month-weekday-cell \{[\s\S]*?background: var\(--calendar-heading-bg\)/);
   assert.match(styles, /--month-weekday-control-height: 36px/);
@@ -477,7 +477,8 @@ test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo',
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
   assert.equal((index.match(/data-operational-view-switch/g) || []).length, 3);
-  assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.header\.pasti"/);
+  assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.action\.book">Prenota/);
+  assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*data-i18n="app\.action\.book">Prenota/);
   assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*operational-view-switch-measure[\s\S]*data-i18n="summary\.view\.title"/);
   assert.match(summaryStyles, /\.operational-view-switch > span \{[\s\S]*grid-area: 1 \/ 1/);
   assert.match(summaryStyles, /\.operational-view-switch \{[\s\S]*height: 42px !important;[\s\S]*min-height: 42px !important/);
