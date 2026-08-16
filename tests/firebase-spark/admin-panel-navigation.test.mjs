@@ -63,6 +63,7 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.doesNotMatch(html, /data-theme-select-trigger|data-admin-theme-radio/);
   assert.match(app, /adminThemeSelect\.addEventListener\('change', handleThemeSelectChange\)/);
   assert.match(app, /document\.documentElement\.dataset\.theme = selectedPalette/);
+  assert.match(app, /function renderMode\(\) \{[\s\S]*?const activePalette = state\.pendingThemePalette[\s\S]*?\|\| state\.centerContactSettings\.themePalette[\s\S]*?document\.documentElement\.dataset\.theme = activePalette/);
   assert.match(html, /Se ti piace, salva questa scelta di colori/);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
   assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'smeraldo'/);

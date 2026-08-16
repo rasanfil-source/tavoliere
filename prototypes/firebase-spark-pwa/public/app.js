@@ -3956,6 +3956,10 @@ function loadImage(source) {
 }
 
 function renderMode() {
+  const activePalette = state.pendingThemePalette
+    || state.centerContactSettings.themePalette
+    || 'smeraldo';
+  document.documentElement.dataset.theme = activePalette;
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
   const isSummary = state.mode === 'summary';
