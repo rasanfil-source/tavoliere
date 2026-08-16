@@ -267,7 +267,8 @@ service cloud.firestore {
     }
 
     function adminCanManageMass(centerId) {
-      return isAdmin(centerId)
+      return isInteractiveAdminUser()
+        && isAdmin(centerId)
         && (
           adminRole(centerId) in ['OWNER', 'ADMIN']
           || get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('massPermission', false) == true
@@ -275,7 +276,8 @@ service cloud.firestore {
     }
 
     function adminCanManageDailyOperations(centerId) {
-      return isAdmin(centerId)
+      return isInteractiveAdminUser()
+        && isAdmin(centerId)
         && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
     }
 
@@ -299,7 +301,7 @@ service cloud.firestore {
 
     function residentHasOperationalIdentity(centerId) {
       return hasSessionScope(centerId, 'PERSONAL')
-        && hasSelectedParticipant(centerId)
+        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId is string
         && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.status == 'ACTIVE';
     }
 
@@ -360,9 +362,9 @@ service cloud.firestore {
     }
 
     function mealWindowIsOpen(centerId, mealWindowId) {
-      return exists(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId))
-        && get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId)).data.status == 'OPEN'
-        && request.time < get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId)).data.closesAt;
+      let mealWindow = get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(mealWindowId)).data;
+      return mealWindow.status == 'OPEN'
+        && request.time < mealWindow.closesAt;
     }
 
     function massWindowIsOpen(centerId, dateId) {
@@ -524,15 +526,24 @@ service cloud.firestore {
           'dailyOperationsPermission', 'centerIds', 'createdAt', 'updatedAt'
         ])
         || isCenterOwner(resource.data.centerId)
-          && adminUid == getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid
           && request.resource.data.centerId == resource.data.centerId
-          && request.resource.data.status == 'ACTIVE'
-          && request.resource.data.role == 'OWNER'
-          && request.resource.data.massPermission == true
-          && request.resource.data.dailyOperationsPermission == true
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status', 'role', 'massPermission', 'dailyOperationsPermission', 'updatedAt'
-          ]);
+          ])
+          && (
+            adminUid == getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid
+              && request.resource.data.status == 'ACTIVE'
+              && request.resource.data.role == 'OWNER'
+              && request.resource.data.massPermission == true
+              && request.resource.data.dailyOperationsPermission == true
+            || adminUid == request.auth.uid
+              && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid != request.auth.uid
+              && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.status == 'REVOKED'
+              && request.resource.data.status == 'REVOKED'
+              && request.resource.data.role == 'ADMIN'
+              && request.resource.data.massPermission == false
+              && request.resource.data.dailyOperationsPermission == false
+          );
       allow delete: if false;
     }
 
@@ -689,7 +700,7 @@ service cloud.firestore {
         || isCoordinatedOwnershipTransfer(centerId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'ownerUid', 'administratorName', 'administratorSignature', 'adminEmail',
-            'administratorPasswordRequired', 'updatedAt'
+            'administratorProfileComplete', 'administratorPasswordRequired', 'updatedAt'
           ])
           && administratorProfileIsValid(request.resource.data)
         || isBootstrapOwner()

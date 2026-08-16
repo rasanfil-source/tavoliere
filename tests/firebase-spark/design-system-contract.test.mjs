@@ -42,7 +42,7 @@ test('focus e movimento ridotto fanno parte del sistema grafico', () => {
 test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
   assert.match(app, /const visibleMark = isPresent \? '✓'/);
   assert.match(app, /aria-pressed="\$\{isPresent\}"/);
-  assert.match(app, /stateLabel = isPresent \? 'Prenotato' : 'Non prenotato'/);
+  assert.match(app, /stateLabel = getMealStateLabel\(isPresent\)/);
 });
 
 function readColorTokens(css) {

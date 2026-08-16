@@ -283,6 +283,9 @@ test('l autenticazione del candidato non accetta automaticamente l invito', () =
   assert.doesNotMatch(pendingBranch, /claimRoleInvitation/);
   assert.match(adminCenter, /export async function acceptAdministratorInvitation/);
   assert.match(app, /await acceptAdministratorInvitation\(\)/);
+  assert.match(app, /acceptedWaitMessage/);
+  assert.equal((app.match(/acceptedWaitMessage/g) || []).length >= 2, true);
+  assert.match(app, /hideCancel: true/);
   assert.match(app, /Invito in attesa della tua risposta/);
   assert.match(app, /t\('admin\.invitations\.accepted'\)/);
   assert.match(app, /t\('admin\.invitations\.rejected'\)/);
@@ -313,12 +316,15 @@ test('un nuovo account email deve sostituire la password temporanea prima di con
   assert.match(adminCenter, /export async function completeAdministratorPasswordSetup/);
 });
 
-test('il precedente responsabile sceglie se restare amministratore o essere revocato', () => {
-  assert.match(app, /checkboxLabel: 'Revoca il mio precedente accesso al centro'/);
-  assert.match(app, /const revokePrevious = decision\.checked/);
+test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {
+  assert.match(app, /dialog\.transferOwnership\.finalMessage/);
+  assert.match(app, /const revokePrevious = true/);
   assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
+  assert.match(app, /if \(revokePrevious\) \{[\s\S]*await signOutCurrentUser\(\)/);
   assert.match(adminCenter, /const revokePrevious = options\?\.revokePrevious === true/);
   assert.match(adminCenter, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
+  assert.match(adminCenter, /batch\.set\(currentProfileRef,[\s\S]*status: 'REVOKED'/);
   assert.match(adminCenter, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
+  assert.doesNotMatch(adminCenter, /publicParticipants[\s\S]*batch\.delete/);
 });

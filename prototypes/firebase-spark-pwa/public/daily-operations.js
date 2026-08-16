@@ -169,7 +169,9 @@ function normalizeDietAssignments(value) {
       assignment.participantId
       && assignment.dietTag
       && assignment.dietTag !== 'STANDARD'
-      && assignment.dietTag.length <= 32
+      && /^\d+$/.test(assignment.dietTag)
+      && Number(assignment.dietTag) >= 1
+      && Number(assignment.dietTag) <= 999
       && !seen.has(assignment.participantId)
       && seen.add(assignment.participantId)
     ))

@@ -702,6 +702,7 @@ test('la responsabilita passa atomicamente a un amministratore attivo', async ()
     administratorName: 'Luca',
     administratorSignature: 'LU',
     adminEmail: 'admin@example.test',
+    administratorProfileComplete: true,
     administratorPasswordRequired: false,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
@@ -764,6 +765,7 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
     administratorName: 'Luca',
     administratorSignature: 'LU',
     adminEmail: 'admin@example.test',
+    administratorProfileComplete: true,
     administratorPasswordRequired: false,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
@@ -789,11 +791,24 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
     dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
+  batch.set(ownerDb.doc(`adminProfiles/${ADMIN_UID}`), {
+    status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
   await assertSucceeds(batch.commit());
 
   const previousOwnerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const nextOwnerDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
   await assertFails(previousOwnerDb.doc(centerPath()).get());
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const profile = (await context.firestore().doc(`adminProfiles/${ADMIN_UID}`).get()).data();
+    if (profile.status !== 'REVOKED' || profile.role !== 'ADMIN') {
+      throw new Error('Il profilo indice del precedente responsabile non è stato revocato');
+    }
+  });
   await assertFails(previousOwnerDb.doc(centerPath()).set({
     name: 'Modifica non autorizzata',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()

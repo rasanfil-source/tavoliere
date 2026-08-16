@@ -66,6 +66,10 @@ const dietUtils = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/diet-utils.mjs', import.meta.url),
   'utf8'
 );
+const dailyOperations = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/daily-operations.js', import.meta.url),
+  'utf8'
+);
 
 test('admin can create and fully edit participant profiles', () => {
   assert.match(index, /data-admin-new-participant/);
@@ -74,7 +78,7 @@ test('admin can create and fully edit participant profiles', () => {
   assert.match(index, /data-admin-participant-group/);
   assert.match(index, /data-admin-participant-diets/);
   assert.match(app, /populateAdminDietSelect\('Nessuna dieta'\)/);
-  assert.match(app, /populateDietSelect\(elements\.weekDietType, 'Nessuna dieta occasionale'\)/);
+  assert.match(app, /populateDietSelect\(elements\.weekDietType, 'Nessuna dieta occasionale', elements\.weekDietNumber\)/);
   assert.match(app, /adminParticipantDiets\.value = 'STANDARD'/);
   assert.match(index, /data-admin-participant-diet-number/);
   assert.match(dietUtils, /value: 'CUSTOM', label: 'Altro numero\.\.\.'/);
@@ -85,6 +89,14 @@ test('admin can create and fully edit participant profiles', () => {
   assert.match(app, /const nextDietNumber = Math\.max\(\.\.\.getAdminDietNumbers\(\)\) \+ 1/);
   assert.match(app, /const dietCode = readAdminDietCode\(\)/);
   assert.doesNotMatch(app.match(/function populateAdminDietSelect[\s\S]*?\n\}/)?.[0] || '', /BIANCO|DIAB|IPO|CARDIO/);
+  const agendaDietSelect = app.match(/function populateDietSelect[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(agendaDietSelect, /option\.textContent = String\(number\)/);
+  assert.match(agendaDietSelect, /diet\.option\.ADD_HIGHER/);
+  assert.doesNotMatch(agendaDietSelect, /diet\.option\.label|BIANCO|DIAB|IPO|CARDIO|getDietOptions/);
+  const agendaDietAssignments = dailyOperations.match(/function normalizeDietAssignments[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(agendaDietAssignments, /\^\\d\+\$/);
+  assert.match(agendaDietAssignments, /Number\(assignment\.dietTag\) >= 1/);
+  assert.match(agendaDietAssignments, /Number\(assignment\.dietTag\) <= 999/);
   assert.match(index, /data-admin-participant-vice/);
   assert.match(app, /if \(otherViceCount >= 4\)/);
   assert.match(app, /admin\.people\.viceLimit/);
@@ -205,7 +217,7 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
 });
 
 test('meal pages show a fixed title and the authenticated name in the status row', () => {
-  assert.match(app, /const mealTitle = 'Prenotazione Pasti'/);
+  assert.match(app, /const mealTitle = t\('app\.title'\)/);
   assert.match(app, /element\.textContent = participantName/);
   assert.match(index, /data-participant-status-name/);
   assert.match(index, /data-week-status-name/);
@@ -357,7 +369,7 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.ok(requestedCenterCheck >= 0 && requestedCenterCheck < profileFallback);
   assert.doesNotMatch(adminCenter, /Questo account gestisce già il centro/);
   assert.match(adminCenter, /await saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
-  assert.doesNotMatch(adminCenter, /batch\.set\(currentProfileRef/);
+  assert.match(adminCenter, /revokePrevious && currentProfileSnapshot\.data\(\)\?\.centerId === centerId[\s\S]*batch\.set\(currentProfileRef/);
   assert.match(adminCenter, /successorProfileSnapshot\.data\(\)\?\.centerId === centerId/);
 });
 
@@ -477,6 +489,8 @@ test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo',
   assert.match(participantData, /export async function ensurePublicDemoSession\(\) \{[\s\S]*return authorizedAdministrator/);
   assert.match(app, /elements\.controlPanelEntry,[\s\S]*elements\.mealsReturnEntry[\s\S]*handleInAppNavigation/);
   assert.match(app, /const isControlPanelTarget = targetMode === 'admin'/);
+  assert.match(app, /if \(!state\.residentReady\) \{\s*targetUrl\.searchParams\.delete\('c'\)/);
+  assert.match(app, /elements\.controlPanelEntry\.hidden = !isOrdinaryView\s*\|\| \(!needsResidentLogin && !canOpenControlPanel\)/);
 });
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
@@ -516,6 +530,11 @@ test('il pannello desktop usa soltanto la larghezza necessaria ed è centrato', 
   assert.match(styles, /\.admin-shell\[data-admin-owner="true"\] \{[\s\S]*?margin-top: 10px;/);
   assert.match(index, /data-meals-return-entry[\s\S]*data-i18n-aria-label="app\.header\.bookings"[\s\S]*data-i18n="app\.header\.bookings">Prenotazioni/);
   assert.match(styles, /\.topbar-meals-return small \{[\s\S]*?color: var\(--muted\);[\s\S]*?font-weight: 400;/);
+});
+
+test('la scheda Impostazioni usa tutta la larghezza disponibile sul tablet', () => {
+  assert.match(styles, /@media \(max-width: 899px\)[\s\S]*?#admin-adaptations-section \{[\s\S]*?display: block;[\s\S]*?width: 100%;/);
+  assert.match(styles, /#admin-adaptations-section > \.admin-control-section \{[\s\S]*?width: 100%;[\s\S]*?max-width: none;/);
 });
 
 test('il riepilogo mostra telefono e WhatsApp soltanto con consenso', () => {
@@ -603,7 +622,7 @@ test('la messa si programma nella vista settimana per i ruoli autorizzati', () =
   assert.match(app, /week-matrix-with-mass/);
   assert.match(app, /week-mass-heading/);
   assert.match(app, /week-mass-mobile-icon[^>]*aria-hidden="true">⛪<\/span>/);
-  assert.match(app, /week-heading-label">Messa<\/span>/);
+  assert.match(app, /week-heading-label">\$\{escapeHtml\(t\('summary\.mass'\)\)\}<\/span>/);
   assert.doesNotMatch(app, /week-heading-icon[^>]*aria-hidden="true">M<\/span>/);
   assert.match(app, /data-week-mass-bulk/);
   assert.match(app, /handleWeekMassBulkButton/);

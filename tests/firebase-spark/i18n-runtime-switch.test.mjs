@@ -8,7 +8,7 @@ import {
   formatTime,
   resolveLocale,
   applyTranslations
-} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260816k';
+} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260816l';
 import { toUserMessage, classifyApplicationError } from '../../prototypes/firebase-spark-pwa/public/core/user-error.mjs';
 
 // Setup mock DOM environment for node test
@@ -74,6 +74,12 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('time.today'), 'Today');
   assert.equal(t('time.tomorrow'), 'Tomorrow');
   assert.equal(t('app.header.controlPanel'), 'Control panel');
+  assert.equal(t('status.dataUpdatedAt', { time: '10:30' }), 'Data updated at 10:30');
+  assert.equal(t('meal.status.booked'), 'Booked');
+  assert.equal(t('meal.status.closedAt', { time: '12:00' }), 'Closed at 12:00');
+  assert.equal(t('summary.view.todayTitle'), 'Today at the table');
+  assert.equal(t('admin.avatar.chooseFile'), 'Choose file');
+  assert.equal(t('status.copied'), 'Copied');
 
   // Passa a Francese
   await setLocale('fr');

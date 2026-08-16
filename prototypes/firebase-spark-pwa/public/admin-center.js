@@ -500,9 +500,11 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   }
   const successorRef = doc(db, 'centers', centerId, 'admins', normalizedSuccessorUid);
   const successorProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedSuccessorUid);
-  const [successorSnapshot, successorProfileSnapshot] = await Promise.all([
+  const currentProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
+  const [successorSnapshot, successorProfileSnapshot, currentProfileSnapshot] = await Promise.all([
     getDoc(successorRef),
-    getDoc(successorProfileRef)
+    getDoc(successorProfileRef),
+    getDoc(currentProfileRef)
   ]);
   const successor = successorSnapshot.exists() ? successorSnapshot.data() : {};
   if (successor.status !== 'ACTIVE' || successor.role !== 'ADMIN') {
@@ -528,6 +530,7 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     administratorName: String(successorParticipant.displayName || '').trim(),
     administratorSignature: String(successorParticipant.signature || '').trim().toUpperCase(),
     adminEmail: String(successor.email || '').trim().toLowerCase(),
+    administratorProfileComplete: true,
     administratorPasswordRequired: successor.administratorPasswordRequired === true,
     updatedAt: now
   }, { merge: true });
@@ -567,6 +570,15 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
       role: 'OWNER',
       massPermission: true,
       dailyOperationsPermission: true,
+      updatedAt: now
+    }, { merge: true });
+  }
+  if (revokePrevious && currentProfileSnapshot.data()?.centerId === centerId) {
+    batch.set(currentProfileRef, {
+      status: 'REVOKED',
+      role: 'ADMIN',
+      massPermission: false,
+      dailyOperationsPermission: false,
       updatedAt: now
     }, { merge: true });
   }

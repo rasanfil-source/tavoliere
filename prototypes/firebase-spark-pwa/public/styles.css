@@ -2529,6 +2529,16 @@ button[aria-busy="true"]:disabled {
     column-gap: 18px;
   }
 
+  #admin-adaptations-section {
+    display: block;
+    width: 100%;
+  }
+
+  #admin-adaptations-section > .admin-control-section {
+    width: 100%;
+    max-width: none;
+  }
+
   .admin-people-directory {
     grid-column: 1;
     grid-row: 4;

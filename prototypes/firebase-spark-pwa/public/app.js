@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816k';
+} from './i18n/i18n.mjs?v=20260816l';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -45,9 +45,7 @@ import {
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
-  getDietOptions,
-  normalizeDietCode,
-  resolveDietSelection
+  normalizeDietCode
 } from './diet-utils.mjs?v=20260816g';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
@@ -78,10 +76,10 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260816i',
+  admin: './admin-center.js?v=20260816j',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816g',
-  daily: './daily-operations.js?v=20260816g',
+  daily: './daily-operations.js?v=20260816h',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816g',
   participant: './participant-data.js?v=20260816i'
@@ -271,23 +269,47 @@ const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 let mealViewSwipeStart = null;
 
 function readDietCode(select, numberInput) {
-  return resolveDietSelection(select.value || 'STANDARD', numberInput?.value);
+  const selected = String(select?.value || 'STANDARD').trim();
+  if (selected === 'STANDARD') return selected;
+  if (/^\d+$/.test(selected)) return selected;
+  if (selected !== 'CUSTOM') {
+    throw new Error(t('diet.validation.invalidNumber'));
+  }
+  const minimum = Math.max(...getAdminDietNumbers()) + 1;
+  const number = Number(numberInput?.value);
+  if (!Number.isInteger(number) || number < minimum || number > 999) {
+    throw new Error(t('diet.validation.customNumberRange', { min: minimum, max: 999 }));
+  }
+  return String(number);
 }
 
-function populateDietSelect(select, emptyLabel) {
+function populateDietSelect(select, emptyLabel, numberInput) {
   if (!select) return;
+  const previousValue = select.value || 'STANDARD';
   const fragment = document.createDocumentFragment();
-  getDietOptions({ emptyLabel }).forEach(({ value, label }) => {
+  const emptyOption = document.createElement('option');
+  emptyOption.value = 'STANDARD';
+  emptyOption.textContent = emptyLabel;
+  fragment.append(emptyOption);
+  getAdminDietNumbers().forEach((number) => {
     const option = document.createElement('option');
-    option.value = value;
-    option.textContent = value === 'STANDARD'
-      ? emptyLabel
-      : /^\d+$/.test(value)
-        ? `${t('diet.option.label')} ${value}`
-        : t(`diet.option.${value}`, {}, { fallback: label });
+    option.value = String(number);
+    option.textContent = String(number);
     fragment.append(option);
   });
+  const addOption = document.createElement('option');
+  addOption.value = 'CUSTOM';
+  addOption.textContent = t('diet.option.ADD_HIGHER');
+  fragment.append(addOption);
   select.replaceChildren(fragment);
+  select.value = Array.from(select.options).some((option) => option.value === previousValue)
+    ? previousValue
+    : 'STANDARD';
+  if (numberInput) {
+    const nextDietNumber = Math.max(...getAdminDietNumbers()) + 1;
+    numberInput.min = String(nextDietNumber);
+    numberInput.placeholder = `≥ ${nextDietNumber}`;
+  }
 }
 
 function getAdminDietNumbers() {
@@ -515,6 +537,7 @@ const elements = {
   actionDialogCheckboxWrap: document.querySelector('[data-action-dialog-checkbox-wrap]'),
   actionDialogCheckbox: document.querySelector('[data-action-dialog-checkbox]'),
   actionDialogCheckboxLabel: document.querySelector('[data-action-dialog-checkbox-label]'),
+  actionDialogCancel: document.querySelector('[data-action-dialog-cancel]'),
   actionDialogConfirm: document.querySelector('[data-action-dialog-confirm]'),
   adminEmailStatus: document.querySelector('[data-admin-email-status]'),
   bootstrapButton: document.querySelector('[data-bootstrap-button]'),
@@ -800,6 +823,7 @@ function showActionDialog({
   confirmLabel = t('common.actions.confirm'),
   requiredText = '',
   checkboxLabel = '',
+  hideCancel = false,
   destructive = false
 }) {
   const normalizedRequiredText = String(requiredText).trim().toUpperCase();
@@ -816,6 +840,7 @@ function showActionDialog({
   elements.actionDialogCheckboxWrap.hidden = !checkboxLabel;
   elements.actionDialogCheckboxLabel.textContent = checkboxLabel;
   elements.actionDialogCheckbox.checked = false;
+  elements.actionDialogCancel.hidden = hideCancel;
   elements.actionDialog.returnValue = '';
 
   const updateConfirmationState = () => {
@@ -848,7 +873,7 @@ populateAdminDietSelect('Nessuna dieta');
 
 // Il pannello globale vive fuori dall area del singolo centro.
 elements.adminShell.append(elements.ownerInvitationPanel);
-populateDietSelect(elements.weekDietType, 'Nessuna dieta occasionale');
+populateDietSelect(elements.weekDietType, 'Nessuna dieta occasionale', elements.weekDietNumber);
 
 document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
@@ -1073,7 +1098,7 @@ function renderAllViews() {
     populateAdminDietSelect(t('diet.option.STANDARD'));
   }
   if (elements.weekDietType) {
-    populateDietSelect(elements.weekDietType, t('diet.option.STANDARD'));
+    populateDietSelect(elements.weekDietType, t('diet.option.STANDARD'), elements.weekDietNumber);
   }
   if (state.mode === 'admin') {
     renderAdminPeopleList();
@@ -1320,6 +1345,9 @@ function handleInAppNavigation(event) {
     targetUrl.searchParams.set('access', 'friendly');
   } else {
     targetUrl.searchParams.delete('access');
+    if (!state.residentReady) {
+      targetUrl.searchParams.delete('c');
+    }
   }
   window.history.pushState({}, '', targetUrl.pathname + targetUrl.search);
   prepareMonthAutoScrollEntry(state.mode, targetMode);
@@ -1751,8 +1779,16 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     : '';
   if (storedDecision === 'ACCEPT') {
     try {
+      elements.adminEmailStatus.textContent = 'Accettazione in corso...';
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
+      elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
+      await showActionDialog({
+        title: t('admin.invitations.acceptedWaitTitle'),
+        message: t('admin.invitations.acceptedWaitMessage'),
+        confirmLabel: t('common.actions.confirm'),
+        hideCancel: true
+      });
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -2298,7 +2334,7 @@ async function handlePlatformCenterListClick(event) {
     const input = row.querySelector('[data-platform-center-invitation-link]');
     try {
       await navigator.clipboard.writeText(input.value);
-      copyButton.textContent = 'Copiato';
+      copyButton.textContent = t('status.copied');
     } catch {
       input.select();
       copyButton.textContent = 'Collegamento selezionato';
@@ -2493,8 +2529,8 @@ async function handleCopyLink(event) {
   if (!target?.href) return;
   try {
     await navigator.clipboard.writeText(target.href);
-    event.currentTarget.textContent = 'Copiato';
-    window.setTimeout(() => { event.currentTarget.textContent = 'Copia'; }, 1400);
+    event.currentTarget.textContent = t('status.copied');
+    window.setTimeout(() => { event.currentTarget.textContent = t('common.actions.copy'); }, 1400);
   } catch {
     openAccessShareDialog('Collegamento', target.href);
   }
@@ -3018,7 +3054,7 @@ function renderAdminLeadershipForm() {
   elements.adminTransferOwnership.disabled = !canTransferOwnership || successors.length === 0;
 
   if (canManageAdministrators && successors.length === 0) {
-    elements.adminLeadershipStatus.textContent = 'Invita un altro a succederti come amministratore.';
+    elements.adminLeadershipStatus.textContent = t('admin.succession.inviteAnother');
   }
 
   // Selettore candidato amministratore
@@ -3060,7 +3096,13 @@ function handleInviteAccept() {
       elements.adminEmailStatus.textContent = 'Accettazione in corso...';
       const result = await acceptAdministratorInvitation();
       clearAdminInvitationDecision(getAdminRoleInvitationId());
-      elements.adminEmailStatus.textContent = 'Invito accettato. Caricamento...';
+      elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
+      await showActionDialog({
+        title: t('admin.invitations.acceptedWaitTitle'),
+        message: t('admin.invitations.acceptedWaitMessage'),
+        confirmLabel: t('common.actions.confirm'),
+        hideCancel: true
+      });
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -3197,17 +3239,16 @@ async function performOwnershipTransfer() {
   if (!successor) return;
   const decision = await showActionDialog({
     title: t('dialog.transferOwnership.title'),
-    message: t('dialog.transferOwnership.message', { email: successor.email || successor.adminUid }),
+    message: t('dialog.transferOwnership.finalMessage', { email: successor.email || successor.adminUid }),
     confirmLabel: t('dialog.transferOwnership.title'),
     requiredText: 'TRASFERISCI',
-    checkboxLabel: t('dialog.transferOwnership.revokeMyAccess'), // checkboxLabel: 'Revoca il mio precedente accesso al centro'
     destructive: true
   });
   if (!decision.confirmed) {
     elements.adminLeadershipStatus.textContent = 'Trasferimento annullato';
     return;
   }
-  const revokePrevious = decision.checked;
+  const revokePrevious = true;
 
   elements.adminTransferOwnership.disabled = true;
   elements.adminLeadershipStatus.textContent = 'Trasferisco la responsabilità...';
@@ -3972,7 +4013,7 @@ function renderMode() {
     && !state.residentReady
     && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
-  const mealTitle = 'Prenotazione Pasti';
+  const mealTitle = t('app.title');
   const participantName = state.selectedParticipant?.displayName || '';
   const centerName = state.centerContactSettings.name || '';
   const currentUser = getCurrentUser();
@@ -4006,7 +4047,7 @@ function renderMode() {
     : isSummary
       ? getSummaryTitle()
       : isAdminView
-        ? 'Prenotazione pasti'
+        ? t('app.title')
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
   elements.titleCenter.textContent = isAdminView ? t('app.header.controlPanel') : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
@@ -4039,8 +4080,7 @@ function renderMode() {
   const canOpenControlPanel = hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA)
     || selectedResidentCanOpenControlPanel();
   elements.controlPanelEntry.hidden = !isOrdinaryView
-    || needsResidentLogin
-    || !canOpenControlPanel;
+    || (!needsResidentLogin && !canOpenControlPanel);
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
     || state.platformOwner;
@@ -4168,7 +4208,7 @@ function anchorCalendarToCenterToday() {
 }
 
 function getSummaryTitle() {
-  return state.summaryDayOffset === 1 ? 'Domani a tavola' : 'Oggi a tavola';
+  return t(state.summaryDayOffset === 1 ? 'summary.view.tomorrowTitle' : 'summary.view.todayTitle');
 }
 
 function renderAdminParticipantOptions() {
@@ -4665,11 +4705,14 @@ function renderParticipantMeals() {
   }
 
   renderWeekControls();
-  const mealHeadings = state.participantWeek[0]?.meals || [
-    { mealTypeId: 'breakfast', label: 'Colazione' },
-    { mealTypeId: 'lunch', label: 'Pranzo' },
-    { mealTypeId: 'dinner', label: 'Cena' }
-  ];
+  const mealHeadings = (state.participantWeek[0]?.meals || [
+    { mealTypeId: 'breakfast' },
+    { mealTypeId: 'lunch' },
+    { mealTypeId: 'dinner' }
+  ]).map((meal) => ({
+    ...meal,
+    label: getLocalizedMealLabel(meal.mealTypeId, meal.label)
+  }));
   const weekMeals = state.participantWeek.flatMap((day) => day.meals || []);
   const weekEffect = getBulkSelectionEffect(weekMeals);
   const weekHasOpenMeals = weekMeals.some((meal) => meal.isOpen);
@@ -4706,12 +4749,12 @@ function renderParticipantMeals() {
       <div class="week-matrix-header">
         <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
           <span class="week-heading-icon" aria-hidden="true">▦</span>
-          <span class="week-heading-label">Settimana</span>
+          <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
         </button>
         ${showMassColumn ? `
           <button type="button" class="week-mass-heading${allOpenMassesScheduled ? ' week-mass-heading-complete' : ''}" data-week-mass-bulk data-week-mass-scheduled="${massBulkScheduled}" aria-pressed="${allOpenMassesScheduled}" aria-label="${massBulkLabel}" title="${massBulkLabel}"${openMassDays.length > 0 ? '' : ' disabled'}>
             <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">⛪</span>
-            <span class="week-heading-label">Messa</span>
+            <span class="week-heading-label">${escapeHtml(t('summary.mass'))}</span>
           </button>
         ` : ''}
         ${mealHeadings.map((meal) => {
@@ -4742,7 +4785,7 @@ function renderParticipantMeals() {
           <article class="week-matrix-row${todayClass}${subduedClass}" data-day-date="${day.date}">
             <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
               <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
-              ${day.isToday ? '<span>Oggi</span>' : ''}
+              ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
             </button>
             ${showMassColumn ? renderWeekMassButton(day, massByDate.get(day.date)) : ''}
             ${day.meals.map((meal) => renderMealCell(day.date, meal)).join('')}
@@ -4832,7 +4875,7 @@ function canUseWeekWithoutParticipant() {
 
 function renderWeekMassButton(day, operation) {
   const massScheduled = operation?.massScheduled === true;
-  const label = massScheduled ? 'Sì' : 'No';
+  const label = t(massScheduled ? 'summary.yes' : 'summary.no');
   const windowState = getMassWindowState(day);
   const cutoffLabel = formatCutoffLabel(windowState);
   const stateLabel = windowState.isOpen ? `Messa: ${label}` : `Messa: ${label}. ${cutoffLabel}`;
@@ -4872,6 +4915,16 @@ function getMealIcon(mealTypeId) {
   }[mealTypeId] || '•';
 }
 
+function getLocalizedMealLabel(mealTypeId, fallback = '') {
+  const key = `meal.type.${String(mealTypeId || '').trim().toLowerCase()}`;
+  const translated = t(key, {}, { fallback: String(fallback || '') });
+  return translated && translated !== key ? translated : String(fallback || '');
+}
+
+function getMealStateLabel(isPresent) {
+  return t(isPresent ? 'meal.status.booked' : 'meal.status.notBooked');
+}
+
 function renderTodayOverview() {
   if (state.summaryDays.length > 0) {
     mountSummaryMatrix(elements.todayOverview, {
@@ -4896,7 +4949,7 @@ function renderTodayOverview() {
         ${state.todayOverview.map((meal) => `
           <article class="today-card">
             <div class="today-card-head">
-              <strong><span class="meal-icon" aria-hidden="true">${mealIcons[meal.mealTypeId] || '•'}</span><span class="meal-label">${escapeHtml(meal.label)}</span></strong>
+              <strong><span class="meal-icon" aria-hidden="true">${mealIcons[meal.mealTypeId] || '•'}</span><span class="meal-label">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</span></strong>
             </div>
             ${renderGroupedSummary(meal.present)}
           </article>
@@ -4910,11 +4963,11 @@ function renderTodayOverview() {
 
 function renderMassCard(dailyOperation) {
   const massScheduled = dailyOperation?.massScheduled === true;
-  const statusLabel = massScheduled ? 'Sì' : 'No';
+  const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
   return `
     <article class="today-card mass-card ${massScheduled ? 'mass-card-yes' : 'mass-card-no'}" aria-label="Messa: ${statusLabel}">
       <div class="mass-card-content">
-        <strong>Messa</strong>
+        <strong>${escapeHtml(t('summary.mass'))}</strong>
         <span>${statusLabel}</span>
       </div>
     </article>
@@ -4950,15 +5003,15 @@ function setParticipantStatus(message, freshness = '') {
 function formatRefreshLabel(source, updatedAt = new Date()) {
   const time = formatLastUpdateTime(updatedAt);
   const labels = {
-    avvio: `Dati aggiornati alle ${time}`,
-    manuale: `Aggiornato alle ${time}`,
-    prenotazione: 'Prenotazione salvata',
-    settimana: 'Settimana aggiornata',
-    ripresa: `Aggiornato alle ${time}`,
-    timer: `Aggiornato alle ${time}`
+    avvio: t('status.dataUpdatedAt', { time }),
+    manuale: t('status.updatedAt', { time }),
+    prenotazione: t('participant.meal.save.success'),
+    settimana: t('status.weekUpdated'),
+    ripresa: t('status.updatedAt', { time }),
+    timer: t('status.updatedAt', { time })
   };
 
-  return labels[source] || `Aggiornato alle ${time}`;
+  return labels[source] || t('status.updatedAt', { time });
 }
 
 function setFreshnessStatus(element, message, freshness = '') {
@@ -5837,14 +5890,15 @@ function handleWeekHealthListClick(event) {
 }
 
 function renderWeekDietAssignments() {
-  const assignments = state.weekOperationalHealth?.dietAssignments || [];
+  const assignments = (state.weekOperationalHealth?.dietAssignments || [])
+    .filter((assignment) => /^\d+$/.test(normalizeDietCode(assignment.dietTag)));
   const participantsById = new Map(state.adminParticipants.map((participant) => [participant.participantId, participant]));
   elements.weekDietList.innerHTML = assignments.map((assignment) => {
     const participant = participantsById.get(assignment.participantId);
     const name = participant?.displayName || assignment.participantId;
     return `
       <div class="week-diet-row">
-        <span>${escapeHtml(name)} · ${escapeHtml(formatDietLabel(assignment.dietTag))}</span>
+        <span>${escapeHtml(name)} · ${escapeHtml(normalizeDietCode(assignment.dietTag))}</span>
         <button type="button" class="tertiary-action" data-week-diet-remove="${escapeHtml(assignment.participantId)}">Rimuovi</button>
       </div>
     `;
@@ -6156,7 +6210,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
     return `
       <article class="meal-card">
         <div>
-          <p>${escapeHtml(meal.label)}</p>
+          <p>${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</p>
           <strong aria-label="${escapeHtml(meal.count)} persone">${escapeHtml(meal.count)}</strong>
           <small>${meal.count === 1 ? 'persona' : 'persone'}</small>
           ${renderDietBreakdown(meal.diets)}
@@ -6179,7 +6233,7 @@ function renderKitchenSickPeople() {
 
 function renderKitchenMass() {
   const massScheduled = state.kitchenDailyOperation?.massScheduled === true;
-  const statusLabel = massScheduled ? 'Sì' : 'No';
+  const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
   const card = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
   card.classList.toggle('mass-card-yes', massScheduled);
   card.classList.toggle('mass-card-no', !massScheduled);
@@ -6397,7 +6451,8 @@ function setWeekStartFromDate(date, source) {
 }
 
 function renderMealCell(dateId, meal) {
-  const stateLabel = meal.effect === 'PRESENT' ? 'Prenotato' : 'Non prenotato';
+  const mealLabel = getLocalizedMealLabel(meal.mealTypeId, meal.label);
+  const stateLabel = getMealStateLabel(meal.effect === 'PRESENT');
   const pending = state.pendingMealKeys.has(getMealPendingKey(dateId, meal.mealTypeId));
   const disabled = meal.isOpen && !pending ? '' : ' disabled';
   const pressed = meal.effect === 'PRESENT' ? 'true' : 'false';
@@ -6405,8 +6460,8 @@ function renderMealCell(dateId, meal) {
     + (meal.isOpen ? '' : ' meal-state-locked')
     + (pending ? ' meal-state-pending' : '');
   const cutoffLabel = formatCutoffLabel(meal);
-  const ariaLabel = meal.isOpen ? `${meal.label}: ${stateLabel}` : `${meal.label}: ${stateLabel}. ${cutoffLabel}`;
-  const shortLabel = { breakfast: 'C', lunch: 'P', dinner: 'C' }[meal.mealTypeId] || '•';
+  const ariaLabel = meal.isOpen ? `${mealLabel}: ${stateLabel}` : `${mealLabel}: ${stateLabel}. ${cutoffLabel}`;
+  const shortLabel = mealLabel.slice(0, 1) || '•';
   const mark = meal.effect === 'PRESENT' ? '✓' : shortLabel;
   const caption = meal.isOpen ? stateLabel : cutoffLabel;
   return `
@@ -6420,13 +6475,14 @@ function renderMealCell(dateId, meal) {
 function syncWeekMealButton(button, meal) {
   const isPresent = meal.effect === 'PRESENT';
   const pending = state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId));
-  const stateLabel = isPresent ? 'Prenotato' : 'Non prenotato';
+  const mealLabel = getLocalizedMealLabel(meal.mealTypeId, meal.label);
+  const stateLabel = getMealStateLabel(isPresent);
   const cutoffLabel = formatCutoffLabel(meal);
   const caption = meal.isOpen ? stateLabel : cutoffLabel;
-  const shortLabel = { breakfast: 'C', lunch: 'P', dinner: 'C' }[meal.mealTypeId] || '•';
+  const shortLabel = mealLabel.slice(0, 1) || '•';
   const ariaLabel = meal.isOpen
-    ? `${meal.label}: ${stateLabel}`
-    : `${meal.label}: ${stateLabel}. ${cutoffLabel}`;
+    ? `${mealLabel}: ${stateLabel}`
+    : `${mealLabel}: ${stateLabel}. ${cutoffLabel}`;
 
   button.classList.toggle('meal-state-present', isPresent);
   button.classList.toggle('meal-state-absent', !isPresent);
@@ -6446,10 +6502,11 @@ function syncWeekMealButton(button, meal) {
 function syncMonthMealButton(button, meal) {
   const isPresent = meal.effect === 'PRESENT';
   const pending = state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId));
-  const stateLabel = isPresent ? 'prenotato' : 'non prenotato';
+  const mealLabel = getLocalizedMealLabel(meal.mealTypeId, meal.label);
+  const stateLabel = getMealStateLabel(isPresent);
   const actionLabel = meal.isOpen
-    ? `${meal.label}: ${stateLabel}, clicca per ${isPresent ? 'liberare' : 'prenotare'}`
-    : `${meal.label}: ${stateLabel}. ${formatCutoffLabel(meal)}`;
+    ? `${mealLabel}: ${stateLabel}`
+    : `${mealLabel}: ${stateLabel}. ${formatCutoffLabel(meal)}`;
 
   button.classList.toggle('month-flag-present', isPresent);
   button.classList.toggle('month-flag-absent', !isPresent);
@@ -6461,7 +6518,7 @@ function syncMonthMealButton(button, meal) {
   button.title = meal.isOpen ? stateLabel : formatCutoffLabel(meal);
   button.disabled = !meal.isOpen || pending;
   const mark = button.querySelector('.month-flag-mark');
-  if (mark) mark.textContent = isPresent ? '✓' : meal.label.slice(0, 1);
+  if (mark) mark.textContent = isPresent ? '✓' : mealLabel.slice(0, 1);
 }
 
 function syncWeekSelectionControls() {
@@ -6533,7 +6590,7 @@ function syncWeekGridFromState() {
 }
 
 function syncWeekMassButton(button, day, massScheduled) {
-  const label = massScheduled ? 'Sì' : 'No';
+  const label = t(massScheduled ? 'summary.yes' : 'summary.no');
   const windowState = getMassWindowState(day);
   const cutoffLabel = formatCutoffLabel(windowState);
   const busy = button.getAttribute('aria-busy') === 'true';
@@ -6675,7 +6732,7 @@ function formatCutoffLabel(meal) {
     hour12: false,
     timeZone: state.centerContactSettings.timezone || 'Europe/Rome'
   });
-  return `Chiuso alle ${time}`;
+  return t('meal.status.closedAt', { time });
 }
 
 function formatWeekRange() {
@@ -6768,17 +6825,18 @@ function renderMonthFlags(day) {
   }
 
   return meals.map((meal) => {
-    const short = meal.label.slice(0, 1);
+    const mealLabel = getLocalizedMealLabel(meal.mealTypeId, meal.label);
+    const short = mealLabel.slice(0, 1);
     const isPresent = meal.effect === 'PRESENT';
     const activeClass = meal.effect === 'PRESENT' ? 'month-flag-present' : 'month-flag-absent';
     const lockClass = meal.isOpen ? '' : ' month-flag-locked';
     const pending = state.pendingMealKeys.has(getMealPendingKey(day.date, meal.mealTypeId));
     const pendingClass = pending ? ' month-flag-pending' : '';
     const visibleMark = isPresent ? '✓' : short;
-    const stateLabel = isPresent ? 'prenotato' : 'non prenotato';
+    const stateLabel = getMealStateLabel(isPresent);
     const actionLabel = meal.isOpen
-      ? `${meal.label}: ${stateLabel}, clicca per ${isPresent ? 'liberare' : 'prenotare'}`
-      : `${meal.label}: ${stateLabel}. ${formatCutoffLabel(meal)}`;
+      ? `${mealLabel}: ${stateLabel}`
+      : `${mealLabel}: ${stateLabel}. ${formatCutoffLabel(meal)}`;
     return `<button type="button" class="month-flag ${activeClass}${lockClass}${pendingClass}" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(meal.mealTypeId)}" data-month-effect="${isPresent ? 'ABSENT' : 'PRESENT'}" aria-pressed="${isPresent}" aria-label="${escapeHtml(actionLabel)}" title="${escapeHtml(meal.isOpen ? stateLabel : formatCutoffLabel(meal))}"${meal.isOpen && !pending ? '' : ' disabled'}><span class="month-flag-mark" aria-hidden="true">${escapeHtml(visibleMark)}</span></button>`;
   }).join('');
 }
@@ -6815,8 +6873,8 @@ async function handleAccessLinkCopy(event) {
   const originalText = button.textContent;
   try {
     await navigator.clipboard.writeText(url);
-    button.textContent = 'Copiato';
-    button.setAttribute('aria-label', 'Link copiato');
+    button.textContent = t('status.copied');
+    button.setAttribute('aria-label', t('status.linkCopied'));
     window.setTimeout(() => {
       button.textContent = originalText;
       button.setAttribute('aria-label', scope === 'pasti' ? 'Copia link Pasti' : 'Copia link Cucina');

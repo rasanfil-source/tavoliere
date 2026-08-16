@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260816n">
+    <link rel="stylesheet" href="/styles.css?v=20260816o">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260816h">
   </head>
   <body>
@@ -289,7 +289,7 @@
         <div class="meal-grid" data-meal-cards></div>
         <article class="mass-card kitchen-mass-card mass-card-no" data-kitchen-mass aria-label="Messa: No">
           <div class="mass-card-content">
-            <strong>Messa</strong>
+            <strong data-i18n="summary.mass">Messa</strong>
             <span data-kitchen-mass-value>No</span>
           </div>
         </article>
@@ -431,7 +431,7 @@
                   </div>
                   <p class="operational-link-meta" data-public-link-meta>Data di attivazione non disponibile</p>
                   <span><a data-public-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a><button type="button" class="tertiary-action" data-copy-link="[data-public-link]" data-i18n="common.actions.copy">Copia</button></span>
-                  <span><a data-summary-link href="/?view=summary" data-i18n="summary.view.title">Oggi a tavola</a><button type="button" class="tertiary-action" data-copy-link="[data-summary-link]" data-i18n="common.actions.copy">Copia</button></span>
+                  <span><a data-summary-link href="/?view=summary" data-i18n="summary.view.todayTitle">Oggi a tavola</a><button type="button" class="tertiary-action" data-copy-link="[data-summary-link]" data-i18n="common.actions.copy">Copia</button></span>
                   <button type="button" class="secondary-action rotate-link-action" data-rotate-operational-link="PUBLIC" data-i18n="admin.access.links.rotate">Rigenera link residenti</button>
                 </section>
                 <section class="operational-link-group" aria-labelledby="kitchen-links-title">
@@ -562,10 +562,10 @@
                   <div class="admin-center-avatar-controls">
                     <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
                     <div class="field-label admin-center-avatar-picker">
-                      <span data-i18n="admin.avatar.chooseImage">Scegli immagine</span>
+                      <span data-i18n="admin.avatar.chooseFile">Scegli file</span>
                       <div class="admin-center-avatar-input-wrapper">
                         <input type="file" id="admin-center-avatar-input" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif" class="visually-hidden">
-                        <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseImage">Scegli immagine</label>
+                        <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseFile">Scegli file</label>
                         <span class="avatar-file-name" data-admin-avatar-filename data-i18n="admin.avatar.noFileSelected">Nessun file selezionato</span>
                       </div>
                     </div>
@@ -890,7 +890,7 @@
           <span data-action-dialog-checkbox-label></span>
         </label>
         <div class="action-dialog-actions">
-          <button type="submit" value="cancel" class="secondary-action" data-i18n="common.actions.cancel">Annulla</button>
+          <button type="submit" value="cancel" class="secondary-action" data-action-dialog-cancel data-i18n="common.actions.cancel">Annulla</button>
           <button type="submit" value="confirm" class="primary-action" data-action-dialog-confirm data-i18n="common.actions.confirm">Conferma</button>
         </div>
       </form>
@@ -929,6 +929,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260816p"></script>
+  <script type="module" src="/app.js?v=20260816t"></script>
   </body>
 </html>
