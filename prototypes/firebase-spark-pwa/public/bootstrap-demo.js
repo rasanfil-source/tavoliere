@@ -11,7 +11,7 @@ import {
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId } from './center-context.js?v=20260816g';
+import { getActiveCenterId } from './center-context.js?v=20260816h';
 import {
   buildMealWindowRecords,
   DEFAULT_ACCESS_EXPIRES_AT,
@@ -22,7 +22,7 @@ import {
   normalizeReservationCutoffs
 } from './schedule-utils.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816g';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816h';
 
 export const BOOTSTRAP_ADMIN_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 
@@ -61,7 +61,7 @@ export async function bootstrapCenterData(user, { centerId = getActiveCenterId()
     throw new Error('Questo account non amministra il centro selezionato.');
   }
   if (!hasCapability(adminSnapshot.data().role, CAPABILITIES.MANAGE_CALENDAR)) {
-    throw new Error('Questo account non puo preparare il calendario del centro.');
+    throw new Error('Questo account non può preparare il calendario del centro.');
   }
   const operationalLinksRef = doc(db, 'centers', centerId, 'privateSettings', 'operationalLinks');
   const [centerSnapshot, groupSnapshot, mealTypeSnapshot, privateParticipantSnapshot, ruleSnapshot, operationalLinksSnapshot] = await Promise.all([

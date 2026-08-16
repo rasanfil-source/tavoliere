@@ -9,7 +9,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816g';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,

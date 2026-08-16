@@ -68,13 +68,13 @@ test('versioned app shell files load the exact release with an offline fallback'
 });
 
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
-  assert.match(index, /styles\.css\?v=20260816q/);
-  assert.match(index, /summary-matrix-refinements\.css\?v=20260816i/);
-  assert.match(index, /app\.js\?v=20260816x/);
+  assert.match(index, /styles\.css\?v=20260816r/);
+  assert.match(index, /summary-matrix-refinements\.css\?v=20260816j/);
+  assert.match(index, /app\.js\?v=20260816y/);
   assert.match(index, /manifest\.webmanifest\?v=20260816a/);
   assert.match(index, /launcher-192\.png\?v=20260816a/);
-  assert.match(app, /center-settings\.js\?v=20260816i/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v291'/);
+  assert.match(app, /center-settings\.js\?v=20260816j/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v293'/);
   assert.match(serviceWorker, /launcher-512\.png\?v=20260816a/);
 });
 

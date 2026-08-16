@@ -64,7 +64,7 @@ export function inspectCenterBackup(backup, { expectedCenterId = '' } = {}) {
       continue;
     }
     if (!Array.isArray(rows)) {
-      errors.push(`La raccolta ${collectionName} non e un elenco.`);
+      errors.push(`La raccolta ${collectionName} non è un elenco.`);
       counts[collectionName] = 0;
       continue;
     }
@@ -100,7 +100,7 @@ function validateRows(collectionName, rows, errors) {
   const identifiers = new Set();
   rows.forEach((row, index) => {
     if (!isRecord(row)) {
-      errors.push(`${collectionName}[${index}] non e un documento valido.`);
+      errors.push(`${collectionName}[${index}] non è un documento valido.`);
       return;
     }
     const id = String(row.id || '');

@@ -5,7 +5,7 @@ import {
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId } from './center-context.js?v=20260816g';
+import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 
 export { formatDateId } from './date-utils.mjs?v=20260816g';
@@ -85,7 +85,7 @@ export async function saveKitchenNote(date, text) {
     throw new Error('Scrivi una nota prima di inviarla.');
   }
   if (normalizedText.length > MAX_NOTE_LENGTH) {
-    throw new Error('La nota non puo superare 1000 caratteri.');
+    throw new Error('La nota non può superare 1000 caratteri.');
   }
 
   const mealDate = formatDateId(date);

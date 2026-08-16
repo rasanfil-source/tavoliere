@@ -10,7 +10,7 @@ import {
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId } from './center-context.js?v=20260816g';
+import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 
 const SETTINGS_DOCUMENT_ID = 'operationalLinks';

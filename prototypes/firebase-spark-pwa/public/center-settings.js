@@ -5,7 +5,7 @@ import {
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db } from './firebase-client.js?v=20260816g';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816g';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
@@ -206,7 +206,7 @@ export async function updateCenterSettings({
 
 export async function saveCenterAvatar(dataUrl) {
   if (!isValidCenterAvatarDataUrl(dataUrl)) {
-    throw new Error('L\'immagine scelta non e valida o e troppo grande');
+    throw new Error('L\'immagine scelta non è valida o è troppo grande');
   }
   const centerId = getActiveCenterId();
   const version = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;

@@ -255,8 +255,8 @@
     var(--primary) 46%,
     var(--calendar-heading-border)
   );
-  --today-surface: color-mix(in srgb, var(--primary) 10%, var(--surface));
-  --today-line: color-mix(in srgb, var(--primary) 48%, var(--line));
+  --today-surface: color-mix(in srgb, var(--primary) 15%, var(--surface));
+  --today-line: color-mix(in srgb, var(--primary) 62%, var(--line));
   --today-ink: var(--primary);
   --summary-day-next: color-mix(in srgb, var(--primary) 5%, var(--surface));
   --summary-day-next-strong: color-mix(in srgb, var(--primary) 9%, var(--surface));

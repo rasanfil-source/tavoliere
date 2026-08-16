@@ -18,9 +18,9 @@ import {
   createOwnedCenterId,
   getActiveCenterId,
   setActiveCenterId
-} from './center-context.js?v=20260816g';
+} from './center-context.js?v=20260816h';
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816g';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816h';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816g';
 
@@ -583,7 +583,7 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     updatedAt: now
   }, { merge: true });
   // adminProfiles e' soltanto un indice di navigazione. I permessi effettivi
-  // dipendono sempre dalla membership del centro, per supportare piu' centri
+  // dipendono sempre dalla membership del centro, per supportare più centri
   // senza riattivare accidentalmente un ruolo revocato.
   if (successorProfileSnapshot.data()?.centerId === centerId) {
     batch.set(successorProfileRef, {
@@ -728,7 +728,7 @@ async function loadRoleInvitation(invitationId) {
     const expiresAt = data.expiresAt?.toDate?.();
     return {
       // Solo gli inviti amministratore restano validi: eventuali inviti
-      // vice residui da prima di questa modifica non sono piu' accettabili.
+      // vice residui da prima di questa modifica non sono più accettabili.
       active: data.status === 'ACTIVE'
         && data.role === 'ADMIN'
         && typeof data.centerId === 'string'
@@ -749,7 +749,7 @@ async function loadRoleInvitation(invitationId) {
 
 async function claimRoleInvitation(invitationId, invitation, user) {
   if (!hasVerifiedAdministratorIdentity(user)) {
-    throw new Error('Conferma il tuo indirizzo email prima di accettare l invito');
+    throw new Error('Conferma il tuo indirizzo email prima di accettare l\'invito');
   }
   const now = serverTimestamp();
   const batch = writeBatch(db);
@@ -833,7 +833,7 @@ function storePendingCenterInvitation(invitationId) {
   try {
     window.sessionStorage.setItem(CENTER_INVITATION_STORAGE_KEY, invitationId);
   } catch {
-    // L invito resta disponibile nell URL quando la sessione del browser non è scrivibile.
+    // L'invito resta disponibile nell'URL quando la sessione del browser non è scrivibile.
   }
   try {
     window.localStorage.setItem(CENTER_INVITATION_STORAGE_KEY, invitationId);
