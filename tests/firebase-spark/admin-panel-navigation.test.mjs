@@ -58,7 +58,10 @@ test('agenda centro vive nella vista settimana e sostituisce il vecchio collegam
 test('la palette colori usa un selettore nativo con anteprima immediata', () => {
   const paletteSelect = html.match(/<select data-admin-theme-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const paletteValues = [...paletteSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(paletteValues, ['smeraldo', 'giallino', 'beige', 'rosso-pallido', 'confetto']);
+  assert.deepEqual(paletteValues, ['smeraldo', 'terracotta', 'confetto']);
+  assert.match(html, /value="terracotta" data-i18n="admin\.adaptations\.theme\.terracotta"/);
+  assert.match(css, /html\[data-theme="terracotta"\][\s\S]*--primary: #b1502f;[\s\S]*--bg: #f8f1e7;[\s\S]*--surface: #fffdf9;/);
+  assert.doesNotMatch(html, /value="(?:giallino|beige|rosso-pallido)"/);
   assert.match(html, /data-theme-select-preview/);
   assert.doesNotMatch(html, /data-theme-select-trigger|data-admin-theme-radio/);
   assert.match(app, /adminThemeSelect\.addEventListener\('change', handleThemeSelectChange\)/);

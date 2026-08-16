@@ -41,7 +41,8 @@ test('la fascia Messa distingue visivamente Sì e No in ogni palette', () => {
   assert.match(styles, /\.summary-mass-control-day \{[\s\S]*border-bottom:/);
   assert.match(styles, /\.summary-layout-classic \.summary-day-tone-2 \.summary-mass-control-day \{[\s\S]*font-size: 0\.56rem/);
   assert.match(styles, /\.summary-mass-control \.summary-matrix-mass-yes,[\s\S]*border-radius: 0/);
-  assert.match(styles, /html\[data-theme="rosso-pallido"\][\s\S]*--mass-yes-bg: #fff;[\s\S]*--mass-no-bg: #fff/);
+  assert.match(styles, /--mass-no-bg: color-mix\(in srgb, var\(--danger\) 24%, var\(--surface\)\)/);
+  assert.match(styles, /--mass-no-border: color-mix\(in srgb, var\(--danger\) 60%, var\(--line\)\)/);
 });
 
 test('la Cucina non mostra Prevista e il riepilogo mantiene nomi e contatti', () => {

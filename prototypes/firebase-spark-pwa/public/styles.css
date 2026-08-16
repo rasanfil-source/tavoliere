@@ -8,6 +8,8 @@
   --primary: #16615a;
   --good: #2e7d57;
   --warn: #9d5f12;
+  --danger: #981f19;
+  --info: #2f5963;
   --calendar-heading-bg: #eef4f6;
   --calendar-heading-border: #cfdee3;
   --calendar-heading-ink: #2f5963;
@@ -1646,7 +1648,14 @@ body[data-center-activation="true"] .admin-shell-body {
 html[data-theme="smeraldo"] {
   --primary: #16615a;
   --ink: #173832;
+  --muted: #66736f;
   --bg: #f7f5ef;
+  --surface: #ffffff;
+  --line: #d9ddd3;
+  --good: #2e7d57;
+  --warn: #9d5f12;
+  --danger: #981f19;
+  --info: #2f5963;
   --calendar-heading-bg: #eef4f6;
   --calendar-heading-border: #cfdee3;
   --calendar-heading-ink: #2f5963;
@@ -1654,43 +1663,35 @@ html[data-theme="smeraldo"] {
   --today-line: #72b9d8;
   --today-ink: #195f82;
 }
-html[data-theme="giallino"] {
-  --primary: #927000;
-  --ink: #3b310f;
-  --bg: #fffdf5;
-  --calendar-heading-bg: #fff7d4;
-  --calendar-heading-border: #e7d898;
-  --calendar-heading-ink: #5a4600;
-  --today-surface: #fff2b8;
-  --today-line: #d9b52d;
-  --today-ink: #654d00;
-}
-html[data-theme="beige"] {
-  --primary: #7c6853;
-  --ink: #332b24;
-  --bg: #f9f6f2;
-  --calendar-heading-bg: #f2ece4;
-  --calendar-heading-border: #dcd2c5;
-  --calendar-heading-ink: #4d4033;
-  --today-surface: #eee3d6;
-  --today-line: #b89d7e;
-  --today-ink: #5c4632;
-}
-html[data-theme="rosso-pallido"] {
-  --primary: #9e4a40;
-  --ink: #3b1e1b;
-  --bg: #fcf5f4;
-  --calendar-heading-bg: #faebe9;
-  --calendar-heading-border: #e6c8c4;
-  --calendar-heading-ink: #612c25;
-  --today-surface: #fce4e1;
-  --today-line: #d99b93;
-  --today-ink: #7a3129;
+html[data-theme="terracotta"] {
+  --primary: #b1502f;
+  --ink: #3a2318;
+  --muted: #6f625b;
+  --bg: #f8f1e7;
+  --surface: #fffdf9;
+  --line: #d8c8b8;
+  --good: #3f7d4e;
+  --warn: #96630f;
+  --danger: #a5322a;
+  --info: #3f6e78;
+  --calendar-heading-bg: #e7eef0;
+  --calendar-heading-border: #b9ccd0;
+  --calendar-heading-ink: #3f6e78;
+  --today-surface: #dcebf0;
+  --today-line: #79a4ae;
+  --today-ink: #315d67;
 }
 html[data-theme="confetto"] {
   --primary: #a92b52;
   --ink: #4a2145;
+  --muted: #735f6d;
   --bg: #fff8f2;
+  --surface: #fffafb;
+  --line: #f0d5dd;
+  --good: #2f7a50;
+  --warn: #8a5a00;
+  --danger: #a12846;
+  --info: #674496;
   --calendar-heading-bg: #ffe9d6;
   --calendar-heading-border: #ffd1a6;
   --calendar-heading-ink: #9c4b6b;
@@ -1716,9 +1717,7 @@ html[data-theme="confetto"] {
 }
 
 .theme-swatch-smeraldo { background: linear-gradient(135deg, #16615a 60%, #f7f5ef 60%); }
-.theme-swatch-giallino { background: linear-gradient(135deg, #927000 60%, #fff7d4 60%); }
-.theme-swatch-beige { background: linear-gradient(135deg, #7c6853 60%, #f9f6f2 60%); }
-.theme-swatch-rosso-pallido { background: linear-gradient(135deg, #9e4a40 60%, #fcf5f4 60%); }
+.theme-swatch-terracotta { background: linear-gradient(135deg, #b1502f 60%, #f8f1e7 60%); }
 .theme-swatch-confetto {
   background: linear-gradient(
     135deg,
