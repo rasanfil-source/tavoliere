@@ -268,7 +268,7 @@
   "auth.resident.password.label": "Password comune",
   "auth.resident.password.show": "Mostra",
   "auth.resident.signature.label": "Sigla",
-  "auth.resident.status": "Inserisci sigla e password comune.",
+  "auth.resident.status": "Inserisci i tuoi dati per entrare.",
   "auth.resident.submit": "Entra",
   "auth.resident.title": "Accesso residenti",
   "calendar.jump.month": "Mese: {month}",

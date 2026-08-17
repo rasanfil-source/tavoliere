@@ -268,7 +268,7 @@
   "auth.resident.password.label": "Gemeinsames Passwort",
   "auth.resident.password.show": "Anzeigen",
   "auth.resident.signature.label": "Code",
-  "auth.resident.status": "Code und gemeinsames Passwort eingeben.",
+  "auth.resident.status": "Gib deine Zugangsdaten ein, um fortzufahren.",
   "auth.resident.submit": "Anmelden",
   "auth.resident.title": "Bewohner-Anmeldung",
   "calendar.jump.month": "Monat: {month}",

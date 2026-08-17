@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260817p';
+} from './i18n/i18n.mjs?v=20260818x';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -4534,6 +4534,46 @@ function renderAdminParticipantOptions() {
   }).join('');
 }
 
+function captureFocusWithin(container) {
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLElement) || !container?.contains(activeElement)) {
+    return null;
+  }
+
+  const focusableSelector = 'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])';
+  const focusableElements = [...container.querySelectorAll(focusableSelector)];
+  const attributes = [...activeElement.attributes]
+    .filter(({ name }) => name === 'name' || name.startsWith('data-'))
+    .map(({ name, value }) => `[${name}="${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`)
+    .join('');
+  const selector = activeElement.id
+    ? `#${CSS.escape(activeElement.id)}`
+    : `${activeElement.localName}${attributes}`;
+
+  return {
+    selector,
+    matchIndex: [...container.querySelectorAll(selector)].indexOf(activeElement),
+    focusIndex: focusableElements.indexOf(activeElement),
+    selectionStart: typeof activeElement.selectionStart === 'number' ? activeElement.selectionStart : null,
+    selectionEnd: typeof activeElement.selectionEnd === 'number' ? activeElement.selectionEnd : null
+  };
+}
+
+function restoreFocusWithin(container, snapshot) {
+  if (!snapshot || !container) return;
+  const exactMatches = [...container.querySelectorAll(snapshot.selector)];
+  const focusableElements = [...container.querySelectorAll(
+    'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+  )];
+  const target = exactMatches[Math.max(0, snapshot.matchIndex)]
+    || focusableElements[Math.min(Math.max(0, snapshot.focusIndex), focusableElements.length - 1)];
+  if (!target) return;
+  target.focus({ preventScroll: true });
+  if (snapshot.selectionStart !== null && typeof target.setSelectionRange === 'function') {
+    target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+  }
+}
+
 function renderAdminPeopleList() {
   const canDeleteParticipants = hasCurrentCapability(CAPABILITIES.DELETE_PARTICIPANTS);
   const renderKey = JSON.stringify({
@@ -4566,6 +4606,7 @@ function renderAdminPeopleList() {
     return;
   }
 
+  const focusSnapshot = captureFocusWithin(elements.adminPeopleList);
   elements.adminPeopleList.innerHTML = getAdminParticipantsSortedBySignature().map((participant) => {
     const dietCode = normalizeDietCode(
       (participant.dietTags || []).find((tag) => tag !== 'STANDARD') || 'STANDARD'
@@ -4621,6 +4662,7 @@ function renderAdminPeopleList() {
       </div>`;
   }).join('') || `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
   elements.adminPeopleList.dataset.renderKey = renderKey;
+  restoreFocusWithin(elements.adminPeopleList, focusSnapshot);
 }
 
 function getAdminParticipantsSortedBySignature() {
@@ -5427,6 +5469,7 @@ function renderMonthGrid() {
     return;
   }
 
+  const focusSnapshot = captureFocusWithin(elements.monthGrid);
   elements.monthGrid.innerHTML = `
     <div class="month-sheet-body">
       ${monthWeeks.map((week, index) => {
@@ -5481,6 +5524,7 @@ function renderMonthGrid() {
     </div>
   `;
   elements.monthGrid.dataset.renderKey = monthRenderKey;
+  restoreFocusWithin(elements.monthGrid, focusSnapshot);
 
   scheduleMonthAutoScroll();
 

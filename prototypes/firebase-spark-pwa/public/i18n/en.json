@@ -268,7 +268,7 @@
   "auth.resident.password.label": "Shared password",
   "auth.resident.password.show": "Show",
   "auth.resident.signature.label": "Code",
-  "auth.resident.status": "Enter code and shared password.",
+  "auth.resident.status": "Enter your details to continue.",
   "auth.resident.submit": "Enter",
   "auth.resident.title": "Resident Login",
   "calendar.jump.month": "Month: {month}",

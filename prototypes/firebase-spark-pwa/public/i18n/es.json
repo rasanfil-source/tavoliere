@@ -268,7 +268,7 @@
   "auth.resident.password.label": "Contrasena compartida",
   "auth.resident.password.show": "Mostrar",
   "auth.resident.signature.label": "Codigo",
-  "auth.resident.status": "Introduce codigo y contrasena compartida.",
+  "auth.resident.status": "Introduce tus datos para continuar.",
   "auth.resident.submit": "Entrar",
   "auth.resident.title": "Acceso residentes",
   "calendar.jump.month": "Mes: {month}",

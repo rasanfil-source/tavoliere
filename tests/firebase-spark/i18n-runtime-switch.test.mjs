@@ -8,7 +8,7 @@ import {
   formatTime,
   resolveLocale,
   applyTranslations
-} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260817p';
+} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260818x';
 import { toUserMessage, classifyApplicationError } from '../../prototypes/firebase-spark-pwa/public/core/user-error.mjs';
 
 // Setup mock DOM environment for node test
@@ -80,6 +80,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('summary.view.todayTitle'), 'Today at the table');
   assert.equal(t('admin.avatar.chooseFile'), 'Choose file');
   assert.equal(t('status.copied'), 'Copied');
+  assert.equal(t('app.title.compact'), 'Book meals');
 
   // Passa a Francese
   await setLocale('fr');
@@ -90,6 +91,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('meal.type.dinner'), 'Dîner');
   assert.equal(t('week.agenda.title'), 'Agenda du centre');
   assert.equal(t('dialog.deactivateCenter.title'), 'Désactiver le centre');
+  assert.equal(t('app.title.compact'), 'Réserver');
 
   // Passa a Spagnolo
   await setLocale('es');
@@ -98,6 +100,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('meal.type.breakfast'), 'Desayuno');
   assert.equal(t('meal.type.lunch'), 'Almuerzo');
   assert.equal(t('meal.type.dinner'), 'Cena');
+  assert.equal(t('app.title.compact'), 'Reservar');
   assert.equal(t('dialog.deletePerson.title'), 'Eliminar persona');
 
   // Passa a Tedesco

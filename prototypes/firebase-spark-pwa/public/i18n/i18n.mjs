@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260817p';
+const CATALOG_RELEASE = '20260818x';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -25,6 +25,7 @@ export const KEY_ALIASES = Object.freeze({
 
 export const CORE_FALLBACKS = Object.freeze({
   it: Object.freeze({
+    'app.title.compact': 'Prenotarsi',
     'common.actions.exit': 'Esci',
     'common.action.exit': 'Esci',
     'common.actions.save': 'Salva',
@@ -83,6 +84,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Link per accedere'
   }),
   en: Object.freeze({
+    'app.title.compact': 'Book meals',
     'common.actions.exit': 'Log out',
     'common.action.exit': 'Log out',
     'common.actions.save': 'Save',
@@ -106,6 +108,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Access links'
   }),
   fr: Object.freeze({
+    'app.title.compact': 'Réserver',
     'common.actions.exit': 'Se déconnecter',
     'common.action.exit': 'Se déconnecter',
     'common.actions.save': 'Enregistrer',
@@ -129,6 +132,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Liens d\'accès'
   }),
   es: Object.freeze({
+    'app.title.compact': 'Reservar',
     'common.actions.exit': 'Cerrar sesión',
     'common.action.exit': 'Cerrar sesión',
     'common.actions.save': 'Guardar',
@@ -152,6 +156,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Enlaces de acceso'
   }),
   de: Object.freeze({
+    'app.title.compact': 'Buchen',
     'common.actions.exit': 'Abmelden',
     'common.action.exit': 'Abmelden',
     'common.actions.save': 'Speichern',

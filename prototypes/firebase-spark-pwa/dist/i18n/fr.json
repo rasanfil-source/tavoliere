@@ -268,7 +268,7 @@
   "auth.resident.password.label": "Mot de passe partage",
   "auth.resident.password.show": "Afficher",
   "auth.resident.signature.label": "Code",
-  "auth.resident.status": "Entrez le code et le mot de passe partage.",
+  "auth.resident.status": "Saisissez vos informations pour continuer.",
   "auth.resident.submit": "Entrer",
   "auth.resident.title": "Connexion residents",
   "calendar.jump.month": "Mois : {month}",

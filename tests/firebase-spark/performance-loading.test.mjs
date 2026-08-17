@@ -136,6 +136,19 @@ test('i refresh dello stesso periodo riusano le griglie gia presenti', () => {
   assert.match(app, /const daysByDate = new Map\(state\.participantMonth/);
 });
 
+test('i rendering dinamici conservano il focus di tastiera', () => {
+  assert.match(app, /function captureFocusWithin\(container\)/);
+  assert.match(app, /function restoreFocusWithin\(container, snapshot\)/);
+
+  const peopleRenderer = app.match(/function renderAdminPeopleList\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(peopleRenderer, /captureFocusWithin\(elements\.adminPeopleList\)/);
+  assert.match(peopleRenderer, /restoreFocusWithin\(elements\.adminPeopleList, focusSnapshot\)/);
+
+  const monthRenderer = app.match(/function renderMonthGrid\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(monthRenderer, /captureFocusWithin\(elements\.monthGrid\)/);
+  assert.match(monthRenderer, /restoreFocusWithin\(elements\.monthGrid, focusSnapshot\)/);
+});
+
 test('gli aggiornamenti restano adattivi e non aprono listener Firestore permanenti', () => {
   assert.doesNotMatch(app, /\bonSnapshot\b/);
   assert.doesNotMatch(participantData, /\bonSnapshot\b/);
