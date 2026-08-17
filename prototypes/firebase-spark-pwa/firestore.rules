@@ -1087,13 +1087,24 @@ service cloud.firestore {
           || hasSessionScope(centerId, 'PERSONAL');
         allow create, update: if canManageDailyOperations(centerId)
           && request.resource.data.keys().hasAll(['centerId', 'dateId', 'sickPeople', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'sickPeople', 'dietAssignments', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'sickPeople', 'dietAssignments', 'invitedMeals', 'updatedAt'])
           && request.resource.data.centerId == centerId
           && request.resource.data.dateId == dateId
           && request.resource.data.sickPeople is list
           && request.resource.data.sickPeople.size() <= 100
           && request.resource.data.get('dietAssignments', []) is list
           && request.resource.data.get('dietAssignments', []).size() <= 100
+          && request.resource.data.get('invitedMeals', {}) is map
+          && request.resource.data.get('invitedMeals', {}).keys().hasOnly(['breakfast', 'lunch', 'dinner'])
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) <= 999
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) <= 999
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) <= 999
           && request.resource.data.updatedAt == request.time;
         allow delete: if canManageDailyOperations(centerId);
       }

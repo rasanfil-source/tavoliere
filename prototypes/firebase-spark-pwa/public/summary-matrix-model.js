@@ -1,5 +1,4 @@
 const BREAKFAST_MEAL_TYPE_ID = "breakfast";
-const GUEST_GROUP_ID = "group_ospiti";
 const STANDARD_DIET_TAG = "STANDARD";
 
 export function buildSummaryMatrixScreens(
@@ -169,16 +168,15 @@ function buildColumn(
   const diningTotal = Array.isArray(meal.present)
     ? diningParticipants.length
     : Math.max(0, configuredTotal - sickMeal.count);
+  const invitedCount = getInvitedMealCount(operationDay, meal.mealTypeId);
 
   return {
     dayIndex,
     dateId: day.dateId,
     mealTypeId: meal.mealTypeId,
     label: meal.label,
-    total: diningTotal,
-    guestCount: diningParticipants.filter(
-      (participant) => participant.groupId === GUEST_GROUP_ID,
-    ).length,
+    total: diningTotal + invitedCount,
+    guestCount: invitedCount,
     specialDiets: summarizeSpecialDiets(diningParticipants),
     sickCount: sickMeal.count,
     sickDiets: sickMeal.diets,
@@ -186,7 +184,7 @@ function buildColumn(
     dayMassStatus: getDayMassStatus(operationDay.dailyOperation),
     breakfastPlanned:
       meal.mealTypeId === BREAKFAST_MEAL_TYPE_ID &&
-      diningTotal + sickMeal.count > 0,
+      diningTotal + invitedCount + sickMeal.count > 0,
     names: includeNames
       ? diningParticipants.map((participant) => ({
           displayName: participant.displayName,
@@ -370,6 +368,14 @@ function getDietAssignments(operationDay) {
     : Array.isArray(dailyHealth?.dietAssignments)
       ? dailyHealth.dietAssignments
       : [];
+}
+
+function getInvitedMealCount(operationDay, mealTypeId) {
+  const dailyHealth = operationDay?.dailyHealth || operationDay;
+  return Math.min(
+    999,
+    Math.max(0, Math.floor(Number(dailyHealth?.invitedMeals?.[mealTypeId]) || 0)),
+  );
 }
 
 function normalizeNotes(operationDay) {

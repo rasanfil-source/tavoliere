@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816o';
+} from './i18n/i18n.mjs?v=20260817p';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -80,7 +80,7 @@ const domainModulePaths = {
   admin: './admin-center.js?v=20260817a',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
-  daily: './daily-operations.js?v=20260816h',
+  daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
   participant: './participant-data.js?v=20260816l'
@@ -145,6 +145,7 @@ const loadDailyOperations = callDomain('daily', 'loadDailyOperations');
 const loadDailyHealth = callDomain('daily', 'loadDailyHealth');
 const saveSickPeople = callDomain('daily', 'saveSickPeople');
 const saveDietAssignments = callDomain('daily', 'saveDietAssignments');
+const saveInvitedMeals = callDomain('daily', 'saveInvitedMeals');
 const saveMassStatus = callDomain('daily', 'saveMassStatus');
 const saveMassStatuses = callDomain('daily', 'saveMassStatuses');
 const ensurePublicDemoSession = callDomain('participant', 'ensurePublicDemoSession');
@@ -677,6 +678,10 @@ const elements = {
   weekOperations: document.querySelector('[data-week-operations]'),
   weekOperationsStatus: document.querySelector('[data-week-operations-status]'),
   weekOperationsDay: document.querySelector('[data-week-operations-day]'),
+  weekInvitedSection: document.querySelector('[data-week-invited-section]'),
+  weekInvitedInputs: document.querySelectorAll('[data-week-invited-meal]'),
+  weekInvitedSave: document.querySelector('[data-week-invited-save]'),
+  weekInvitedStatus: document.querySelector('[data-week-invited-status]'),
   weekHealthSection: document.querySelector('[data-week-health-section]'),
   weekHealthList: document.querySelector('[data-week-health-list]'),
   weekHealthSave: document.querySelector('[data-week-health-save]'),
@@ -1034,6 +1039,7 @@ elements.kitchenPanel.addEventListener('click', handleKitchenPanelClick);
 window.addEventListener('beforeunload', handleBeforeUnload);
 window.addEventListener('hashchange', handleAdminHashChange);
 elements.weekOperationsDay.addEventListener('change', () => refreshWeekOperations(true));
+elements.weekInvitedSave.addEventListener('click', handleWeekInvitedSave);
 elements.weekHealthList.addEventListener('click', handleWeekHealthListClick);
 elements.weekHealthSave.addEventListener('click', handleWeekHealthSave);
 elements.weekDietType.addEventListener('change', () => {
@@ -5988,12 +5994,53 @@ function renderWeekOperations() {
   }
 
   const sickCount = selectedSickIds.size;
+  const invitedMeals = state.weekOperationalHealth?.invitedMeals || {};
+  let invitedTotal = 0;
+  elements.weekInvitedInputs.forEach((input) => {
+    const count = Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[input.dataset.weekInvitedMeal]) || 0)));
+    input.value = String(count);
+    invitedTotal += count;
+  });
+  elements.weekInvitedSection.open = invitedTotal > 0;
+  elements.weekInvitedStatus.textContent = invitedTotal > 0
+    ? t('week.operations.invited.count', { count: invitedTotal })
+    : t('week.operations.invited.empty');
   elements.weekHealthSection.open = sickCount > 0;
   elements.weekHealthStatus.textContent = sickCount > 0
     ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
     : 'Nessun ammalato';
   renderWeekKitchenNotes();
   renderWeekDietAssignments();
+}
+
+async function handleWeekInvitedSave() {
+  const invitedMeals = {};
+  elements.weekInvitedInputs.forEach((input) => {
+    invitedMeals[input.dataset.weekInvitedMeal] = Math.min(
+      999,
+      Math.max(0, Math.floor(Number(input.value) || 0))
+    );
+  });
+  elements.weekInvitedSave.disabled = true;
+  elements.weekInvitedStatus.textContent = t('week.operations.invited.saving');
+  try {
+    state.weekOperationalHealth = await saveInvitedMeals(
+      parseDateId(state.weekOperationalDateId),
+      invitedMeals
+    );
+    renderWeekOperations();
+    const total = Object.values(invitedMeals).reduce((sum, count) => sum + count, 0);
+    elements.weekInvitedStatus.textContent = total > 0
+      ? t('week.operations.invited.saved')
+      : t('week.operations.invited.empty');
+  } catch (error) {
+    elements.weekInvitedStatus.textContent = friendlyErrorMessage(
+      error,
+      t('week.operations.invited.notSaved')
+    );
+  } finally {
+    elements.weekInvitedSave.disabled = false;
+  }
 }
 
 function renderWeekKitchenNotes() {

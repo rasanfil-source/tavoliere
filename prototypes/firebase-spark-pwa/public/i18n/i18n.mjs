@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260816o';
+const CATALOG_RELEASE = '20260817p';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -47,7 +47,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'summary.dayAfterTomorrow': 'Dopodomani',
     'summary.diningMeals': 'Pasti in sala',
     'summary.followingDay': 'Giorno successivo',
-    'summary.guests': 'Ospiti',
+    'summary.guests': 'Invitati',
     'summary.includedDiets': 'Incluse diete',
     'summary.item': 'Voce',
     'summary.mass': 'Messa',

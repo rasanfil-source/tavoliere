@@ -92,6 +92,7 @@ export async function loadDailyHealth(date = new Date(), options = {}) {
     dateId,
     sickPeople: normalizeSickPeople(data.sickPeople),
     dietAssignments: normalizeDietAssignments(data.dietAssignments),
+    invitedMeals: normalizeInvitedMeals(data.invitedMeals),
     updatedAt: data.updatedAt || null
   };
   dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
@@ -114,6 +115,7 @@ export async function saveSickPeople(date, sickPeople) {
     dateId,
     sickPeople: normalizedPeople,
     dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
+    invitedMeals: dailyHealthCache.get(dateId)?.value?.invitedMeals || normalizeInvitedMeals(),
     updatedAt: new Date()
   };
   dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
@@ -127,6 +129,7 @@ export async function saveDietAssignments(date, dietAssignments) {
   const dateId = formatDateId(date);
   const normalizedAssignments = normalizeDietAssignments(dietAssignments);
   const sickPeople = dailyHealthCache.get(dateId)?.value?.sickPeople || [];
+  const invitedMeals = dailyHealthCache.get(dateId)?.value?.invitedMeals || normalizeInvitedMeals();
   await setDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId), {
     centerId: getActiveCenterId(),
     dateId,
@@ -138,6 +141,32 @@ export async function saveDietAssignments(date, dietAssignments) {
     dateId,
     sickPeople,
     dietAssignments: normalizedAssignments,
+    invitedMeals,
+    updatedAt: new Date()
+  };
+  dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
+  return value;
+}
+
+export async function saveInvitedMeals(date, invitedMeals) {
+  if (!db) {
+    throw new Error('Firebase non configurato');
+  }
+  const dateId = formatDateId(date);
+  const normalizedInvitedMeals = normalizeInvitedMeals(invitedMeals);
+  await setDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId), {
+    centerId: getActiveCenterId(),
+    dateId,
+    sickPeople: dailyHealthCache.get(dateId)?.value?.sickPeople || [],
+    dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
+    invitedMeals: normalizedInvitedMeals,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  const value = {
+    dateId,
+    sickPeople: dailyHealthCache.get(dateId)?.value?.sickPeople || [],
+    dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
+    invitedMeals: normalizedInvitedMeals,
     updatedAt: new Date()
   };
   dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
@@ -176,4 +205,11 @@ function normalizeDietAssignments(value) {
       && seen.add(assignment.participantId)
     ))
     .slice(0, 100);
+}
+
+function normalizeInvitedMeals(value = {}) {
+  return ['breakfast', 'lunch', 'dinner'].reduce((result, mealTypeId) => {
+    result[mealTypeId] = Math.min(999, Math.max(0, Math.floor(Number(value?.[mealTypeId]) || 0)));
+    return result;
+  }, {});
 }
