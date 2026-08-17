@@ -266,9 +266,9 @@
      non il verde di stato globale (--good). */
   --week-complete-surface: color-mix(in srgb, var(--primary) 9%, var(--surface));
   --week-complete-line: color-mix(in srgb, var(--primary) 34%, var(--line));
-  --mass-yes-bg: color-mix(in srgb, var(--good) 26%, var(--surface));
-  --mass-yes-border: color-mix(in srgb, var(--good) 58%, var(--line));
-  --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
+  --mass-yes-bg: color-mix(in srgb, var(--affirmative) 26%, var(--surface));
+  --mass-yes-border: color-mix(in srgb, var(--affirmative) 58%, var(--line));
+  --mass-yes-ink: color-mix(in srgb, var(--affirmative) 88%, var(--ink));
   --mass-no-bg: color-mix(in srgb, var(--danger) 24%, var(--surface));
   --mass-no-border: color-mix(in srgb, var(--danger) 60%, var(--line));
   --mass-no-ink: color-mix(in srgb, var(--danger) 90%, var(--ink));
@@ -705,13 +705,14 @@ html[data-interface-style="original"] .month-week-action-row .month-scope-group 
 
 html[data-interface-style="original"] .month-week-action-row .month-scope-toggle-selected {
   background: var(--complete-surface);
-  color: var(--good);
+  color: var(--confirmed);
 }
 
 /* Cool: interpretazione leggera dei mockup, senza cambiare la struttura dell'app. */
 html[data-interface-style="cool"] {
   --cool-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
-  --cool-good-soft: color-mix(in srgb, var(--good) 15%, var(--surface));
+  --cool-confirmed-soft: color-mix(in srgb, var(--confirmed) 15%, var(--surface));
+  --cool-affirmative-soft: color-mix(in srgb, var(--affirmative) 15%, var(--surface));
   --cool-bad-soft: color-mix(in srgb, var(--danger) 14%, var(--surface));
   --cool-faint: color-mix(in srgb, var(--muted) 34%, var(--surface));
   --view-surface: color-mix(in srgb, var(--primary) 1.5%, var(--surface));
@@ -793,9 +794,9 @@ html[data-interface-style="cool"] .admin-interface-style-picker {
 
 html[data-interface-style="cool"] .month-flag-present,
 html[data-interface-style="cool"] .week-meal-button.meal-state-present {
-  border-color: color-mix(in srgb, var(--good) 45%, var(--view-border));
-  background: var(--cool-good-soft);
-  color: var(--good);
+  border-color: color-mix(in srgb, var(--confirmed) 45%, var(--view-border));
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
   box-shadow: none;
 }
 
@@ -836,19 +837,19 @@ html[data-interface-style="cool"] .month-week-action-row .month-scope-button {
 }
 
 html[data-interface-style="cool"] .month-week-action-row .month-scope-toggle-selected {
-  background: var(--cool-good-soft);
-  color: var(--good);
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
 }
 
 html[data-interface-style="cool"] .month-week-action-row.month-week-complete {
-  border-color: color-mix(in srgb, var(--good) 35%, var(--view-border));
-  background: var(--cool-good-soft);
+  border-color: color-mix(in srgb, var(--confirmed) 35%, var(--view-border));
+  background: var(--cool-confirmed-soft);
 }
 
 html[data-interface-style="cool"] .summary-matrix-mass-yes,
 html[data-interface-style="cool"] .week-mass-button-yes strong {
-  background: var(--cool-good-soft);
-  color: var(--good);
+  background: var(--cool-affirmative-soft);
+  color: var(--affirmative);
 }
 
 html[data-interface-style="cool"] .summary-matrix-mass-no,

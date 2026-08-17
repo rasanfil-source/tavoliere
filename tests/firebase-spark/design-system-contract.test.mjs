@@ -51,7 +51,7 @@ test('hover e focus seguono la palette selezionata', () => {
 test('stati positivi e settimana completa si armonizzano con ogni palette', () => {
   assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--good: #4f7049/);
   assert.match(styles, /html\[data-theme="confetto"\][\s\S]*--good: #47785f/);
-  assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--good\)/);
+  assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--confirmed\)/);
   assert.match(summaryStyles, /--week-complete-surface: color-mix\(in srgb, var\(--primary\)/);
   assert.match(summaryStyles, /\.month-week-action-row\.month-week-complete \{[\s\S]*border-color: var\(--week-complete-line\);[\s\S]*background: var\(--week-complete-surface\)/);
   assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--calendar-heading-bg: #f3e3d7/);
@@ -66,8 +66,9 @@ test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
 test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezioni', () => {
   assert.match(app, /function getInterfaceIcon\(kind, fallback/);
   assert.match(app, /meal-line-icon meal-line-icon-\$\{kind\}/);
-  assert.match(summaryStyles, /html\[data-interface-style="cool"\][\s\S]*--cool-good-soft/);
-  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-good-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\][\s\S]*--cool-confirmed-soft/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /--mass-yes-bg: color-mix\(in srgb, var\(--affirmative\)/);
   assert.match(summaryStyles, /font-family: Fraunces, Georgia/);
 });
 
