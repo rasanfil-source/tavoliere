@@ -858,9 +858,74 @@ html[data-interface-family="cool"] .week-mass-button-no strong {
   color: var(--danger);
 }
 
-/* Urban riusa tipografia e icone Cool, ma lascia respirare le celle non selezionate. */
-html[data-interface-style="urban"] .week-meal-button.meal-state-absent,
-html[data-interface-style="urban"] .month-flag.month-flag-absent {
+/* Urban riusa integralmente tipografia e icone Cool, ma trasforma le matrici
+   in tabelle aperte: niente riquadri ripetuti, salvo il giorno corrente. */
+html[data-interface-style="urban"] .week-scope-button,
+html[data-interface-style="urban"] .week-meal-heading,
+html[data-interface-style="urban"] .week-mass-heading,
+html[data-interface-style="urban"] .week-day-button,
+html[data-interface-style="urban"] .week-meal-button,
+html[data-interface-style="urban"] .week-mass-button,
+html[data-interface-style="urban"] .month-weekday-cell,
+html[data-interface-style="urban"] .month-week-mobile-header .month-day-number,
+html[data-interface-style="urban"] .month-week-mobile-header .month-scope-button,
+html[data-interface-style="urban"] .month-toggle-button,
+html[data-interface-style="urban"] .month-day,
+html[data-interface-style="urban"] .month-flag,
+html[data-interface-style="urban"] .month-week-action-row,
+html[data-interface-style="urban"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-day,
+html[data-interface-style="urban"] .month-week-action-row {
+  border-radius: 0;
+}
+
+html[data-interface-style="urban"] .month-flag-present {
+  border-color: transparent;
+  background: transparent;
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-meal-button.meal-state-present {
+  border-color: transparent;
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-scope-toggle-selected,
+html[data-interface-style="urban"] .month-toggle-button-selected,
+html[data-interface-style="urban"] .week-scope-button-complete,
+html[data-interface-style="urban"] .week-meal-heading-complete,
+html[data-interface-style="urban"] .week-mass-heading-complete,
+html[data-interface-style="urban"] .week-day-button-complete {
+  border-color: transparent;
+  background: transparent;
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-mass-button-yes,
+html[data-interface-style="urban"] .week-mass-button-no {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-day-today,
+html[data-interface-style="urban"] .week-matrix-row-today {
+  border-color: var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+html[data-interface-style="urban"] .week-matrix-row-today .week-day-button {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -872,10 +937,19 @@ html[data-interface-style="urban"] .month-flag.month-flag-absent .month-flag-mar
   opacity: 0.42;
 }
 
-html[data-interface-style="urban"] .week-meal-button.meal-state-absent:not(:disabled):hover,
-html[data-interface-style="urban"] .month-flag.month-flag-absent:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
-  background: color-mix(in srgb, var(--primary) 5%, transparent);
+html[data-interface-style="urban"] .week-matrix button:focus-visible,
+html[data-interface-style="urban"] .month-grid button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  html[data-interface-style="urban"] .week-matrix button:not(:disabled):hover,
+  html[data-interface-style="urban"] .month-grid button:not(:disabled):hover {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    box-shadow: none;
+  }
 }
 
 @media (max-width: 620px) {
