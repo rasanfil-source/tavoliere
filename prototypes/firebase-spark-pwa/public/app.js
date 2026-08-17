@@ -1466,7 +1466,30 @@ function handleInAppNavigation(event) {
     renderResidentSettingsPanel();
   }
   renderMode();
+  if (isControlPanelTarget) {
+    // The normal refresh path intentionally skips admin mode. Hydrate the
+    // panel explicitly when reached through an in-app link, otherwise mobile
+    // and tablet users only see it after a browser refresh.
+    void hydrateAdminNavigation().catch(showAuthError);
+    return;
+  }
   refreshNow('navigazione');
+}
+
+async function hydrateAdminNavigation() {
+  if (state.mode !== 'admin') return;
+  if (state.residentSettingsMode) {
+    renderResidentSettingsPanel();
+    renderMode();
+    return;
+  }
+  const user = getCurrentUser();
+  if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
+    await applyAdminAuthState(user);
+  } else if (state.residentReady || loadStoredResidentSignature()) {
+    await restoreResidentSettingsPanel();
+  }
+  renderMode();
 }
 
 function handleMealViewSwipeStart(event) {
@@ -4110,6 +4133,17 @@ async function handleAdminAdaptationsSave() {
       ...settings,
       language: languageToSave
     };
+    if (state.residentReady) {
+      const residentPreferences = loadResidentPreferences();
+      storeResidentPreferences({
+        ...residentPreferences,
+        themePalette: settings.themePalette || paletteToSave,
+        interfaceStyle: settings.interfaceStyle || interfaceStyleToSave,
+        defaultView: settings.defaultView || elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
+        summaryLayout: settings.summaryLayout || elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        language: languageToSave
+      });
+    }
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
