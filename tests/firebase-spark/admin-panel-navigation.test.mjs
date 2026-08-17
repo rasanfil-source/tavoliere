@@ -83,11 +83,11 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
 test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il centro', () => {
   const styleSelect = html.match(/<select data-admin-interface-style-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const styleValues = [...styleSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(styleValues, ['original', 'cool']);
+  assert.deepEqual(styleValues, ['original', 'cool', 'urban']);
   assert.match(html, /data-i18n="admin\.adaptations\.interfaceStyle\.label">Aspetto/);
-  assert.match(app, /document\.documentElement\.dataset\.interfaceStyle = activeInterfaceStyle/);
+  assert.match(app, /applyInterfaceStyle\(activeInterfaceStyle\)/);
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
-  assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool'\]\)/);
+  assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
 });
 
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {

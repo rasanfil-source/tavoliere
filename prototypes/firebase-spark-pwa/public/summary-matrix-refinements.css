@@ -709,7 +709,7 @@ html[data-interface-style="original"] .month-week-action-row .month-scope-toggle
 }
 
 /* Cool: interpretazione leggera dei mockup, senza cambiare la struttura dell'app. */
-html[data-interface-style="cool"] {
+html[data-interface-family="cool"] {
   --cool-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
   --cool-confirmed-soft: color-mix(in srgb, var(--confirmed) 15%, var(--surface));
   --cool-affirmative-soft: color-mix(in srgb, var(--affirmative) 15%, var(--surface));
@@ -721,42 +721,42 @@ html[data-interface-style="cool"] {
   --view-border: color-mix(in srgb, var(--primary) 16%, var(--line));
 }
 
-html[data-interface-style="cool"] body {
+html[data-interface-family="cool"] body {
   background: var(--bg);
 }
 
-html[data-interface-style="cool"] .topbar {
+html[data-interface-family="cool"] .topbar {
   padding: 12px 16px;
   border-radius: 0 0 18px 18px;
   background: var(--primary);
   color: var(--surface);
 }
 
-html[data-interface-style="cool"] .topbar h1,
-html[data-interface-style="cool"] .topbar [data-title-center],
-html[data-interface-style="cool"] .topbar [data-session-role] {
+html[data-interface-family="cool"] .topbar h1,
+html[data-interface-family="cool"] .topbar [data-title-center],
+html[data-interface-family="cool"] .topbar [data-session-role] {
   color: inherit;
 }
 
-html[data-interface-style="cool"] .topbar-context-action {
+html[data-interface-family="cool"] .topbar-context-action {
   border-color: color-mix(in srgb, var(--surface) 42%, transparent);
   background: color-mix(in srgb, var(--surface) 13%, transparent);
   color: var(--surface);
 }
 
-html[data-interface-style="cool"] .topbar-context-action small {
+html[data-interface-family="cool"] .topbar-context-action small {
   color: color-mix(in srgb, var(--surface) 78%, transparent);
 }
 
-html[data-interface-style="cool"] h1,
-html[data-interface-style="cool"] h2,
-html[data-interface-style="cool"] h3,
-html[data-interface-style="cool"] .topbar h1,
-html[data-interface-style="cool"] .participant-status-name,
-html[data-interface-style="cool"] .week-status-name,
-html[data-interface-style="cool"] .summary-status-name,
-html[data-interface-style="cool"] .summary-matrix-caption,
-html[data-interface-style="cool"] .summary-international-title {
+html[data-interface-family="cool"] h1,
+html[data-interface-family="cool"] h2,
+html[data-interface-family="cool"] h3,
+html[data-interface-family="cool"] .topbar h1,
+html[data-interface-family="cool"] .participant-status-name,
+html[data-interface-family="cool"] .week-status-name,
+html[data-interface-family="cool"] .summary-status-name,
+html[data-interface-family="cool"] .summary-matrix-caption,
+html[data-interface-family="cool"] .summary-international-title {
   font-family: Fraunces, Georgia, "Times New Roman", serif;
   font-weight: 600;
 }
@@ -768,51 +768,51 @@ html[data-interface-style="cool"] .summary-international-title {
   vertical-align: -0.2em;
 }
 
-html[data-interface-style="cool"] .week-heading-icon,
-html[data-interface-style="cool"] .meal-icon,
-html[data-interface-style="cool"] .summary-matrix-meal-icon,
-html[data-interface-style="cool"] .summary-international-meal-icon,
-html[data-interface-style="cool"] .month-scope-label > span:first-child,
-html[data-interface-style="cool"] .month-scope-glyph {
+html[data-interface-family="cool"] .week-heading-icon,
+html[data-interface-family="cool"] .meal-icon,
+html[data-interface-family="cool"] .summary-matrix-meal-icon,
+html[data-interface-family="cool"] .summary-international-meal-icon,
+html[data-interface-family="cool"] .month-scope-label > span:first-child,
+html[data-interface-family="cool"] .month-scope-glyph {
   color: var(--primary);
 }
 
-html[data-interface-style="cool"] .meal-view-segment,
-html[data-interface-style="cool"] .summary-day-segment,
-html[data-interface-style="cool"] .today-card,
-html[data-interface-style="cool"] .summary-international-card,
-html[data-interface-style="cool"] .summary-matrix-track,
-html[data-interface-style="cool"] .week-matrix,
-html[data-interface-style="cool"] .admin-layout-settings-card,
-html[data-interface-style="cool"] .admin-theme-picker,
-html[data-interface-style="cool"] .admin-interface-style-picker {
+html[data-interface-family="cool"] .meal-view-segment,
+html[data-interface-family="cool"] .summary-day-segment,
+html[data-interface-family="cool"] .today-card,
+html[data-interface-family="cool"] .summary-international-card,
+html[data-interface-family="cool"] .summary-matrix-track,
+html[data-interface-family="cool"] .week-matrix,
+html[data-interface-family="cool"] .admin-layout-settings-card,
+html[data-interface-family="cool"] .admin-theme-picker,
+html[data-interface-family="cool"] .admin-interface-style-picker {
   border-color: var(--view-border);
   border-radius: 12px;
   background: var(--view-surface);
   box-shadow: none;
 }
 
-html[data-interface-style="cool"] .month-flag-present,
-html[data-interface-style="cool"] .week-meal-button.meal-state-present {
+html[data-interface-family="cool"] .month-flag-present,
+html[data-interface-family="cool"] .week-meal-button.meal-state-present {
   border-color: color-mix(in srgb, var(--confirmed) 45%, var(--view-border));
   background: var(--cool-confirmed-soft);
   color: var(--confirmed);
   box-shadow: none;
 }
 
-html[data-interface-style="cool"] .month-flag-present.month-flag-locked {
+html[data-interface-family="cool"] .month-flag-present.month-flag-locked {
   opacity: 0.78;
 }
 
-html[data-interface-style="cool"] .month-day-today,
-html[data-interface-style="cool"] .week-matrix-row-today {
+html[data-interface-family="cool"] .month-day-today,
+html[data-interface-family="cool"] .week-matrix-row-today {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 5%, var(--surface));
   box-shadow: inset 0 0 0 1px var(--primary);
 }
 
-html[data-interface-style="cool"] .month-day-number-today .month-day-number-value,
-html[data-interface-style="cool"] .week-matrix-row-today .week-day-button strong {
+html[data-interface-family="cool"] .month-day-number-today .month-day-number-value,
+html[data-interface-family="cool"] .week-matrix-row-today .week-day-button strong {
   display: inline-grid;
   min-width: 1.75em;
   min-height: 1.75em;
@@ -822,44 +822,64 @@ html[data-interface-style="cool"] .week-matrix-row-today .week-day-button strong
   color: var(--surface);
 }
 
-html[data-interface-style="cool"] .month-week-action-row {
+html[data-interface-family="cool"] .month-week-action-row {
   overflow: hidden;
   border: 1px solid var(--view-border);
   border-radius: 10px;
   background: var(--view-surface);
 }
 
-html[data-interface-style="cool"] .month-week-action-row .month-scope-button {
+html[data-interface-family="cool"] .month-week-action-row .month-scope-button {
   border-color: transparent;
   border-radius: 7px;
   background: transparent;
   box-shadow: none;
 }
 
-html[data-interface-style="cool"] .month-week-action-row .month-scope-toggle-selected {
+html[data-interface-family="cool"] .month-week-action-row .month-scope-toggle-selected {
   background: var(--cool-confirmed-soft);
   color: var(--confirmed);
 }
 
-html[data-interface-style="cool"] .month-week-action-row.month-week-complete {
+html[data-interface-family="cool"] .month-week-action-row.month-week-complete {
   border-color: color-mix(in srgb, var(--confirmed) 35%, var(--view-border));
   background: var(--cool-confirmed-soft);
 }
 
-html[data-interface-style="cool"] .summary-matrix-mass-yes,
-html[data-interface-style="cool"] .week-mass-button-yes strong {
+html[data-interface-family="cool"] .summary-matrix-mass-yes,
+html[data-interface-family="cool"] .week-mass-button-yes strong {
   background: var(--cool-affirmative-soft);
   color: var(--affirmative);
 }
 
-html[data-interface-style="cool"] .summary-matrix-mass-no,
-html[data-interface-style="cool"] .week-mass-button-no strong {
+html[data-interface-family="cool"] .summary-matrix-mass-no,
+html[data-interface-family="cool"] .week-mass-button-no strong {
   background: var(--cool-bad-soft);
   color: var(--danger);
 }
 
+/* Urban riusa tipografia e icone Cool, ma lascia respirare le celle non selezionate. */
+html[data-interface-style="urban"] .week-meal-button.meal-state-absent,
+html[data-interface-style="urban"] .month-flag.month-flag-absent {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-meal-button.meal-state-absent .week-meal-mark,
+html[data-interface-style="urban"] .month-flag.month-flag-absent .month-flag-mark {
+  color: color-mix(in srgb, var(--muted) 32%, var(--surface));
+  opacity: 0.42;
+}
+
+html[data-interface-style="urban"] .week-meal-button.meal-state-absent:not(:disabled):hover,
+html[data-interface-style="urban"] .month-flag.month-flag-absent:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
 @media (max-width: 620px) {
-  html[data-interface-style="cool"] .topbar {
+  html[data-interface-family="cool"] .topbar {
     margin-inline: -1px;
     border-radius: 0 0 16px 16px;
   }
@@ -1235,6 +1255,10 @@ html[data-interface-style="cool"] .week-mass-button-no strong {
   font-size: 1.3rem;
 }
 
+.summary-international-mobile-guests {
+  display: none;
+}
+
 .summary-international-card header strong,
 .summary-international-card header time {
   display: block;
@@ -1429,6 +1453,19 @@ html[data-interface-style="cool"] .week-mass-button-no strong {
   padding-left: 22px;
 }
 
+.week-invited-saved-meal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-inline-start: 7px;
+  white-space: nowrap;
+}
+
+.week-invited-saved-meal .meal-line-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
 .admin-calendar-extension {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1552,6 +1589,24 @@ html[data-interface-style="cool"] .week-mass-button-no strong {
 
   .summary-international-card > header {
     justify-content: flex-start;
+  }
+
+  .summary-international-mobile-guests {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: baseline;
+    gap: 4px;
+    margin-left: auto;
+    padding: 4px 7px;
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--view-border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+    color: var(--primary);
+    font-size: 0.72rem;
+  }
+
+  .summary-international-guest-row {
+    display: none !important;
   }
 
   [data-kitchen-panel] .summary-international-card > header {

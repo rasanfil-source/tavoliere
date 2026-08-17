@@ -5,7 +5,12 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, setResidentTechnicalPassword } from './firebase-client.js?v=20260816g';
+import {
+  db,
+  getCurrentUser,
+  setAdministratorTechnicalPassword,
+  setResidentTechnicalPassword
+} from './firebase-client.js?v=20260817q';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
@@ -37,6 +42,8 @@ export async function saveCenterConfiguration({
   kitchenLayout,
   language,
   commonPassword,
+  administratorSharedPassword,
+  currentAdministratorSharedPassword,
   administratorName,
   administratorSignature,
   adminEmail,
@@ -74,6 +81,9 @@ export async function saveCenterConfiguration({
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
     language: typeof language === 'string' ? language : 'it',
     commonPassword: typeof commonPassword === 'string' && commonPassword.length >= 4 ? commonPassword : null,
+    administratorSharedPassword: typeof administratorSharedPassword === 'string'
+      && administratorSharedPassword.length >= 6 ? administratorSharedPassword : null,
+    adminPasswordVersion: Number(center.adminPasswordVersion || 0),
     administratorName,
     administratorSignature,
     adminEmail: typeof adminEmail === 'string' ? adminEmail : undefined
@@ -83,6 +93,13 @@ export async function saveCenterConfiguration({
       centerId,
       typeof center.commonPassword === 'string' ? center.commonPassword : '',
       target.commonPassword
+    );
+  }
+  if (target.administratorSharedPassword !== null) {
+    await setAdministratorTechnicalPassword(
+      centerId,
+      typeof currentAdministratorSharedPassword === 'string' ? currentAdministratorSharedPassword : '',
+      target.administratorSharedPassword
     );
   }
   const activeJob = jobSnapshot.exists() && jobSnapshot.data().status === 'ACTIVE'
@@ -95,7 +112,7 @@ export async function saveCenterConfiguration({
   if (!scheduleChanged && !canResume) {
     await saveCenterWithoutCalendarRewrite(centerRef, centerId, user.uid, target);
     reportProgress(onProgress, { completedDays: 0, totalDays: 0, status: 'COMPLETED' });
-    return target;
+    return { ...target, administratorSharedPassword: null };
   }
 
   const operationId = canResume ? activeJob.operationId : createOperationId();
@@ -182,7 +199,7 @@ export async function saveCenterConfiguration({
     targetThrough
   });
   reportProgress(onProgress, { completedDays: totalDays, totalDays, status: 'COMPLETED' });
-  return target;
+  return { ...target, administratorSharedPassword: null };
 }
 
 async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, target) {
@@ -205,6 +222,11 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
     };
     if (target.commonPassword !== null) {
       centerUpdate.commonPassword = target.commonPassword;
+    }
+    if (target.administratorSharedPassword !== null) {
+      centerUpdate.adminPasswordVersion = target.adminPasswordVersion + 1;
+      centerUpdate.adminSharedPasswordSet = true;
+      centerUpdate.adminPasswordRotationRequired = false;
     }
     if (target.adminEmail !== undefined) {
       centerUpdate.adminEmail = target.adminEmail;
@@ -247,6 +269,11 @@ async function completeConfiguration({
     };
     if (target.commonPassword !== null) {
       centerUpdate.commonPassword = target.commonPassword;
+    }
+    if (target.administratorSharedPassword !== null) {
+      centerUpdate.adminPasswordVersion = target.adminPasswordVersion + 1;
+      centerUpdate.adminSharedPasswordSet = true;
+      centerUpdate.adminPasswordRotationRequired = false;
     }
     if (target.adminEmail !== undefined) {
       centerUpdate.adminEmail = target.adminEmail;

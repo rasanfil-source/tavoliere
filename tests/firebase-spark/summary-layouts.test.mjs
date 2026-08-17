@@ -60,6 +60,13 @@ test('il mobile usa la stessa struttura per le due schermate anche senza situazi
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-row-meals td \{\s*height: 62px/);
 });
 
+test('gli invitati restano visibili nel riepilogo internazionale mobile', () => {
+  assert.match(view, /summary-international-mobile-guests/);
+  assert.match(view, /summary-international-guest-row/);
+  assert.match(styles, /\.summary-international-mobile-guests \{[\s\S]*display: none/);
+  assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-mobile-guests \{[\s\S]*display: inline-flex/);
+});
+
 test('telefono e WhatsApp restano ben distinti nel popup', () => {
   assert.match(styles, /\.summary-matrix-contact-actions \{[\s\S]*gap: 8px/);
   assert.match(styles, /\.summary-matrix-whatsapp img \{[\s\S]*width: 18px;[\s\S]*height: 18px/);

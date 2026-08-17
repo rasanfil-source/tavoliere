@@ -86,14 +86,9 @@ export function getRoleCapabilities(role, options = {}) {
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }
-  // Il vice amministratore non richiede più un account amministratore
-  // separato: la spunta "Vice amministratore" sulla scheda persona
-  // sblocca direttamente la gestione quotidiana per chi è collegato
-  // come quel residente, mentre "Celebrazioni liturgiche" sblocca
-  // esclusivamente la gestione delle Messe.
-  if (options.viceAdminRole === true) {
-    capabilities.add(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
-  }
+  // La spunta identifica chi puo chiedere l'accesso operativo, ma non
+  // concede privilegi da sola: serve una sessione autorizzata con la
+  // password amministratori, verificata anche dalle regole Firestore.
   if (options.platformOwner === true) {
     capabilities.add(CAPABILITIES.MANAGE_PLATFORM_CENTERS);
   }

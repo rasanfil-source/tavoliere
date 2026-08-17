@@ -28,6 +28,17 @@ service cloud.firestore {
         && request.auth.token.email.lower() == ('residenti+' + centerId + '@tavola-comune.local').lower();
     }
 
+    function hasAdministratorTechnicalEmail() {
+      return signedIn()
+        && request.auth.token.email.matches('^amministratori\\+[A-Za-z0-9_-]{1,120}@tavola-comune\\.local$')
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isAdministratorTechnicalUser(centerId) {
+      return hasAdministratorTechnicalEmail()
+        && request.auth.token.email.lower() == ('amministratori+' + centerId + '@tavola-comune.local').lower();
+    }
+
     function isInteractiveAdminUser() {
       return signedIn()
         && request.auth.token.firebase.sign_in_provider != 'anonymous'
@@ -308,17 +319,44 @@ service cloud.firestore {
 
     function canManageDailyOperations(centerId) {
       return adminCanManageDailyOperations(centerId)
-        || residentHasOperationalIdentity(centerId)
-          && (
-            residentIsCenterAdministrator(centerId)
-            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('viceAdminRole', false) == true
-          );
+        || hasAuthorizedResidentAdministratorSession(centerId);
+    }
+
+    function residentMayAdminister(centerId, participantId) {
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      return participantId is string
+        && exists(participantPath)
+        && get(participantPath).data.status == 'ACTIVE'
+        && (
+          get(participantPath).data.get('viceAdminRole', false) == true
+          || get(participantPath).data.get('signature', '')
+            == get(centerPath).data.get('administratorSignature', '')
+        );
+    }
+
+    function hasAuthorizedResidentAdministratorSession(centerId) {
+      let accessSessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
+      let viceSessionPath = /databases/$(database)/documents/centers/$(centerId)/viceSessions/$(request.auth.uid);
+      let participantId = get(accessSessionPath).data.participantId;
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      return residentHasOperationalIdentity(centerId)
+        && exists(viceSessionPath)
+        && get(viceSessionPath).data.status == 'ACTIVE'
+        && request.time < get(viceSessionPath).data.expiresAt
+        && get(viceSessionPath).data.participantId == participantId
+        && get(viceSessionPath).data.passwordVersion
+          == get(centerPath).data.get('adminPasswordVersion', 0)
+        && residentMayAdminister(centerId, participantId);
     }
 
     function residentHasOperationalIdentity(centerId) {
+      let accessSessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
+      let participantId = get(accessSessionPath).data.participantId;
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
       return hasSessionScope(centerId, 'PERSONAL')
-        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId is string
-        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.status == 'ACTIVE';
+        && participantId is string
+        && get(participantPath).data.status == 'ACTIVE';
     }
 
     function residentIsCenterAdministrator(centerId) {
@@ -1044,6 +1082,36 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt']);
+        allow delete: if isAdmin(centerId) || signedIn() && request.auth.uid == authUid;
+      }
+
+      match /viceSessions/{authUid} {
+        allow read: if signedIn() && request.auth.uid == authUid || isAdmin(centerId);
+        allow create: if isAdministratorTechnicalUser(centerId)
+          && request.resource.data.keys().hasAll([
+            'centerId', 'authUid', 'participantId', 'passwordVersion',
+            'status', 'expiresAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'centerId', 'authUid', 'participantId', 'passwordVersion',
+            'status', 'expiresAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.authUid == authUid
+          && request.resource.data.status == 'ACTIVE'
+          && request.resource.data.passwordVersion
+            == get(/databases/$(database)/documents/centers/$(centerId)).data.get('adminPasswordVersion', 0)
+          && request.resource.data.expiresAt > request.time
+          && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
+          && request.resource.data.updatedAt == request.time
+          && exists(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid))
+          && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.scope == 'PERSONAL'
+          && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.status == 'ACTIVE'
+          && request.time < get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.expiresAt
+          && request.resource.data.participantId
+            == get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.participantId
+          && residentMayAdminister(centerId, request.resource.data.participantId);
+        allow update: if false;
         allow delete: if isAdmin(centerId) || signedIn() && request.auth.uid == authUid;
       }
 

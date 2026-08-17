@@ -16,6 +16,8 @@ test('Agenda centro raccoglie gli invitati occasionali per ciascun pasto', () =>
   assert.match(index, /data-week-invited-save/);
   assert.match(app, /saveInvitedMeals/);
   assert.match(app, /handleWeekInvitedSave/);
+  assert.match(app, /week-invited-saved-meal/);
+  assert.match(app, /getMealIcon\(mealTypeId\)/);
 });
 
 test('gli invitati giornalieri sono normalizzati e conservati nella cache locale', () => {

@@ -4,7 +4,7 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260816g';
+import { db } from './firebase-client.js?v=20260817q';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
 
@@ -24,7 +24,7 @@ const ALLOWED_THEME_PALETTES = new Set([
   'inchiostro',
   'neutro'
 ]);
-const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool']);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 
@@ -53,6 +53,9 @@ export function loadCachedCenterContactSettings() {
       administratorPasswordRequired: cached.administratorPasswordRequired === true,
       adminPasswordSet: cached.adminPasswordSet === true,
       commonPasswordSet: cached.commonPasswordSet === true,
+      adminSharedPasswordSet: cached.adminSharedPasswordSet === true,
+      adminPasswordVersion: Number(cached.adminPasswordVersion || 0),
+      adminPasswordRotationRequired: cached.adminPasswordRotationRequired === true,
       participantDataVersion: typeof cached.participantDataVersion === 'string' ? cached.participantDataVersion : '0',
       avatarVersion: typeof cached.avatarVersion === 'string' ? cached.avatarVersion : '',
       avatarDataUrl: loadCachedCenterAvatar()
@@ -150,6 +153,8 @@ export async function updateCenterSettings({
   kitchenLayout,
   language,
   commonPassword,
+  administratorSharedPassword,
+  currentAdministratorSharedPassword,
   administratorName,
   administratorSignature,
   adminEmail,
@@ -184,8 +189,16 @@ export async function updateCenterSettings({
   if (trimmedPassword !== '' && (trimmedPassword.length < 4 || trimmedPassword.length > 32)) {
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
+  const trimmedAdministratorSharedPassword = typeof administratorSharedPassword === 'string'
+    ? administratorSharedPassword.trim()
+    : '';
+  if (trimmedAdministratorSharedPassword !== ''
+      && (trimmedAdministratorSharedPassword.length < 6
+        || trimmedAdministratorSharedPassword.length > 64)) {
+    throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
+  }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260817a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260817r');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -198,6 +211,10 @@ export async function updateCenterSettings({
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
     language: language || 'it',
     commonPassword: trimmedPassword || null,
+    administratorSharedPassword: trimmedAdministratorSharedPassword,
+    currentAdministratorSharedPassword: typeof currentAdministratorSharedPassword === 'string'
+      ? currentAdministratorSharedPassword
+      : '',
     administratorName: normalizedAdministratorName,
     administratorSignature: normalizedAdministratorSignature,
     adminEmail: normalizedAdministratorEmail,
@@ -210,6 +227,17 @@ export async function updateCenterSettings({
     ...settings
   });
   return settings;
+}
+
+export async function updateParticipantContactSharing(enabled) {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'centers', getActiveCenterId()), {
+    participantContactSharingEnabled: enabled === true,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await commitWithRetry(() => batch.commit());
+  invalidateCenterContactSettingsCache();
+  return enabled === true;
 }
 
 export async function saveCenterAvatar(dataUrl) {
@@ -285,6 +313,9 @@ function refreshCenterContactSettings() {
         administratorPasswordRequired: data.administratorPasswordRequired === true,
         adminPasswordSet: data.administratorPasswordRequired === true,
         commonPasswordSet: typeof data.commonPassword === 'string' && data.commonPassword.length >= 4,
+        adminSharedPasswordSet: data.adminSharedPasswordSet === true,
+        adminPasswordVersion: Number(data.adminPasswordVersion || 0),
+        adminPasswordRotationRequired: data.adminPasswordRotationRequired === true,
         participantDataVersion: timestampVersion(data.participantDataUpdatedAt),
         avatarVersion,
         avatarDataUrl

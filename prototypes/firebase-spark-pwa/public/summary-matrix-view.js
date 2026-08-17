@@ -370,9 +370,10 @@ function renderInternationalCard(column, { kitchen }) {
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
         <div><strong>${escapeHtml(localizedMealLabel(column))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
+        ${column.guestCount > 0 ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>` : ""}
       </header>
       <dl>
-        ${column.guestCount > 0 ? `<div><dt>${escapeHtml(t("summary.guests"))}</dt><dd>${column.guestCount}</dd></div>` : ""}
+        ${column.guestCount > 0 ? `<div class="summary-international-guest-row"><dt>${escapeHtml(t("summary.guests"))}</dt><dd>${column.guestCount}</dd></div>` : ""}
         <div><dt>${escapeHtml(t("summary.diningMeals"))}</dt><dd>${renderDiningTotal(column)}</dd></div>
         ${column.specialDiets.participantCount > 0 ? `<div><dt>${escapeHtml(t("summary.includedDiets"))}</dt><dd>${diets}</dd></div>` : ""}
         ${column.sickCount > 0 ? `<div><dt>${escapeHtml(t("summary.sickMeals"))}</dt><dd>${renderSickMealCell(column)}</dd></div>` : ""}

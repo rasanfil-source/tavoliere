@@ -280,12 +280,12 @@ test('admin participant list keeps disabled people available for reactivation', 
 
 test('l amministratore puo eliminare una persona e i dati operativi collegati', () => {
   assert.match(participantData, /export async function deleteAdminParticipant/);
-  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions'\]/);
+  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions', 'viceSessions'\]/);
   assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
   assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
   assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
-  assert.match(participantData, /const \[ruleSnapshot, overrideSnapshot, sessionSnapshot\] = relatedSnapshots/);
+  assert.match(participantData, /const \[ruleSnapshot, overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = relatedSnapshots/);
   assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);
   assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
   assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow delete: if isAdmin\(centerId\)/);
@@ -294,7 +294,9 @@ test('l amministratore puo eliminare una persona e i dati operativi collegati', 
 
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /function adminCanManageDailyOperations\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN', 'MANAGER'\]/);
-  assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*residentIsCenterAdministrator\(centerId\)[\s\S]*viceAdminRole/);
+  assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*hasAuthorizedResidentAdministratorSession\(centerId\)/);
+  assert.match(rules, /match \/viceSessions\/\{authUid\}[\s\S]*isAdministratorTechnicalUser\(centerId\)[\s\S]*passwordVersion/);
+  assert.match(rules, /residentMayAdminister\(centerId, request\.resource\.data\.participantId\)/);
   assert.match(rules, /match \/dailyHealth\/\{dateId\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
   assert.match(rules, /match \/kitchenNotes\/\{mealDate\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
 });

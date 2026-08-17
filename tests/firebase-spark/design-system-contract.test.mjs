@@ -66,8 +66,10 @@ test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
 test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezioni', () => {
   assert.match(app, /function getInterfaceIcon\(kind, fallback/);
   assert.match(app, /meal-line-icon meal-line-icon-\$\{kind\}/);
-  assert.match(summaryStyles, /html\[data-interface-style="cool"\][\s\S]*--cool-confirmed-soft/);
-  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-family="cool"\][\s\S]*--cool-confirmed-soft/);
+  assert.match(summaryStyles, /html\[data-interface-family="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.week-meal-button\.meal-state-absent,[\s\S]*border-color: transparent/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\][\s\S]*\.month-flag-mark \{[\s\S]*opacity: 0\.42/);
   assert.match(summaryStyles, /--mass-yes-bg: color-mix\(in srgb, var\(--affirmative\)/);
   assert.match(summaryStyles, /font-family: Fraunces, Georgia/);
 });

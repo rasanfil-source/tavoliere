@@ -18,7 +18,14 @@ import {
   updatePassword,
   sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
+import {
+  Timestamp,
+  deleteDoc,
+  doc,
+  getFirestore,
+  serverTimestamp,
+  setDoc
+} from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 
 export const firebaseConfig = {
   apiKey: 'AIzaSyCpU6mbE1vUtFfhnQUULkjuvzPGhIv3ZTY',
@@ -186,7 +193,9 @@ export function signInResidentTechnicalUser(email, password) {
 
 const RESIDENT_TECHNICAL_EMAIL_DOMAIN = '@tavola-comune.local';
 const RESIDENT_TECHNICAL_EMAIL_PREFIX = 'residenti+';
+const ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX = 'amministratori+';
 const residentTechnicalEmailPattern = /^residenti\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
+const administratorTechnicalEmailPattern = /^amministratori\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
 let residentMaintenanceAuth = null;
 
 export function getResidentTechnicalEmail(centerId) {
@@ -199,6 +208,18 @@ export function getResidentTechnicalEmail(centerId) {
 
 export function isResidentTechnicalEmail(email) {
   return residentTechnicalEmailPattern.test(String(email || '').trim());
+}
+
+export function getAdministratorTechnicalEmail(centerId) {
+  const normalizedCenterId = String(centerId || '').trim().toLowerCase();
+  if (!/^[A-Za-z0-9_-]{1,120}$/.test(normalizedCenterId)) {
+    throw new Error('Identificativo del centro non valido');
+  }
+  return `${ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX}${normalizedCenterId}${RESIDENT_TECHNICAL_EMAIL_DOMAIN}`;
+}
+
+export function isAdministratorTechnicalEmail(email) {
+  return administratorTechnicalEmailPattern.test(String(email || '').trim());
 }
 
 async function getResidentMaintenanceAuth() {
@@ -281,6 +302,98 @@ export async function setResidentTechnicalPassword(centerId, previousPassword, n
       await updatePassword(credential.user, formattedNext);
     }
     return { email, created: false };
+  } finally {
+    await signOut(maintenanceAuth).catch(() => undefined);
+  }
+}
+
+export async function setAdministratorTechnicalPassword(centerId, previousPassword, nextPassword) {
+  const email = getAdministratorTechnicalEmail(centerId);
+  const next = String(nextPassword || '');
+  const previous = String(previousPassword || '');
+  if (next.length < 6 || next.length > 64) {
+    throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
+  }
+
+  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const formattedNext = formatTechnicalAuthPassword(next);
+  const formattedPrevious = previous ? formatTechnicalAuthPassword(previous) : '';
+  try {
+    let credential = null;
+    if (formattedPrevious) {
+      credential = await signInWithEmailAndPassword(maintenanceAuth, email, formattedPrevious)
+        .catch((error) => {
+          if (error?.code === 'auth/user-not-found') return null;
+          throw error;
+        });
+    }
+    if (!credential) {
+      try {
+        credential = await createUserWithEmailAndPassword(maintenanceAuth, email, formattedNext);
+        return { email, created: true };
+      } catch (error) {
+        if (error?.code !== 'auth/email-already-in-use') throw error;
+        if (!formattedPrevious) {
+          const alreadyConfigured = await signInWithEmailAndPassword(
+            maintenanceAuth,
+            email,
+            formattedNext
+          ).catch(() => null);
+          if (alreadyConfigured) return { email, created: false };
+          const missing = new Error('Inserisci anche la password amministratori attuale');
+          missing.code = 'auth/current-administrator-password-required';
+          throw missing;
+        }
+        throw error;
+      }
+    }
+    if (formattedPrevious !== formattedNext) {
+      await updatePassword(credential.user, formattedNext);
+    }
+    return { email, created: false };
+  } finally {
+    await signOut(maintenanceAuth).catch(() => undefined);
+  }
+}
+
+export async function authorizeResidentAdministratorSession({
+  centerId,
+  participantId,
+  password,
+  passwordVersion
+}) {
+  const primaryUser = getCurrentUser();
+  if (!primaryUser?.isAnonymous) {
+    throw new Error('Accedi prima come residente');
+  }
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) throw new Error('Identità residente non disponibile');
+  const normalizedVersion = Number(passwordVersion || 0);
+  if (!Number.isInteger(normalizedVersion) || normalizedVersion < 1) {
+    throw new Error('La password amministratori non è ancora impostata');
+  }
+
+  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const email = getAdministratorTechnicalEmail(centerId);
+  const technicalPassword = formatTechnicalAuthPassword(password);
+  try {
+    await signInWithEmailAndPassword(maintenanceAuth, email, technicalPassword);
+    await deleteDoc(doc(db, 'centers', centerId, 'viceSessions', primaryUser.uid)).catch((error) => {
+      if (error?.code !== 'not-found') throw error;
+    });
+    const maintenanceDb = getFirestore(maintenanceAuth.app);
+    const expiresAt = Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    await setDoc(doc(maintenanceDb, 'centers', centerId, 'viceSessions', primaryUser.uid), {
+      centerId,
+      authUid: primaryUser.uid,
+      participantId: normalizedParticipantId,
+      passwordVersion: normalizedVersion,
+      status: 'ACTIVE',
+      expiresAt,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { expiresAt: expiresAt.toDate(), passwordVersion: normalizedVersion };
   } finally {
     await signOut(maintenanceAuth).catch(() => undefined);
   }

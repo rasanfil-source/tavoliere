@@ -1120,7 +1120,9 @@ test('il vice autenticato come residente gestisce Agenda ma non le Messe', async
   const dateId = '2026-08-10';
   const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
   await testEnv.withSecurityRulesDisabled(async (context) => {
-    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
+    const db = context.firestore();
+    await db.doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
+    await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
   });
 
   await assertSucceeds(personalDb.collection(`${centerPath()}/publicParticipants`).get());
@@ -1152,6 +1154,7 @@ test('il responsabile autenticato come residente gestisce Agenda e Messe', async
     const db = context.firestore();
     await db.doc(centerPath()).set({ administratorSignature: 'MR' }, { merge: true });
     await db.doc(publicParticipantPath(MARIO_ID)).set({ signature: 'MR' }, { merge: true });
+    await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
   });
 
   await assertSucceeds(personalDb.collection(`${centerPath()}/publicParticipants`).get());
@@ -1172,6 +1175,52 @@ test('il responsabile autenticato come residente gestisce Agenda e Messe', async
     centerId: CENTER_ID,
     dateId,
     massScheduled: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+});
+
+test('la password amministratori autorizza il vice e la rotazione revoca la sessione', async () => {
+  const dateId = '2026-08-10';
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({
+      viceAdminRole: true
+    }, { merge: true });
+  });
+
+  const technicalDb = testEnv
+    .authenticatedContext('administrator_technical', administratorTechnicalToken())
+    .firestore();
+  const expiresAt = firebase.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await assertSucceeds(technicalDb.doc(`${centerPath()}/viceSessions/${PERSONAL_UID}`).set({
+    centerId: CENTER_ID,
+    authUid: PERSONAL_UID,
+    participantId: MARIO_ID,
+    passwordVersion: 1,
+    status: 'ACTIVE',
+    expiresAt,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+
+  const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertSucceeds(personalDb.doc(`${centerPath()}/dailyHealth/${dateId}`).set({
+    centerId: CENTER_ID,
+    dateId,
+    sickPeople: [],
+    dietAssignments: [],
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(centerPath()).set({
+      adminPasswordVersion: 2
+    }, { merge: true });
+  });
+  await assertFails(personalDb.doc(`${centerPath()}/dailyHealth/${dateId}`).set({
+    centerId: CENTER_ID,
+    dateId,
+    sickPeople: [],
+    dietAssignments: [],
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
 });
@@ -1903,7 +1952,8 @@ async function seedBaseData() {
     await db.doc(centerPath()).set({
       name: 'Centro Demo',
       timezone: 'Europe/Rome',
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      adminPasswordVersion: 1
     });
     await db.doc(adminPath(ADMIN_UID)).set({
       status: 'ACTIVE',
@@ -2052,6 +2102,21 @@ async function createSession(db, uid, data) {
   });
 }
 
+async function createAuthorizedViceSession(db, uid, participantId, passwordVersion = 1) {
+  const now = firebase.firestore.Timestamp.fromDate(new Date());
+  const expiresAt = firebase.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await db.doc(`${centerPath()}/viceSessions/${uid}`).set({
+    centerId: CENTER_ID,
+    authUid: uid,
+    participantId,
+    passwordVersion,
+    status: 'ACTIVE',
+    expiresAt,
+    createdAt: now,
+    updatedAt: now
+  });
+}
+
 async function selectParticipant(uid, participantId) {
   const db = testEnv.authenticatedContext(uid, anonymousToken()).firestore();
   await db.doc(sessionPath(uid)).set({
@@ -2101,6 +2166,16 @@ function anonymousToken() {
 function residentTechnicalToken() {
   return {
     email: `residenti+${CENTER_ID}@tavola-comune.local`,
+    email_verified: false,
+    firebase: {
+      sign_in_provider: 'password'
+    }
+  };
+}
+
+function administratorTechnicalToken() {
+  return {
+    email: `amministratori+${CENTER_ID}@tavola-comune.local`,
     email_verified: false,
     firebase: {
       sign_in_provider: 'password'

@@ -54,8 +54,8 @@ test('la gestione delle Messe e separata per vice e incaricato liturgico', () =>
   assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { liturgicalRole: true }), false);
 });
 
-test('la spunta Vice amministratore sblocca direttamente la gestione quotidiana', () => {
-  assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { viceAdminRole: true }), true);
+test('la spunta Vice amministratore non concede privilegi senza sessione autorizzata', () => {
+  assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { viceAdminRole: true }), false);
 });
 
 test('la gestione della piattaforma resta distinta dal ruolo nel centro', () => {

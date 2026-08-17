@@ -23,7 +23,7 @@ import {
   signOutCurrentUser,
   verifyResidentCommonPassword,
   waitForAuthReady
-} from './firebase-client.js?v=20260816g';
+} from './firebase-client.js?v=20260817q';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
@@ -39,7 +39,7 @@ import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260817a';
+} from './center-settings.js?v=20260818u';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260817a';
+} from './center-settings.js?v=20260818u';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -350,6 +350,31 @@ export async function ensureStoredResidentSession() {
     throw new Error('Accesso personale richiesto');
   }
   return ensurePersonalSession(participantId, token);
+}
+
+export async function loadResidentAdministratorAuthorization() {
+  const user = getCurrentUser();
+  const participantId = loadStoredResidentParticipantId();
+  if (!user?.isAnonymous || !participantId) return { active: false };
+  const snapshot = await getDoc(doc(
+    db,
+    'centers',
+    getActiveCenterId(),
+    'viceSessions',
+    user.uid
+  ));
+  if (!snapshot.exists()) return { active: false };
+  const data = snapshot.data();
+  const expiresAt = data.expiresAt ? toDate(data.expiresAt) : null;
+  return {
+    active: data.status === 'ACTIVE'
+      && data.participantId === participantId
+      && expiresAt instanceof Date
+      && expiresAt > new Date(),
+    participantId: String(data.participantId || ''),
+    passwordVersion: Number(data.passwordVersion || 0),
+    expiresAt
+  };
 }
 
 async function ensurePersonalSession(participantId, token) {
@@ -923,6 +948,9 @@ export async function saveAdminParticipant(participantId, profile) {
 
     transaction.set(centerRef, {
       participantDataUpdatedAt: serverTimestamp(),
+      ...(participantSnapshot.data()?.viceAdminRole === true && normalizedProfile.viceAdminRole !== true
+        ? { adminPasswordRotationRequired: true }
+        : {}),
       updatedAt: serverTimestamp()
     }, { merge: true });
     transaction.set(participantRef, {
@@ -994,6 +1022,9 @@ export async function setAdminParticipantActiveStatus(participantId, active, exp
 
     transaction.set(doc(db, 'centers', centerId), {
       participantDataUpdatedAt: serverTimestamp(),
+      ...(participant.viceAdminRole === true && status === 'DISABLED'
+        ? { adminPasswordRotationRequired: true }
+        : {}),
       updatedAt: serverTimestamp()
     }, { merge: true });
     transaction.update(participantRef, { status, revision, updatedAt: serverTimestamp() });
@@ -1040,7 +1071,7 @@ export async function deleteAdminParticipant(participantId) {
   const [participantSnapshot, publicParticipantSnapshot, ...relatedSnapshots] = await Promise.all([
     getDoc(participantRef),
     getDoc(publicParticipantRef),
-    ...['reservationRules', 'reservationOverrides', 'accessSessions'].map((collectionName) => (
+    ...['reservationRules', 'reservationOverrides', 'accessSessions', 'viceSessions'].map((collectionName) => (
       getDocs(query(
         collection(db, 'centers', centerId, collectionName),
         where('participantId', '==', normalizedId)
@@ -1062,7 +1093,7 @@ export async function deleteAdminParticipant(participantId) {
   });
   await commitWithRetry(() => disableBatch.commit());
 
-  const [ruleSnapshot, overrideSnapshot, sessionSnapshot] = relatedSnapshots;
+  const [ruleSnapshot, overrideSnapshot, sessionSnapshot, viceSessionSnapshot] = relatedSnapshots;
   const ruleRefs = ruleSnapshot.docs.map((item) => item.ref);
   const personalTokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
     String(item.data().tokenId || '').trim()
@@ -1070,6 +1101,7 @@ export async function deleteAdminParticipant(participantId) {
   const relatedRefs = [
     ...overrideSnapshot.docs.map((item) => item.ref),
     ...sessionSnapshot.docs.map((item) => item.ref),
+    ...viceSessionSnapshot.docs.map((item) => item.ref),
     ...personalTokenRefs
   ];
   for (let index = 0; index < relatedRefs.length; index += ADMIN_DELETE_BATCH_SIZE) {
@@ -1086,6 +1118,9 @@ export async function deleteAdminParticipant(participantId) {
   }
   finalBatch.set(doc(db, 'centers', centerId), {
     participantDataUpdatedAt: serverTimestamp(),
+    ...(participantSnapshot.data().viceAdminRole === true
+      ? { adminPasswordRotationRequired: true }
+      : {}),
     updatedAt: serverTimestamp()
   }, { merge: true });
   appendAuditEvent(finalBatch, {

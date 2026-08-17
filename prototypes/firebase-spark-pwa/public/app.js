@@ -15,6 +15,7 @@ import {
 import { escapeHtml } from './html-utils.js?v=20260816g';
 import {
   getCurrentUser,
+  authorizeResidentAdministratorSession,
   isFirebaseConfigured,
   isResidentTechnicalEmail,
   missingFirebaseConfigValues,
@@ -26,7 +27,7 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816g';
+} from './firebase-client.js?v=20260817q';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -40,9 +41,10 @@ import {
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
+  updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260817a';
+} from './center-settings.js?v=20260818u';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -67,7 +69,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260817a';
+} from './summary-matrix-view.js?v=20260818u';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -83,7 +85,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260816l'
+  participant: './participant-data.js?v=20260817r'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -150,6 +152,7 @@ const saveMassStatus = callDomain('daily', 'saveMassStatus');
 const saveMassStatuses = callDomain('daily', 'saveMassStatuses');
 const ensurePublicDemoSession = callDomain('participant', 'ensurePublicDemoSession');
 const ensureStoredResidentSession = callDomain('participant', 'ensureStoredResidentSession');
+const loadResidentAdministratorAuthorization = callDomain('participant', 'loadResidentAdministratorAuthorization');
 const forgetResidentDevice = callDomain('participant', 'forgetResidentDevice');
 const restoreFriendlyResidentSession = callDomain('participant', 'restoreFriendlyResidentSession');
 const restoreResidentIdentityForAuthorizedAdministrator = callDomain(
@@ -268,7 +271,47 @@ const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
 const MEAL_VIEW_SWIPE_MIN_X = 72;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
+const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
+const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban']);
 let mealViewSwipeStart = null;
+
+function applyInterfaceStyle(value) {
+  const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'original';
+  document.documentElement.dataset.interfaceStyle = style;
+  document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
+  return style;
+}
+
+function loadResidentPreferences() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(
+      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY)
+    ) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function applyResidentPreferences(settings) {
+  if (!state.residentReady) return settings;
+  const preferences = loadResidentPreferences();
+  return {
+    ...settings,
+    ...(preferences.themePalette ? { themePalette: preferences.themePalette } : {}),
+    ...(preferences.interfaceStyle ? { interfaceStyle: preferences.interfaceStyle } : {}),
+    ...(preferences.defaultView ? { defaultView: preferences.defaultView } : {}),
+    ...(preferences.summaryLayout ? { summaryLayout: preferences.summaryLayout } : {}),
+    ...(preferences.language ? { language: preferences.language } : {})
+  };
+}
+
+function storeResidentPreferences(preferences) {
+  window.localStorage.setItem(
+    getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
+    JSON.stringify(preferences)
+  );
+}
 
 function readDietCode(select, numberInput) {
   const selected = String(select?.value || 'STANDARD').trim();
@@ -399,7 +442,10 @@ const state = {
   friendlyAccess: ['participant', 'week'].includes(initialMode)
     || new URLSearchParams(window.location.search).get('access') === 'friendly',
   residentReady: false,
+  residentSettingsMode: false,
+  residentAdministratorAuthorized: false,
   residentRestorePending: Boolean(loadStoredResidentSignature()),
+  residentSettingsRestorePending: false,
   participantMeals: [],
   participantWeek: [],
   participantMonth: [],
@@ -466,6 +512,9 @@ const state = {
     administratorProfileComplete: true,
     administratorPasswordRequired: false,
     adminPasswordSet: false,
+    adminSharedPasswordSet: false,
+    adminPasswordVersion: 0,
+    adminPasswordRotationRequired: false,
     avatarVersion: '',
     avatarDataUrl: loadCachedCenterAvatar(),
     ...(cachedCenterContactSettings || {})
@@ -513,6 +562,7 @@ const elements = {
   accountFooter: document.querySelector('[data-account-footer]'),
   topbarContextNav: document.querySelector('[data-topbar-context-nav]'),
   controlPanelEntry: document.querySelector('[data-control-panel-entry]'),
+  adminPasswordAlertDot: document.querySelector('[data-admin-password-alert-dot]'),
   mealsReturnEntry: document.querySelector('[data-meals-return-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
   adminAuthMethods: document.querySelector('[data-admin-auth-methods]'),
@@ -713,6 +763,18 @@ const elements = {
   adminContactSharingRow: document.querySelector('[data-admin-contact-sharing-row]'),
   adminCommonPasswordRow: document.querySelector('[data-admin-common-password-row]'),
   adminCommonPasswordInput: document.querySelector('[data-admin-common-password-input]'),
+  adminSharedPasswordRow: document.querySelector('[data-admin-shared-password-row]'),
+  adminSharedPasswordCurrent: document.querySelector('[data-admin-shared-password-current]'),
+  adminSharedPasswordNew: document.querySelector('[data-admin-shared-password-new]'),
+  adminSharedPasswordStatus: document.querySelector('[data-admin-shared-password-status]'),
+  adminSharedPasswordCurrentToggle: document.querySelector('[data-password-toggle="admin-shared-current"]'),
+  adminSharedPasswordNewToggle: document.querySelector('[data-password-toggle="admin-shared-new"]'),
+  adminPasswordRotationWarning: document.querySelector('[data-admin-password-rotation-warning]'),
+  residentAdminUnlock: document.querySelector('[data-resident-admin-unlock]'),
+  residentAdminPassword: document.querySelector('[data-resident-admin-password]'),
+  residentAdminPasswordToggle: document.querySelector('[data-password-toggle="resident-admin"]'),
+  residentAdminUnlockButton: document.querySelector('[data-resident-admin-unlock-button]'),
+  residentAdminUnlockStatus: document.querySelector('[data-resident-admin-unlock-status]'),
   adminCommonPasswordStatus: document.querySelector('[data-admin-common-password-status]'),
   adminCommonPasswordToggle: document.querySelector('[data-password-toggle="common-password"]'),
   adminAdministratorName: document.querySelector('[data-admin-administrator-name]'),
@@ -1002,8 +1064,23 @@ if (elements.adminLanguageSelect) {
   });
 }
 if (elements.adminContactSharingSelect) {
-  elements.adminContactSharingSelect.addEventListener('change', (event) => {
+  elements.adminContactSharingSelect.addEventListener('change', async (event) => {
     event.target.dataset.state = event.target.value;
+    if (!state.residentSettingsMode && hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS)) {
+      const enabled = event.target.value === 'enabled';
+      event.target.disabled = true;
+      try {
+        await updateParticipantContactSharing(enabled);
+        state.centerContactSettings.participantContactSharingEnabled = enabled;
+      } catch (error) {
+        event.target.value = state.centerContactSettings.participantContactSharingEnabled
+          ? 'enabled'
+          : 'disabled';
+        elements.adminStatus.textContent = friendlyErrorMessage(error, 'Impostazione non salvata');
+      } finally {
+        event.target.disabled = false;
+      }
+    }
   });
 }
 elements.residentPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.residentPasswordInput, elements.residentPasswordToggle));
@@ -1013,6 +1090,18 @@ if (elements.adminCommonPasswordToggle) {
 }
 if (elements.adminAdministratorPasswordToggle) {
   elements.adminAdministratorPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminAdministratorPassword, elements.adminAdministratorPasswordToggle));
+}
+if (elements.adminSharedPasswordCurrentToggle) {
+  elements.adminSharedPasswordCurrentToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminSharedPasswordCurrent, elements.adminSharedPasswordCurrentToggle));
+}
+if (elements.adminSharedPasswordNewToggle) {
+  elements.adminSharedPasswordNewToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminSharedPasswordNew, elements.adminSharedPasswordNewToggle));
+}
+if (elements.residentAdminPasswordToggle) {
+  elements.residentAdminPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.residentAdminPassword, elements.residentAdminPasswordToggle));
+}
+if (elements.residentAdminUnlockButton) {
+  elements.residentAdminUnlockButton.addEventListener('click', handleResidentAdministratorUnlock);
 }
 if (elements.initializerPasswordToggle) {
   elements.initializerPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.initializerPassword, elements.initializerPasswordToggle));
@@ -1139,7 +1228,7 @@ async function bootstrapApp() {
   });
   const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
   if (centerSettings) {
-    state.centerContactSettings = centerSettings;
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
     await applyCenterDefaultLanguage(centerSettings);
   }
   renderAllViews();
@@ -1357,9 +1446,11 @@ function handleInAppNavigation(event) {
 
   event.preventDefault();
   if (isOperationalTarget) {
+    state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
   } else {
     targetUrl.searchParams.delete('access');
+    state.residentSettingsMode = state.residentReady && !state.adminRole;
     if (!state.residentReady) {
       targetUrl.searchParams.delete('c');
     }
@@ -1369,6 +1460,11 @@ function handleInAppNavigation(event) {
   state.mode = targetMode;
   invalidateViewRequests();
   state.friendlyAccess = isOperationalTarget;
+  if (state.residentSettingsMode) {
+    state.adminActiveSection = 'adaptations';
+    state.adminMobileSection = 'adaptations';
+    renderResidentSettingsPanel();
+  }
   renderMode();
   refreshNow('navigazione');
 }
@@ -1708,6 +1804,7 @@ function renderAdminMobileSection() {
 }
 
 function isAdminSectionAllowed(section) {
+  if (state.residentSettingsMode) return section === 'adaptations';
   if (!isAdministratorProfileComplete() && section !== 'configuration') {
     return false;
   }
@@ -1979,6 +2076,10 @@ function setSignedOutState() {
   const hasAdministratorInvitation = hasCenterInvitation || hasRoleInvitation;
   const storedDecision = hasRoleInvitation ? loadAdminInvitationDecision(roleInvitationId) : '';
   const invitationNeedsDecision = hasRoleInvitation && !storedDecision;
+
+  if (state.mode === 'admin' && (state.residentReady || loadStoredResidentSignature())) {
+    void restoreResidentSettingsPanel();
+  }
 
   elements.adminAuthMethods.hidden = invitationNeedsDecision;
   elements.authActions.hidden = invitationNeedsDecision;
@@ -2824,8 +2925,9 @@ async function refreshParticipant(source) {
       throw error;
     });
     const [, centerSettings] = await Promise.all([sessionPromise, settingsPromise]);
-    state.centerContactSettings = centerSettings;
-    await applyCenterDefaultLanguage(centerSettings);
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    await applyCenterDefaultLanguage(state.centerContactSettings);
+    await refreshResidentAdministratorAuthorization();
     if (state.mode === 'week' && canManageDailyOperations() && !state.adminRole) {
       state.adminParticipants = await listPublicParticipants({
         forceRefresh: source === 'manuale',
@@ -3668,6 +3770,12 @@ async function performAdminCenterSettingsSave() {
     const administratorName = elements.adminAdministratorName?.value.trim() || '';
     const administratorSignature = elements.adminAdministratorSignature?.value.trim() || '';
     const newAdminPassword = elements.adminAdministratorPassword?.value || '';
+    const newSharedAdminPassword = elements.adminSharedPasswordNew?.value || '';
+    const currentSharedAdminPassword = elements.adminSharedPasswordCurrent?.value || '';
+    if (newSharedAdminPassword && state.centerContactSettings.adminSharedPasswordSet
+        && !currentSharedAdminPassword) {
+      throw new Error(t('admin.sharedPassword.currentRequired'));
+    }
     const passwordRequired = requiresAdministratorPassword(getCurrentUser());
     if (passwordRequired && !state.centerContactSettings.adminPasswordSet && !newAdminPassword) {
       throw new Error('Inserisci la password amministratore');
@@ -3696,6 +3804,8 @@ async function performAdminCenterSettingsSave() {
       summaryLayout: state.centerContactSettings.summaryLayout || 'international',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
+      administratorSharedPassword: newSharedAdminPassword,
+      currentAdministratorSharedPassword: currentSharedAdminPassword,
       administratorName,
       administratorSignature,
       adminEmail: state.adminRole === 'OWNER'
@@ -3718,6 +3828,9 @@ async function performAdminCenterSettingsSave() {
         togglePasswordVisibility(elements.adminCommonPasswordInput, elements.adminCommonPasswordToggle);
       }
     }
+    [elements.adminSharedPasswordCurrent, elements.adminSharedPasswordNew].forEach((input) => {
+      if (input) input.value = '';
+    });
     state.centerContactSettings = {
       ...state.centerContactSettings,
       ...settings,
@@ -3726,7 +3839,15 @@ async function performAdminCenterSettingsSave() {
       // Se è stata inserita una nuova password, aggiorna il flag; altrimenti mantieni quello attuale.
       commonPasswordSet: settings.commonPassword !== null
         ? true
-        : state.centerContactSettings.commonPasswordSet
+        : state.centerContactSettings.commonPasswordSet,
+      adminSharedPasswordSet: state.centerContactSettings.adminSharedPasswordSet
+        || Boolean(newSharedAdminPassword),
+      adminPasswordVersion: newSharedAdminPassword
+        ? Number(state.centerContactSettings.adminPasswordVersion || 0) + 1
+        : Number(state.centerContactSettings.adminPasswordVersion || 0),
+      adminPasswordRotationRequired: newSharedAdminPassword
+        ? false
+        : state.centerContactSettings.adminPasswordRotationRequired
     };
     const administratorParticipantId = await saveAdministratorAsParticipant({
       administratorName,
@@ -3856,7 +3977,7 @@ function syncAdminAdaptationsForm() {
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
   const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'original';
   document.documentElement.dataset.theme = currentPalette;
-  document.documentElement.dataset.interfaceStyle = currentInterfaceStyle;
+  applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
   if (elements.adminDefaultViewSelect) {
@@ -3867,6 +3988,18 @@ function syncAdminAdaptationsForm() {
   }
   if (elements.adminKitchenLayoutSelect) {
     elements.adminKitchenLayoutSelect.value = state.centerContactSettings.kitchenLayout || 'classic';
+    elements.adminKitchenLayoutSelect.disabled = state.residentSettingsMode;
+  }
+  if (elements.adminSharedPasswordStatus) {
+    const isSet = Boolean(state.centerContactSettings.adminSharedPasswordSet);
+    elements.adminSharedPasswordStatus.textContent = isSet
+      ? t('admin.sharedPassword.set')
+      : t('admin.sharedPassword.notSet');
+    elements.adminSharedPasswordStatus.className = isSet ? 'password-status-set' : 'password-status-unset';
+  }
+  if (elements.adminSharedPasswordCurrent) {
+    elements.adminSharedPasswordCurrent.hidden = !state.centerContactSettings.adminSharedPasswordSet;
+    elements.adminSharedPasswordCurrent.closest('label').hidden = !state.centerContactSettings.adminSharedPasswordSet;
   }
   if (elements.adminContactSharingSelect) {
     const isEnabled = state.centerContactSettings.participantContactSharingEnabled;
@@ -3876,6 +4009,22 @@ function syncAdminAdaptationsForm() {
   updateThemeSelectControl(currentPalette);
   if (elements.adminLanguageSelect) {
     elements.adminLanguageSelect.value = state.centerContactSettings.language || 'it';
+  }
+  const participantCanAdminister = Boolean(state.selectedParticipant) && (
+    state.selectedParticipant.viceAdminRole === true
+    || selectedParticipantIsCenterAdministrator()
+  );
+  if (elements.residentAdminUnlock) {
+    elements.residentAdminUnlock.hidden = !state.residentSettingsMode
+      || !participantCanAdminister
+      || state.residentAdministratorAuthorized;
+  }
+  if (elements.adminPasswordRotationWarning) {
+    elements.adminPasswordRotationWarning.hidden = !state.centerContactSettings.adminPasswordRotationRequired
+      || state.residentSettingsMode;
+  }
+  if (elements.adminPasswordAlertDot) {
+    elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired;
   }
 }
 
@@ -3897,9 +4046,11 @@ function handleThemeSelectChange(event) {
 }
 
 function handleInterfaceStyleSelectChange(event) {
-  const selectedStyle = event.target.value === 'cool' ? 'cool' : 'original';
+  const selectedStyle = INTERFACE_STYLE_VALUES.has(event.target.value)
+    ? event.target.value
+    : 'original';
   state.pendingInterfaceStyle = selectedStyle;
-  document.documentElement.dataset.interfaceStyle = selectedStyle;
+  applyInterfaceStyle(selectedStyle);
   if (elements.adminThemeStatus) {
     elements.adminThemeStatus.textContent = t('admin.adaptations.interfaceStyle.preview');
   }
@@ -3919,6 +4070,24 @@ async function handleAdminAdaptationsSave() {
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
     const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
+    if (state.residentSettingsMode && !state.adminRole) {
+      const preferences = {
+        themePalette: paletteToSave,
+        interfaceStyle: interfaceStyleToSave,
+        defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
+        summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        language: languageToSave
+      };
+      storeResidentPreferences(preferences);
+      state.centerContactSettings = { ...state.centerContactSettings, ...preferences };
+      state.pendingThemePalette = '';
+      state.pendingInterfaceStyle = '';
+      await setLocale(languageToSave);
+      applyTranslations(document);
+      renderMode();
+      if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
+      return;
+    }
     const settings = await updateCenterSettings({
       name: state.centerContactSettings.name,
       timezone: state.centerContactSettings.timezone,
@@ -3943,7 +4112,7 @@ async function handleAdminAdaptationsSave() {
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
-    document.documentElement.dataset.interfaceStyle = state.centerContactSettings.interfaceStyle || 'original';
+    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'original');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
     applyTranslations(document);
@@ -3961,7 +4130,7 @@ function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'smeraldo';
-  document.documentElement.dataset.interfaceStyle = state.centerContactSettings.interfaceStyle || 'original';
+  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'original');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
@@ -3970,7 +4139,7 @@ function handleAdminAdaptationsReset() {
   state.pendingThemePalette = 'smeraldo';
   state.pendingInterfaceStyle = 'original';
   document.documentElement.dataset.theme = 'smeraldo';
-  document.documentElement.dataset.interfaceStyle = 'original';
+  applyInterfaceStyle('original');
   updateThemeSelectControl('smeraldo');
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'original';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
@@ -4137,7 +4306,7 @@ function renderMode() {
   const activeInterfaceStyle = state.pendingInterfaceStyle
     || state.centerContactSettings.interfaceStyle
     || 'original';
-  document.documentElement.dataset.interfaceStyle = activeInterfaceStyle;
+  applyInterfaceStyle(activeInterfaceStyle);
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
   const isSummary = state.mode === 'summary';
@@ -4150,7 +4319,9 @@ function renderMode() {
     && !state.residentReady
     && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
-  const mealTitle = t('app.title');
+  const mealTitle = activeInterfaceStyle === 'original'
+    ? t('app.title')
+    : t('app.title.compact');
   const participantName = state.selectedParticipant?.displayName || '';
   const centerName = state.centerContactSettings.name || '';
   const currentUser = getCurrentUser();
@@ -4184,7 +4355,7 @@ function renderMode() {
     : isSummary
       ? getSummaryTitle()
       : isAdminView
-        ? t('app.title')
+        ? mealTitle
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
   elements.titleCenter.textContent = isAdminView ? t('app.header.controlPanel') : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
@@ -4218,6 +4389,9 @@ function renderMode() {
     || selectedResidentCanOpenControlPanel();
   elements.controlPanelEntry.hidden = !isOrdinaryView
     || (!needsResidentLogin && !canOpenControlPanel);
+  if (elements.adminPasswordAlertDot) {
+    elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired;
+  }
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
     || state.platformOwner;
@@ -4236,6 +4410,7 @@ function renderMode() {
     && (!hasAdminInterface || elements.ownerExitButton.hidden);
   if (isAdminView) {
     elements.adminShell.open = true;
+    if (state.residentSettingsMode) renderResidentSettingsPanel();
   }
   if (elements.participantRefreshButton) {
     elements.participantRefreshButton.hidden = true;
@@ -4719,7 +4894,8 @@ function applyAdminCapabilityVisibility() {
     }
   }
   const canConfigureCenter = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
-  const canManageAdaptations = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
+  const canManageAdaptations = state.residentSettingsMode
+    || hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
   const canManagePeople = hasCurrentCapability(CAPABILITIES.MANAGE_PARTICIPANTS);
   const canManageAccess = hasCurrentCapability(CAPABILITIES.ASSIGN_VICE)
@@ -4732,7 +4908,7 @@ function applyAdminCapabilityVisibility() {
     state.adminActiveSection = ADMIN_SECTIONS.find((section) => isAdminSectionAllowed(section)) || 'overview';
     state.adminMobileSection = state.adminActiveSection;
   }
-  elements.adminNavOverview.hidden = !profileComplete;
+  elements.adminNavOverview.hidden = state.residentSettingsMode || !profileComplete;
   elements.adminNavPeople.hidden = !canManagePeople;
   if (elements.adminNavAdaptations) {
     elements.adminNavAdaptations.hidden = !canManageAdaptations;
@@ -4760,7 +4936,7 @@ function applyAdminCapabilityVisibility() {
     elements.adminTools.hidden = !hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA);
   }
   if (elements.adminContactSharingRow) {
-    elements.adminContactSharingRow.hidden = !canConfigureCenter;
+    elements.adminContactSharingRow.hidden = !canConfigureCenter || state.residentSettingsMode;
     if (elements.adminContactSharingSelect) {
       elements.adminContactSharingSelect.disabled = !canConfigureCenter;
     }
@@ -4985,10 +5161,7 @@ function canManageMass() {
 
 function canManageDailyOperations() {
   return state.adminCanManageDailyOperations
-    || selectedParticipantIsCenterAdministrator()
-    || hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS, {
-      viceAdminRole: state.selectedParticipant?.viceAdminRole === true
-    });
+    || state.residentAdministratorAuthorized;
 }
 
 function selectedParticipantIsCenterAdministrator() {
@@ -5000,10 +5173,7 @@ function selectedParticipantIsCenterAdministrator() {
 }
 
 function selectedResidentCanOpenControlPanel() {
-  return state.residentReady && (
-    selectedParticipantIsCenterAdministrator()
-    || state.selectedParticipant?.viceAdminRole === true
-  );
+  return state.residentReady;
 }
 
 function canUseWeekWithoutParticipant() {
@@ -5059,7 +5229,7 @@ function getMealIcon(mealTypeId) {
 }
 
 function getInterfaceIcon(kind, fallback = '•') {
-  if (document.documentElement.dataset.interfaceStyle !== 'cool' || !kind) {
+  if (document.documentElement.dataset.interfaceFamily !== 'cool' || !kind) {
     return fallback;
   }
   const paths = {
@@ -6013,6 +6183,88 @@ function renderWeekOperations() {
   renderWeekDietAssignments();
 }
 
+async function restoreResidentSettingsPanel() {
+  if (state.residentSettingsRestorePending || state.adminRole || state.mode !== 'admin') return;
+  state.residentSettingsRestorePending = true;
+  try {
+    if (!state.residentReady) {
+      const restored = await restoreFriendlyResidentSession();
+      if (!restored) return;
+      state.participants = restored.participants;
+      state.selectedParticipant = restored.participant;
+      state.residentReady = true;
+    }
+    const settings = await loadCenterContactSettings();
+    state.centerContactSettings = applyResidentPreferences(settings);
+    await refreshResidentAdministratorAuthorization();
+    state.residentSettingsMode = true;
+    renderResidentSettingsPanel();
+    renderMode();
+  } catch (error) {
+    elements.authStatus.textContent = friendlyErrorMessage(error, t('auth.resident.status'));
+  } finally {
+    state.residentSettingsRestorePending = false;
+  }
+  if (elements.adminSharedPasswordRow) {
+    elements.adminSharedPasswordRow.hidden = !canConfigureCenter;
+  }
+}
+
+function renderResidentSettingsPanel() {
+  if (!state.residentSettingsMode || !state.residentReady || state.adminRole) return;
+  state.adminActiveSection = 'adaptations';
+  state.adminMobileSection = 'adaptations';
+  elements.adminShell.dataset.adminActive = 'resident-settings';
+  elements.adminShell.open = true;
+  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = true;
+  elements.adminPanel.hidden = false;
+  mountAdminSection('adaptations');
+  syncAdminAdaptationsForm();
+  applyAdminCapabilityVisibility();
+}
+
+async function refreshResidentAdministratorAuthorization() {
+  if (!state.residentReady || state.adminRole) {
+    state.residentAdministratorAuthorized = false;
+    return false;
+  }
+  try {
+    const authorization = await loadResidentAdministratorAuthorization();
+    state.residentAdministratorAuthorized = authorization.active === true
+      && Number(authorization.passwordVersion || 0)
+        === Number(state.centerContactSettings.adminPasswordVersion || 0);
+  } catch {
+    state.residentAdministratorAuthorized = false;
+  }
+  return state.residentAdministratorAuthorized;
+}
+
+async function handleResidentAdministratorUnlock() {
+  if (!state.selectedParticipant || !elements.residentAdminPassword?.value) return;
+  elements.residentAdminUnlockButton.disabled = true;
+  elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.checking');
+  try {
+    await authorizeResidentAdministratorSession({
+      centerId: getActiveCenterId(),
+      participantId: state.selectedParticipant.participantId,
+      password: elements.residentAdminPassword.value,
+      passwordVersion: state.centerContactSettings.adminPasswordVersion
+    });
+    state.residentAdministratorAuthorized = true;
+    elements.residentAdminPassword.value = '';
+    elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.unlocked');
+    syncAdminAdaptationsForm();
+  } catch (error) {
+    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(
+      error,
+      t('admin.sharedPassword.unlockFailed')
+    );
+  } finally {
+    elements.residentAdminUnlockButton.disabled = false;
+  }
+}
+
 async function handleWeekInvitedSave() {
   const invitedMeals = {};
   elements.weekInvitedInputs.forEach((input) => {
@@ -6029,10 +6281,14 @@ async function handleWeekInvitedSave() {
       invitedMeals
     );
     renderWeekOperations();
-    const total = Object.values(invitedMeals).reduce((sum, count) => sum + count, 0);
-    elements.weekInvitedStatus.textContent = total > 0
-      ? t('week.operations.invited.saved')
-      : t('week.operations.invited.empty');
+    const entries = ['breakfast', 'lunch', 'dinner']
+      .filter((mealTypeId) => Number(invitedMeals[mealTypeId] || 0) > 0)
+      .map((mealTypeId) => (
+        `<span class="week-invited-saved-meal"><span aria-hidden="true">${getMealIcon(mealTypeId)}</span> ${Number(invitedMeals[mealTypeId])}</span>`
+      ));
+    elements.weekInvitedStatus.innerHTML = entries.length > 0
+      ? `${escapeHtml(t('week.operations.invited.saved'))} ${entries.join(' ')}`
+      : escapeHtml(t('week.operations.invited.empty'));
   } catch (error) {
     elements.weekInvitedStatus.textContent = friendlyErrorMessage(
       error,

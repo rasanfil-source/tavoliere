@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260817e">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260817c">
+    <link rel="stylesheet" href="/styles.css?v=20260817r">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260818u">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -59,6 +59,7 @@
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2V9.6h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2h4v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.13.38.34.72.6 1 .3.27.68.41 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"></path>
             </svg>
+            <span class="control-panel-alert-dot" data-admin-password-alert-dot hidden aria-hidden="true"></span>
           </a>
           <a class="topbar-context-action topbar-meals-return" data-meals-return-entry href="/?view=participant&amp;access=friendly" hidden
             aria-label="Prenotazioni" data-i18n-aria-label="app.header.bookings">
@@ -581,6 +582,23 @@
                     </span>
                     <small class="field-help"><span data-i18n="admin.commonPassword.help">Vuoto = password invariata · </span><span data-admin-common-password-status></span></small>
                   </label>
+                  <div class="admin-shared-password-fields admin-field-wide" data-admin-shared-password-row>
+                    <label class="field-label">
+                      <span data-i18n="admin.sharedPassword.currentLabel">Password amministratori attuale</span>
+                      <span class="password-field">
+                        <input type="password" data-admin-shared-password-current maxlength="64" autocomplete="current-password">
+                        <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-shared-current" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                      </span>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.sharedPassword.newLabel">Nuova password amministratori</span>
+                      <span class="password-field">
+                        <input type="password" data-admin-shared-password-new minlength="6" maxlength="64" autocomplete="new-password">
+                        <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-shared-new" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                      </span>
+                      <small class="field-help" data-admin-shared-password-status></small>
+                    </label>
+                  </div>
                 </fieldset>
                 <div class="admin-section-actions">
                   <button type="button" class="save-button" data-admin-center-settings-save data-i18n="admin.centerSettings.save">Salva centro</button>
@@ -616,14 +634,21 @@
                     <h2 data-i18n="admin.adaptations.title">Impostazioni</h2>
                     <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app per questo centro.</p>
                   </div>
-
-                  <label class="field-label admin-contact-sharing-picker" data-admin-contact-sharing-row>
-                    <span data-i18n="admin.adaptations.contactSharing.label">Chiamata ai commensali</span>
-                    <select data-admin-contact-sharing-select>
-                      <option value="enabled" data-i18n="admin.adaptations.contactSharing.enabled">📞 Chiamata ai commensali attivata</option>
-                      <option value="disabled" data-i18n="admin.adaptations.contactSharing.disabled">📵 Chiamata ai commensali disattivata</option>
-                    </select>
-                  </label>
+                  <aside class="admin-password-rotation-warning" data-admin-password-rotation-warning hidden role="status">
+                    <strong data-i18n="admin.sharedPassword.warningTitle">Password amministratori da cambiare</strong>
+                    <span data-i18n="admin.sharedPassword.warning">Hai revocato il ruolo di vice amministratore. Per favore cambia la password amministratori.</span>
+                  </aside>
+                  <section class="resident-admin-unlock" data-resident-admin-unlock hidden>
+                    <label class="field-label">
+                      <span data-i18n="admin.sharedPassword.unlockLabel">Password amministratori</span>
+                      <span class="password-field">
+                        <input type="password" data-resident-admin-password autocomplete="current-password">
+                        <button type="button" class="password-toggle tertiary-action" data-password-toggle="resident-admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                      </span>
+                    </label>
+                    <button type="button" class="secondary-action" data-resident-admin-unlock-button data-i18n="admin.sharedPassword.unlockAction">Sblocca funzioni vice</button>
+                    <p data-resident-admin-unlock-status aria-live="polite"></p>
+                  </section>
 
                   <label class="field-label admin-default-view-picker" data-admin-default-view-picker>
                     <span data-i18n="viewPreference.label">Vista di apertura preferita</span>
@@ -679,6 +704,7 @@
                     <select data-admin-interface-style-select aria-label="Aspetto">
                       <option value="original" data-i18n="admin.adaptations.interfaceStyle.original">Originale</option>
                       <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool">Cool</option>
+                      <option value="urban" data-i18n="admin.adaptations.interfaceStyle.urban">Urban</option>
                     </select>
                   </fieldset>
 
@@ -764,6 +790,13 @@
                   <p data-admin-status>-</p>
                 </div>
                 <p class="admin-people-intro" data-i18n="admin.people.intro">Inserisci i commensali del centro e condividi il collegamento per accedere al calendario.</p>
+                <label class="field-label admin-contact-sharing-picker" data-admin-contact-sharing-row>
+                  <span data-i18n="admin.adaptations.contactSharing.label">Chiamata ai commensali</span>
+                  <select data-admin-contact-sharing-select>
+                    <option value="enabled" data-i18n="admin.adaptations.contactSharing.enabled">📞 Chiamata ai commensali attivata</option>
+                    <option value="disabled" data-i18n="admin.adaptations.contactSharing.disabled">📵 Chiamata ai commensali disattivata</option>
+                  </select>
+                </label>
                 <div class="admin-person-selector-row">
                   <label class="field-label">
                     <span data-i18n="week.operations.person">Persona</span>
@@ -972,6 +1005,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260817c"></script>
+  <script type="module" src="/app.js?v=20260818u"></script>
   </body>
 </html>

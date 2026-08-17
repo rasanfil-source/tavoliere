@@ -188,7 +188,8 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(index, /data-meals-return-entry/);
   assert.match(app, /elements\.controlPanelEntry\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
   assert.match(app, /selectedResidentCanOpenControlPanel\(\)/);
-  assert.match(app, /state\.selectedParticipant\?\.viceAdminRole === true/);
+  assert.match(app, /function selectedResidentCanOpenControlPanel\(\) \{[\s\S]*return state\.residentReady/);
+  assert.match(app, /state\.residentSettingsMode = state\.residentReady && !state\.adminRole/);
   assert.match(index, /needsAdminInterface[\s\S]*adminShell\.remove\(\)/);
 });
 
@@ -217,7 +218,7 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
 });
 
 test('meal pages show a fixed title and the authenticated name in the status row', () => {
-  assert.match(app, /const mealTitle = t\('app\.title'\)/);
+  assert.match(app, /const mealTitle = activeInterfaceStyle === 'original'[\s\S]*t\('app\.title'\)[\s\S]*t\('app\.title\.compact'\)/);
   assert.match(app, /element\.textContent = participantName/);
   assert.match(index, /data-participant-status-name/);
   assert.match(index, /data-week-status-name/);
@@ -592,15 +593,16 @@ test('il pannello amministratore distingue sospensione ed eliminazione definitiv
   assert.match(deleteHandler, /catch \(error\)[\s\S]*state\.adminParticipants = previousAdminParticipants/);
 });
 
-test('la condivisione contatti appartiene alla configurazione del centro', () => {
+test('la condivisione contatti appartiene alla scheda Persone', () => {
   const settingsStart = index.indexOf('id="admin-configuration-section"');
   const settingsEnd = index.indexOf('id="admin-access-section"', settingsStart);
   const personStart = index.indexOf('id="admin-person-editor"');
   const personEnd = index.indexOf('class="admin-people-overview', personStart);
   const settingsSection = index.slice(settingsStart, settingsEnd);
   const personSection = index.slice(personStart, personEnd);
-  assert.match(settingsSection, /data-admin-contact-sharing-select/);
-  assert.doesNotMatch(personSection, /data-admin-contact-sharing-select/);
+  assert.doesNotMatch(settingsSection, /data-admin-contact-sharing-select/);
+  assert.match(personSection, /data-admin-contact-sharing-select/);
+  assert.match(app, /await updateParticipantContactSharing\(enabled\)/);
   assert.match(app, /participantContactSharingEnabled: elements\.adminContactSharingSelect/);
   assert.match(app, /administratorName: state\.centerContactSettings\.administratorName/);
   assert.match(centerSettings, /participantContactSharingEnabled: Boolean\(participantContactSharingEnabled\)/);

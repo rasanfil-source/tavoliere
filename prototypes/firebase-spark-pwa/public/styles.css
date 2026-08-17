@@ -151,6 +151,24 @@
   background: var(--surface);
   text-align: center;
   text-decoration: none;
+  position: relative;
+}
+
+.control-panel-alert-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--danger, #b42318);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger, #b42318) 45%, transparent);
+  animation: control-panel-alert-pulse 1.35s ease-out infinite;
+}
+
+@keyframes control-panel-alert-pulse {
+  70%, 100% { box-shadow: 0 0 0 8px transparent; }
 }
 
 .topbar-context-action svg {
@@ -5527,6 +5545,47 @@ button[aria-busy="true"]:disabled {
 .admin-contact-sharing-picker select[data-state="enabled"] {
   color: var(--good, #2e7d57);
   font-weight: 600;
+}
+
+.admin-shared-password-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  background: var(--today-surface);
+}
+
+.admin-password-rotation-warning,
+.resident-admin-unlock {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--warn, #a15c00);
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--warn, #a15c00) 10%, var(--surface));
+  color: var(--ink);
+}
+
+.admin-password-rotation-warning strong,
+.admin-password-rotation-warning span {
+  display: block;
+}
+
+body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .admin-section-nav {
+  display: none;
+}
+
+body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .admin-panel {
+  padding-top: 0;
+}
+
+@media (max-width: 620px) {
+  .admin-shared-password-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .password-status-set {
