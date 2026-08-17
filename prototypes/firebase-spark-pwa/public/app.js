@@ -5310,7 +5310,9 @@ function getMealIcon(mealTypeId) {
 }
 
 function getInterfaceIcon(kind, fallback = '•') {
-  if (document.documentElement.dataset.interfaceFamily !== 'cool' || !kind) {
+  const usesCoolIcons = document.documentElement.dataset.interfaceFamily === 'cool'
+    || document.documentElement.dataset.interfaceStyle === 'urban';
+  if (!usesCoolIcons || !kind) {
     return fallback;
   }
   const paths = {
