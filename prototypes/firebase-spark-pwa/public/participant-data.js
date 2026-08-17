@@ -39,7 +39,7 @@ import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260816j';
+} from './center-settings.js?v=20260817a';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260816j';
+} from './center-settings.js?v=20260817a';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

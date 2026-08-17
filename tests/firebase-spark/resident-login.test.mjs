@@ -624,7 +624,7 @@ test('la messa si programma nella vista settimana per i ruoli autorizzati', () =
   assert.match(app, /loadDailyOperations/);
   assert.match(app, /week-matrix-with-mass/);
   assert.match(app, /week-mass-heading/);
-  assert.match(app, /week-mass-mobile-icon[^>]*aria-hidden="true">⛪<\/span>/);
+  assert.match(app, /week-mass-mobile-icon[^>]*aria-hidden="true">\$\{getInterfaceIcon\('church', '⛪'\)\}<\/span>/);
   assert.match(app, /week-heading-label">\$\{escapeHtml\(t\('summary\.mass'\)\)\}<\/span>/);
   assert.doesNotMatch(app, /week-heading-icon[^>]*aria-hidden="true">M<\/span>/);
   assert.match(app, /data-week-mass-bulk/);

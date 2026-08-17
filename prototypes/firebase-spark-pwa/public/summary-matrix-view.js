@@ -151,7 +151,23 @@ function renderCaption(screen, kitchen) {
 }
 
 function mealIcon(mealTypeId) {
-  return { breakfast: "☕", lunch: "🍝", dinner: "🍲" }[mealTypeId] || "•";
+  const originalIcons = { breakfast: "☕", lunch: "🍝", dinner: "🍲" };
+  const coolIcons = { breakfast: "coffee", lunch: "sun", dinner: "moon" };
+  return interfaceIcon(coolIcons[mealTypeId], originalIcons[mealTypeId] || "•");
+}
+
+function interfaceIcon(kind, fallback = "•") {
+  if (document.documentElement.dataset.interfaceStyle !== "cool" || !kind) {
+    return fallback;
+  }
+  const paths = {
+    coffee: '<path d="M4 10h11v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path d="M15 11h2a3 3 0 0 1 0 6h-2"></path><path d="M6 5c0 1 .8 1.4.8 2.4S6 8.8 6 9.5M10 5c0 1 .8 1.4.8 2.4S10 8.8 10 9.5"></path>',
+    sun: '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',
+    moon: '<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"></path>'
+  };
+  const path = paths[kind];
+  if (!path) return fallback;
+  return `<svg class="meal-line-icon meal-line-icon-${kind}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${path}</svg>`;
 }
 
 function localizedMealLabel(column) {

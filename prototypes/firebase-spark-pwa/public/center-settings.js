@@ -18,8 +18,13 @@ const CENTER_AVATAR_MAX_LENGTH = 300000;
 const ALLOWED_THEME_PALETTES = new Set([
   'smeraldo',
   'terracotta',
-  'confetto'
+  'confetto',
+  'salvia',
+  'oliva',
+  'inchiostro',
+  'neutro'
 ]);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 
@@ -35,6 +40,7 @@ export function loadCachedCenterContactSettings() {
       reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
       participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
       themePalette: normalizeThemePalette(cached.themePalette),
+      interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
       summaryLayout: normalizeLayout(cached.summaryLayout, 'international'),
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic'),
@@ -138,6 +144,7 @@ export async function updateCenterSettings({
   reservationCutoffs,
   participantContactSharingEnabled,
   themePalette,
+  interfaceStyle,
   defaultView,
   summaryLayout,
   kitchenLayout,
@@ -178,13 +185,14 @@ export async function updateCenterSettings({
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260816g');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260817a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
     reservationCutoffs: normalizedCutoffs,
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: normalizeThemePalette(themePalette),
+    interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
     summaryLayout: normalizeLayout(summaryLayout, 'international'),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
@@ -263,6 +271,7 @@ function refreshCenterContactSettings() {
         reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
         themePalette: normalizeThemePalette(data.themePalette),
+        interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
         summaryLayout: normalizeLayout(data.summaryLayout, 'international'),
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic'),
@@ -298,6 +307,10 @@ function normalizeCenterName(value) {
 
 function normalizeThemePalette(value) {
   return ALLOWED_THEME_PALETTES.has(value) ? value : 'smeraldo';
+}
+
+function normalizeInterfaceStyle(value) {
+  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'original';
 }
 
 function normalizeLayout(value, fallback) {

@@ -63,6 +63,14 @@ test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
   assert.match(app, /stateLabel = getMealStateLabel\(isPresent\)/);
 });
 
+test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezioni', () => {
+  assert.match(app, /function getInterfaceIcon\(kind, fallback/);
+  assert.match(app, /meal-line-icon meal-line-icon-\$\{kind\}/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\][\s\S]*--cool-good-soft/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-good-soft\)/);
+  assert.match(summaryStyles, /font-family: Fraunces, Georgia/);
+});
+
 function readColorTokens(css) {
   return Object.fromEntries([...css.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)]
     .map(([, name, value]) => [name, value]));

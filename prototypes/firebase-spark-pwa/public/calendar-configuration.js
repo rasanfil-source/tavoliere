@@ -23,6 +23,7 @@ const MEAL_TYPES = [
 const WINDOW_DAY_BATCH_SIZE = 132;
 const DATE_ID_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool']);
 
 export async function saveCenterConfiguration({
   name,
@@ -30,6 +31,7 @@ export async function saveCenterConfiguration({
   reservationCutoffs,
   participantContactSharingEnabled,
   themePalette,
+  interfaceStyle,
   defaultView,
   summaryLayout,
   kitchenLayout,
@@ -66,6 +68,7 @@ export async function saveCenterConfiguration({
     reservationCutoffs: normalizeReservationCutoffs(reservationCutoffs),
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: typeof themePalette === 'string' ? themePalette : 'smeraldo',
+    interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: defaultView === 'week' ? 'week' : 'month',
     summaryLayout: normalizeLayout(summaryLayout, 'international'),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
@@ -190,6 +193,7 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       reservationCutoffs: target.reservationCutoffs,
       participantContactSharingEnabled: target.participantContactSharingEnabled,
       themePalette: target.themePalette,
+      interfaceStyle: target.interfaceStyle,
       defaultView: target.defaultView,
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
@@ -231,6 +235,7 @@ async function completeConfiguration({
       reservationCutoffs: target.reservationCutoffs,
       participantContactSharingEnabled: target.participantContactSharingEnabled,
       themePalette: target.themePalette,
+      interfaceStyle: target.interfaceStyle,
       defaultView: target.defaultView,
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
@@ -334,4 +339,8 @@ function yieldToMainThread() {
 
 function normalizeLayout(value, fallback) {
   return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
+}
+
+function normalizeInterfaceStyle(value) {
+  return ALLOWED_INTERFACE_STYLE_VALUES.has(value) ? value : 'original';
 }

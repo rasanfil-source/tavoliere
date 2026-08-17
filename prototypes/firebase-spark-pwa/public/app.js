@@ -42,7 +42,7 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816j';
+} from './center-settings.js?v=20260817a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -67,7 +67,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816j';
+} from './summary-matrix-view.js?v=20260817a';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -447,11 +447,13 @@ const state = {
   weekDailyOperations: [],
   pendingCenterAvatarDataUrl: '',
   pendingThemePalette: '',
+  pendingInterfaceStyle: '',
   centerContactSettings: {
     name: '',
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
     themePalette: 'smeraldo',
+    interfaceStyle: 'original',
     defaultView: loadCachedDefaultView(),
     summaryLayout: 'international',
     kitchenLayout: 'classic',
@@ -586,6 +588,7 @@ const elements = {
   adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
   adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
+  adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
@@ -980,6 +983,9 @@ if (elements.adminAdaptationsReset) {
 }
 if (elements.adminThemeSelect) {
   elements.adminThemeSelect.addEventListener('change', handleThemeSelectChange);
+}
+if (elements.adminInterfaceStyleSelect) {
+  elements.adminInterfaceStyleSelect.addEventListener('change', handleInterfaceStyleSelectChange);
 }
 if (elements.adminLanguageSelect) {
   elements.adminLanguageSelect.addEventListener('change', async (event) => {
@@ -3679,6 +3685,7 @@ async function performAdminCenterSettingsSave() {
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
       themePalette: state.centerContactSettings.themePalette || 'smeraldo',
+      interfaceStyle: state.centerContactSettings.interfaceStyle || 'original',
       defaultView: state.centerContactSettings.defaultView || 'month',
       summaryLayout: state.centerContactSettings.summaryLayout || 'international',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
@@ -3841,8 +3848,11 @@ function syncAdminCenterSettingsForm() {
 
 function syncAdminAdaptationsForm() {
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'original';
   document.documentElement.dataset.theme = currentPalette;
+  document.documentElement.dataset.interfaceStyle = currentInterfaceStyle;
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
   }
@@ -3880,12 +3890,25 @@ function handleThemeSelectChange(event) {
   }
 }
 
+function handleInterfaceStyleSelectChange(event) {
+  const selectedStyle = event.target.value === 'cool' ? 'cool' : 'original';
+  state.pendingInterfaceStyle = selectedStyle;
+  document.documentElement.dataset.interfaceStyle = selectedStyle;
+  if (elements.adminThemeStatus) {
+    elements.adminThemeStatus.textContent = t('admin.adaptations.interfaceStyle.preview');
+  }
+  renderMode();
+}
+
 async function handleAdminAdaptationsSave() {
   try {
     if (elements.adminAdaptationsSave) elements.adminAdaptationsSave.disabled = true;
     if (elements.adminAdaptationsCancel) elements.adminAdaptationsCancel.disabled = true;
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('common.status.saving');
     const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+    const interfaceStyleToSave = state.pendingInterfaceStyle
+      || state.centerContactSettings.interfaceStyle
+      || 'original';
     const sharingEnabled = elements.adminContactSharingSelect
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
@@ -3895,6 +3918,7 @@ async function handleAdminAdaptationsSave() {
       timezone: state.centerContactSettings.timezone,
       participantContactSharingEnabled: sharingEnabled,
       themePalette: paletteToSave,
+      interfaceStyle: interfaceStyleToSave,
       defaultView: elements.adminDefaultViewSelect ? elements.adminDefaultViewSelect.value : state.centerContactSettings.defaultView,
       summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
       kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
@@ -3911,7 +3935,9 @@ async function handleAdminAdaptationsSave() {
       language: languageToSave
     };
     state.pendingThemePalette = '';
+    state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
+    document.documentElement.dataset.interfaceStyle = state.centerContactSettings.interfaceStyle || 'original';
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
     applyTranslations(document);
@@ -3927,15 +3953,20 @@ async function handleAdminAdaptationsSave() {
 
 function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
+  state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'smeraldo';
+  document.documentElement.dataset.interfaceStyle = state.centerContactSettings.interfaceStyle || 'original';
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
   state.pendingThemePalette = 'smeraldo';
+  state.pendingInterfaceStyle = 'original';
   document.documentElement.dataset.theme = 'smeraldo';
+  document.documentElement.dataset.interfaceStyle = 'original';
   updateThemeSelectControl('smeraldo');
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'original';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -4097,6 +4128,10 @@ function renderMode() {
     || state.centerContactSettings.themePalette
     || 'smeraldo';
   document.documentElement.dataset.theme = activePalette;
+  const activeInterfaceStyle = state.pendingInterfaceStyle
+    || state.centerContactSettings.interfaceStyle
+    || 'original';
+  document.documentElement.dataset.interfaceStyle = activeInterfaceStyle;
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
   const isSummary = state.mode === 'summary';
@@ -4844,12 +4879,12 @@ function renderParticipantMeals() {
     <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''}" aria-label="Prenotazioni della settimana">
       <div class="week-matrix-header">
         <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
-          <span class="week-heading-icon" aria-hidden="true">▦</span>
+          <span class="week-heading-icon" aria-hidden="true">${getInterfaceIcon('calendar', '▦')}</span>
           <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
         </button>
         ${showMassColumn ? `
           <button type="button" class="week-mass-heading${allOpenMassesScheduled ? ' week-mass-heading-complete' : ''}" data-week-mass-bulk data-week-mass-scheduled="${massBulkScheduled}" aria-pressed="${allOpenMassesScheduled}" aria-label="${massBulkLabel}" title="${massBulkLabel}"${openMassDays.length > 0 ? '' : ' disabled'}>
-            <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">⛪</span>
+            <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">${getInterfaceIcon('church', '⛪')}</span>
             <span class="week-heading-label">${escapeHtml(t('summary.mass'))}</span>
           </button>
         ` : ''}
@@ -5004,11 +5039,33 @@ function getBulkSelectionEffect(meals) {
 }
 
 function getMealIcon(mealTypeId) {
-  return {
+  const originalIcons = {
     breakfast: '☕',
     lunch: '🍝',
     dinner: '🍲'
-  }[mealTypeId] || '•';
+  };
+  const coolIcons = {
+    breakfast: 'coffee',
+    lunch: 'sun',
+    dinner: 'moon'
+  };
+  return getInterfaceIcon(coolIcons[mealTypeId], originalIcons[mealTypeId] || '•');
+}
+
+function getInterfaceIcon(kind, fallback = '•') {
+  if (document.documentElement.dataset.interfaceStyle !== 'cool' || !kind) {
+    return fallback;
+  }
+  const paths = {
+    coffee: '<path d="M4 10h11v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path d="M15 11h2a3 3 0 0 1 0 6h-2"></path><path d="M6 5c0 1 .8 1.4.8 2.4S6 8.8 6 9.5M10 5c0 1 .8 1.4.8 2.4S10 8.8 10 9.5"></path>',
+    sun: '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',
+    moon: '<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"></path>',
+    church: '<path d="M4 20h16M6 20v-8l6-5 6 5v8M12 3v4M10 5h4M9 20v-4h6v4M3 12h3M18 12h3"></path>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18M7 14h.01M12 14h.01M17 14h.01M7 18h.01M12 18h.01M17 18h.01"></path>'
+  };
+  const path = paths[kind];
+  if (!path) return fallback;
+  return `<svg class="meal-line-icon meal-line-icon-${kind}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${path}</svg>`;
 }
 
 function getLocalizedMealLabel(mealTypeId, fallback = '') {
@@ -5037,7 +5094,6 @@ function renderTodayOverview() {
     return;
   }
 
-  const mealIcons = { breakfast: '☕', lunch: '🍝', dinner: '🍲' };
   elements.todayOverview.innerHTML = `
     <section class="today-panel">
       <p class="today-date">${formatSummaryDate(getSummaryDate())}</p>
@@ -5045,7 +5101,7 @@ function renderTodayOverview() {
         ${state.todayOverview.map((meal) => `
           <article class="today-card">
             <div class="today-card-head">
-              <strong><span class="meal-icon" aria-hidden="true">${mealIcons[meal.mealTypeId] || '•'}</span><span class="meal-label">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</span></strong>
+              <strong><span class="meal-icon" aria-hidden="true">${getMealIcon(meal.mealTypeId)}</span><span class="meal-label">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</span></strong>
             </div>
             ${renderGroupedSummary(meal.present)}
           </article>
@@ -5279,12 +5335,9 @@ function handleMonthGridClick(event) {
 
 function renderMonthScopeButtons(label, weekStart, mealTypeId) {
   const scope = mealTypeId ? 'week-meal' : 'week';
-  const icon = {
-    Settimana: '▦',
-    Colazione: '☕',
-    Pranzo: '🍝',
-    Cena: '🍲'
-  }[label] || '•';
+  const icon = mealTypeId
+    ? getMealIcon(mealTypeId)
+    : getInterfaceIcon('calendar', '▦');
   const effect = getMonthScopeEffect(weekStart, mealTypeId);
   const action = effect === 'PRESENT' ? 'prenota' : 'libera';
   const selectedClass = effect === 'ABSENT' ? ' month-scope-toggle-selected' : '';

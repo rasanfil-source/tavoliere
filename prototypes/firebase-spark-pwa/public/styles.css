@@ -1739,6 +1739,78 @@ html[data-theme="confetto"] {
   --today-line: #dd98ac;
   --today-ink: #a92b52;
 }
+html[data-theme="salvia"] {
+  --primary: #2f5d53;
+  --ink: #22312d;
+  --muted: #5f706a;
+  --bg: #f1f0ea;
+  --surface: #ffffff;
+  --line: #dce2dd;
+  --good: #3f744e;
+  --warn: #826823;
+  --danger: #b0503f;
+  --info: #3e6b73;
+  --calendar-heading-bg: #e3ece8;
+  --calendar-heading-border: #b7d0c7;
+  --calendar-heading-ink: #2f5d53;
+  --today-surface: #e4f0ea;
+  --today-line: #82ad9d;
+  --today-ink: #2f5d53;
+}
+html[data-theme="oliva"] {
+  --primary: #6f7b41;
+  --ink: #332f22;
+  --muted: #6f684f;
+  --bg: #f6f2e4;
+  --surface: #ffffff;
+  --line: #e7e1ce;
+  --good: #617843;
+  --warn: #8b6913;
+  --danger: #a85a3c;
+  --info: #546b73;
+  --calendar-heading-bg: #ececd9;
+  --calendar-heading-border: #ced2a9;
+  --calendar-heading-ink: #64713c;
+  --today-surface: #eef0df;
+  --today-line: #b1bc75;
+  --today-ink: #65713e;
+}
+html[data-theme="inchiostro"] {
+  --primary: #233142;
+  --ink: #1d2530;
+  --muted: #626c79;
+  --bg: #f4f2ed;
+  --surface: #ffffff;
+  --line: #e1e0da;
+  --good: #4c6b4f;
+  --warn: #9a7029;
+  --danger: #8b3a32;
+  --info: #42677a;
+  --calendar-heading-bg: #e5e9ed;
+  --calendar-heading-border: #bdc9d3;
+  --calendar-heading-ink: #334d62;
+  --today-surface: #e7eff5;
+  --today-line: #8baec3;
+  --today-ink: #304f68;
+}
+html[data-theme="neutro"] {
+  --primary: #3e3a34;
+  --ink: #2a2723;
+  --muted: #6f6a62;
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --line: #e7e3db;
+  --good: #5f7a52;
+  --warn: #8b6617;
+  --danger: #a8503d;
+  --info: #536d78;
+  --calendar-heading-bg: #ece9e1;
+  --calendar-heading-border: #cbc5b9;
+  --calendar-heading-ink: #545049;
+  --today-surface: #edece5;
+  --today-line: #aaa79b;
+  --today-ink: #49463f;
+}
 
 .admin-theme-picker {
   margin: 16px 0 0;
@@ -1766,6 +1838,24 @@ html[data-theme="confetto"] {
     #b4f2c1 50% 75%,
     #c9b6ff 75% 100%
   );
+}
+.theme-swatch-salvia { background: linear-gradient(135deg, #2f5d53 60%, #f1f0ea 60%); }
+.theme-swatch-oliva { background: linear-gradient(135deg, #6f7b41 60%, #f6f2e4 60%); }
+.theme-swatch-inchiostro { background: linear-gradient(135deg, #233142 60%, #f4f2ed 60%); }
+.theme-swatch-neutro { background: linear-gradient(135deg, #3e3a34 60%, #f7f5f0 60%); }
+
+.admin-interface-style-picker {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.admin-interface-style-picker select {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
 }
 
 .theme-select-control {

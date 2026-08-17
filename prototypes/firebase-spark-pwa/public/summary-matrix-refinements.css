@@ -685,6 +685,185 @@
   }
 }
 
+/* Aspetto Originale: i tre comandi dei pasti condividono un solo contenitore. */
+html[data-interface-style="original"] .month-week-action-row {
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 10px;
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-group + .month-scope-group {
+  border-top: 1px solid color-mix(in srgb, var(--view-border) 62%, transparent);
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-toggle-selected {
+  background: var(--complete-surface);
+  color: var(--good);
+}
+
+/* Cool: interpretazione leggera dei mockup, senza cambiare la struttura dell'app. */
+html[data-interface-style="cool"] {
+  --cool-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  --cool-good-soft: color-mix(in srgb, var(--good) 15%, var(--surface));
+  --cool-bad-soft: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --cool-faint: color-mix(in srgb, var(--muted) 34%, var(--surface));
+  --view-surface: color-mix(in srgb, var(--primary) 1.5%, var(--surface));
+  --view-control: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  --view-control-strong: var(--cool-primary-soft);
+  --view-border: color-mix(in srgb, var(--primary) 16%, var(--line));
+}
+
+html[data-interface-style="cool"] body {
+  background: var(--bg);
+}
+
+html[data-interface-style="cool"] .topbar {
+  padding: 12px 16px;
+  border-radius: 0 0 18px 18px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-style="cool"] .topbar h1,
+html[data-interface-style="cool"] .topbar [data-title-center],
+html[data-interface-style="cool"] .topbar [data-session-role] {
+  color: inherit;
+}
+
+html[data-interface-style="cool"] .topbar-context-action {
+  border-color: color-mix(in srgb, var(--surface) 42%, transparent);
+  background: color-mix(in srgb, var(--surface) 13%, transparent);
+  color: var(--surface);
+}
+
+html[data-interface-style="cool"] .topbar-context-action small {
+  color: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+html[data-interface-style="cool"] h1,
+html[data-interface-style="cool"] h2,
+html[data-interface-style="cool"] h3,
+html[data-interface-style="cool"] .topbar h1,
+html[data-interface-style="cool"] .participant-status-name,
+html[data-interface-style="cool"] .week-status-name,
+html[data-interface-style="cool"] .summary-status-name,
+html[data-interface-style="cool"] .summary-matrix-caption,
+html[data-interface-style="cool"] .summary-international-title {
+  font-family: Fraunces, Georgia, "Times New Roman", serif;
+  font-weight: 600;
+}
+
+.meal-line-icon {
+  display: inline-block;
+  width: 1.18em;
+  height: 1.18em;
+  vertical-align: -0.2em;
+}
+
+html[data-interface-style="cool"] .week-heading-icon,
+html[data-interface-style="cool"] .meal-icon,
+html[data-interface-style="cool"] .summary-matrix-meal-icon,
+html[data-interface-style="cool"] .summary-international-meal-icon,
+html[data-interface-style="cool"] .month-scope-label > span:first-child,
+html[data-interface-style="cool"] .month-scope-glyph {
+  color: var(--primary);
+}
+
+html[data-interface-style="cool"] .meal-view-segment,
+html[data-interface-style="cool"] .summary-day-segment,
+html[data-interface-style="cool"] .today-card,
+html[data-interface-style="cool"] .summary-international-card,
+html[data-interface-style="cool"] .summary-matrix-track,
+html[data-interface-style="cool"] .week-matrix,
+html[data-interface-style="cool"] .admin-layout-settings-card,
+html[data-interface-style="cool"] .admin-theme-picker,
+html[data-interface-style="cool"] .admin-interface-style-picker {
+  border-color: var(--view-border);
+  border-radius: 12px;
+  background: var(--view-surface);
+  box-shadow: none;
+}
+
+html[data-interface-style="cool"] .month-flag-present,
+html[data-interface-style="cool"] .week-meal-button.meal-state-present {
+  border-color: color-mix(in srgb, var(--good) 45%, var(--view-border));
+  background: var(--cool-good-soft);
+  color: var(--good);
+  box-shadow: none;
+}
+
+html[data-interface-style="cool"] .month-flag-present.month-flag-locked {
+  opacity: 0.78;
+}
+
+html[data-interface-style="cool"] .month-day-today,
+html[data-interface-style="cool"] .week-matrix-row-today {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+html[data-interface-style="cool"] .month-day-number-today .month-day-number-value,
+html[data-interface-style="cool"] .week-matrix-row-today .week-day-button strong {
+  display: inline-grid;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-style="cool"] .month-week-action-row {
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 10px;
+  background: var(--view-surface);
+}
+
+html[data-interface-style="cool"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="cool"] .month-week-action-row .month-scope-toggle-selected {
+  background: var(--cool-good-soft);
+  color: var(--good);
+}
+
+html[data-interface-style="cool"] .month-week-action-row.month-week-complete {
+  border-color: color-mix(in srgb, var(--good) 35%, var(--view-border));
+  background: var(--cool-good-soft);
+}
+
+html[data-interface-style="cool"] .summary-matrix-mass-yes,
+html[data-interface-style="cool"] .week-mass-button-yes strong {
+  background: var(--cool-good-soft);
+  color: var(--good);
+}
+
+html[data-interface-style="cool"] .summary-matrix-mass-no,
+html[data-interface-style="cool"] .week-mass-button-no strong {
+  background: var(--cool-bad-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 620px) {
+  html[data-interface-style="cool"] .topbar {
+    margin-inline: -1px;
+    border-radius: 0 0 16px 16px;
+  }
+}
+
 [data-summary-panel] .summary-date-tabs > .operational-view-switch {
   box-sizing: border-box;
   height: 42px !important;

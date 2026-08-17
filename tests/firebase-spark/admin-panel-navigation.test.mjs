@@ -58,7 +58,15 @@ test('agenda centro vive nella vista settimana e sostituisce il vecchio collegam
 test('la palette colori usa un selettore nativo con anteprima immediata', () => {
   const paletteSelect = html.match(/<select data-admin-theme-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const paletteValues = [...paletteSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(paletteValues, ['smeraldo', 'terracotta', 'confetto']);
+  assert.deepEqual(paletteValues, [
+    'smeraldo',
+    'terracotta',
+    'confetto',
+    'salvia',
+    'oliva',
+    'inchiostro',
+    'neutro'
+  ]);
   assert.match(html, /value="terracotta" data-i18n="admin\.adaptations\.theme\.terracotta"/);
   assert.match(css, /html\[data-theme="terracotta"\][\s\S]*--primary: #b1502f;[\s\S]*--bg: #f8f1e7;[\s\S]*--surface: #fffdf9;/);
   assert.doesNotMatch(html, /value="(?:giallino|beige|rosso-pallido)"/);
@@ -70,6 +78,16 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.match(html, /Se ti piace, salva questa scelta di colori/);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
   assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'smeraldo'/);
+});
+
+test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il centro', () => {
+  const styleSelect = html.match(/<select data-admin-interface-style-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
+  const styleValues = [...styleSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(styleValues, ['original', 'cool']);
+  assert.match(html, /data-i18n="admin\.adaptations\.interfaceStyle\.label">Aspetto/);
+  assert.match(app, /document\.documentElement\.dataset\.interfaceStyle = activeInterfaceStyle/);
+  assert.match(app, /interfaceStyle: interfaceStyleToSave/);
+  assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool'\]\)/);
 });
 
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
