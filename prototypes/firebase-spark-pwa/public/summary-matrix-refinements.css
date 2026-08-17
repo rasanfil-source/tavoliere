@@ -846,6 +846,38 @@ html[data-interface-family="cool"] .month-week-action-row.month-week-complete {
   background: var(--cool-confirmed-soft);
 }
 
+/* In Cool la matrice settimanale e' volutamente piu ariosa. Manteniamo
+   l'Agenda centro nella parte immediatamente operativa della schermata,
+   prima della matrice, invece di lasciarla oltre sette righe di pasti. */
+html[data-interface-style="cool"] [data-week-panel] {
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .participant-status-row {
+  order: 0;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .meal-view-nav {
+  order: 1;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-toolbar {
+  order: 2;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-operations {
+  order: 3;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-grid {
+  order: 4;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > [data-participant-summary] {
+  order: 5;
+}
+
 html[data-interface-family="cool"] .summary-matrix-mass-yes,
 html[data-interface-family="cool"] .week-mass-button-yes strong {
   background: var(--cool-affirmative-soft);

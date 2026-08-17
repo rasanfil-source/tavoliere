@@ -77,6 +77,9 @@ test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezio
   assert.match(app, /getInterfaceIcon\('church', '⛪'\)/);
   assert.match(summaryStyles, /--mass-yes-bg: color-mix\(in srgb, var\(--affirmative\)/);
   assert.match(summaryStyles, /font-family: Fraunces, Georgia/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\][\s\S]*display: flex;[\s\S]*flex-direction: column/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\] > \.week-operations \{[\s\S]*order: 3/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\] > \.week-grid \{[\s\S]*order: 4/);
 });
 
 function readColorTokens(css) {
