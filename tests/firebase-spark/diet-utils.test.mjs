@@ -17,7 +17,7 @@ test('il catalogo diete governa opzioni ed etichette da un solo modulo', () => {
   assert.equal(temporaryOptions[0].label, 'Nessuna dieta occasionale');
   assert.equal(permanentOptions.find((item) => item.value === 'BIANCO').label, 'In bianco');
   assert.equal(formatDietLabel('DIAB'), 'Diabete');
-  assert.equal(formatDietLabel('8'), 'Dieta 8');
+  assert.equal(formatDietLabel('8'), '8');
 });
 
 test('la selezione dieta normalizza codici e numeri personalizzati', () => {

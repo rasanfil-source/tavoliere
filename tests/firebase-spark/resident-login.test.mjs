@@ -230,6 +230,11 @@ test('meal pages show a fixed title and the authenticated name in the status row
   assert.doesNotMatch(index, /data-week-participant-select/);
 });
 
+test('il livello dati conserva la lingua esistente quando un chiamante la omette', () => {
+  assert.match(centerSettings, /language: typeof language === 'string' && language\.trim\(\) \? language : undefined/);
+  assert.match(calendarConfiguration, /typeof center\.language === 'string' && center\.language\.trim\(\) \? center\.language : 'it'/);
+});
+
 test('nel riepilogo mobile il nome del centro occupa una riga sotto il titolo', () => {
   assert.match(index, /class="topbar-heading"/);
   assert.match(index, /data-title-center/);

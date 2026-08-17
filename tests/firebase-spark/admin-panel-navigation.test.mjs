@@ -90,6 +90,13 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
 });
 
+test('il salvataggio della configurazione conserva la lingua del centro', () => {
+  const start = app.indexOf('async function performAdminCenterSettingsSave()');
+  const end = app.indexOf('async function saveAdministratorAsParticipant', start);
+  const handler = app.slice(start, end);
+  assert.match(handler, /language: state\.centerContactSettings\.language \|\| 'it'/);
+});
+
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
   const invitations = app.match(/function renderAdminInvitationList\(\)[\s\S]*?\r?\n}\r?\n\r?\nasync function handleAdminInvitationListClick/)?.[0] || '';
   const accounts = app.match(/function renderAdminAccountList\(\)[\s\S]*?\r?\n}\r?\n\r?\nasync function handleAdminAccountListClick/)?.[0] || '';

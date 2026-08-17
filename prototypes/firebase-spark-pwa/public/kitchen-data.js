@@ -16,7 +16,7 @@ import {
   resolveEffectiveEffect
 } from './reservation-state.mjs?v=20260816g';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { formatDietLabel } from './diet-utils.mjs?v=20260816g';
+import { formatDietLabel } from './diet-utils.mjs?v=20260818w';
 
 const KITCHEN_TOKEN_STORAGE_KEY = 'tavolaComune.kitchenToken';
 const KITCHEN_DEMO_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');

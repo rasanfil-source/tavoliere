@@ -56,10 +56,10 @@ test('target persone coerente con index.html', () => {
   assert.equal(result.checklist.items[0].target, 'admin-person-editor');
 });
 
-test('target accesso coerente con index.html', () => {
+test('i collegamenti della checklist aprono la scheda Link per accedere', () => {
   const result = buildAdminOverview({ role: 'OWNER', canViewOperationalLinks: true, operationalLinks: {} });
-  assert.equal(result.checklist.items.find(({ id }) => id === 'publicLink').target, 'admin-access-section');
-  assert.equal(result.checklist.items.find(({ id }) => id === 'kitchenLink').target, 'admin-access-section');
+  assert.equal(result.checklist.items.find(({ id }) => id === 'publicLink').target, 'admin-overview-section');
+  assert.equal(result.checklist.items.find(({ id }) => id === 'kitchenLink').target, 'admin-overview-section');
 });
 
 test('i collegamenti completano la checklist solo quando sono attivi', () => {

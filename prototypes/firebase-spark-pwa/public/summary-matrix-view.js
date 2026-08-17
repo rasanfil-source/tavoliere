@@ -1,6 +1,6 @@
 import { t, getLocale } from "./i18n/i18n.mjs?v=20260817p";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
-import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260816g";
+import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260818w";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,

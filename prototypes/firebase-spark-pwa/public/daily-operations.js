@@ -8,7 +8,7 @@ import {
 import { db } from './firebase-client.js?v=20260817q';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { normalizeDietCode } from './diet-utils.mjs?v=20260816g';
+import { normalizeDietCode } from './diet-utils.mjs?v=20260818w';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
 const dailyOperationCache = new Map();

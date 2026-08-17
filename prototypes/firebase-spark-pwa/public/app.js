@@ -44,12 +44,12 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260818u';
+} from './center-settings.js?v=20260818w';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260816g';
+} from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816h';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
@@ -64,7 +64,7 @@ import {
   normalizePhoneNumber,
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20260816g';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816g';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260818w';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
@@ -3803,6 +3803,7 @@ async function performAdminCenterSettingsSave() {
       defaultView: state.centerContactSettings.defaultView || 'month',
       summaryLayout: state.centerContactSettings.summaryLayout || 'international',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
+      language: state.centerContactSettings.language || 'it',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorSharedPassword: newSharedAdminPassword,
       currentAdministratorSharedPassword: currentSharedAdminPassword,
@@ -4581,7 +4582,11 @@ function renderAdminPeopleList() {
     ].filter(Boolean);
     const details = [
       groupLabel,
-      dietCode === 'STANDARD' ? '' : formatDietLabel(dietCode),
+      dietCode === 'STANDARD'
+        ? ''
+        : (/^\d+$/.test(dietCode)
+          ? t('diet.numbered', { number: dietCode })
+          : formatDietLabel(dietCode)),
       ...roleLabels
     ].filter(Boolean).map(escapeHtml).join(' · ');
     const phoneIcon = participant.phone

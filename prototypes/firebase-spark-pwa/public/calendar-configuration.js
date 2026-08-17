@@ -79,7 +79,9 @@ export async function saveCenterConfiguration({
     defaultView: defaultView === 'week' ? 'week' : 'month',
     summaryLayout: normalizeLayout(summaryLayout, 'international'),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
-    language: typeof language === 'string' ? language : 'it',
+    language: typeof language === 'string' && language.trim()
+      ? language
+      : (typeof center.language === 'string' && center.language.trim() ? center.language : 'it'),
     commonPassword: typeof commonPassword === 'string' && commonPassword.length >= 4 ? commonPassword : null,
     administratorSharedPassword: typeof administratorSharedPassword === 'string'
       && administratorSharedPassword.length >= 6 ? administratorSharedPassword : null,

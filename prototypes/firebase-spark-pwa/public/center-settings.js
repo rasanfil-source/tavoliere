@@ -198,7 +198,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260817r');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260818w');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -209,7 +209,7 @@ export async function updateCenterSettings({
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
     summaryLayout: normalizeLayout(summaryLayout, 'international'),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
-    language: language || 'it',
+    language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
     currentAdministratorSharedPassword: typeof currentAdministratorSharedPassword === 'string'
