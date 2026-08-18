@@ -1,0 +1,1 @@
+function t({mode:e,residentAuthTransition:r="",residentRestorePending:s=!1,strongAuthUser:f=!1}={}){return!(e!=="admin"||(r||s)&&!f)}function n({friendlyAccess:e=!1,residentReady:r=!1,hasParticipant:s=!1,permissionDenied:f=!1}={}){return e&&r&&s&&f}export{n as shouldPreserveResidentViewAfterRefreshError,t as shouldProcessAdminAuthEvent};

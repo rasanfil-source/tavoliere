@@ -376,6 +376,22 @@ export async function ensureStoredResidentSession() {
   return ensurePersonalSession(participantId, token);
 }
 
+export async function recoverStoredResidentSession() {
+  const participantId = loadStoredResidentParticipantId();
+  const token = loadStoredResidentToken();
+  if (!participantId || !token.tokenId || !token.expiresAt) {
+    const error = new Error('Accesso personale richiesto');
+    error.code = 'resident/session-missing';
+    throw error;
+  }
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (authorizedAdministrator) {
+    return authorizedAdministrator;
+  }
+  clearCurrentSession();
+  return ensurePersonalSession(participantId, token, { forceRefresh: true });
+}
+
 export async function loadResidentAdministratorAuthorization() {
   const user = getCurrentUser();
   const participantId = loadStoredResidentParticipantId();
@@ -401,7 +417,7 @@ export async function loadResidentAdministratorAuthorization() {
   };
 }
 
-async function ensurePersonalSession(participantId, token) {
+async function ensurePersonalSession(participantId, token, options = {}) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
@@ -416,7 +432,8 @@ async function ensurePersonalSession(participantId, token) {
     user = credential.user;
   }
 
-  if (canReuseCurrentSession(user, 'PERSONAL')
+  if (!options.forceRefresh
+    && canReuseCurrentSession(user, 'PERSONAL')
     && currentSession.participantId === participantId
     && currentSession.tokenId === token.tokenId) {
     return user;

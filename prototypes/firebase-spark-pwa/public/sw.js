@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v313';
+const CACHE_NAME = CACHE_PREFIX + 'v315';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -18,6 +18,7 @@ const APP_SHELL = [
   '/role-policy.mjs',
   '/schedule-utils.mjs',
   '/core/connectivity.mjs',
+  '/core/auth-session-policy.mjs',
   '/core/operation-guard.mjs',
   '/core/state-store.mjs',
   '/core/user-error.mjs',

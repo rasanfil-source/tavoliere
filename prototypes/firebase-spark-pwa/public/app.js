@@ -57,6 +57,10 @@ import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import { toUserMessage } from './core/user-error.mjs?v=20260816i';
 import {
+  shouldPreserveResidentViewAfterRefreshError,
+  shouldProcessAdminAuthEvent
+} from './core/auth-session-policy.mjs?v=20260818a';
+import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
@@ -86,7 +90,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260818s'
+  participant: './participant-data.js?v=20260818t'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -155,6 +159,7 @@ const saveMassStatus = callDomain('daily', 'saveMassStatus');
 const saveMassStatuses = callDomain('daily', 'saveMassStatuses');
 const ensurePublicDemoSession = callDomain('participant', 'ensurePublicDemoSession');
 const ensureStoredResidentSession = callDomain('participant', 'ensureStoredResidentSession');
+const recoverStoredResidentSession = callDomain('participant', 'recoverStoredResidentSession');
 const loadResidentAdministratorAuthorization = callDomain('participant', 'loadResidentAdministratorAuthorization');
 const forgetResidentDevice = callDomain('participant', 'forgetResidentDevice');
 const restoreFriendlyResidentSession = callDomain('participant', 'restoreFriendlyResidentSession');
@@ -1930,7 +1935,7 @@ function initializeAuthPanel() {
   }
 
   const authFallback = window.setTimeout(() => {
-    if (authSettled) {
+    if (authSettled || state.mode !== 'admin') {
       return;
     }
     void reconcileAdminAccessWithoutStrongUser();
@@ -1938,13 +1943,18 @@ function initializeAuthPanel() {
 
   elements.authButton.disabled = false;
   watchAuth((user) => {
+    const strongAuthUser = user && !user.isAnonymous && !isResidentTechnicalEmail(user.email);
+    if (!shouldProcessAdminAuthEvent({
+      mode: state.mode,
+      residentAuthTransition: state.residentAuthTransition,
+      residentRestorePending: state.residentRestorePending,
+      strongAuthUser: Boolean(strongAuthUser)
+    })) {
+      return;
+    }
     const revision = ++authRevision;
     authSettled = true;
     window.clearTimeout(authFallback);
-    const strongAuthUser = user && !user.isAnonymous && !isResidentTechnicalEmail(user.email);
-    if ((state.residentAuthTransition || state.residentRestorePending) && !strongAuthUser) {
-      return;
-    }
     if (!user) {
       if (state.mode === 'admin') void reconcileAdminAccessWithoutStrongUser();
       else if (state.adminRole) setSignedOutState();
@@ -3101,10 +3111,8 @@ async function refreshParticipant(source) {
     }
     if (!isCurrentParticipantRequest(request)) return;
     let sessionPromise = Promise.resolve();
-    if (state.friendlyAccess && state.residentReady && state.mode !== 'summary') {
-      if (!canUseWeekWithoutParticipant()) {
-        sessionPromise = ensureStoredResidentSession();
-      }
+    if (state.friendlyAccess && state.residentReady) {
+      sessionPromise = ensureStoredResidentSession();
     } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
       sessionPromise = ensurePublicDemoSession();
     }
@@ -3112,13 +3120,13 @@ async function refreshParticipant(source) {
       error.refreshStage = 'sessione';
       throw error;
     });
-    const settingsPromise = loadCenterContactSettings({
+    await sessionPromise;
+    const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    const [, centerSettings] = await Promise.all([sessionPromise, settingsPromise]);
     state.centerContactSettings = applyResidentPreferences(centerSettings);
     await applyCenterDefaultLanguage(state.centerContactSettings);
     await refreshResidentAdministratorAuthorization();
@@ -3129,7 +3137,13 @@ async function refreshParticipant(source) {
       });
     }
     if (!isCurrentParticipantRequest(request)) return;
-    anchorCalendarToCenterToday();
+    // The request snapshot is created before the centre timezone is known.
+    // On the first resident load, anchoring the calendar can therefore change
+    // the active month/week and make that snapshot stale.  Renew it here so
+    // the data loaded for the current period is also rendered immediately.
+    if (anchorCalendarToCenterToday()) {
+      request = beginParticipantRequest();
+    }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
       const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
@@ -3192,9 +3206,8 @@ async function refreshParticipant(source) {
       && !state.residentAuthTransition) {
       try {
         await waitForAuthReady();
-        const retryUser = getCurrentUser();
-        if (state.friendlyAccess && state.residentReady && retryUser?.isAnonymous) {
-          await ensureStoredResidentSession();
+        if (state.friendlyAccess && state.residentReady) {
+          await recoverStoredResidentSession();
         }
         if (!isCurrentParticipantRequest(request)) return;
         await refreshParticipant(`${source}:auth-retry`);
@@ -3203,13 +3216,20 @@ async function refreshParticipant(source) {
         error = retryError;
       }
     }
-    if (error?.preserveResidentIdentity === true) {
-      state.residentRestorePending = true;
+    const preserveResidentView = error?.preserveResidentIdentity === true
+      || shouldPreserveResidentViewAfterRefreshError({
+        friendlyAccess: state.friendlyAccess,
+        residentReady: state.residentReady,
+        hasParticipant: Boolean(state.selectedParticipant),
+        permissionDenied: isCenterAccessRevokedError(error)
+      });
+    if (preserveResidentView) {
+      state.residentRestorePending = !state.residentReady;
       renderResidentAccess(false);
       renderMode();
     }
     const message = friendlyErrorMessage(error, 'Prenotazione non disponibile');
-    if (error?.preserveResidentIdentity !== true && isCenterAccessRevokedError(error)) {
+    if (!preserveResidentView && isCenterAccessRevokedError(error)) {
       clearParticipantDataAfterAccessRevocation();
       renderResidentAccess(true);
       setParticipantStatus('Centro non disponibile');
@@ -4819,13 +4839,14 @@ function getCenterToday() {
 
 function anchorCalendarToCenterToday() {
   if (state.calendarAnchoredToCenter) {
-    return;
+    return false;
   }
   const today = getCenterToday();
   state.selectedSummaryDate = formatDateId(today);
   state.weekStartDate = startOfWeek(today);
   state.monthDate = startOfMonth(today);
   state.calendarAnchoredToCenter = true;
+  return true;
 }
 
 function getSummaryTitle() {
@@ -7298,7 +7319,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
     state.participantMonth = [];
   } else {
     const monthStart = startOfMonth(state.monthDate);
-    state.participantMonth = await loadParticipantWeek(
+    const participantMonth = await loadParticipantWeek(
       state.selectedParticipant.participantId,
       monthStart,
       daysInMonth(monthStart),
@@ -7308,6 +7329,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
       }
     );
     if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
+    state.participantMonth = participantMonth;
     state.participantWeek = [];
     state.participantSummary = null;
   }

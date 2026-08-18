@@ -300,7 +300,8 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
   assert.match(restore, /error\.preserveResidentIdentity = true/);
   assert.match(restore, /throw error/);
   assert.match(app, /residentRestorePending: Boolean\(loadStoredResidentSignature\(\)\)/);
-  assert.match(app, /error\?\.preserveResidentIdentity === true[\s\S]*state\.residentRestorePending = true/);
+  assert.match(app, /shouldPreserveResidentViewAfterRefreshError/);
+  assert.match(app, /state\.residentRestorePending = !state\.residentReady/);
 });
 
 test('la vista settimana usa una matrice con intestazioni pasto e comandi compatti', () => {
@@ -401,14 +402,15 @@ test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati oper
 
 test('le transizioni auth non possono smontare una sessione residente in corso', () => {
   const authPanel = app.match(/function initializeAuthPanel\(\)[\s\S]*?\n}/)?.[0] || '';
-  assert.match(authPanel, /state\.residentAuthTransition \|\| state\.residentRestorePending/);
+  assert.match(authPanel, /shouldProcessAdminAuthEvent/);
+  assert.match(authPanel, /mode: state\.mode/);
   assert.match(app, /function reconcileAdminAccessWithoutStrongUser\(\)[\s\S]*residentAuthTransition[\s\S]*residentRestorePending/);
   assert.match(app, /function isCenterAccessRevokedError\(error\)[\s\S]*firestore\/permission-denied/);
   assert.doesNotMatch(
     app.match(/function isCenterAccessRevokedError\(error\)[\s\S]*?\n}/)?.[0] || '',
     /non autorizzat|insufficient permission/
   );
-  assert.match(app, /await waitForAuthReady\(\)[\s\S]*ensureStoredResidentSession\(\)[\s\S]*:auth-retry/);
+  assert.match(app, /await waitForAuthReady\(\)[\s\S]*recoverStoredResidentSession\(\)[\s\S]*:auth-retry/);
   const residentAuthorization = participantData.match(
     /export async function loadResidentAdministratorAuthorization\(\)[\s\S]*?\n\}/
   )?.[0] || '';
@@ -512,6 +514,28 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
   assert.match(app, /const \[, centerSettings\] = await Promise\.all\(\[sessionPromise, settingsPromise\]\)/);
   assert.match(app, /const sessionPromise = ensureKitchenDemoSession\(\)/);
   assert.match(centerSettings, /refreshCenterContactSettings\(\)\.catch\(\(\) => undefined\);\s*}\s*return centerContactSettingsCache\.value/);
+});
+
+test('il bootstrap residente completa la sessione prima delle letture protette', () => {
+  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(refresh, /sessionPromise = ensureStoredResidentSession\(\)/);
+  assert.match(refresh, /await sessionPromise;[\s\S]*const centerSettings = await loadCenterContactSettings/);
+  assert.doesNotMatch(refresh, /Promise\.all\(\[sessionPromise, settingsPromise\]\)/);
+  assert.match(participantData, /export async function recoverStoredResidentSession/);
+  assert.match(participantData, /ensurePersonalSession\(participantId, token, \{ forceRefresh: true \}\)/);
+});
+
+test('il primo caricamento mostra subito le selezioni del periodo corrente', () => {
+  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n}/)?.[0] || '';
+  const anchor = app.match(/function anchorCalendarToCenterToday\(\)[\s\S]*?\n}/)?.[0] || '';
+  const calendarLoad = app.match(/async function loadCurrentParticipantCalendar\(options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
+
+  assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);\s*}/);
+  assert.match(anchor, /state\.calendarAnchoredToCenter[\s\S]*return false/);
+  assert.match(anchor, /state\.calendarAnchoredToCenter = true;\s*return true/);
+  assert.match(calendarLoad, /const participantMonth = await loadParticipantWeek\(/);
+  assert.match(calendarLoad, /if \(options\.isCurrentRequest && !options\.isCurrentRequest\(\)\) return false;\s*state\.participantMonth = participantMonth/);
+  assert.doesNotMatch(calendarLoad, /state\.participantMonth = await loadParticipantWeek\(/);
 });
 
 test('un caricamento impostazioni iniziato prima del salvataggio non ripristina lo stile precedente', () => {
