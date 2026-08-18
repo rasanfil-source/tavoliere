@@ -1730,9 +1730,9 @@ html[data-theme="terracotta"] {
   --surface: #fffdf9;
   --line: #d8c8b8;
   --good: #4f7049;
-  --affirmative: #3f7d4e;
+  --affirmative: #5f7049;
   --warn: #96630f;
-  --danger: #a5322a;
+  --danger: #9a4935;
   --info: #3f6e78;
   /* Intestazioni di calendario calde e materiche: il blu-grigio
      appartiene alla palette Smeraldo e stonava sulle superfici terracotta. */
