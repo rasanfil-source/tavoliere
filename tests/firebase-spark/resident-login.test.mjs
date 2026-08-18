@@ -270,6 +270,10 @@ test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabi
   assert.match(logout, /residentUrl\.searchParams\.set\('access', 'friendly'\)/);
   assert.match(logout, /state\.mode = 'participant'/);
   assert.match(logout, /invalidateViewRequests\(\)/);
+  assert.match(logout, /await forgetResidentDevice\(\)[\s\S]*clearAdminAuthorizationState\(\)/);
+  const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(login, /residentUser\.isAnonymous[\s\S]*clearAdminAuthorizationState\(\)/);
+  assert.match(app, /function clearAdminAuthorizationState\(\)[\s\S]*state\.adminHydrationVersion \+= 1[\s\S]*state\.adminRole = ''[\s\S]*state\.adminCanManageDailyOperations = false[\s\S]*state\.residentAdministratorAuthorized = false/);
 });
 
 test('le preferenze locali residenti non sovrascrivono lo stile del pannello amministrativo', () => {
@@ -404,7 +408,12 @@ test('le transizioni auth non possono smontare una sessione residente in corso',
     app.match(/function isCenterAccessRevokedError\(error\)[\s\S]*?\n}/)?.[0] || '',
     /non autorizzat|insufficient permission/
   );
-  assert.match(app, /await waitForAuthReady\(\)[\s\S]*:auth-retry/);
+  assert.match(app, /await waitForAuthReady\(\)[\s\S]*ensureStoredResidentSession\(\)[\s\S]*:auth-retry/);
+  const residentAuthorization = participantData.match(
+    /export async function loadResidentAdministratorAuthorization\(\)[\s\S]*?\n\}/
+  )?.[0] || '';
+  assert.match(residentAuthorization, /getDoc\(doc\(\s*db,/);
+  assert.doesNotMatch(residentAuthorization, /sourceDb/);
 });
 
 test('Originale rigenera subito la matrice e non riusa le icone della vista precedente', () => {

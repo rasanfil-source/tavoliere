@@ -2211,18 +2211,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
 
 function setSignedOutState() {
   finishAdminAuthorizationCheck();
-  state.adminRole = '';
-  state.adminAuthUid = '';
-  state.adminPersonDirty = false;
-  state.adminCenterDirty = false;
-  state.adminMassPermission = false;
-  state.adminCanManageMass = false;
-  state.adminCanManageDailyOperations = false;
-  state.adminCenters = [];
-  state.weekOperationalHealth = null;
-  state.weekOperationalNote = null;
-  state.weekOperationalDateId = '';
-  state.platformOwner = false;
+  clearAdminAuthorizationState();
   elements.adminShell.dataset.adminActive = 'false';
   elements.adminShell.dataset.adminOwner = 'false';
   elements.adminShell.dataset.platformOwner = 'false';
@@ -2301,6 +2290,29 @@ function setSignedOutState() {
   elements.ownerInvitationPanel.hidden = true;
   applyAdminCapabilityVisibility();
   elements.adminShell.open = state.mode === 'admin';
+}
+
+function clearAdminAuthorizationState() {
+  // Invalidate any admin hydration that started before logout. A late
+  // response must not be able to restore privileges on the new resident
+  // session.
+  state.adminHydrationVersion += 1;
+  state.adminAuthorizationPending = false;
+  state.adminPanelHydrating = false;
+  state.adminAccessReconcilePromise = null;
+  state.adminRole = '';
+  state.adminAuthUid = '';
+  state.adminPersonDirty = false;
+  state.adminCenterDirty = false;
+  state.adminMassPermission = false;
+  state.adminCanManageMass = false;
+  state.adminCanManageDailyOperations = false;
+  state.adminCenters = [];
+  state.weekOperationalHealth = null;
+  state.weekOperationalNote = null;
+  state.weekOperationalDateId = '';
+  state.residentAdministratorAuthorized = false;
+  state.platformOwner = false;
 }
 
 function renderAdminCenterSwitcher(centers = [], activeCenterId = '', isPlatformOwner = false) {
@@ -3180,6 +3192,10 @@ async function refreshParticipant(source) {
       && !state.residentAuthTransition) {
       try {
         await waitForAuthReady();
+        const retryUser = getCurrentUser();
+        if (state.friendlyAccess && state.residentReady && retryUser?.isAnonymous) {
+          await ensureStoredResidentSession();
+        }
         if (!isCurrentParticipantRequest(request)) return;
         await refreshParticipant(`${source}:auth-retry`);
         return;
@@ -3271,6 +3287,10 @@ async function handleResidentLogin(event) {
       elements.residentSignatureInput.value,
       elements.residentPasswordInput.value
     );
+    const residentUser = getCurrentUser();
+    if (!residentUser || residentUser.isAnonymous || isResidentTechnicalEmail(residentUser.email)) {
+      clearAdminAuthorizationState();
+    }
     state.participants = result.participants;
     state.selectedParticipant = result.participant;
     state.residentReady = true;
@@ -3308,6 +3328,10 @@ async function handleForgetDevice() {
   const leavingAdminPanel = state.mode === 'admin';
   try {
     await forgetResidentDevice();
+    // The Auth watcher is deliberately muted while logout is in progress.
+    // Clear strong-role capabilities synchronously so the next anonymous
+    // resident session cannot inherit administrator-only reads.
+    clearAdminAuthorizationState();
   } catch (error) {
     state.residentAuthTransition = '';
     throw error;
@@ -5773,9 +5797,18 @@ function renderMonthGrid() {
     .some((meal) => meal.isOpen);
   const monthRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
+    language: document.documentElement.lang || 'it',
     month: formatMonthId(state.monthDate),
     today: formatDateId(getCenterToday()),
-    days: monthCells.map((day) => day.date)
+    // The first paint can legitimately happen before the reservation payload
+    // arrives. Include only the meal structure (not mutable effects) so that
+    // empty date cells are rebuilt once their controls become available,
+    // while ordinary reservation changes still use the lightweight DOM sync.
+    days: monthCells.map((day) => [
+      day.date,
+      (day.meals || []).map((meal) => meal.mealTypeId)
+    ])
   });
   if (elements.monthGrid.dataset.renderKey === monthRenderKey
       && elements.monthGrid.querySelector('.month-sheet-body')) {

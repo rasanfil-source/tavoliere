@@ -381,7 +381,7 @@ export async function loadResidentAdministratorAuthorization() {
   const participantId = loadStoredResidentParticipantId();
   if (!user?.isAnonymous || !participantId) return { active: false };
   const snapshot = await getDoc(doc(
-    sourceDb,
+    db,
     'centers',
     getActiveCenterId(),
     'viceSessions',
