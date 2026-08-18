@@ -220,7 +220,7 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
 });
 
 test('meal pages show a fixed title and the authenticated name in the status row', () => {
-  assert.match(app, /const mealTitle = activeInterfaceStyle === 'original'[\s\S]*t\('app\.title'\)[\s\S]*t\('app\.title\.compact'\)/);
+  assert.match(app, /const useCompactMobileTitle = activeInterfaceStyle !== 'original'[\s\S]*max-width: 620px[\s\S]*const mealTitle = useCompactMobileTitle[\s\S]*t\('app\.title\.compact'\)[\s\S]*t\('app\.title'\)/);
   assert.match(app, /element\.textContent = participantName/);
   assert.match(index, /data-participant-status-name/);
   assert.match(index, /data-week-status-name/);

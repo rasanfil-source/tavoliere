@@ -4368,9 +4368,14 @@ function renderMode() {
     && !state.residentReady
     && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
-  const mealTitle = activeInterfaceStyle === 'original'
-    ? t('app.title')
-    : t('app.title.compact');
+  // The compact verb belongs to the dense Cool/Urban mobile header only.
+  // Keep the full product title on tablets and desktop where there is room
+  // for the established application identity.
+  const useCompactMobileTitle = activeInterfaceStyle !== 'original'
+    && window.matchMedia?.('(max-width: 620px)').matches;
+  const mealTitle = useCompactMobileTitle
+    ? t('app.title.compact')
+    : t('app.title');
   const participantName = state.selectedParticipant?.displayName || '';
   const centerName = state.centerContactSettings.name || '';
   const currentUser = getCurrentUser();
