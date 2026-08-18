@@ -189,7 +189,9 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /elements\.controlPanelEntry\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
   assert.match(app, /selectedResidentCanOpenControlPanel\(\)/);
   assert.match(app, /function selectedResidentCanOpenControlPanel\(\) \{[\s\S]*return state\.residentReady/);
-  assert.match(app, /state\.residentSettingsMode = state\.residentReady && !state\.adminRole/);
+  assert.match(app, /state\.residentSettingsMode = state\.residentReady && !hasStrongAdministratorSession/);
+  assert.match(app, /if \(isControlPanelTarget && !hasAdminInterface\) \{\s*return;\s*\}[\s\S]*event\.preventDefault\(\);/);
+  assert.match(app, /async function hydrateAdminNavigation\(\)[\s\S]*setSignedOutState\(\);[\s\S]*renderMode\(\);/);
   assert.match(index, /needsAdminInterface[\s\S]*adminShell\.remove\(\)/);
 });
 

@@ -1444,13 +1444,25 @@ function handleInAppNavigation(event) {
     return;
   }
 
+  // Participant-first pages deliberately remove the large admin DOM at
+  // startup. In that case keep the link's native navigation so the browser
+  // loads the complete control panel automatically; intercepting it would
+  // only change the URL while leaving an empty page.
+  if (isControlPanelTarget && !hasAdminInterface) {
+    return;
+  }
+
   event.preventDefault();
   if (isOperationalTarget) {
     state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
   } else {
     targetUrl.searchParams.delete('access');
-    state.residentSettingsMode = state.residentReady && !state.adminRole;
+    const currentUser = getCurrentUser();
+    const hasStrongAdministratorSession = currentUser
+      && !currentUser.isAnonymous
+      && !isResidentTechnicalEmail(currentUser.email);
+    state.residentSettingsMode = state.residentReady && !hasStrongAdministratorSession;
     if (!state.residentReady) {
       targetUrl.searchParams.delete('c');
     }
@@ -1478,17 +1490,19 @@ function handleInAppNavigation(event) {
 
 async function hydrateAdminNavigation() {
   if (state.mode !== 'admin') return;
-  if (state.residentSettingsMode) {
-    renderResidentSettingsPanel();
+  const user = getCurrentUser();
+  if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
+    state.residentSettingsMode = false;
+    await applyAdminAuthState(user);
     renderMode();
     return;
   }
-  const user = getCurrentUser();
-  if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
-    await applyAdminAuthState(user);
-  } else if (state.residentReady || loadStoredResidentSignature()) {
-    await restoreResidentSettingsPanel();
-  }
+
+  // A resident technical session can replace Firebase Auth while the previous
+  // strong admin role is still held in memory. Reconcile it exactly as the
+  // initial auth watcher does; this also mounts either resident settings or
+  // the administrator sign-in panel without requiring a page refresh.
+  setSignedOutState();
   renderMode();
 }
 
