@@ -3138,11 +3138,24 @@ function togglePasswordVisibility(input, toggle) {
 }
 
 async function handleForgetDevice() {
+  const leavingAdminPanel = state.mode === 'admin';
   await forgetResidentDevice();
   state.residentReady = false;
   state.residentRestorePending = false;
   state.selectedParticipant = null;
   if (!state.adminRole) state.adminParticipants = [];
+  if (leavingAdminPanel) {
+    // Logout from the control panel must return to a real resident entry
+    // route. Keeping view=admin leaves the resident form hidden and produces
+    // the apparently empty panel that previously required a manual refresh.
+    const residentUrl = new URL(window.location.href);
+    residentUrl.searchParams.set('view', 'participant');
+    residentUrl.searchParams.set('access', 'friendly');
+    residentUrl.searchParams.delete('invite');
+    residentUrl.searchParams.delete('adminInvite');
+    window.location.assign(residentUrl.pathname + residentUrl.search);
+    return;
+  }
   renderResidentAccess(true);
   renderMode();
   elements.residentLoginStatus.textContent = 'Sei uscito.';
