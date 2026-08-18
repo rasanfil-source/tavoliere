@@ -16,14 +16,13 @@ import {
 import {
   db,
   getCurrentUser,
-  getResidentTechnicalEmail,
   isResidentTechnicalEmail,
-  signInAnonymousUser,
-  signInResidentTechnicalUser,
+  replaceWithAnonymousUser,
   signOutCurrentUser,
   verifyResidentCommonPassword,
-  waitForAuthReady
-} from './firebase-client.js?v=20260818r';
+  waitForAuthReady,
+  withResidentTechnicalSession
+} from './firebase-client.js?v=20260818s';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
@@ -126,12 +125,12 @@ function rememberResidentIdentity(participant, signature, token) {
   );
 }
 
-async function loadPublicParticipantById(participantId) {
+async function loadPublicParticipantById(participantId, sourceDb = db) {
   if (!participantId) {
     return null;
   }
   const snapshot = await getDoc(doc(
-    db,
+    sourceDb,
     'centers',
     getActiveCenterId(),
     'publicParticipants',
@@ -144,13 +143,13 @@ async function loadPublicParticipantById(participantId) {
   return participant.status === 'ACTIVE' ? participant : null;
 }
 
-async function loadPublicParticipantBySignature(signature) {
+async function loadPublicParticipantBySignature(signature, sourceDb = db) {
   const normalized = normalizeResidentSignature(signature);
   if (!normalized) {
     return null;
   }
   const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'publicParticipants'),
+    collection(sourceDb, 'centers', getActiveCenterId(), 'publicParticipants'),
     where('signature', '==', normalized),
     limit(1)
   ));
@@ -162,11 +161,11 @@ async function loadPublicParticipantBySignature(signature) {
   return participant.status === 'ACTIVE' ? participant : null;
 }
 
-async function createPersonalTokenForParticipant(participantId) {
+async function createPersonalTokenForParticipant(participantId, sourceDb = db) {
   const tokenId = `personal_${createRequestId().replaceAll('-', '')}`;
   const expiresAt = new Date();
   expiresAt.setUTCDate(expiresAt.getUTCDate() + PERSONAL_TOKEN_LIFETIME_DAYS);
-  await setDoc(doc(db, 'centers', getActiveCenterId(), 'linkTokens', tokenId), {
+  await setDoc(doc(sourceDb, 'centers', getActiveCenterId(), 'linkTokens', tokenId), {
     status: 'ACTIVE',
     scope: 'PERSONAL',
     targetType: 'PARTICIPANT',
@@ -220,17 +219,33 @@ export async function signInFriendlyResident(signature, commonPassword) {
   // resident session instead of rejecting the form before verification.
   const keepStrongAdministratorSession = Boolean(strongAuthenticatedUser && authorizedAdministrator);
   try {
+    let participant;
+    let token;
     if (keepStrongAdministratorSession) {
       await verifyResidentCommonPassword(getActiveCenterId(), commonPassword);
+      participant = await loadPublicParticipantBySignature(normalized);
+      if (participant) token = await createPersonalTokenForParticipant(participant.participantId);
     } else {
-      await signInResidentTechnicalUser(getResidentTechnicalEmail(getActiveCenterId()), commonPassword);
+      ({ participant, token } = await withResidentTechnicalSession(
+        getActiveCenterId(),
+        commonPassword,
+        async ({ db: technicalDb }) => {
+          const matchedParticipant = await loadPublicParticipantBySignature(normalized, technicalDb);
+          if (!matchedParticipant) return { participant: null, token: null };
+          return {
+            participant: matchedParticipant,
+            token: await createPersonalTokenForParticipant(
+              matchedParticipant.participantId,
+              technicalDb
+            )
+          };
+        }
+      ));
     }
-    const participant = await loadPublicParticipantBySignature(normalized);
     if (!participant) {
       throw new Error('La tua sigla non risulta tra i residenti attivi.');
     }
 
-    const token = await createPersonalTokenForParticipant(participant.participantId);
     if (!keepStrongAdministratorSession) {
       await createPersonalAnonymousSession(participant.participantId, token);
     }
@@ -339,9 +354,8 @@ async function createPersonalAnonymousSession(participantId, token) {
     error.code = 'unavailable';
     throw error;
   }
-  await signOutCurrentUser();
   clearCurrentSession();
-  await signInAnonymousUser();
+  await replaceWithAnonymousUser();
   await ensurePersonalSession(participantId, token);
 }
 
@@ -367,7 +381,7 @@ export async function loadResidentAdministratorAuthorization() {
   const participantId = loadStoredResidentParticipantId();
   if (!user?.isAnonymous || !participantId) return { active: false };
   const snapshot = await getDoc(doc(
-    db,
+    sourceDb,
     'centers',
     getActiveCenterId(),
     'viceSessions',
@@ -398,10 +412,7 @@ async function ensurePersonalSession(participantId, token) {
 
   let user = getCurrentUser();
   if (!user || !user.isAnonymous) {
-    if (user) {
-      await signOutCurrentUser();
-    }
-    const credential = await signInAnonymousUser();
+    const credential = await replaceWithAnonymousUser();
     user = credential.user;
   }
 
@@ -430,8 +441,7 @@ async function ensurePersonalSession(participantId, token) {
       error.code = 'unavailable';
       throw error;
     }
-    await signOutCurrentUser();
-    const credential = await signInAnonymousUser();
+    const credential = await replaceWithAnonymousUser();
     user = credential.user;
   }
 
@@ -463,7 +473,7 @@ export async function ensurePublicDemoSession() {
 
   let user = getCurrentUser();
   if (!user) {
-    const credential = await signInAnonymousUser();
+    const credential = await replaceWithAnonymousUser();
     user = credential.user;
   }
 
@@ -481,8 +491,7 @@ export async function ensurePublicDemoSession() {
       error.code = 'unavailable';
       throw error;
     }
-    await signOutCurrentUser();
-    const credential = await signInAnonymousUser();
+    const credential = await replaceWithAnonymousUser();
     user = credential.user;
     return createPublicSession(user.uid, false);
   }
@@ -498,8 +507,7 @@ export async function ensurePublicDemoSession() {
       error.code = 'unavailable';
       throw error;
     }
-    await signOutCurrentUser();
-    const credential = await signInAnonymousUser();
+    const credential = await replaceWithAnonymousUser();
     return createPublicSession(credential.user.uid, false);
   }
 
@@ -788,7 +796,7 @@ function queueReservationWrite(batch, participant, meal, effect) {
 
 function getReservationWriteSource() {
   const user = getCurrentUser();
-  return user && !user.isAnonymous && user.email !== getResidentTechnicalEmail(getActiveCenterId())
+  return user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)
     ? 'ADMIN'
     : 'PERSONAL';
 }

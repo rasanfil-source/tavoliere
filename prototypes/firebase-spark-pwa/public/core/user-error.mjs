@@ -1,4 +1,4 @@
-import { t } from '../i18n/i18n.mjs?v=20260818x';
+import { t } from '../i18n/i18n.mjs?v=20260818y';
 
 const AUTH_MESSAGES = Object.freeze({
   'auth/invalid-credential': 'errors.auth.invalidCredentials',

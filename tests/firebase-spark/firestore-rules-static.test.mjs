@@ -58,7 +58,9 @@ test('the common password can mint only bounded personal tokens', () => {
     rules,
     /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\)[\s\S]*scope == 'PERSONAL'[\s\S]*targetType == 'PARTICIPANT'[\s\S]*duration\.value\(9001, 'd'\)/
   );
-  assert.match(participantData, /getResidentTechnicalEmail\(getActiveCenterId\(\)\)/);
+  assert.match(participantData, /withResidentTechnicalSession\(/);
+  assert.match(participantData, /async \(\{ db: technicalDb \}\) =>/);
+  assert.match(participantData, /createPersonalTokenForParticipant\([\s\S]*technicalDb/);
   assert.match(participantData, /PERSONAL_TOKEN_LIFETIME_DAYS = 9000/);
 });
 

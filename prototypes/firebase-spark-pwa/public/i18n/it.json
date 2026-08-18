@@ -265,6 +265,7 @@
   "auth.email.verifying": "Verifico le credenziali…",
   "auth.google.createWithInvite": "Crea account con Google",
   "auth.google.signIn": "Accedi con Google",
+  "auth.signingOut": "Uscita in corso…",
   "auth.password.label": "Password",
   "auth.password.minimum": "Scegli una password di almeno 6 caratteri.",
   "auth.resident.password.help": "Se non ricordi la password comune, chiedila al responsabile del centro.",

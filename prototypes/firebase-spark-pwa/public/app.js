@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260818x';
+} from './i18n/i18n.mjs?v=20260818y';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -24,10 +24,11 @@ import {
   signInAdministratorWithEmail,
   signInWithGoogle,
   signOutCurrentUser,
+  waitForAuthReady,
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260818r';
+} from './firebase-client.js?v=20260818s';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -85,7 +86,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260817r'
+  participant: './participant-data.js?v=20260818s'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -479,7 +480,10 @@ const state = {
   weekStartDate: startOfWeek(new Date()),
   monthDate: startOfMonth(new Date()),
   adminRole: '',
+  adminAuthUid: '',
   adminAuthorizationPending: false,
+  adminPanelHydrating: false,
+  adminHydrationVersion: 0,
   adminAccessReconcilePromise: null,
   adminMassPermission: false,
   adminCanManageMass: false,
@@ -1255,7 +1259,8 @@ async function bootstrapApp() {
   await i18nPromise;
   renderAllViews();
   if (hasAdminInterface) initializeAuthPanel();
-  hideStartupSplash();
+  const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
+  if (!keepStartupGate) hideStartupSplash();
   const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
   if (centerSettings) {
     state.centerContactSettings = applyResidentPreferences(centerSettings);
@@ -1529,6 +1534,10 @@ async function hydrateAdminNavigation() {
   const user = getCurrentUser();
   if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
     state.residentSettingsMode = false;
+    if (state.adminRole && state.adminAuthUid === user.uid && !state.adminAuthorizationPending) {
+      renderMode();
+      return;
+    }
     beginAdminAuthorizationCheck();
     await applyAdminAuthState(user);
     renderMode();
@@ -1932,13 +1941,19 @@ function initializeAuthPanel() {
     const revision = ++authRevision;
     authSettled = true;
     window.clearTimeout(authFallback);
+    const strongAuthUser = user && !user.isAnonymous && !isResidentTechnicalEmail(user.email);
+    if ((state.residentAuthTransition || state.residentRestorePending) && !strongAuthUser) {
+      return;
+    }
     if (!user) {
-      void reconcileAdminAccessWithoutStrongUser();
+      if (state.mode === 'admin') void reconcileAdminAccessWithoutStrongUser();
+      else if (state.adminRole) setSignedOutState();
       return;
     }
 
     if (user.isAnonymous || isResidentTechnicalEmail(user.email)) {
-      void reconcileAdminAccessWithoutStrongUser();
+      if (state.mode === 'admin') void reconcileAdminAccessWithoutStrongUser();
+      else if (state.adminRole) setSignedOutState();
       return;
     }
 
@@ -1956,15 +1971,21 @@ function beginAdminAuthorizationCheck() {
   elements.adminEmailAuth.hidden = true;
   elements.adminPanel.hidden = true;
   elements.operationalLinks.hidden = true;
-  elements.authStatus.textContent = t('app.header.verifyingAuth');
+  elements.authStatus.textContent = t('app.header.verifyingAuth', {}, {
+    fallback: 'Accesso al pannello in corso…'
+  });
 }
 
 function finishAdminAuthorizationCheck() {
   state.adminAuthorizationPending = false;
   elements.adminShell.removeAttribute('aria-busy');
+  hideStartupSplash();
 }
 
 function reconcileAdminAccessWithoutStrongUser() {
+  if (state.residentAuthTransition || state.residentRestorePending) {
+    return Promise.resolve();
+  }
   if (state.adminAccessReconcilePromise) return state.adminAccessReconcilePromise;
   let request;
   request = (async () => {
@@ -1992,6 +2013,22 @@ function reconcileAdminAccessWithoutStrongUser() {
 }
 
 async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
+  const hydrationVersion = ++state.adminHydrationVersion;
+  state.adminPanelHydrating = true;
+  try {
+    return await resolveAdminAuthState(user, revision, () => (
+      hydrationVersion === state.adminHydrationVersion
+        ? getCurrentRevision()
+        : Number.NaN
+    ));
+  } finally {
+    if (hydrationVersion === state.adminHydrationVersion) {
+      state.adminPanelHydrating = false;
+    }
+  }
+}
+
+async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
   const adminModule = await loadDomainModule('admin');
   const isPlatformOwner = adminModule.isPlatformOwnerUser(user);
   let access = await adminModule.loadAdminCenterAccess(user);
@@ -2053,6 +2090,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   const invitationPending = access.invitationPending === true;
   state.platformOwner = isPlatformOwner;
   state.adminRole = isAdmin ? access.role : '';
+  state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
   state.adminMassPermission = isAdmin && access.massPermission === true;
   state.adminCanManageMass = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_MASS);
   state.adminCanManageDailyOperations = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
@@ -2144,9 +2182,11 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   applyAdminCapabilityVisibility();
   if (state.platformOwner) {
     await refreshPlatformCenterList();
+    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
   }
   if (isAdmin && !state.platformOwner) {
     await refreshAdminParticipants();
+    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     if (state.mode === 'week') {
       if (!state.residentReady) {
         const restored = await restoreResidentIdentityForAuthorizedAdministrator();
@@ -2159,6 +2199,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       renderResidentAccess(false);
       renderMode();
       await refreshParticipant('autorizzazione');
+      if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     }
   }
   finishAdminAuthorizationCheck();
@@ -2171,6 +2212,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
 function setSignedOutState() {
   finishAdminAuthorizationCheck();
   state.adminRole = '';
+  state.adminAuthUid = '';
   state.adminPersonDirty = false;
   state.adminCenterDirty = false;
   state.adminMassPermission = false;
@@ -2311,8 +2353,14 @@ function handleAuthButton() {
     return;
   }
 
-  if (elements.authActions.classList.contains('auth-actions-signed-in') || getCurrentUser()) {
-    signOutCurrentUser().catch(showAuthError);
+  const currentUser = getCurrentUser();
+  const hasStrongAdministratorIdentity = Boolean(
+    currentUser
+    && !currentUser.isAnonymous
+    && !isResidentTechnicalEmail(currentUser.email)
+  );
+  if (elements.authActions.classList.contains('auth-actions-signed-in') || hasStrongAdministratorIdentity) {
+    handleOwnerExit();
     return;
   }
 
@@ -2320,9 +2368,24 @@ function handleAuthButton() {
   signInWithGoogle().catch(showAuthError);
 }
 
-function handleOwnerExit() {
-  if (!isFirebaseConfigured) return;
-  handleForgetDevice().catch(showAuthError);
+async function handleOwnerExit() {
+  if (!isFirebaseConfigured || state.residentAuthTransition) return;
+  state.residentAuthTransition = 'admin-signing-out';
+  invalidateViewRequests();
+  state.adminAuthorizationPending = true;
+  elements.adminShell.setAttribute('aria-busy', 'true');
+  elements.adminPanel.hidden = true;
+  elements.operationalLinks.hidden = true;
+  elements.authStatus.textContent = t('auth.signingOut', {}, { fallback: 'Uscita in corso…' });
+  try {
+    await signOutCurrentUser();
+    setSignedOutState();
+    renderMode();
+  } catch (error) {
+    showAuthError(error);
+  } finally {
+    state.residentAuthTransition = '';
+  }
 }
 
 async function handleAdministratorEmailSignIn() {
@@ -2987,6 +3050,7 @@ async function performRefresh(source) {
 }
 
 async function refreshParticipant(source) {
+  const retryPermission = !String(source || '').endsWith(':auth-retry');
   if (state.residentAuthTransition) return;
   let request = beginParticipantRequest();
   const hadVisibleData = state.mode === 'summary'
@@ -3110,6 +3174,19 @@ async function refreshParticipant(source) {
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
+    if (retryPermission
+      && isCenterAccessRevokedError(error)
+      && isConnectionAvailable()
+      && !state.residentAuthTransition) {
+      try {
+        await waitForAuthReady();
+        if (!isCurrentParticipantRequest(request)) return;
+        await refreshParticipant(`${source}:auth-retry`);
+        return;
+      } catch (retryError) {
+        error = retryError;
+      }
+    }
     if (error?.preserveResidentIdentity === true) {
       state.residentRestorePending = true;
       renderResidentAccess(false);
@@ -3135,8 +3212,8 @@ async function refreshParticipant(source) {
 }
 
 function isCenterAccessRevokedError(error) {
-  return error?.code === 'permission-denied'
-    || /permission.?denied|non autorizzat|insufficient permission/i.test(String(error?.message || ''));
+  const code = String(error?.code || '').toLowerCase();
+  return code === 'permission-denied' || code === 'firestore/permission-denied';
 }
 
 function clearParticipantDataAfterAccessRevocation() {
@@ -4555,7 +4632,9 @@ function renderMode() {
       : isAdminView
         ? mealTitle
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
-  elements.titleCenter.textContent = isAdminView ? t('app.header.controlPanel') : centerName;
+  elements.titleCenter.textContent = isAdminView
+    ? t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
   elements.sessionRole.textContent = isAdminView && authenticatedAdministrator
     ? currentUser.email || ''
@@ -5270,7 +5349,9 @@ function renderParticipantMeals() {
     // During friendly login/restore there is intentionally no selected
     // participant yet. Do not expose the administrative empty-list message:
     // it looks like a failed login and can survive a stale render.
-    elements.participantMeals.innerHTML = state.friendlyAccess && !state.residentReady
+    elements.participantMeals.innerHTML = (state.friendlyAccess && !state.residentReady)
+      || state.residentAuthTransition
+      || state.residentRestorePending
       ? ''
       : `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
     elements.participantSummary.innerHTML = '';

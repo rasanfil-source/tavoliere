@@ -144,9 +144,10 @@ test('resident login has the complete persistent-session surface', () => {
   assert.match(participantData, /async function loadPublicParticipantBySignature/);
   assert.match(participantData, /'publicParticipants',\s*participantId/);
   assert.match(participantData, /where\('signature', '==', normalized\),\s*limit\(1\)/);
-  assert.match(participantData, /createPersonalTokenForParticipant\(participant\.participantId\)/);
+  assert.match(participantData, /createPersonalTokenForParticipant\([\s\S]*matchedParticipant\.participantId/);
   assert.match(participantData, /createPersonalAnonymousSession\(participant\.participantId, token\)/);
-  assert.match(participantData, /await signInAnonymousUser\(\)/);
+  assert.match(participantData, /await replaceWithAnonymousUser\(\)/);
+  assert.match(participantData, /withResidentTechnicalSession\([\s\S]*technicalDb/);
   assert.match(participantData, /await ensurePersonalSession\(participantId, token\)/);
   assert.match(participantData, /ensureStoredResidentSession/);
   assert.doesNotMatch(participantData, /selectPublicParticipant/);
@@ -157,6 +158,9 @@ test('technical resident auth uses local Firebase persistence', () => {
   assert.match(firebaseClient, /browserLocalPersistence/);
   assert.match(firebaseClient, /signInWithEmailAndPassword/);
   assert.match(firebaseClient, /signInResidentTechnicalUser/);
+  assert.match(firebaseClient, /withResidentTechnicalSession[\s\S]*getFirestore\(maintenanceAuth\.app\)/);
+  assert.match(firebaseClient, /waitForStableAuth/);
+  assert.match(firebaseClient, /watchAuth[\s\S]*revision === eventRevision/);
 });
 
 test('friendly access is explicit and offers device exit', () => {
@@ -170,7 +174,15 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
   assert.match(app, /elements\.ownerExitButton\.hidden = !isAdminView \|\| isCenterActivation/);
-  assert.match(app, /function handleOwnerExit\(\) \{[\s\S]*handleForgetDevice\(\)\.catch\(showAuthError\)/);
+  assert.match(app, /async function handleOwnerExit\(\)[\s\S]*await signOutCurrentUser\(\)[\s\S]*setSignedOutState\(\)/);
+  assert.match(
+    app,
+    /function handleAuthButton\(\)[\s\S]*!currentUser\.isAnonymous[\s\S]*!isResidentTechnicalEmail\(currentUser\.email\)[\s\S]*hasStrongAdministratorIdentity/
+  );
+  assert.doesNotMatch(
+    app.match(/async function handleOwnerExit\(\)[\s\S]*?\n\}/)?.[0] || '',
+    /forgetResidentDevice/
+  );
   assert.match(app, /const hasVisibleAdminFooter = hasAdminInterface/);
   assert.match(styles, /\.account-footer \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /body\[data-resident-login-visible="true"\] \.account-footer \{[\s\S]*?width: min\(100%, 420px\);[\s\S]*?margin-inline: auto/);
@@ -375,10 +387,24 @@ test('una richiesta residente superata non può rimontare il login dopo l access
 });
 
 test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati operativi', () => {
-  const applyAuth = app.match(/async function applyAdminAuthState\(user[\s\S]*?\n}/)?.[0] || '';
+  const applyAuth = app.match(/async function resolveAdminAuthState\(user[\s\S]*?\n}/)?.[0] || '';
   assert.match(app, /function beginAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = true/);
   assert.match(app, /await i18nPromise;[\s\S]*initializeAuthPanel\(\)/);
   assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\)[\s\S]*finishAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = !isAdmin/);
+  assert.match(app, /adminPanelHydrating: false/);
+  assert.match(app, /hydrationVersion === state\.adminHydrationVersion/);
+});
+
+test('le transizioni auth non possono smontare una sessione residente in corso', () => {
+  const authPanel = app.match(/function initializeAuthPanel\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(authPanel, /state\.residentAuthTransition \|\| state\.residentRestorePending/);
+  assert.match(app, /function reconcileAdminAccessWithoutStrongUser\(\)[\s\S]*residentAuthTransition[\s\S]*residentRestorePending/);
+  assert.match(app, /function isCenterAccessRevokedError\(error\)[\s\S]*firestore\/permission-denied/);
+  assert.doesNotMatch(
+    app.match(/function isCenterAccessRevokedError\(error\)[\s\S]*?\n}/)?.[0] || '',
+    /non autorizzat|insufficient permission/
+  );
+  assert.match(app, /await waitForAuthReady\(\)[\s\S]*:auth-retry/);
 });
 
 test('Originale rigenera subito la matrice e non riusa le icone della vista precedente', () => {

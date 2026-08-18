@@ -265,6 +265,7 @@
   "auth.email.verifying": "Anmeldedaten werden geprüft…",
   "auth.google.createWithInvite": "Konto mit Google erstellen",
   "auth.google.signIn": "Mit Google anmelden",
+  "auth.signingOut": "Abmeldung läuft…",
   "auth.password.label": "Passwort",
   "auth.password.minimum": "Wählen Sie ein Passwort mit mindestens 6 Zeichen.",
   "auth.resident.password.help": "Wenn Sie das gemeinsame Passwort nicht wissen, fragen Sie den Centerleiter.",

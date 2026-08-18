@@ -46,7 +46,7 @@ export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
 
-const authReadyPromise = auth
+const initialAuthReadyPromise = auth
   ? new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
@@ -64,13 +64,67 @@ const authPersistenceReady = auth
     .catch(() => undefined)
   : Promise.resolve();
 
+let authMutationDepth = 0;
+let authMutationStablePromise = Promise.resolve();
+let resolveAuthMutationStable = null;
+
+function beginAuthMutation() {
+  if (authMutationDepth === 0) {
+    authMutationStablePromise = new Promise((resolve) => {
+      resolveAuthMutationStable = resolve;
+    });
+  }
+  authMutationDepth += 1;
+}
+
+function endAuthMutation() {
+  authMutationDepth = Math.max(0, authMutationDepth - 1);
+  if (authMutationDepth === 0 && resolveAuthMutationStable) {
+    const resolve = resolveAuthMutationStable;
+    resolveAuthMutationStable = null;
+    resolve();
+  }
+}
+
+async function runAuthMutation(operation) {
+  beginAuthMutation();
+  try {
+    await authPersistenceReady;
+    return await operation();
+  } finally {
+    endAuthMutation();
+  }
+}
+
+async function waitForStableAuth() {
+  await authPersistenceReady;
+  await initialAuthReadyPromise;
+  while (authMutationDepth > 0) {
+    const pending = authMutationStablePromise;
+    await pending;
+    if (pending === authMutationStablePromise && authMutationDepth === 0) break;
+  }
+  return auth?.currentUser || null;
+}
+
 export function watchAuth(callback) {
   if (!auth) {
     callback(null);
     return () => undefined;
   }
 
-  return onAuthStateChanged(auth, callback);
+  let active = true;
+  let eventRevision = 0;
+  const unsubscribe = onAuthStateChanged(auth, () => {
+    const revision = ++eventRevision;
+    void waitForStableAuth().then((user) => {
+      if (active && revision === eventRevision) callback(user);
+    });
+  });
+  return () => {
+    active = false;
+    unsubscribe();
+  };
 }
 
 export function signInWithGoogle() {
@@ -78,77 +132,80 @@ export function signInWithGoogle() {
     return Promise.reject(new Error('Firebase non configurato'));
   }
 
-  return authPersistenceReady.then(() => signInWithPopup(auth, googleProvider));
+  return runAuthMutation(() => signInWithPopup(auth, googleProvider));
 }
 
 export async function signInAdministratorWithEmail(email, password) {
   if (!auth) {
     throw new Error('Firebase non configurato');
   }
-  await authPersistenceReady;
-  const credential = await signInWithEmailAndPassword(
-    auth,
-    String(email || '').trim(),
-    String(password || '')
-  );
-  if (!credential.user.emailVerified) {
-    await signOut(auth);
-    const error = new Error('Conferma prima il tuo indirizzo email usando il messaggio ricevuto');
-    error.code = 'auth/email-not-verified';
-    throw error;
-  }
-  return credential;
+  return runAuthMutation(async () => {
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      String(email || '').trim(),
+      String(password || '')
+    );
+    if (!credential.user.emailVerified) {
+      await signOut(auth);
+      const error = new Error('Conferma prima il tuo indirizzo email usando il messaggio ricevuto');
+      error.code = 'auth/email-not-verified';
+      throw error;
+    }
+    return credential;
+  });
 }
 
 export async function createAdministratorWithEmail(email, password) {
   if (!auth) {
     throw new Error('Firebase non configurato');
   }
-  await authPersistenceReady;
-  const credential = await createUserWithEmailAndPassword(
-    auth,
-    String(email || '').trim(),
-    String(password || '')
-  );
-  await sendEmailVerification(credential.user, {
-    url: window.location.href
+  return runAuthMutation(async () => {
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      String(email || '').trim(),
+      String(password || '')
+    );
+    await sendEmailVerification(credential.user, {
+      url: window.location.href
+    });
+    await signOut(auth);
+    return credential;
   });
-  await signOut(auth);
-  return credential;
 }
 
 export async function reuseAdministratorAccountForInvitation(email, password) {
   if (!auth) {
     throw new Error('Firebase non configurato');
   }
-  await authPersistenceReady;
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  const normalizedPassword = String(password || '');
-  const credential = await signInWithPopup(auth, googleProvider);
-  const authenticatedEmail = String(credential.user.email || '').trim().toLowerCase();
+  return runAuthMutation(async () => {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedPassword = String(password || '');
+    const credential = await signInWithPopup(auth, googleProvider);
+    const authenticatedEmail = String(credential.user.email || '').trim().toLowerCase();
 
-  if (!normalizedEmail || authenticatedEmail !== normalizedEmail) {
-    await signOut(auth);
-    const error = new Error('Accedi con lo stesso indirizzo indicato nell invito');
-    error.code = 'auth/invitation-email-mismatch';
-    throw error;
-  }
-
-  if (normalizedPassword.length >= 6) {
-    const hasPasswordAccess = credential.user.providerData.some(
-      (provider) => provider.providerId === 'password'
-    );
-    if (hasPasswordAccess) {
-      await updatePassword(credential.user, normalizedPassword);
-    } else {
-      await linkWithCredential(
-        credential.user,
-        EmailAuthProvider.credential(normalizedEmail, normalizedPassword)
-      );
+    if (!normalizedEmail || authenticatedEmail !== normalizedEmail) {
+      await signOut(auth);
+      const error = new Error('Accedi con lo stesso indirizzo indicato nell invito');
+      error.code = 'auth/invitation-email-mismatch';
+      throw error;
     }
-  }
 
-  return credential;
+    if (normalizedPassword.length >= 6) {
+      const hasPasswordAccess = credential.user.providerData.some(
+        (provider) => provider.providerId === 'password'
+      );
+      if (hasPasswordAccess) {
+        await updatePassword(credential.user, normalizedPassword);
+      } else {
+        await linkWithCredential(
+          credential.user,
+          EmailAuthProvider.credential(normalizedEmail, normalizedPassword)
+        );
+      }
+    }
+
+    return credential;
+  });
 }
 
 export function signOutCurrentUser() {
@@ -156,7 +213,7 @@ export function signOutCurrentUser() {
     return Promise.resolve();
   }
 
-  return signOut(auth);
+  return runAuthMutation(() => signOut(auth));
 }
 
 export function getCurrentUser() {
@@ -164,7 +221,7 @@ export function getCurrentUser() {
 }
 
 export function waitForAuthReady() {
-  return authReadyPromise;
+  return waitForStableAuth();
 }
 
 export function signInAnonymousUser() {
@@ -172,7 +229,17 @@ export function signInAnonymousUser() {
     return Promise.reject(new Error('Firebase non configurato'));
   }
 
-  return authPersistenceReady.then(() => signInAnonymously(auth));
+  return runAuthMutation(() => signInAnonymously(auth));
+}
+
+export function replaceWithAnonymousUser() {
+  if (!auth) {
+    return Promise.reject(new Error('Firebase non configurato'));
+  }
+  return runAuthMutation(async () => {
+    if (auth.currentUser) await signOut(auth);
+    return signInAnonymously(auth);
+  });
 }
 
 export function formatTechnicalAuthPassword(password) {
@@ -189,7 +256,7 @@ export function signInResidentTechnicalUser(email, password) {
   }
 
   const technicalPassword = formatTechnicalAuthPassword(password);
-  return authPersistenceReady.then(() => signInWithEmailAndPassword(auth, email, technicalPassword));
+  return runAuthMutation(() => signInWithEmailAndPassword(auth, email, technicalPassword));
 }
 
 const RESIDENT_TECHNICAL_EMAIL_DOMAIN = '@tavola-comune.local';
@@ -235,18 +302,31 @@ async function getResidentMaintenanceAuth() {
   return residentMaintenanceAuth;
 }
 
-// Verifica la password comune senza sostituire la sessione Firebase principale.
-// È essenziale quando un amministratore entra nelle viste operative e poi torna
-// al pannello di controllo.
-export async function verifyResidentCommonPassword(centerId, password) {
+export async function withResidentTechnicalSession(centerId, password, operation) {
   const maintenanceAuth = await getResidentMaintenanceAuth();
   const email = getResidentTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
   try {
-    return await signInWithEmailAndPassword(maintenanceAuth, email, technicalPassword);
+    const credential = await signInWithEmailAndPassword(
+      maintenanceAuth,
+      email,
+      technicalPassword
+    );
+    return await operation({
+      auth: maintenanceAuth,
+      db: getFirestore(maintenanceAuth.app),
+      user: credential.user
+    });
   } finally {
     await signOut(maintenanceAuth).catch(() => undefined);
   }
+}
+
+// Verifica la password comune senza sostituire la sessione Firebase principale.
+// È essenziale quando un amministratore entra nelle viste operative e poi torna
+// al pannello di controllo.
+export async function verifyResidentCommonPassword(centerId, password) {
+  return withResidentTechnicalSession(centerId, password, ({ user }) => user);
 }
 
 // La seconda istanza Auth non modifica la sessione dell'amministratore.

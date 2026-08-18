@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260818x';
+const CATALOG_RELEASE = '20260818y';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -26,6 +26,9 @@ export const KEY_ALIASES = Object.freeze({
 export const CORE_FALLBACKS = Object.freeze({
   it: Object.freeze({
     'app.title.compact': 'Prenotarsi',
+    'app.header.controlPanel': 'Pannello di controllo',
+    'app.header.verifyingAuth': 'Accesso al pannello in corso…',
+    'auth.signingOut': 'Uscita in corso…',
     'common.actions.exit': 'Esci',
     'common.action.exit': 'Esci',
     'common.actions.save': 'Salva',
@@ -85,6 +88,9 @@ export const CORE_FALLBACKS = Object.freeze({
   }),
   en: Object.freeze({
     'app.title.compact': 'Book meals',
+    'app.header.controlPanel': 'Control panel',
+    'app.header.verifyingAuth': 'Opening the control panel…',
+    'auth.signingOut': 'Signing out…',
     'common.actions.exit': 'Log out',
     'common.action.exit': 'Log out',
     'common.actions.save': 'Save',
@@ -109,6 +115,9 @@ export const CORE_FALLBACKS = Object.freeze({
   }),
   fr: Object.freeze({
     'app.title.compact': 'Réserver',
+    'app.header.controlPanel': 'Panneau de contrôle',
+    'app.header.verifyingAuth': 'Ouverture du panneau de contrôle…',
+    'auth.signingOut': 'Déconnexion en cours…',
     'common.actions.exit': 'Se déconnecter',
     'common.action.exit': 'Se déconnecter',
     'common.actions.save': 'Enregistrer',
@@ -133,6 +142,9 @@ export const CORE_FALLBACKS = Object.freeze({
   }),
   es: Object.freeze({
     'app.title.compact': 'Reservar',
+    'app.header.controlPanel': 'Panel de control',
+    'app.header.verifyingAuth': 'Abriendo el panel de control…',
+    'auth.signingOut': 'Cerrando sesión…',
     'common.actions.exit': 'Cerrar sesión',
     'common.action.exit': 'Cerrar sesión',
     'common.actions.save': 'Guardar',
@@ -157,6 +169,9 @@ export const CORE_FALLBACKS = Object.freeze({
   }),
   de: Object.freeze({
     'app.title.compact': 'Buchen',
+    'app.header.controlPanel': 'Systemsteuerung',
+    'app.header.verifyingAuth': 'Bedienfeld wird geöffnet…',
+    'auth.signingOut': 'Abmeldung läuft…',
     'common.actions.exit': 'Abmelden',
     'common.action.exit': 'Abmelden',
     'common.actions.save': 'Speichern',

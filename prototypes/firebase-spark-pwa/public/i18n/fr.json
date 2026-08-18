@@ -265,6 +265,7 @@
   "auth.email.verifying": "Vérification des identifiants…",
   "auth.google.createWithInvite": "Créer un compte avec Google",
   "auth.google.signIn": "Se connecter avec Google",
+  "auth.signingOut": "Déconnexion en cours…",
   "auth.password.label": "Mot de passe",
   "auth.password.minimum": "Choisissez un mot de passe d’au moins 6 caractères.",
   "auth.resident.password.help": "Si vous ne vous souvenez pas du mot de passe partage, demandez-le au responsable du centre.",
