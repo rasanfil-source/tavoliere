@@ -90,6 +90,16 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
 });
 
+test('Impostazioni presenta testi compatti e Aspetto subito dopo la vista preferita', () => {
+  assert.match(html, /admin\.adaptations\.description">Personalizzazioni dell'aspetto e del comportamento dell'app\./);
+  assert.match(html, /viewPreference\.help">La vista con cui si apre l'app per tutte le persone\./);
+  assert.match(html, /admin\.adaptations\.theme\.help">Scegli la combinazione di colori dell'app\. L'anteprima si applica subito\./);
+  const viewPosition = html.indexOf('data-admin-default-view-picker');
+  const stylePosition = html.indexOf('data-admin-interface-style-picker');
+  const layoutsPosition = html.indexOf('data-admin-layout-pickers');
+  assert.ok(viewPosition >= 0 && stylePosition > viewPosition && stylePosition < layoutsPosition);
+});
+
 test('il salvataggio della configurazione conserva la lingua del centro', () => {
   const start = app.indexOf('async function performAdminCenterSettingsSave()');
   const end = app.indexOf('async function saveAdministratorAsParticipant', start);

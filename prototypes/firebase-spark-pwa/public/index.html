@@ -632,7 +632,7 @@
                 <section class="admin-control-section" data-admin-adaptations>
                   <div class="section-title">
                     <h2 data-i18n="admin.adaptations.title">Impostazioni</h2>
-                    <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app per questo centro.</p>
+                    <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app.</p>
                   </div>
                   <aside class="admin-password-rotation-warning" data-admin-password-rotation-warning hidden role="status">
                     <strong data-i18n="admin.sharedPassword.warningTitle">Password amministratori da cambiare</strong>
@@ -656,8 +656,18 @@
                       <option value="month" data-i18n="viewPreference.option.month">Vista mese</option>
                       <option value="week" data-i18n="viewPreference.option.week">Vista settimana</option>
                     </select>
-                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per tutte le persone del centro.</small>
+                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per tutte le persone.</small>
                   </label>
+
+                  <fieldset class="admin-interface-style-picker" data-admin-interface-style-picker>
+                    <legend data-i18n="admin.adaptations.interfaceStyle.label">Aspetto</legend>
+                    <p class="field-help" data-i18n="admin.adaptations.interfaceStyle.help">Scegli il linguaggio visivo dell'app senza cambiare funzioni o navigazione.</p>
+                    <select data-admin-interface-style-select aria-label="Aspetto">
+                      <option value="original" data-i18n="admin.adaptations.interfaceStyle.original">Originale</option>
+                      <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool">Cool</option>
+                      <option value="urban" data-i18n="admin.adaptations.interfaceStyle.urban">Urban</option>
+                    </select>
+                  </fieldset>
 
                   <fieldset class="admin-layout-settings-card" data-admin-layout-pickers>
                     <legend data-i18n="admin.adaptations.layouts.title">Viste operative</legend>
@@ -682,7 +692,7 @@
 
                   <fieldset class="admin-theme-picker" data-admin-theme-picker>
                     <legend data-i18n="admin.adaptations.theme.label">Palette colori</legend>
-                    <p class="field-help" data-i18n="admin.adaptations.theme.help">Scegli la combinazione di colori dell'app per questo centro. L'anteprima si applica subito.</p>
+                    <p class="field-help" data-i18n="admin.adaptations.theme.help">Scegli la combinazione di colori dell'app. L'anteprima si applica subito.</p>
                     <div class="theme-select-control">
                       <span class="theme-swatch-preview theme-swatch-smeraldo" data-theme-select-preview aria-hidden="true"></span>
                       <select data-admin-theme-select aria-label="Palette colori">
@@ -696,16 +706,6 @@
                       </select>
                     </div>
                     <p data-admin-theme-status aria-live="polite" data-i18n="admin.adaptations.theme.preview">Se ti piace, salva questa scelta di colori</p>
-                  </fieldset>
-
-                  <fieldset class="admin-interface-style-picker" data-admin-interface-style-picker>
-                    <legend data-i18n="admin.adaptations.interfaceStyle.label">Aspetto</legend>
-                    <p class="field-help" data-i18n="admin.adaptations.interfaceStyle.help">Scegli il linguaggio visivo dell'app senza cambiare funzioni o navigazione.</p>
-                    <select data-admin-interface-style-select aria-label="Aspetto">
-                      <option value="original" data-i18n="admin.adaptations.interfaceStyle.original">Originale</option>
-                      <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool">Cool</option>
-                      <option value="urban" data-i18n="admin.adaptations.interfaceStyle.urban">Urban</option>
-                    </select>
                   </fieldset>
 
                   <label class="field-label admin-language-picker" data-admin-language-picker>
