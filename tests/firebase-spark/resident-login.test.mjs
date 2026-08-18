@@ -662,6 +662,17 @@ test('il pannello desktop usa soltanto la larghezza necessaria ed è centrato', 
   assert.match(styles, /\.topbar-meals-return small \{[\s\S]*?color: var\(--muted\);[\s\S]*?font-weight: 400;/);
 });
 
+test('il residente trova sempre il ritorno alle prenotazioni nel pannello Impostazioni', () => {
+  assert.match(
+    app,
+    /elements\.mealsReturnEntry\.hidden = !isAdminView[\s\S]*?\|\| \(state\.platformOwner && !state\.residentSettingsMode\)/
+  );
+  assert.match(
+    app,
+    /function renderResidentSettingsPanel\(\)[\s\S]*?elements\.topbarContextNav\.hidden = false;[\s\S]*?elements\.mealsReturnEntry\.hidden = false;/
+  );
+});
+
 test('la scheda Impostazioni usa tutta la larghezza disponibile sul tablet', () => {
   assert.match(styles, /@media \(max-width: 899px\)[\s\S]*?#admin-adaptations-section \{[\s\S]*?display: block;[\s\S]*?width: 100%;/);
   assert.match(styles, /#admin-adaptations-section > \.admin-control-section \{[\s\S]*?width: 100%;[\s\S]*?max-width: none;/);

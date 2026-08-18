@@ -4837,7 +4837,7 @@ function renderMode() {
   }
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
-    || state.platformOwner;
+    || (state.platformOwner && !state.residentSettingsMode);
   elements.forgetDeviceButton.hidden = !showResidentExit;
   elements.ownerExitButton.hidden = !isAdminView || isCenterActivation;
   if (authenticatedAdministrator) {
@@ -6848,6 +6848,11 @@ function renderResidentSettingsPanel() {
   elements.adminShell.open = true;
   elements.adminAuthMethods.hidden = true;
   elements.authActions.hidden = true;
+  // The restricted panel is still part of the resident journey. Always keep
+  // its return route visible, even if a stale owner/admin state survives on a
+  // shared device until the next authorisation reconciliation.
+  elements.topbarContextNav.hidden = false;
+  elements.mealsReturnEntry.hidden = false;
   elements.adminPanel.hidden = false;
   mountAdminSection('adaptations');
   syncAdminAdaptationsForm();
