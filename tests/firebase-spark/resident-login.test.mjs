@@ -456,6 +456,14 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
   assert.match(centerSettings, /refreshCenterContactSettings\(\)\.catch\(\(\) => undefined\);\s*}\s*return centerContactSettingsCache\.value/);
 });
 
+test('un caricamento impostazioni iniziato prima del salvataggio non ripristina lo stile precedente', () => {
+  assert.match(centerSettings, /let centerContactSettingsRevision = 0/);
+  assert.match(centerSettings, /centerContactSettingsRevision \+= 1/);
+  assert.match(centerSettings, /const requestRevision = centerContactSettingsRevision/);
+  assert.match(centerSettings, /requestRevision !== centerContactSettingsRevision[\s\S]*refreshCenterContactSettings\(\)/);
+  assert.match(centerSettings, /centerContactSettingsLoad === request/);
+});
+
 test('mese e settimana condividono la domenica come primo giorno', () => {
   assert.match(app, /result\.setDate\(result\.getDate\(\) - result\.getDay\(\)\)/);
   assert.match(app, /gridStart\.setDate\(firstDay\.getDate\(\) - firstDay\.getDay\(\)\)/);

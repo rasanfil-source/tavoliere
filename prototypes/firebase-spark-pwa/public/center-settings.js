@@ -27,6 +27,7 @@ const ALLOWED_THEME_PALETTES = new Set([
 const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
+let centerContactSettingsRevision = 0;
 
 export function loadCachedCenterContactSettings() {
   try {
@@ -101,7 +102,11 @@ export function cacheDefaultView(value) {
 }
 
 export function invalidateCenterContactSettingsCache() {
+  centerContactSettingsRevision += 1;
   centerContactSettingsCache = null;
+  // Do not let a read started before a save remain the shared promise for a
+  // later caller. Its completion is guarded by the revision below.
+  centerContactSettingsLoad = null;
 }
 
 export async function synchronizeCenterOwnerEmail(email) {
@@ -287,8 +292,17 @@ function refreshCenterContactSettings() {
   if (centerContactSettingsLoad) {
     return centerContactSettingsLoad;
   }
-  centerContactSettingsLoad = getDoc(doc(db, 'centers', getActiveCenterId()))
+  const requestRevision = centerContactSettingsRevision;
+  let request;
+  request = getDoc(doc(db, 'centers', getActiveCenterId()))
     .then(async (snapshot) => {
+      // A save may have invalidated this request while Firestore was still
+      // resolving. Re-read authoritative settings instead of publishing the
+      // stale snapshot into memory or localStorage.
+      if (requestRevision !== centerContactSettingsRevision) {
+        if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
+        return refreshCenterContactSettings();
+      }
       const data = snapshot.exists() ? snapshot.data() : {};
       const avatarVersion = typeof data.avatarVersion === 'string' ? data.avatarVersion : '';
       const avatarDataUrl = await resolveCenterAvatar(avatarVersion)
@@ -326,9 +340,10 @@ function refreshCenterContactSettings() {
       return value;
     })
     .finally(() => {
-      centerContactSettingsLoad = null;
+      if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
     });
-  return centerContactSettingsLoad;
+  centerContactSettingsLoad = request;
+  return request;
 }
 
 function normalizeCenterName(value) {
