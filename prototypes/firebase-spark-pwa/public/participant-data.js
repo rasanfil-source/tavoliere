@@ -34,12 +34,12 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260818a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260818a';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260818y';
+} from './center-settings.js?v=20260818z';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +47,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260818y';
+} from './center-settings.js?v=20260818z';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -214,6 +214,10 @@ export async function signInFriendlyResident(signature, commonPassword) {
 
   const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  const existingUser = getCurrentUser();
+  const storedParticipantId = loadStoredResidentParticipantId();
+  const storedSignature = loadStoredResidentSignature();
+  const storedToken = loadStoredResidentToken();
   // A restored Google session may belong to another centre. The common
   // password is the explicit resident credential, so let it establish the
   // resident session instead of rejecting the form before verification.
@@ -221,6 +225,7 @@ export async function signInFriendlyResident(signature, commonPassword) {
   try {
     let participant;
     let token;
+    let reusePersonalSession = false;
     if (keepStrongAdministratorSession) {
       await verifyResidentCommonPassword(getActiveCenterId(), commonPassword);
       participant = await loadPublicParticipantBySignature(normalized);
@@ -232,12 +237,23 @@ export async function signInFriendlyResident(signature, commonPassword) {
         async ({ db: technicalDb }) => {
           const matchedParticipant = await loadPublicParticipantBySignature(normalized, technicalDb);
           if (!matchedParticipant) return { participant: null, token: null };
+          const storedTokenExpiresAt = new Date(storedToken.expiresAt);
+          reusePersonalSession = Boolean(
+            existingUser?.isAnonymous
+            && storedSignature === normalized
+            && storedParticipantId === matchedParticipant.participantId
+            && storedToken.tokenId
+            && !Number.isNaN(storedTokenExpiresAt.getTime())
+            && storedTokenExpiresAt > new Date()
+          );
           return {
             participant: matchedParticipant,
-            token: await createPersonalTokenForParticipant(
-              matchedParticipant.participantId,
-              technicalDb
-            )
+            token: reusePersonalSession
+              ? { tokenId: storedToken.tokenId, expiresAt: storedTokenExpiresAt }
+              : await createPersonalTokenForParticipant(
+                matchedParticipant.participantId,
+                technicalDb
+              )
           };
         }
       ));
@@ -247,7 +263,11 @@ export async function signInFriendlyResident(signature, commonPassword) {
     }
 
     if (!keepStrongAdministratorSession) {
-      await createPersonalAnonymousSession(participant.participantId, token);
+      if (reusePersonalSession) {
+        await ensurePersonalSession(participant.participantId, token);
+      } else {
+        await createPersonalAnonymousSession(participant.participantId, token);
+      }
     }
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };

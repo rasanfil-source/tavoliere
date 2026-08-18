@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260818y';
+const CATALOG_RELEASE = '20260818z';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -39,6 +39,11 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copia',
     'common.actions.share': 'Condividi',
     'common.actions.refresh': 'Aggiorna',
+    'errors.generic': 'Operazione non riuscita.',
+    'errors.permission': 'Questa operazione non è autorizzata per il tuo ruolo.',
+    'errors.conflict': 'I dati sono cambiati nel frattempo. Aggiorna e riprova.',
+    'errors.timeout': 'L’operazione sta impiegando troppo tempo. Riprova.',
+    'errors.offline': 'La rete non è disponibile. I dati già caricati restano visibili.',
     'app.action.book': 'Prenota',
     'app.header.bookings': 'Prenotazioni',
     'app.header.pasti': 'Pasti',
@@ -101,6 +106,11 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copy',
     'common.actions.share': 'Share',
     'common.actions.refresh': 'Refresh',
+    'errors.generic': 'The operation could not be completed.',
+    'errors.permission': 'This operation is not authorized for your role.',
+    'errors.conflict': 'The data changed in the meantime. Refresh and try again.',
+    'errors.timeout': 'The operation is taking too long. Try again.',
+    'errors.offline': 'Network unavailable. Loaded data remains visible.',
     'app.action.book': 'Book',
     'app.header.bookings': 'Bookings',
     'app.header.pasti': 'Meals',
@@ -128,6 +138,11 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copier',
     'common.actions.share': 'Partager',
     'common.actions.refresh': 'Actualiser',
+    'errors.generic': 'L’opération n’a pas pu être terminée.',
+    'errors.permission': 'Cette opération n’est pas autorisée pour votre rôle.',
+    'errors.conflict': 'Les données ont changé. Actualisez puis réessayez.',
+    'errors.timeout': 'L’opération prend trop de temps. Réessayez.',
+    'errors.offline': 'Le réseau est indisponible. Les données chargées restent visibles.',
     'app.action.book': 'Réserver',
     'app.header.bookings': 'Réservations',
     'app.header.pasti': 'Repas',
@@ -155,6 +170,11 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Copiar',
     'common.actions.share': 'Compartir',
     'common.actions.refresh': 'Actualizar',
+    'errors.generic': 'No se pudo completar la operación.',
+    'errors.permission': 'Esta operación no está autorizada para tu rol.',
+    'errors.conflict': 'Los datos han cambiado. Actualiza e inténtalo de nuevo.',
+    'errors.timeout': 'La operación está tardando demasiado. Inténtalo de nuevo.',
+    'errors.offline': 'La red no está disponible. Los datos ya cargados permanecen visibles.',
     'app.action.book': 'Reservar',
     'app.header.bookings': 'Reservas',
     'app.header.pasti': 'Comidas',
@@ -182,6 +202,11 @@ export const CORE_FALLBACKS = Object.freeze({
     'common.actions.copy': 'Kopieren',
     'common.actions.share': 'Teilen',
     'common.actions.refresh': 'Aktualisieren',
+    'errors.generic': 'Der Vorgang konnte nicht abgeschlossen werden.',
+    'errors.permission': 'Diese Aktion ist für Ihre Rolle nicht autorisiert.',
+    'errors.conflict': 'Die Daten wurden geändert. Aktualisieren Sie und versuchen Sie es erneut.',
+    'errors.timeout': 'Der Vorgang dauert zu lange. Versuchen Sie es erneut.',
+    'errors.offline': 'Das Netzwerk ist nicht verfügbar. Geladene Daten bleiben sichtbar.',
     'app.action.book': 'Buchen',
     'app.header.bookings': 'Buchungen',
     'app.header.pasti': 'Mahlzeiten',

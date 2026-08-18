@@ -146,6 +146,7 @@ test('resident login has the complete persistent-session surface', () => {
   assert.match(participantData, /where\('signature', '==', normalized\),\s*limit\(1\)/);
   assert.match(participantData, /createPersonalTokenForParticipant\([\s\S]*matchedParticipant\.participantId/);
   assert.match(participantData, /createPersonalAnonymousSession\(participant\.participantId, token\)/);
+  assert.match(participantData, /reusePersonalSession[\s\S]*ensurePersonalSession\(participant\.participantId, token\)/);
   assert.match(participantData, /await replaceWithAnonymousUser\(\)/);
   assert.match(participantData, /withResidentTechnicalSession\([\s\S]*technicalDb/);
   assert.match(participantData, /await ensurePersonalSession\(participantId, token\)/);
@@ -270,8 +271,10 @@ test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabi
   assert.match(logout, /residentUrl\.searchParams\.set\('access', 'friendly'\)/);
   assert.match(logout, /state\.mode = 'participant'/);
   assert.match(logout, /invalidateViewRequests\(\)/);
-  assert.match(logout, /await forgetResidentDevice\(\)[\s\S]*clearAdminAuthorizationState\(\)/);
+  assert.match(logout, /leavingPrivilegedControlPanel[\s\S]*if \(!leavingPrivilegedControlPanel\)[\s\S]*closeResidentEntryGate\(\)/);
+  assert.match(logout, /if \(!leavingPrivilegedControlPanel\)[\s\S]*return;[\s\S]*await forgetResidentDevice\(\)[\s\S]*clearAdminAuthorizationState\(\)/);
   const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(login, /openResidentEntryGate\(\)/);
   assert.match(login, /residentUser\.isAnonymous[\s\S]*clearAdminAuthorizationState\(\)/);
   assert.match(app, /function clearAdminAuthorizationState\(\)[\s\S]*state\.adminHydrationVersion \+= 1[\s\S]*state\.adminRole = ''[\s\S]*state\.adminCanManageDailyOperations = false[\s\S]*state\.residentAdministratorAuthorized = false/);
 });
@@ -389,6 +392,16 @@ test('una richiesta residente superata non può rimontare il login dopo l access
   assert.match(refresh, /!isCurrentParticipantRequest\(request\) \|\| state\.residentAuthTransition/);
   assert.match(login, /state\.residentAuthTransition = 'signing-in'[\s\S]*invalidateViewRequests\(\)/);
   assert.match(logout, /state\.residentAuthTransition = 'signing-out'[\s\S]*invalidateViewRequests\(\)/);
+});
+
+test('l uscita residente chiude soltanto il modulo mentre il pannello privilegiato termina Firebase Auth', () => {
+  const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n\}/)?.[0] || '';
+  const softExit = logout.match(/if \(!leavingPrivilegedControlPanel\) \{[\s\S]*?\n  \}/)?.[0] || '';
+  assert.match(softExit, /closeResidentEntryGate\(\)/);
+  assert.match(softExit, /renderResidentAccess\(true\)/);
+  assert.doesNotMatch(softExit, /forgetResidentDevice|signOutCurrentUser/);
+  assert.match(logout, /await forgetResidentDevice\(\)/);
+  assert.match(app, /isResidentEntryGateClosed\(\)[\s\S]*renderResidentAccess\(true\)/);
 });
 
 test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati operativi', () => {

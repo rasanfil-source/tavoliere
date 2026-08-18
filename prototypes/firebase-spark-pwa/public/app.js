@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260818y';
+} from './i18n/i18n.mjs?v=20260818z';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -45,7 +45,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260818y';
+} from './center-settings.js?v=20260818z';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -55,7 +55,7 @@ import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260818a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
-import { toUserMessage } from './core/user-error.mjs?v=20260816i';
+import { toUserMessage } from './core/user-error.mjs?v=20260818a';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -78,6 +78,7 @@ import {
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
+const RESIDENT_ENTRY_GATE_STORAGE_KEY = 'tavolaComune.residentEntryGateClosed';
 const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
@@ -288,6 +289,37 @@ function applyInterfaceStyle(value) {
   document.documentElement.dataset.interfaceStyle = style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
   return style;
+}
+
+function isResidentEntryGateClosed() {
+  try {
+    return window.localStorage.getItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY)
+    ) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function closeResidentEntryGate() {
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY),
+      '1'
+    );
+  } catch {
+    // Lo stato in memoria mantiene comunque chiuso il modulo in questa pagina.
+  }
+}
+
+function openResidentEntryGate() {
+  try {
+    window.localStorage.removeItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY)
+    );
+  } catch {
+    // Il login corrente resta valido anche senza persistenza del marcatore.
+  }
 }
 
 function loadResidentPreferences() {
@@ -3084,6 +3116,13 @@ async function refreshParticipant(source) {
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
+      if (isResidentEntryGateClosed()) {
+        state.residentRestorePending = false;
+        renderResidentAccess(true);
+        hideStartupSplash();
+        setParticipantStatus('Inserisci sigla e password comune');
+        return;
+      }
       state.residentRestorePending = Boolean(loadStoredResidentSignature());
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
@@ -3315,6 +3354,7 @@ async function handleResidentLogin(event) {
     state.selectedParticipant = result.participant;
     state.residentReady = true;
     state.residentRestorePending = false;
+    openResidentEntryGate();
     state.residentAuthTransition = '';
     applyResidentEntryView();
     elements.residentPasswordInput.value = '';
@@ -3346,6 +3386,49 @@ async function handleForgetDevice() {
   state.residentAuthTransition = 'signing-out';
   invalidateViewRequests();
   const leavingAdminPanel = state.mode === 'admin';
+  const currentUser = getCurrentUser();
+  const leavingPrivilegedControlPanel = leavingAdminPanel
+    && Boolean(
+      state.adminRole
+      || state.residentAdministratorAuthorized
+      || (currentUser && !currentUser.isAnonymous && !isResidentTechnicalEmail(currentUser.email))
+    );
+
+  // Nelle viste dei pasti "Esci" chiude soltanto la porta grafica del
+  // residente. La sessione tecnica Firebase rimane intatta: in questo modo
+  // un nuovo accesso con sigla e password non dipende da una revoca e da una
+  // ricreazione immediata delle credenziali anonime. Dal pannello privilegiato
+  // di amministratore/vice, invece, l'uscita resta un logout reale.
+  if (!leavingPrivilegedControlPanel) {
+    closeResidentEntryGate();
+    state.residentReady = false;
+    state.residentRestorePending = false;
+    state.selectedParticipant = null;
+    state.residentAuthTransition = '';
+    state.mode = 'participant';
+    state.friendlyAccess = true;
+    state.participants = [];
+    state.participantMeals = [];
+    state.participantWeek = [];
+    state.participantMonth = [];
+    state.todayOverview = [];
+    state.summaryDays = [];
+    state.summaryOperations = [];
+    const residentUrl = new URL(window.location.href);
+    residentUrl.searchParams.set('view', 'participant');
+    residentUrl.searchParams.set('access', 'friendly');
+    residentUrl.searchParams.delete('invite');
+    residentUrl.searchParams.delete('adminInvite');
+    window.history.replaceState({}, '', residentUrl.pathname + residentUrl.search);
+    invalidateViewRequests();
+    elements.residentSignatureInput.value = loadStoredResidentSignature();
+    elements.residentPasswordInput.value = '';
+    elements.residentLoginStatus.textContent = '';
+    renderResidentAccess(true);
+    renderMode();
+    elements.residentSignatureInput.focus();
+    return;
+  }
   try {
     await forgetResidentDevice();
     // The Auth watcher is deliberately muted while logout is in progress.
