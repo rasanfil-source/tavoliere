@@ -252,6 +252,14 @@ test('le viste personali non caricano il riepilogo completo del centro', () => {
   assert.doesNotMatch(app, /listPublicParticipants\(\),\s*loadParticipantDaySummaries/);
 });
 
+test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabile', () => {
+  const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(logout, /residentUrl\.searchParams\.set\('view', 'participant'\)/);
+  assert.match(logout, /residentUrl\.searchParams\.set\('access', 'friendly'\)/);
+  assert.match(logout, /state\.mode = 'participant'/);
+  assert.match(logout, /invalidateViewRequests\(\)/);
+});
+
 test('le preferenze locali residenti non sovrascrivono lo stile del pannello amministrativo', () => {
   assert.match(app, /if \(!state\.residentReady \|\| state\.adminRole \|\| \(state\.mode === 'admin' && !state\.residentSettingsMode\)\)\s*\{\s*return settings;/);
   assert.match(app, /if \(state\.residentReady \|\| state\.adminRole\) \{\s*const residentPreferences = loadResidentPreferences\(\);/);

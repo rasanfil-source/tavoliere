@@ -3163,6 +3163,23 @@ async function handleForgetDevice() {
     window.location.assign(residentUrl.pathname + residentUrl.search);
     return;
   }
+  // Leaving a resident view must also reset the operational route. Keeping
+  // view=week (or view=summary) while the resident identity is cleared lets
+  // the first refresh mount the old screen before its session check rejects
+  // it again, producing the apparent login loop. Start the next sign-in from
+  // the single, stable resident entry route instead.
+  const residentUrl = new URL(window.location.href);
+  residentUrl.searchParams.set('view', 'participant');
+  residentUrl.searchParams.set('access', 'friendly');
+  window.history.replaceState({}, '', residentUrl.pathname + residentUrl.search);
+  state.mode = 'participant';
+  invalidateViewRequests();
+  state.participants = [];
+  state.participantWeek = [];
+  state.participantMonth = [];
+  state.todayOverview = [];
+  state.summaryDays = [];
+  state.summaryOperations = [];
   renderResidentAccess(true);
   renderMode();
   elements.residentLoginStatus.textContent = 'Sei uscito.';
