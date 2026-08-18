@@ -178,6 +178,13 @@ test('deep-link e capability governano la scheda richiesta', () => {
   assert.match(app, /CAPABILITIES\.VIEW_AUDIT_LOG/);
 });
 
+test('il vice non può aprire la scheda Amministratore neppure con un deep-link', () => {
+  assert.match(app, /access: \[CAPABILITIES\.MANAGE_ADMINS\]/);
+  assert.match(app, /function isAdminSectionAllowed\(section\)/);
+  assert.match(app, /if \(!isAdminSectionAllowed\(state\.adminActiveSection\)\)/);
+  assert.match(app, /elements\.adminNavAccess\.hidden = !canManageAccess/);
+});
+
 test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {
   assert.match(css, /Modalità schedario: una sola scheda amministrativa visibile alla volta/);
   assert.match(css, /\.admin-panel\[data-admin-section="overview"\]/);
@@ -348,8 +355,9 @@ test('l autenticazione del candidato non accetta automaticamente l invito', () =
   assert.doesNotMatch(pendingBranch, /claimRoleInvitation/);
   assert.match(adminCenter, /export async function acceptAdministratorInvitation/);
   assert.match(app, /await acceptAdministratorInvitation\(\)/);
+  assert.match(app, /showRoleInvitationAccepted/);
   assert.match(app, /acceptedWaitMessage/);
-  assert.equal((app.match(/acceptedWaitMessage/g) || []).length >= 2, true);
+  assert.match(app, /viceActivatedMessage/);
   assert.match(app, /hideCancel: true/);
   assert.match(app, /Invito in attesa della tua risposta/);
   assert.match(app, /t\('admin\.invitations\.accepted'\)/);

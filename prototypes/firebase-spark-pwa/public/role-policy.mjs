@@ -50,12 +50,13 @@ const ADMIN_CAPABILITIES = OWNER_CAPABILITIES.filter((capability) => ![
   CAPABILITIES.TRANSFER_OWNERSHIP
 ].includes(capability));
 
-const MANAGER_CAPABILITIES = [
-  CAPABILITIES.OPEN_ADMIN_AREA,
-  CAPABILITIES.VIEW_CENTER_OVERVIEW,
-  CAPABILITIES.MANAGE_PARTICIPANTS,
-  CAPABILITIES.MANAGE_DAILY_OPERATIONS
-];
+// Il vice amministratore usa tutto il pannello operativo, tranne la scheda
+// Amministratore (MANAGE_ADMINS / TRANSFER_OWNERSHIP). La membership Firebase
+// resta l'unica fonte dei privilegi: la spunta sulla Persona non basta.
+const MANAGER_CAPABILITIES = OWNER_CAPABILITIES.filter((capability) => ![
+  CAPABILITIES.MANAGE_ADMINS,
+  CAPABILITIES.TRANSFER_OWNERSHIP
+].includes(capability));
 
 const ROLE_CAPABILITIES = Object.freeze({
   [CENTER_ROLES.OWNER]: new Set(OWNER_CAPABILITIES),
@@ -86,9 +87,8 @@ export function getRoleCapabilities(role, options = {}) {
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }
-  // La spunta identifica chi puo chiedere l'accesso operativo, ma non
-  // concede privilegi da sola: serve una sessione autorizzata con la
-  // password amministratori, verificata anche dalle regole Firestore.
+  // La spunta identifica chi può ricevere l'invito personale, ma non concede
+  // privilegi da sola: serve una membership Firebase MANAGER attiva.
   if (options.platformOwner === true) {
     capabilities.add(CAPABILITIES.MANAGE_PLATFORM_CENTERS);
   }

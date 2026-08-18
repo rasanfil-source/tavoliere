@@ -738,10 +738,15 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /state\.mode === 'week' && canManageDailyOperations\(\) && !state\.adminRole/);
 });
 
-test('la spunta vice amministratore sblocca la gestione quotidiana senza percorsi separati', () => {
+test('la spunta vice prepara un invito personale e non sostituisce l accesso residente', () => {
   assert.match(index, /data-admin-participant-vice/);
   assert.doesNotMatch(index, /data-admin-vice-flow/);
-  assert.doesNotMatch(app, /createViceAdministratorInvitation/);
+  assert.match(app, /createViceAdministratorInvitation/);
+  assert.match(app, /revokeViceAdministratorAccess/);
+  assert.match(index, /data-vice-auth-google/);
+  assert.match(index, /data-vice-auth-email-form/);
+  assert.match(app, /signInWithGoogle/);
+  assert.match(app, /signInAdministratorWithEmail/);
 });
 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {

@@ -90,11 +90,31 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.consumedBy == adminUid;
     }
 
+    function administratorAuthenticationMatches(centerId) {
+      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
+      let passwordSignIn = request.auth.token.firebase.sign_in_provider == 'password';
+      return membership.get('administratorPasswordRequired', passwordSignIn) == passwordSignIn;
+    }
+
+    function managerAssignmentIsCurrent(centerId) {
+      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
+      let participantId = membership.get('participantId', '');
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      return membership.get('role', '') != 'MANAGER'
+        || participantId is string
+          && participantId != ''
+          && exists(participantPath)
+          && get(participantPath).data.get('status', '') == 'ACTIVE'
+          && get(participantPath).data.get('viceAdminRole', false) == true;
+    }
+
     function isAdmin(centerId) {
-      return signedIn()
+      return hasVerifiedAdministratorIdentity()
         && centerIsActive(centerId)
         && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE';
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE'
+        && administratorAuthenticationMatches(centerId)
+        && managerAssignmentIsCurrent(centerId);
     }
 
     function centerIsActive(centerId) {
@@ -115,7 +135,11 @@ service cloud.firestore {
     }
 
     function canManageCenterConfiguration(centerId) {
-      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
+    }
+
+    function canAssignOperationalRoles(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
     }
 
     function canCreatePersonalTokenForManager(centerId, participantId) {
@@ -128,7 +152,9 @@ service cloud.firestore {
 
     function canManageRoleInvitation(centerId, role) {
       return isCenterOwner(centerId)
-        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
+        || isAdmin(centerId)
+          && adminRole(centerId) in ['ADMIN', 'MANAGER']
+          && role == 'MANAGER';
     }
 
     function centerTimezoneIsValid(value) {
@@ -202,7 +228,9 @@ service cloud.firestore {
 
     function canCreateCenterAdministrator(centerId, role) {
       return isCenterOwner(centerId) && role in ['ADMIN', 'MANAGER']
-        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
+        || isAdmin(centerId)
+          && adminRole(centerId) in ['ADMIN', 'MANAGER']
+          && role == 'MANAGER';
     }
 
     function canUpdateCenterAdministrator(centerId, adminUid) {
@@ -211,7 +239,7 @@ service cloud.firestore {
             isCenterOwner(centerId)
               && request.resource.data.get('role', '') in ['ADMIN', 'MANAGER']
             || isAdmin(centerId)
-              && adminRole(centerId) == 'ADMIN'
+              && adminRole(centerId) in ['ADMIN', 'MANAGER']
               && resource.data.get('role', '') == 'MANAGER'
               && request.resource.data.get('role', '') == 'MANAGER'
           )
@@ -546,15 +574,11 @@ service cloud.firestore {
         && request.resource.data.centerId == centerId
         && request.resource.data.role in ['ADMIN', 'MANAGER']
         && request.resource.data.status == 'ACTIVE'
-        && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
+        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == true
-        && (
-          request.resource.data.role != 'ADMIN'
-          || request.resource.data.get('administratorPasswordRequired', false)
-            == (request.auth.token.firebase.sign_in_provider == 'password')
-            && request.resource.data.get('passwordSetupRequired', false)
-              == (request.auth.token.firebase.sign_in_provider == 'password')
-        )
+        && request.resource.data.get('administratorPasswordRequired', false)
+          == (request.auth.token.firebase.sign_in_provider == 'password')
+        && request.resource.data.get('passwordSetupRequired', false) == false
         && request.resource.data.participantId is string
         && (
           request.resource.data.role == 'ADMIN'
@@ -656,7 +680,7 @@ service cloud.firestore {
           && request.time < resource.data.expiresAt;
       allow create: if (
           request.resource.data.role == 'MANAGER'
-            && canManageAdministrativeRoles(request.resource.data.centerId)
+            && canManageRoleInvitation(request.resource.data.centerId, 'MANAGER')
           || request.resource.data.role == 'ADMIN'
             && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
         )
@@ -779,7 +803,11 @@ service cloud.firestore {
       allow delete: if false;
 
       match /admins/{adminUid} {
-        allow read: if isAdmin(centerId);
+        allow read: if signedIn() && request.auth.uid == adminUid && isAdmin(centerId)
+          || canManageAdministrativeRoles(centerId)
+          || isAdmin(centerId)
+            && adminRole(centerId) == 'MANAGER'
+            && resource.data.get('role', '') == 'MANAGER';
         allow update: if canUpdateCenterAdministrator(centerId, adminUid)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'participantId', 'status', 'email', 'role', 'massPermission',
@@ -848,7 +876,7 @@ service cloud.firestore {
 
       match /assets/{assetId} {
         allow read: if isAdmin(centerId) || hasSession(centerId);
-        allow create, update: if canManageAdministrativeRoles(centerId)
+        allow create, update: if canManageCenterConfiguration(centerId)
           && assetId == 'avatar'
           && request.resource.data.keys().hasAll(['centerId', 'dataUrl', 'version', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['centerId', 'dataUrl', 'version', 'updatedAt'])
@@ -858,11 +886,11 @@ service cloud.firestore {
           && request.resource.data.version is string
           && request.resource.data.version.size() <= 80
           && request.resource.data.updatedAt == request.time;
-        allow delete: if canManageAdministrativeRoles(centerId);
+        allow delete: if canManageCenterConfiguration(centerId);
       }
 
       match /auditEvents/{eventId} {
-        allow read: if canManageAdministrativeRoles(centerId);
+        allow read: if isAdmin(centerId);
         allow create: if isAdmin(centerId)
           && request.resource.data.keys().hasAll([
             'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
@@ -937,12 +965,12 @@ service cloud.firestore {
             !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
             || request.resource.data.get('viceAdminRole', false) == false
               && request.resource.data.get('liturgicalRole', false) == false
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
         allow update: if isAdmin(centerId)
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
         allow delete: if canManageCenterConfiguration(centerId);
       }
@@ -962,12 +990,12 @@ service cloud.firestore {
             !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
             || request.resource.data.get('viceAdminRole', false) == false
               && request.resource.data.get('liturgicalRole', false) == false
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
         allow update: if isAdmin(centerId)
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
         allow delete: if canManageCenterConfiguration(centerId);
       }

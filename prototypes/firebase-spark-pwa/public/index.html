@@ -582,7 +582,7 @@
                     </span>
                     <small class="field-help"><span data-i18n="admin.commonPassword.help">Vuoto = password invariata · </span><span data-admin-common-password-status></span></small>
                   </label>
-                  <div class="admin-shared-password-fields admin-field-wide" data-admin-shared-password-row>
+                  <div class="admin-shared-password-fields admin-field-wide" data-admin-shared-password-row hidden>
                     <label class="field-label">
                       <span data-i18n="admin.sharedPassword.currentLabel">Password amministratori attuale</span>
                       <span class="password-field">
@@ -639,14 +639,22 @@
                     <span data-i18n="admin.sharedPassword.warning">Hai revocato il ruolo di vice amministratore. Per favore cambia la password amministratori.</span>
                   </aside>
                   <section class="resident-admin-unlock" data-resident-admin-unlock hidden>
-                    <label class="field-label">
-                      <span data-i18n="admin.sharedPassword.unlockLabel">Password amministratori</span>
-                      <span class="password-field">
-                        <input type="password" data-resident-admin-password autocomplete="current-password">
-                        <button type="button" class="password-toggle tertiary-action" data-password-toggle="resident-admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
-                      </span>
-                    </label>
-                    <button type="button" class="secondary-action" data-resident-admin-unlock-button data-i18n="admin.sharedPassword.unlockAction">Sblocca funzioni vice</button>
+                    <p data-i18n="admin.viceAuth.help">Per usare le funzioni da vice amministratore, autenticati con il tuo account personale.</p>
+                    <div class="admin-auth-method-buttons">
+                      <button type="button" class="primary-action" data-vice-auth-google data-i18n="auth.google.signIn">Accedi con Google</button>
+                      <button type="button" class="primary-action" data-vice-auth-email-choice aria-expanded="false" data-i18n="auth.email.enter">Entra con email</button>
+                    </div>
+                    <form class="admin-email-auth" data-vice-auth-email-form hidden>
+                      <label class="field-label">
+                        <span data-i18n="auth.email.label">Email</span>
+                        <input type="email" data-vice-auth-email autocomplete="email" required>
+                      </label>
+                      <label class="field-label">
+                        <span data-i18n="auth.password.label">Password</span>
+                        <input type="password" data-vice-auth-password autocomplete="current-password" minlength="6" required>
+                      </label>
+                      <button type="submit" class="secondary-action" data-i18n="auth.email.signIn">Accedi con email</button>
+                    </form>
                     <p data-resident-admin-unlock-status aria-live="polite"></p>
                   </section>
 
@@ -1005,6 +1013,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260818ab"></script>
+  <script type="module" src="/app.js?v=20260818ac"></script>
   </body>
 </html>

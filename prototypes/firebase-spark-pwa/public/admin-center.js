@@ -20,7 +20,7 @@ import {
   setActiveCenterId
 } from './center-context.js?v=20260816h';
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816h';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260818a';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816g';
 
@@ -111,7 +111,8 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
       ...emptyAccess(),
       centerId: roleInvitation.centerId,
       invitationPending: true,
-      invitationParticipantId: roleInvitation.participantId
+      invitationParticipantId: roleInvitation.participantId,
+      invitationRole: roleInvitation.role
     };
   }
 
@@ -215,6 +216,8 @@ export async function initializeAdminCenter({ name, timezone, invitationId, admi
     role: 'OWNER',
     massPermission: true,
     dailyOperationsPermission: true,
+    administratorPasswordRequired,
+    passwordSetupRequired: false,
     createdAt: now,
     updatedAt: now
   });
@@ -354,6 +357,119 @@ export async function createAdministratorInvitation(participantId, user = getCur
     throw new Error('Solo il responsabile può nominare un amministratore');
   }
   return createRoleInvitation({ centerId, participantId: normalizedParticipantId, role: 'ADMIN' }, user);
+}
+
+export async function createViceAdministratorInvitation(participantId, user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous) {
+    throw new Error('Accesso amministratore richiesto');
+  }
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) throw new Error('Seleziona il vice amministratore');
+  const centerId = getActiveCenterId();
+  const access = await readCenterAdmin(user, centerId);
+  if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
+    throw new Error('Solo il responsabile o l’amministratore può invitare un vice');
+  }
+  const participantSnapshot = await getDoc(
+    doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId)
+  );
+  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
+  if (participant.status !== 'ACTIVE' || participant.viceAdminRole !== true) {
+    throw new Error('La persona deve essere attiva e indicata come vice amministratore');
+  }
+
+  const [membershipsSnapshot, invitationsSnapshot] = await Promise.all([
+    getDocs(query(
+      collection(db, 'centers', centerId, 'admins'),
+      where('participantId', '==', normalizedParticipantId),
+      where('role', '==', 'MANAGER'),
+      limit(10)
+    )),
+    getDocs(query(
+      collection(db, ADMIN_INVITATION_COLLECTION),
+      where('centerId', '==', centerId),
+      where('role', '==', 'MANAGER'),
+      limit(50)
+    ))
+  ]);
+  if (membershipsSnapshot.docs.some((item) => item.data().status === 'ACTIVE')) {
+    return { active: true, role: 'MANAGER' };
+  }
+  const existing = invitationsSnapshot.docs.find((item) => {
+    const data = item.data();
+    const expiresAt = data.expiresAt?.toDate?.();
+    return data.role === 'MANAGER'
+      && data.participantId === normalizedParticipantId
+      && data.status === 'ACTIVE'
+      && expiresAt instanceof Date
+      && expiresAt.getTime() > Date.now();
+  });
+  if (existing) {
+    return {
+      invitationId: existing.id,
+      expiresAt: existing.data().expiresAt.toDate(),
+      role: 'MANAGER'
+    };
+  }
+  return createRoleInvitation({
+    centerId,
+    participantId: normalizedParticipantId,
+    role: 'MANAGER'
+  }, user);
+}
+
+export async function revokeViceAdministratorAccess(participantId, user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous) {
+    throw new Error('Accesso amministratore richiesto');
+  }
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) return;
+  const centerId = getActiveCenterId();
+  const access = await readCenterAdmin(user, centerId);
+  if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
+    throw new Error('Solo il responsabile o l’amministratore può revocare un vice');
+  }
+  const [membershipsSnapshot, invitationsSnapshot] = await Promise.all([
+    getDocs(query(
+      collection(db, 'centers', centerId, 'admins'),
+      where('participantId', '==', normalizedParticipantId),
+      where('role', '==', 'MANAGER'),
+      limit(10)
+    )),
+    getDocs(query(
+      collection(db, ADMIN_INVITATION_COLLECTION),
+      where('centerId', '==', centerId),
+      where('role', '==', 'MANAGER'),
+      limit(50)
+    ))
+  ]);
+  const now = serverTimestamp();
+  const batch = writeBatch(db);
+  membershipsSnapshot.docs.forEach((item) => {
+    const membership = item.data();
+    if (membership.role !== 'MANAGER' || membership.status !== 'ACTIVE') return;
+    batch.set(item.ref, {
+      status: 'REVOKED',
+      massPermission: false,
+      dailyOperationsPermission: false,
+      revokedBy: user.uid,
+      revokedAt: now,
+      updatedAt: now
+    }, { merge: true });
+  });
+  invitationsSnapshot.docs.forEach((item) => {
+    const invitation = item.data();
+    if (invitation.role !== 'MANAGER'
+        || invitation.participantId !== normalizedParticipantId
+        || invitation.status !== 'ACTIVE') return;
+    batch.set(item.ref, {
+      status: 'REVOKED',
+      revokedBy: user.uid,
+      revokedAt: now,
+      updatedAt: now
+    }, { merge: true });
+  });
+  await batch.commit();
 }
 
 export async function listAdministratorInvitations(user = getCurrentUser()) {
@@ -501,7 +617,7 @@ export async function acceptAdministratorInvitation(
   }
   await claimRoleInvitation(normalizedInvitationId, invitation, user);
   setActiveCenterId(invitation.centerId);
-  return { centerId: invitation.centerId };
+  return { centerId: invitation.centerId, role: invitation.role };
 }
 
 export async function transferCenterOwnership(successorUid, options = {}, user = getCurrentUser()) {
@@ -712,6 +828,7 @@ function emptyAccess() {
     invitationError: false,
     invitationPending: false,
     invitationParticipantId: '',
+    invitationRole: '',
     needsInitialization: false,
     redirectCenterId: '',
     availableCenters: []
@@ -727,10 +844,8 @@ async function loadRoleInvitation(invitationId) {
     const data = snapshot.exists() ? snapshot.data() : {};
     const expiresAt = data.expiresAt?.toDate?.();
     return {
-      // Solo gli inviti amministratore restano validi: eventuali inviti
-      // vice residui da prima di questa modifica non sono più accettabili.
       active: data.status === 'ACTIVE'
-        && data.role === 'ADMIN'
+        && ['ADMIN', 'MANAGER'].includes(data.role)
         && typeof data.centerId === 'string'
         && expiresAt instanceof Date
         && expiresAt.getTime() > Date.now(),
@@ -759,7 +874,7 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     invitationId,
     status: 'ACTIVE',
     email: user.email || '',
-    role: 'ADMIN',
+    role: invitation.role,
     massPermission: true,
     dailyOperationsPermission: true,
     administratorPasswordRequired: requiresAdministratorPassword(user),
@@ -774,7 +889,7 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     participantId: invitation.participantId || '',
     status: 'ACTIVE',
     email: user.email || '',
-    role: 'ADMIN',
+    role: invitation.role,
     massPermission: true,
     dailyOperationsPermission: true,
     createdAt: now,

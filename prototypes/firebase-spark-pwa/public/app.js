@@ -51,7 +51,7 @@ import {
   normalizeDietCode
 } from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816h';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260818a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import { toUserMessage } from './core/user-error.mjs?v=20260816i';
@@ -79,7 +79,7 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260817a',
+  admin: './admin-center.js?v=20260818a',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817b',
@@ -123,6 +123,8 @@ const createCenterInvitation = callDomain('admin', 'createCenterInvitation');
 const createPlatformAdministratorInvitation = callDomain('admin', 'createPlatformAdministratorInvitation');
 const deactivatePlatformCenter = callDomain('admin', 'deactivatePlatformCenter');
 const createAdministratorInvitation = callDomain('admin', 'createAdministratorInvitation');
+const createViceAdministratorInvitation = callDomain('admin', 'createViceAdministratorInvitation');
+const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministratorAccess');
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
 const linkCurrentAdministratorParticipant = callDomain('admin', 'linkCurrentAdministratorParticipant');
@@ -785,6 +787,11 @@ const elements = {
   residentAdminPasswordToggle: document.querySelector('[data-password-toggle="resident-admin"]'),
   residentAdminUnlockButton: document.querySelector('[data-resident-admin-unlock-button]'),
   residentAdminUnlockStatus: document.querySelector('[data-resident-admin-unlock-status]'),
+  viceAuthGoogle: document.querySelector('[data-vice-auth-google]'),
+  viceAuthEmailChoice: document.querySelector('[data-vice-auth-email-choice]'),
+  viceAuthEmailForm: document.querySelector('[data-vice-auth-email-form]'),
+  viceAuthEmail: document.querySelector('[data-vice-auth-email]'),
+  viceAuthPassword: document.querySelector('[data-vice-auth-password]'),
   adminCommonPasswordStatus: document.querySelector('[data-admin-common-password-status]'),
   adminCommonPasswordToggle: document.querySelector('[data-password-toggle="common-password"]'),
   adminAdministratorName: document.querySelector('[data-admin-administrator-name]'),
@@ -1112,6 +1119,15 @@ if (elements.residentAdminPasswordToggle) {
 }
 if (elements.residentAdminUnlockButton) {
   elements.residentAdminUnlockButton.addEventListener('click', handleResidentAdministratorUnlock);
+}
+if (elements.viceAuthGoogle) {
+  elements.viceAuthGoogle.addEventListener('click', handleViceGoogleAuthentication);
+}
+if (elements.viceAuthEmailChoice) {
+  elements.viceAuthEmailChoice.addEventListener('click', handleViceEmailChoice);
+}
+if (elements.viceAuthEmailForm) {
+  elements.viceAuthEmailForm.addEventListener('submit', handleViceEmailAuthentication);
 }
 if (elements.initializerPasswordToggle) {
   elements.initializerPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.initializerPassword, elements.initializerPasswordToggle));
@@ -1870,7 +1886,7 @@ function isAdminSectionAllowed(section) {
     overview: [CAPABILITIES.VIEW_CENTER_OVERVIEW],
     people: [CAPABILITIES.MANAGE_PARTICIPANTS],
     adaptations: [CAPABILITIES.MANAGE_CENTER_SETTINGS],
-    access: [CAPABILITIES.ASSIGN_VICE, CAPABILITIES.ASSIGN_LITURGY, CAPABILITIES.MANAGE_ADMINS],
+    access: [CAPABILITIES.MANAGE_ADMINS],
     activity: [CAPABILITIES.VIEW_AUDIT_LOG, CAPABILITIES.MANAGE_CALENDAR]
   };
   return (capabilityMap[section] || []).some((capability) => hasCurrentCapability(capability));
@@ -1999,12 +2015,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
-      await showActionDialog({
-        title: t('admin.invitations.acceptedWaitTitle'),
-        message: t('admin.invitations.acceptedWaitMessage'),
-        confirmLabel: t('common.actions.confirm'),
-        hideCancel: true
-      });
+      await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -2072,6 +2083,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   const roleLabels = {
     OWNER: t('role.owner'),
     ADMIN: t('role.admin'),
+    MANAGER: t('role.vice'),
     RESIDENT: t('role.resident')
   };
   const roleLabel = state.platformOwner
@@ -2100,7 +2112,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     elements.adminInviteAcceptText.textContent = invitationResponse === 'REJECTED'
       ? t('admin.invitations.rejectedNotice')
       : invitationPending
-      ? t('admin.invitations.acceptPrompt')
+      ? invitationPrompt(access.invitationRole)
       : t('admin.invitations.invalidOrExpired');
     elements.inviteAccept.disabled = !invitationPending;
     elements.inviteReject.disabled = !invitationPending;
@@ -2216,7 +2228,7 @@ function setSignedOutState() {
       ? t('admin.invitations.acceptedIdentify')
       : storedDecision === 'REJECT'
         ? t('admin.invitations.rejectedIdentify')
-        : t('admin.invitations.acceptPrompt');
+        : invitationPrompt();
     elements.inviteAcceptActions.hidden = Boolean(storedDecision);
     elements.inviteAccept.disabled = invitationNeedsDecision === false;
     elements.inviteReject.disabled = invitationNeedsDecision === false;
@@ -3440,12 +3452,7 @@ function handleInviteAccept() {
       const result = await acceptAdministratorInvitation();
       clearAdminInvitationDecision(getAdminRoleInvitationId());
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
-      await showActionDialog({
-        title: t('admin.invitations.acceptedWaitTitle'),
-        message: t('admin.invitations.acceptedWaitMessage'),
-        confirmLabel: t('common.actions.confirm'),
-        hideCancel: true
-      });
+      await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -3509,6 +3516,7 @@ async function performAdministratorInvitationGeneration() {
     const invitationUrl = new URL('/', window.location.origin);
     invitationUrl.searchParams.set('view', 'admin');
     invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
+    invitationUrl.searchParams.set('adminRole', 'ADMIN');
     invitationUrl.searchParams.set('c', getActiveCenterId());
 
     // Recupera il nome del partecipante invitato
@@ -4173,12 +4181,31 @@ function syncAdminAdaptationsForm() {
       || state.residentAdministratorAuthorized;
   }
   if (elements.adminPasswordRotationWarning) {
-    elements.adminPasswordRotationWarning.hidden = !state.centerContactSettings.adminPasswordRotationRequired
-      || state.residentSettingsMode;
+    elements.adminPasswordRotationWarning.hidden = true;
   }
   if (elements.adminPasswordAlertDot) {
     elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired;
   }
+}
+
+function invitationPrompt(role = '') {
+  const hintedRole = role || new URLSearchParams(window.location.search).get('adminRole');
+  return hintedRole === 'MANAGER'
+    ? t('admin.invitations.viceAcceptPrompt')
+    : t('admin.invitations.acceptPrompt');
+}
+
+function showRoleInvitationAccepted(role) {
+  return showActionDialog({
+    title: role === 'MANAGER'
+      ? t('admin.invitations.viceActivatedTitle')
+      : t('admin.invitations.acceptedWaitTitle'),
+    message: role === 'MANAGER'
+      ? t('admin.invitations.viceActivatedMessage')
+      : t('admin.invitations.acceptedWaitMessage'),
+    confirmLabel: t('common.actions.confirm'),
+    hideCancel: true
+  });
 }
 
 function updateThemeSelectControl(palette) {
@@ -5146,9 +5173,7 @@ function applyAdminCapabilityVisibility() {
     || hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
   const canManagePeople = hasCurrentCapability(CAPABILITIES.MANAGE_PARTICIPANTS);
-  const canManageAccess = hasCurrentCapability(CAPABILITIES.ASSIGN_VICE)
-    || hasCurrentCapability(CAPABILITIES.ASSIGN_LITURGY)
-    || hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
+  const canManageAccess = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
   const canViewActivity = hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG);
   const canManageCalendar = hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR);
   const profileComplete = isAdministratorProfileComplete();
@@ -6232,6 +6257,21 @@ async function performAdminSaveContact() {
       ...profile,
       expectedRevision: participant?.revision
     });
+    if (viceAdminRole) {
+      const invitation = await createViceAdministratorInvitation(savedParticipantId);
+      if (invitation?.invitationId) {
+        const invitationUrl = new URL('/', window.location.origin);
+        invitationUrl.searchParams.set('view', 'admin');
+        invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
+        invitationUrl.searchParams.set('adminRole', 'MANAGER');
+        invitationUrl.searchParams.set('c', getActiveCenterId());
+        openAccessShareDialog(t('role.vice'), invitationUrl.toString());
+      }
+    } else if (participant?.viceAdminRole === true) {
+      // La membership viene revocata nel database: nascondere una scheda non
+      // sarebbe sufficiente e una sessione Firebase già aperta non la riattiva.
+      await revokeViceAdministratorAccess(savedParticipantId);
+    }
     state.adminParticipantId = savedParticipantId;
     state.adminPersonDirty = false;
     await refreshAdminParticipants();
@@ -6463,9 +6503,8 @@ async function restoreResidentSettingsPanel() {
   } finally {
     state.residentSettingsRestorePending = false;
   }
-  if (elements.adminSharedPasswordRow) {
-    elements.adminSharedPasswordRow.hidden = !canConfigureCenter;
-  }
+  if (elements.adminSharedPasswordRow) elements.adminSharedPasswordRow.hidden = true;
+  if (elements.adminPasswordRotationWarning) elements.adminPasswordRotationWarning.hidden = true;
 }
 
 function renderResidentSettingsPanel() {
@@ -6520,6 +6559,41 @@ async function handleResidentAdministratorUnlock() {
     );
   } finally {
     elements.residentAdminUnlockButton.disabled = false;
+  }
+}
+
+async function handleViceGoogleAuthentication() {
+  elements.viceAuthGoogle.disabled = true;
+  elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
+  try {
+    await signInWithGoogle();
+  } catch (error) {
+    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.google.signIn'));
+    elements.viceAuthGoogle.disabled = false;
+  }
+}
+
+function handleViceEmailChoice() {
+  const expanded = elements.viceAuthEmailForm.hidden;
+  elements.viceAuthEmailForm.hidden = !expanded;
+  elements.viceAuthEmailChoice.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  if (expanded) elements.viceAuthEmail.focus();
+}
+
+async function handleViceEmailAuthentication(event) {
+  event.preventDefault();
+  const submit = elements.viceAuthEmailForm.querySelector('[type="submit"]');
+  submit.disabled = true;
+  elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
+  try {
+    await signInAdministratorWithEmail(
+      elements.viceAuthEmail.value,
+      elements.viceAuthPassword.value
+    );
+    elements.viceAuthPassword.value = '';
+  } catch (error) {
+    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.email.signIn'));
+    submit.disabled = false;
   }
 }
 

@@ -62,14 +62,17 @@ test('the common password can mint only bounded personal tokens', () => {
   assert.match(participantData, /PERSONAL_TOKEN_LIFETIME_DAYS = 9000/);
 });
 
-test('l autoiscrizione dei vice usa uno schema chiuso e non concede la gestione Messe', () => {
+test('l invito personale del vice usa uno schema chiuso e una membership revocabile', () => {
   const adminCreate = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
   const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(adminCreate, /keys\(\)\.hasOnly\(\[/);
   assert.match(adminCreate, /invitationMembershipClaimIsValid\(centerId, adminUid\)/);
   assert.match(invitationClaim, /request\.resource\.data\.centerId == centerId/);
-  assert.match(invitationClaim, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
+  assert.match(invitationClaim, /request\.resource\.data\.massPermission == true/);
   assert.match(invitationClaim, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
+  assert.match(rules, /function managerAssignmentIsCurrent\(centerId\)[\s\S]*viceAdminRole/);
+  assert.match(rules, /function administratorAuthenticationMatches\(centerId\)[\s\S]*sign_in_provider/);
+  assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorAuthenticationMatches\(centerId\)[\s\S]*managerAssignmentIsCurrent\(centerId\)/);
 });
 
 test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {
@@ -164,9 +167,10 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
 });
 
-test('responsabile amministratore e vice hanno confini di scrittura distinti', () => {
+test('il vice usa la configurazione ma non amministra il passaggio di consegne', () => {
   assert.match(rules, /function isCenterOwner\(centerId\)[\s\S]*adminRole\(centerId\) == 'OWNER'/);
-  assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
+  assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN', 'MANAGER'\]/);
+  assert.match(rules, /function canManageAdministrativeRoles\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
   assert.match(rules, /function canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*resource\.data\.get\('role', ''\) != 'OWNER'/);
   assert.match(rules, /adminUid != request\.auth\.uid[\s\S]*resource\.data\.get\('role', ''\) == 'OWNER'[\s\S]*request\.resource\.data\.get\('status', ''\) == 'REVOKED'/);
   assert.match(rules, /match \/centers\/\{centerId\}[\s\S]*allow update: if canManageCenterConfiguration\(centerId\)/);
@@ -174,14 +178,14 @@ test('responsabile amministratore e vice hanno confini di scrittura distinti', (
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);
 });
 
-test('l avatar del centro e leggibile dalle sessioni ma modificabile solo dagli amministratori principali', () => {
+test('l avatar del centro e leggibile dalle sessioni e modificabile dai ruoli del pannello', () => {
   assert.match(
     rules,
     /match \/assets\/\{assetId\}[\s\S]*allow read: if isAdmin\(centerId\) \|\| hasSession\(centerId\)/
   );
   assert.match(
     rules,
-    /match \/assets\/\{assetId\}[\s\S]*allow create, update: if canManageAdministrativeRoles\(centerId\)[\s\S]*dataUrl\.size\(\) <= 300000/
+    /match \/assets\/\{assetId\}[\s\S]*allow create, update: if canManageCenterConfiguration\(centerId\)[\s\S]*dataUrl\.size\(\) <= 300000/
   );
   assert.match(participantData, /'assets'/);
 });
