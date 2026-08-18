@@ -8,7 +8,7 @@ import {
   setDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260817q';
+import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260818r';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import {
   findApplicableRule,
@@ -17,6 +17,7 @@ import {
 } from './reservation-state.mjs?v=20260816g';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { formatDietLabel } from './diet-utils.mjs?v=20260818w';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
 const KITCHEN_TOKEN_STORAGE_KEY = 'tavolaComune.kitchenToken';
 const KITCHEN_DEMO_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');
@@ -92,6 +93,11 @@ export async function ensureKitchenDemoSession() {
   const sessionExpired = expiresAt && expiresAt <= new Date();
 
   if (sessionSnap.exists() && (sessionData.scope !== 'KITCHEN' || sessionExpired)) {
+    if (!isConnectionAvailable()) {
+      const error = new Error('Connessione necessaria per cambiare sessione');
+      error.code = 'unavailable';
+      throw error;
+    }
     validatedKitchenSession = null;
     await signOutCurrentUser();
     const credential = await signInAnonymousUser();

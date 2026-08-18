@@ -11,7 +11,6 @@ import {
   sendEmailVerification,
   signOut,
   inMemoryPersistence,
-  indexedDBLocalPersistence,
   linkWithCredential,
   browserLocalPersistence,
   setPersistence,
@@ -58,8 +57,10 @@ const authReadyPromise = auth
 
 const googleProvider = new GoogleAuthProvider();
 const authPersistenceReady = auth
-  ? setPersistence(auth, indexedDBLocalPersistence)
-    .catch(() => setPersistence(auth, browserLocalPersistence))
+  ? setPersistence(auth, browserLocalPersistence)
+    // Private browsing and embedded webviews can reject localStorage. Keep
+    // the current tab usable in that exceptional case.
+    .catch(() => setPersistence(auth, inMemoryPersistence))
     .catch(() => undefined)
   : Promise.resolve();
 

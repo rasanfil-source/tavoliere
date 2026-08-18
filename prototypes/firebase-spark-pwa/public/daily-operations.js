@@ -5,7 +5,7 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260817q';
+import { db } from './firebase-client.js?v=20260818r';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { normalizeDietCode } from './diet-utils.mjs?v=20260818w';

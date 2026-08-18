@@ -89,6 +89,7 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /applyInterfaceStyle\(activeInterfaceStyle\)/);
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
+  assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
 test('il riepilogo Essenziale usa le icone lineari di Elegante', () => {

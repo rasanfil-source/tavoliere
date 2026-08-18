@@ -23,7 +23,7 @@ import {
   signOutCurrentUser,
   verifyResidentCommonPassword,
   waitForAuthReady
-} from './firebase-client.js?v=20260817q';
+} from './firebase-client.js?v=20260818r';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
@@ -36,6 +36,7 @@ import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260816h';
 import { isRecoverableSessionError } from './core/user-error.mjs?v=20260816i';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
@@ -277,7 +278,9 @@ export async function restoreFriendlyResidentSession() {
     });
     return { participant, participants: [participant] };
   } catch (error) {
-    if (isRecoverableSessionError(error)) {
+    const permissionError = error?.code === 'permission-denied'
+      || error?.code === 'firestore/permission-denied';
+    if (isRecoverableSessionError(error) && (!permissionError || !isConnectionAvailable())) {
       error.preserveResidentIdentity = true;
       throw error;
     }
@@ -331,6 +334,11 @@ async function revokeStoredPersonalAccess() {
 }
 
 async function createPersonalAnonymousSession(participantId, token) {
+  if (!isConnectionAvailable()) {
+    const error = new Error('Connessione necessaria per ripristinare l’accesso personale');
+    error.code = 'unavailable';
+    throw error;
+  }
   await signOutCurrentUser();
   clearCurrentSession();
   await signInAnonymousUser();
@@ -417,6 +425,11 @@ async function ensurePersonalSession(participantId, token) {
   }
 
   if (sessionSnap.exists()) {
+    if (!isConnectionAvailable()) {
+      const error = new Error('Connessione necessaria per cambiare sessione');
+      error.code = 'unavailable';
+      throw error;
+    }
     await signOutCurrentUser();
     const credential = await signInAnonymousUser();
     user = credential.user;
@@ -463,6 +476,11 @@ export async function ensurePublicDemoSession() {
   const sessionData = sessionSnap.exists() ? sessionSnap.data() : null;
   const sessionExpired = sessionData?.expiresAt && toDate(sessionData.expiresAt) <= new Date();
   if (sessionSnap.exists() && (sessionData.scope !== 'PUBLIC' || sessionExpired) && user.isAnonymous) {
+    if (!isConnectionAvailable()) {
+      const error = new Error('Connessione necessaria per cambiare sessione');
+      error.code = 'unavailable';
+      throw error;
+    }
     await signOutCurrentUser();
     const credential = await signInAnonymousUser();
     user = credential.user;
@@ -475,6 +493,11 @@ export async function ensurePublicDemoSession() {
   }
 
   if (sessionExpired) {
+    if (!isConnectionAvailable()) {
+      const error = new Error('Connessione necessaria per rinnovare la sessione');
+      error.code = 'unavailable';
+      throw error;
+    }
     await signOutCurrentUser();
     const credential = await signInAnonymousUser();
     return createPublicSession(credential.user.uid, false);

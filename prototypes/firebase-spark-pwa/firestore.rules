@@ -118,6 +118,14 @@ service cloud.firestore {
       return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
     }
 
+    function canCreatePersonalTokenForManager(centerId, participantId) {
+      return isInteractiveAdminUser()
+        && isAdmin(centerId)
+        && adminRole(centerId) == 'MANAGER'
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('participantId', '') == participantId
+        && participantIsActive(centerId, participantId);
+    }
+
     function canManageRoleInvitation(centerId, role) {
       return isCenterOwner(centerId)
         || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
@@ -977,6 +985,7 @@ service cloud.firestore {
       match /linkTokens/{tokenId} {
         allow read: if false;
         allow create: if canManageCenterConfiguration(centerId)
+          || canCreatePersonalTokenForManager(centerId, request.resource.data.participantId)
           || (
             isResidentTechnicalUser(centerId)
             && tokenId.matches('personal_[A-Za-z0-9_]+')

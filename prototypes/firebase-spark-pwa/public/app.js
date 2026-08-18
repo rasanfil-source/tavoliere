@@ -27,7 +27,7 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260817q';
+} from './firebase-client.js?v=20260818r';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -4510,6 +4510,14 @@ function renderMode() {
   }
   if (isKitchen) {
     renderKitchenHeading();
+  }
+
+  // Changing the interface style does not reload the week data.  Reconcile the
+  // operational section here as well, otherwise a previous render made while
+  // resident authorisation was still pending can leave Agenda Centro hidden
+  // when returning to the Original style.
+  if (isWeek && !needsResidentLogin && canManageDailyOperations()) {
+    renderWeekOperations();
   }
 }
 

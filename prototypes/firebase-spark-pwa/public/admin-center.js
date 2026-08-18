@@ -12,7 +12,7 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260817q';
+import { db, getCurrentUser } from './firebase-client.js?v=20260818r';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   createOwnedCenterId,

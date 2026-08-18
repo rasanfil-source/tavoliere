@@ -1730,7 +1730,7 @@ html[data-theme="terracotta"] {
   --surface: #fffdf9;
   --line: #d8c8b8;
   --good: #4f7049;
-  --affirmative: #6b713f;
+  --affirmative: #3f7d4e;
   --warn: #96630f;
   --danger: #a5322a;
   --info: #3f6e78;
@@ -1808,9 +1808,9 @@ html[data-theme="inchiostro"] {
   --surface: #ffffff;
   --line: #e1e0da;
   --good: #4c6b4f;
-  --affirmative: #8a6d32;
+  --affirmative: #3f7d4e;
   --warn: #9a7029;
-  --danger: #8b3a32;
+  --danger: #a5322a;
   --info: #42677a;
   --calendar-heading-bg: #e5e9ed;
   --calendar-heading-border: #bdc9d3;

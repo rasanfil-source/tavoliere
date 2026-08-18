@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const baseUrl = new URL(process.argv[2] || 'https://tavola-comune.web.app/');
+const buildRoot = resolve(process.env.TAT_BUILD_OUTPUT || 'prototypes/firebase-spark-pwa/dist');
 const releaseNonce = Date.now().toString(36);
 const assets = [
   { path: 'index.html', local: 'index.html' },
@@ -24,7 +25,7 @@ for (const asset of assets) {
   }
   const [remote, local] = await Promise.all([
     response.arrayBuffer().then((buffer) => Buffer.from(buffer)),
-    readFile(resolve('prototypes/firebase-spark-pwa/dist', asset.local))
+    readFile(resolve(buildRoot, asset.local))
   ]);
   const remoteHash = digest(remote);
   const localHash = digest(local);
@@ -34,7 +35,7 @@ for (const asset of assets) {
   results.push(`${asset.path} ${remoteHash.slice(0, 12)}`);
 }
 
-const index = await readFile(resolve('prototypes/firebase-spark-pwa/dist/index.html'), 'utf8');
+const index = await readFile(resolve(buildRoot, 'index.html'), 'utf8');
 for (const marker of [
   'data-admin-section-nav',
   'data-admin-center-settings-save',

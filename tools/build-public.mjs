@@ -3,7 +3,7 @@ import { extname, resolve } from 'node:path';
 import { transform } from 'esbuild';
 
 const sourceRoot = resolve('prototypes/firebase-spark-pwa/public');
-const outputRoot = resolve('prototypes/firebase-spark-pwa/dist');
+const outputRoot = resolve(process.env.TAT_BUILD_OUTPUT || 'prototypes/firebase-spark-pwa/dist');
 
 await rm(outputRoot, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 });
 await mkdir(outputRoot, { recursive: true });
