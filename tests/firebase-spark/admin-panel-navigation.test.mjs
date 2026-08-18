@@ -185,6 +185,16 @@ test('il vice non può aprire la scheda Amministratore neppure con un deep-link'
   assert.match(app, /elements\.adminNavAccess\.hidden = !canManageAccess/);
 });
 
+test('il residente semplice vede e monta soltanto la scheda Impostazioni', () => {
+  assert.match(app, /function selectedResidentCanUseFullControlPanel\(\)/);
+  assert.match(app, /const RESIDENT_SETTINGS_ACCESS = 'resident-settings'/);
+  assert.match(app, /function shouldOpenResidentSettingsPanel\(\)[\s\S]*?!hasStrongAdministratorIdentity\(\)[\s\S]*?!selectedResidentCanUseFullControlPanel\(\)/);
+  assert.match(app, /function updateControlPanelEntryHref\(\)[\s\S]*?adminEntryUrl\.searchParams\.set\('access', RESIDENT_SETTINGS_ACCESS\)/);
+  assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?renderResidentSettingsPanel\(\);[\s\S]*?reconcileAdminAccessWithoutStrongUser\(\);[\s\S]*?return;/);
+  assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?elements\.adminNavConfiguration\.hidden = true;[\s\S]*?elements\.adminNavAdaptations\.hidden = false;[\s\S]*?elements\.adminNavAccess\.hidden = true;[\s\S]*?mountAdminSection\('adaptations'\);[\s\S]*?return;/);
+  assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?if \(state\.residentSettingsMode\) \{[\s\S]*?storeResidentPreferences\(preferences\)/);
+});
+
 test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {
   assert.match(css, /Modalità schedario: una sola scheda amministrativa visibile alla volta/);
   assert.match(css, /\.admin-panel\[data-admin-section="overview"\]/);

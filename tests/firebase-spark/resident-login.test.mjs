@@ -202,7 +202,8 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /elements\.controlPanelEntry\.href = adminEntryUrl\.pathname \+ adminEntryUrl\.search/);
   assert.match(app, /selectedResidentCanOpenControlPanel\(\)/);
   assert.match(app, /function selectedResidentCanOpenControlPanel\(\) \{[\s\S]*return state\.residentReady/);
-  assert.match(app, /state\.residentSettingsMode = state\.residentReady && !hasStrongAdministratorSession/);
+  assert.match(app, /state\.residentSettingsMode = shouldOpenResidentSettingsPanel\(\)/);
+  assert.match(app, /RESIDENT_SETTINGS_ACCESS = 'resident-settings'/);
   assert.match(app, /if \(isControlPanelTarget && !hasAdminInterface\) \{\s*return;\s*\}[\s\S]*event\.preventDefault\(\);/);
   assert.match(app, /async function hydrateAdminNavigation\(\)[\s\S]*await reconcileAdminAccessWithoutStrongUser\(\)/);
   assert.match(app, /async function handleForgetDevice\(\)[\s\S]*const leavingAdminPanel = state\.mode === 'admin'[\s\S]*view', 'participant'[\s\S]*access', 'friendly'/);

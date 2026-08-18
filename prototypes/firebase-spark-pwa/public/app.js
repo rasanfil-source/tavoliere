@@ -79,6 +79,7 @@ import {
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
 const RESIDENT_ENTRY_GATE_STORAGE_KEY = 'tavolaComune.residentEntryGateClosed';
+const RESIDENT_SETTINGS_ACCESS = 'resident-settings';
 const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
@@ -490,7 +491,8 @@ const state = {
     || new URLSearchParams(window.location.search).get('access') === 'friendly',
   residentReady: false,
   residentAuthTransition: '',
-  residentSettingsMode: false,
+  residentSettingsMode: new URLSearchParams(window.location.search).get('access')
+    === RESIDENT_SETTINGS_ACCESS,
   residentAdministratorAuthorized: false,
   residentRestorePending: Boolean(loadStoredResidentSignature()),
   residentSettingsRestorePending: false,
@@ -1529,12 +1531,12 @@ function handleInAppNavigation(event) {
     state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
   } else {
-    targetUrl.searchParams.delete('access');
-    const currentUser = getCurrentUser();
-    const hasStrongAdministratorSession = currentUser
-      && !currentUser.isAnonymous
-      && !isResidentTechnicalEmail(currentUser.email);
-    state.residentSettingsMode = state.residentReady && !hasStrongAdministratorSession;
+    state.residentSettingsMode = shouldOpenResidentSettingsPanel();
+    if (state.residentSettingsMode) {
+      targetUrl.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+    } else {
+      targetUrl.searchParams.delete('access');
+    }
     if (!state.residentReady) {
       targetUrl.searchParams.delete('c');
     }
@@ -1568,6 +1570,17 @@ function handleInAppNavigation(event) {
 
 async function hydrateAdminNavigation() {
   if (state.mode !== 'admin') return;
+  // residentSettingsMode is an explicit UI boundary, not a loading hint.
+  // Honour it before looking at a possibly persistent Firebase session.
+  if (state.residentSettingsMode) {
+    if (state.residentReady) {
+      renderResidentSettingsPanel();
+      renderMode();
+    } else {
+      await reconcileAdminAccessWithoutStrongUser();
+    }
+    return;
+  }
   const user = getCurrentUser();
   if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
     state.residentSettingsMode = false;
@@ -1648,10 +1661,7 @@ function initializeOperationalLinks() {
   elements.monthNavLinks.forEach((link) => {
     link.href = monthHref;
   });
-  const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
-  adminEntryUrl.searchParams.set('view', 'admin');
-  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
-  elements.controlPanelEntry.href = adminEntryUrl.pathname + adminEntryUrl.search;
+  updateControlPanelEntryHref();
   elements.mealsReturnEntry.href = buildOperationalLink(
     entryMode,
     publicToken,
@@ -1976,6 +1986,12 @@ function initializeAuthPanel() {
   elements.authButton.disabled = false;
   watchAuth((user) => {
     const strongAuthUser = user && !user.isAnonymous && !isResidentTechnicalEmail(user.email);
+    if (state.mode === 'admin' && state.residentSettingsMode) {
+      authSettled = true;
+      window.clearTimeout(authFallback);
+      void reconcileAdminAccessWithoutStrongUser();
+      return;
+    }
     if (!shouldProcessAdminAuthEvent({
       mode: state.mode,
       residentAuthTransition: state.residentAuthTransition,
@@ -2025,7 +2041,8 @@ function finishAdminAuthorizationCheck() {
 }
 
 function reconcileAdminAccessWithoutStrongUser() {
-  if (state.residentAuthTransition || state.residentRestorePending) {
+  if (state.residentAuthTransition
+      || (state.residentRestorePending && !state.residentSettingsMode)) {
     return Promise.resolve();
   }
   if (state.adminAccessReconcilePromise) return state.adminAccessReconcilePromise;
@@ -4475,7 +4492,7 @@ async function handleAdminAdaptationsSave() {
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
     const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
-    if (state.residentSettingsMode && !state.adminRole) {
+    if (state.residentSettingsMode) {
       const preferences = {
         themePalette: paletteToSave,
         interfaceStyle: interfaceStyleToSave,
@@ -4814,6 +4831,7 @@ function renderMode() {
     || selectedResidentCanOpenControlPanel();
   elements.controlPanelEntry.hidden = !isOrdinaryView
     || (!needsResidentLogin && !canOpenControlPanel);
+  updateControlPanelEntryHref();
   if (elements.adminPasswordAlertDot) {
     elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired;
   }
@@ -5396,6 +5414,30 @@ function applyAdminCapabilityVisibility() {
       markAdminPanelVisited();
     }
   }
+  if (state.residentSettingsMode) {
+    state.adminActiveSection = 'adaptations';
+    state.adminMobileSection = 'adaptations';
+    elements.adminNavConfiguration.hidden = true;
+    elements.adminNavOverview.hidden = true;
+    elements.adminNavPeople.hidden = true;
+    elements.adminNavAdaptations.hidden = false;
+    elements.adminNavAccess.hidden = true;
+    elements.adminNavActivity.hidden = true;
+    elements.adminAccessSection.hidden = true;
+    if (elements.adminCenterSettingsSection) elements.adminCenterSettingsSection.hidden = true;
+    if (elements.adminAuditSection) elements.adminAuditSection.hidden = true;
+    if (elements.adminCalendarExtension) elements.adminCalendarExtension.hidden = true;
+    if (elements.adminTools) elements.adminTools.hidden = true;
+    if (elements.adminContactSharingRow) elements.adminContactSharingRow.hidden = true;
+    if (elements.adminCommonPasswordRow) elements.adminCommonPasswordRow.hidden = true;
+    if (elements.adminAdministratorPasswordRow) elements.adminAdministratorPasswordRow.hidden = true;
+    if (elements.bootstrapButton) elements.bootstrapButton.hidden = true;
+    elements.adminRoleOptions.forEach((option) => { option.hidden = true; });
+    elements.rotateLinkButtons.forEach((button) => { button.hidden = true; });
+    mountAdminSection('adaptations');
+    renderAdminMobileSection();
+    return;
+  }
   const canConfigureCenter = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   const canManageAdaptations = state.residentSettingsMode
     || hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
@@ -5683,6 +5725,49 @@ function selectedParticipantIsCenterAdministrator() {
 
 function selectedResidentCanOpenControlPanel() {
   return state.residentReady;
+}
+
+function selectedResidentCanUseFullControlPanel() {
+  return Boolean(state.selectedParticipant) && (
+    state.selectedParticipant.viceAdminRole === true
+    || selectedParticipantIsCenterAdministrator()
+  );
+}
+
+function hasStrongAdministratorIdentity() {
+  const currentUser = getCurrentUser();
+  return Boolean(currentUser
+    && !currentUser.isAnonymous
+    && !isResidentTechnicalEmail(currentUser.email));
+}
+
+function shouldOpenResidentSettingsPanel() {
+  // A strong Firebase session can remain on a shared device after an
+  // administrator has used it. It must not turn the control panel opened by
+  // an ordinary resident into the complete administrative panel.
+  return state.residentReady && (
+    !hasStrongAdministratorIdentity()
+    || !selectedResidentCanUseFullControlPanel()
+  );
+}
+
+function setResidentSettingsAccessBoundary(enabled) {
+  state.residentSettingsMode = enabled;
+  const url = new URL(window.location.href);
+  if (enabled) url.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+  else if (url.searchParams.get('access') === RESIDENT_SETTINGS_ACCESS) url.searchParams.delete('access');
+  window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+}
+
+function updateControlPanelEntryHref() {
+  const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
+  adminEntryUrl.searchParams.set('view', 'admin');
+  const centerId = getActiveCenterId();
+  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
+  if (shouldOpenResidentSettingsPanel()) {
+    adminEntryUrl.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+  }
+  elements.controlPanelEntry.href = adminEntryUrl.pathname + adminEntryUrl.search;
 }
 
 function canUseWeekWithoutParticipant() {
@@ -6709,15 +6794,24 @@ function renderWeekOperations() {
     invitedTotal += count;
   });
   elements.weekInvitedSection.open = invitedTotal > 0;
-  elements.weekInvitedStatus.textContent = invitedTotal > 0
-    ? t('week.operations.invited.count', { count: invitedTotal })
-    : t('week.operations.invited.empty');
+  renderWeekInvitedStatus(invitedMeals);
   elements.weekHealthSection.open = sickCount > 0;
   elements.weekHealthStatus.textContent = sickCount > 0
     ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
     : 'Nessun ammalato';
   renderWeekKitchenNotes();
   renderWeekDietAssignments();
+}
+
+function renderWeekInvitedStatus(invitedMeals = {}) {
+  const entries = ['breakfast', 'lunch', 'dinner']
+    .filter((mealTypeId) => Number(invitedMeals[mealTypeId] || 0) > 0)
+    .map((mealTypeId) => (
+      `<span class="week-invited-saved-meal"><span aria-hidden="true">${getMealIcon(mealTypeId)}</span> ${Number(invitedMeals[mealTypeId])}</span>`
+    ));
+  elements.weekInvitedStatus.innerHTML = entries.length > 0
+    ? `${escapeHtml(t('week.operations.invited.saved'))} ${entries.join(' ')}`
+    : escapeHtml(t('week.operations.invited.empty'));
 }
 
 async function restoreResidentSettingsPanel() {
@@ -6747,7 +6841,7 @@ async function restoreResidentSettingsPanel() {
 }
 
 function renderResidentSettingsPanel() {
-  if (!state.residentSettingsMode || !state.residentReady || state.adminRole) return;
+  if (!state.residentSettingsMode || !state.residentReady) return;
   state.adminActiveSection = 'adaptations';
   state.adminMobileSection = 'adaptations';
   elements.adminShell.dataset.adminActive = 'resident-settings';
@@ -6804,9 +6898,15 @@ async function handleResidentAdministratorUnlock() {
 async function handleViceGoogleAuthentication() {
   elements.viceAuthGoogle.disabled = true;
   elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
+  const restoreResidentBoundary = state.residentSettingsMode;
+  if (restoreResidentBoundary) setResidentSettingsAccessBoundary(false);
   try {
     await signInWithGoogle();
   } catch (error) {
+    if (restoreResidentBoundary) {
+      setResidentSettingsAccessBoundary(true);
+      renderResidentSettingsPanel();
+    }
     elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.google.signIn'));
     elements.viceAuthGoogle.disabled = false;
   }
@@ -6824,6 +6924,8 @@ async function handleViceEmailAuthentication(event) {
   const submit = elements.viceAuthEmailForm.querySelector('[type="submit"]');
   submit.disabled = true;
   elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
+  const restoreResidentBoundary = state.residentSettingsMode;
+  if (restoreResidentBoundary) setResidentSettingsAccessBoundary(false);
   try {
     await signInAdministratorWithEmail(
       elements.viceAuthEmail.value,
@@ -6831,6 +6933,10 @@ async function handleViceEmailAuthentication(event) {
     );
     elements.viceAuthPassword.value = '';
   } catch (error) {
+    if (restoreResidentBoundary) {
+      setResidentSettingsAccessBoundary(true);
+      renderResidentSettingsPanel();
+    }
     elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.email.signIn'));
     submit.disabled = false;
   }
@@ -6852,14 +6958,6 @@ async function handleWeekInvitedSave() {
       invitedMeals
     );
     renderWeekOperations();
-    const entries = ['breakfast', 'lunch', 'dinner']
-      .filter((mealTypeId) => Number(invitedMeals[mealTypeId] || 0) > 0)
-      .map((mealTypeId) => (
-        `<span class="week-invited-saved-meal"><span aria-hidden="true">${getMealIcon(mealTypeId)}</span> ${Number(invitedMeals[mealTypeId])}</span>`
-      ));
-    elements.weekInvitedStatus.innerHTML = entries.length > 0
-      ? `${escapeHtml(t('week.operations.invited.saved'))} ${entries.join(' ')}`
-      : escapeHtml(t('week.operations.invited.empty'));
   } catch (error) {
     elements.weekInvitedStatus.textContent = friendlyErrorMessage(
       error,
