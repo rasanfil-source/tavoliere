@@ -3,14 +3,15 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const projectRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
-const [html, css, app, firebaseClient, centerSettings, adminCenter, administratorAuth] = await Promise.all([
+const [html, css, app, firebaseClient, centerSettings, adminCenter, administratorAuth, summaryView] = await Promise.all([
   readFile(new URL('index.html', projectRoot), 'utf8'),
   readFile(new URL('styles.css', projectRoot), 'utf8'),
   readFile(new URL('app.js', projectRoot), 'utf8'),
   readFile(new URL('firebase-client.js', projectRoot), 'utf8'),
   readFile(new URL('center-settings.js', projectRoot), 'utf8'),
   readFile(new URL('admin-center.js', projectRoot), 'utf8'),
-  import(new URL('domain/administrator-auth.mjs', projectRoot))
+  import(new URL('domain/administrator-auth.mjs', projectRoot)),
+  readFile(new URL('summary-matrix-view.js', projectRoot), 'utf8')
 ]);
 
 test('il riepilogo amministrativo non richiede il vecchio indicatore visivo del calendario', () => {
@@ -88,6 +89,10 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /applyInterfaceStyle\(activeInterfaceStyle\)/);
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
+});
+
+test('il riepilogo Essenziale usa le icone lineari di Elegante', () => {
+  assert.match(summaryView, /interfaceStyle === "cool" \|\| interfaceStyle === "urban"/);
 });
 
 test('Impostazioni presenta testi compatti e Aspetto subito dopo la vista preferita', () => {

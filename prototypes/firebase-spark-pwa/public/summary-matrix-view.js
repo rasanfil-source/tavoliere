@@ -157,7 +157,9 @@ function mealIcon(mealTypeId) {
 }
 
 function interfaceIcon(kind, fallback = "•") {
-  if (document.documentElement.dataset.interfaceStyle !== "cool" || !kind) {
+  const interfaceStyle = document.documentElement.dataset.interfaceStyle;
+  const usesLineIcons = interfaceStyle === "cool" || interfaceStyle === "urban";
+  if (!usesLineIcons || !kind) {
     return fallback;
   }
   const paths = {
