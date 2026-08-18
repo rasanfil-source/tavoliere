@@ -4123,6 +4123,7 @@ async function handleAdminAdaptationsSave() {
       await setLocale(languageToSave);
       applyTranslations(document);
       renderMode();
+      await clearApplicationCache();
       if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
       return;
     }
@@ -4166,6 +4167,7 @@ async function handleAdminAdaptationsSave() {
     await setLocale(languageToSave);
     applyTranslations(document);
     renderMode();
+    await clearApplicationCache();
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
   } catch (error) {
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = friendlyErrorMessage(error, 'Errore durante il salvataggio');
@@ -4585,6 +4587,29 @@ function renderAdminParticipantOptions() {
     return '<option value="' + escapeHtml(participant.participantId) + '"' + selected + '>'
       + escapeHtml(participant.displayName + statusLabel) + '</option>';
   }).join('');
+}
+
+async function clearApplicationCache() {
+  // Purge only the PWA Cache Storage. Firebase Auth persistence, local
+  // preferences, tokens and IndexedDB are deliberately left untouched.
+  try {
+    const cacheNames = await window.caches?.keys?.() || [];
+    await Promise.all(cacheNames
+      .filter((name) => name.startsWith('tavola-comune-app-'))
+      .map((name) => window.caches.delete(name)));
+    const controller = navigator.serviceWorker?.controller;
+    if (controller) {
+      await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = resolve;
+        controller.postMessage({ type: 'CLEAR_APPLICATION_CACHE' }, [channel.port2]);
+        window.setTimeout(resolve, 1200);
+      });
+    }
+  } catch {
+    // Cache cleanup is an optimization; a settings save must remain valid if
+    // a browser does not expose Cache Storage or MessageChannel.
+  }
 }
 
 function captureFocusWithin(container) {

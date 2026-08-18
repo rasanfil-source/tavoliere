@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v304';
+const CACHE_NAME = CACHE_PREFIX + 'v305';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -72,6 +72,17 @@ self.addEventListener('activate', (event) => {
         .map((name) => caches.delete(name))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CLEAR_APPLICATION_CACHE') return;
+  const purge = caches.keys().then((names) => Promise.all(names
+    .filter((name) => name.startsWith(CACHE_PREFIX))
+    .map((name) => caches.delete(name))));
+  event.waitUntil(purge);
+  if (event.ports?.[0]) {
+    purge.then(() => event.ports[0].postMessage({ ok: true }));
+  }
 });
 
 self.addEventListener('fetch', (event) => {
