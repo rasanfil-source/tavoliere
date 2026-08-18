@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v303';
+const CACHE_NAME = CACHE_PREFIX + 'v304';
 const APP_SHELL = [
   '/',
   '/index.html',

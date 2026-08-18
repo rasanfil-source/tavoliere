@@ -493,9 +493,10 @@ test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo',
   assert.match(participantData, /hasCapability\(role, CAPABILITIES\.OPEN_ADMIN_AREA\)/);
   const adminCheck = participantData.match(/async function getAuthorizedAdministratorUser\(\)[\s\S]*?\n\}/)?.[0] || '';
   assert.doesNotMatch(adminCheck, /catch\s*\{/);
-  assert.match(participantData, /if \(authorizedAdministrator\) \{[\s\S]*verifyResidentCommonPassword/);
-  assert.match(participantData, /if \(!authorizedAdministrator\) \{[\s\S]*createPersonalAnonymousSession/);
-  assert.match(participantData, /if \(strongAuthenticatedUser && !authorizedAdministrator\) \{[\s\S]*non autorizzato per questo centro/);
+  assert.match(participantData, /const keepStrongAdministratorSession = Boolean\(strongAuthenticatedUser && authorizedAdministrator\)/);
+  assert.match(participantData, /if \(keepStrongAdministratorSession\) \{[\s\S]*verifyResidentCommonPassword/);
+  assert.match(participantData, /if \(!keepStrongAdministratorSession\) \{[\s\S]*createPersonalAnonymousSession/);
+  assert.match(participantData, /if \(strongAuthenticatedUser && !authorizedAdministrator\) \{[\s\S]*return null/);
   assert.match(participantData, /export async function ensureStoredResidentSession\(\) \{[\s\S]*return authorizedAdministrator/);
   assert.match(participantData, /export async function ensurePublicDemoSession\(\) \{[\s\S]*return authorizedAdministrator/);
   assert.match(app, /elements\.controlPanelEntry,[\s\S]*elements\.mealsReturnEntry[\s\S]*handleInAppNavigation/);

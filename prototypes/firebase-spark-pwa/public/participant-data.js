@@ -214,11 +214,12 @@ export async function signInFriendlyResident(signature, commonPassword) {
 
   const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
-  if (strongAuthenticatedUser && !authorizedAdministrator) {
-    throw new Error('Account amministratore non autorizzato per questo centro');
-  }
+  // A restored Google session may belong to another centre. The common
+  // password is the explicit resident credential, so let it establish the
+  // resident session instead of rejecting the form before verification.
+  const keepStrongAdministratorSession = Boolean(strongAuthenticatedUser && authorizedAdministrator);
   try {
-    if (authorizedAdministrator) {
+    if (keepStrongAdministratorSession) {
       await verifyResidentCommonPassword(getActiveCenterId(), commonPassword);
     } else {
       await signInResidentTechnicalUser(getResidentTechnicalEmail(getActiveCenterId()), commonPassword);
@@ -229,14 +230,14 @@ export async function signInFriendlyResident(signature, commonPassword) {
     }
 
     const token = await createPersonalTokenForParticipant(participant.participantId);
-    if (!authorizedAdministrator) {
+    if (!keepStrongAdministratorSession) {
       await createPersonalAnonymousSession(participant.participantId, token);
     }
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };
   } catch (error) {
     clearCurrentSession();
-    if (!authorizedAdministrator) {
+    if (!keepStrongAdministratorSession) {
       await signOutCurrentUser();
     }
     throw error;
@@ -255,7 +256,8 @@ export async function restoreFriendlyResidentSession() {
   const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
   if (strongAuthenticatedUser && !authorizedAdministrator) {
-    throw new Error('Account amministratore non autorizzato per questo centro');
+    // Show the resident form so the user can provide the common password.
+    return null;
   }
   try {
     if (authorizedAdministrator) {
