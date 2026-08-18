@@ -1733,6 +1733,25 @@ test('a personal token creates a session bound to its participant', async () => 
   }));
 });
 
+test('a first-time personal session can load its complete reservation calendar', async () => {
+  const db = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+
+  await assertSucceeds(db.doc(centerPath()).get());
+  await assertSucceeds(db.collection(`${centerPath()}/mealTypes`).get());
+  await assertSucceeds(db.collection(`${centerPath()}/mealWindows`)
+    .where('mealDate', '>=', '2026-08-01')
+    .where('mealDate', '<=', '2026-08-31')
+    .get());
+  await assertSucceeds(db.doc(rulePath(MARIO_ID)).get());
+  await assertFails(db.doc(rulePath(LUCA_ID)).get());
+  await assertSucceeds(db.collection(`${centerPath()}/reservationOverrides`)
+    .where('participantId', '==', MARIO_ID)
+    .get());
+  await assertFails(db.collection(`${centerPath()}/reservationOverrides`)
+    .where('participantId', '==', LUCA_ID)
+    .get());
+});
+
 test('a participant deactivated after session creation cannot write anymore', async () => {
   const db = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
 

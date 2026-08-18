@@ -34,7 +34,7 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260818a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260818a';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260818b';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
@@ -668,10 +668,13 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
   const startDateId = formatDateId(dates[0]);
   const endDateId = formatDateId(dates[dates.length - 1]);
   const [mealTypes, windows, overrides, rules] = await Promise.all([
-    getMealTypes(options.forceStaticRefresh),
-    getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh),
-    getOwnOverrides(participantId, startDateId, endDateId),
-    getParticipantRules(participantId, options.forceStaticRefresh)
+    tagResidentCalendarRead(getMealTypes(options.forceStaticRefresh), 'mealTypes'),
+    tagResidentCalendarRead(
+      getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh),
+      'mealWindows'
+    ),
+    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId), 'reservationOverrides'),
+    tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh), 'reservationRule')
   ]);
   const windowsByKey = new Map(
     windows.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
@@ -711,6 +714,13 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
       isToday: isSameDate(date, centerToday),
       meals
     };
+  });
+}
+
+function tagResidentCalendarRead(promise, stage) {
+  return promise.catch((error) => {
+    if (!error.refreshStage) error.refreshStage = stage;
+    throw error;
   });
 }
 
@@ -1334,11 +1344,19 @@ async function getParticipantRules(participantId, forceRefresh = false) {
   if (!forceRefresh && isFreshCacheEntry(cached)) {
     return cached.value;
   }
-  const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'reservationRules'),
-    where('participantId', '==', participantId)
+  // La regola personale ha un identificativo deterministico. La lettura
+  // diretta evita che il primo calendario dipenda dalla valutazione di una
+  // query protetta (le regole Firestore non funzionano come filtri).
+  const snapshot = await getDoc(doc(
+    db,
+    'centers',
+    getActiveCenterId(),
+    'reservationRules',
+    `rule_${participantId}`
   ));
-  const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
+  const value = snapshot.exists()
+    ? [{ ruleId: snapshot.id, ...snapshot.data() }]
+    : [];
   participantRulesCache.set(participantId, { loadedAt: Date.now(), value });
   return value;
 }

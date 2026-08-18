@@ -274,6 +274,7 @@
   "auth.resident.password.show": "Mostra",
   "auth.resident.signature.label": "Sigla",
   "auth.resident.status": "Inserisci i tuoi dati per entrare.",
+  "auth.resident.calendarUnavailable": "Non riesco ad aprire le prenotazioni. Riprova tra un momento.",
   "auth.resident.submit": "Entra",
   "auth.resident.title": "Accesso residenti",
   "calendar.jump.month": "Mese: {month}",

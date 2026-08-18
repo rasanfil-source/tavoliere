@@ -274,6 +274,7 @@
   "auth.resident.password.show": "Afficher",
   "auth.resident.signature.label": "Code",
   "auth.resident.status": "Saisissez vos informations pour continuer.",
+  "auth.resident.calendarUnavailable": "Impossible d’ouvrir les réservations. Réessayez dans un instant.",
   "auth.resident.submit": "Entrer",
   "auth.resident.title": "Connexion residents",
   "calendar.jump.month": "Mois : {month}",

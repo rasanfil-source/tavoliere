@@ -274,6 +274,7 @@
   "auth.resident.password.show": "Anzeigen",
   "auth.resident.signature.label": "Code",
   "auth.resident.status": "Gib deine Zugangsdaten ein, um fortzufahren.",
+  "auth.resident.calendarUnavailable": "Die Reservierungen konnten nicht geöffnet werden. Bitte versuche es gleich noch einmal.",
   "auth.resident.submit": "Anmelden",
   "auth.resident.title": "Bewohner-Anmeldung",
   "calendar.jump.month": "Monat: {month}",

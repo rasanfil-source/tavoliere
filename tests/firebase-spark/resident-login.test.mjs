@@ -291,7 +291,7 @@ test('gli aggiornamenti concorrenti vengono serializzati e accodati', () => {
 });
 
 test('un aggiornamento fallito conserva i dati partecipante già visibili', () => {
-  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n\}/)?.[0] || '';
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(refresh, /const hadVisibleData/);
   assert.match(refresh, /if \(hadVisibleData\) \{[\s\S]*renderParticipantMeals\(\)/);
   assert.match(refresh, /formatPreviousDataMessage/);
@@ -385,7 +385,7 @@ test('una sessione residente non viene presentata come accesso amministratore', 
 });
 
 test('una richiesta residente superata non può rimontare il login dopo l accesso', () => {
-  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n}/)?.[0] || '';
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n}/)?.[0] || '';
   const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(refresh, /if \(state\.residentAuthTransition\) return/);
@@ -530,7 +530,7 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
 });
 
 test('il bootstrap residente completa la sessione prima delle letture protette', () => {
-  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n}/)?.[0] || '';
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(refresh, /sessionPromise = ensureStoredResidentSession\(\)/);
   assert.match(refresh, /await sessionPromise;[\s\S]*const centerSettings = await loadCenterContactSettings/);
   assert.doesNotMatch(refresh, /Promise\.all\(\[sessionPromise, settingsPromise\]\)/);
@@ -539,7 +539,7 @@ test('il bootstrap residente completa la sessione prima delle letture protette',
 });
 
 test('il primo caricamento mostra subito le selezioni del periodo corrente', () => {
-  const refresh = app.match(/async function refreshParticipant\(source\)[\s\S]*?\n}/)?.[0] || '';
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   const anchor = app.match(/function anchorCalendarToCenterToday\(\)[\s\S]*?\n}/)?.[0] || '';
   const calendarLoad = app.match(/async function loadCurrentParticipantCalendar\(options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
 

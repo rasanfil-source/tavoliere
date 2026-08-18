@@ -99,11 +99,14 @@ test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insi
 test('public sessions are read only for participant reservations', () => {
   const validator = rules.match(/function overrideValuesAreValid\(centerId\)[\s\S]*?\n    \}/)?.[0] || '';
   const personalSession = rules.match(/function personalOverrideSessionIsValid\(centerId, participantId\)[\s\S]*?\n    \}/)?.[0] || '';
+  const personalSessionGate = rules.match(/function personalSessionIsUsable\(centerId\)[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(validator, /personalOverrideSessionIsValid\(centerId, request\.resource\.data\.participantId\)/);
+  assert.match(personalSession, /personalSessionIsUsable\(centerId\)/);
   assert.match(personalSession, /session\.scope == 'PERSONAL'/);
   assert.match(personalSession, /session\.participantId == participantId/);
-  assert.match(personalSession, /token\.status == 'ACTIVE'/);
-  assert.match(personalSession, /request\.time < token\.expiresAt/);
+  assert.match(personalSessionGate, /tokenIsUsable\(centerId, session\.tokenId\)/);
+  assert.match(personalSessionGate, /tokenData\(centerId, session\.tokenId\)\.participantId == session\.participantId/);
+  assert.match(personalSessionGate, /participantIsActive\(centerId, session\.participantId\)/);
   assert.doesNotMatch(validator, /hasSessionScope\(centerId, 'PUBLIC'\)/);
 });
 

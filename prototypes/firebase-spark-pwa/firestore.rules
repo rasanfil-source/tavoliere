@@ -406,15 +406,38 @@ service cloud.firestore {
     }
 
     function hasSession(centerId) {
+      let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
       return signedIn()
         && centerIsActive(centerId)
-        && exists(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid))
-        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.status == 'ACTIVE'
-        && request.time < get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.expiresAt
-        && tokenIsUsable(
-          centerId,
-          get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.tokenId
+        && exists(sessionPath)
+        && get(sessionPath).data.centerId == centerId
+        && get(sessionPath).data.status == 'ACTIVE'
+        && request.time < get(sessionPath).data.expiresAt
+        && (
+          get(sessionPath).data.scope == 'PERSONAL'
+            && personalSessionIsUsable(centerId)
+          || get(sessionPath).data.scope != 'PERSONAL'
+            && tokenIsUsable(centerId, get(sessionPath).data.tokenId)
         );
+    }
+
+    // Un solo controllo coerente per tutte le letture del residente. Mantiene
+    // la revoca tramite token, ma evita di ricomporre in modi diversi la stessa
+    // catena sessione-token-persona nelle query del calendario.
+    function personalSessionIsUsable(centerId) {
+      let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
+      let session = get(sessionPath).data;
+      return signedIn()
+        && exists(sessionPath)
+        && centerIsActive(centerId)
+        && session.centerId == centerId
+        && session.status == 'ACTIVE'
+        && session.scope == 'PERSONAL'
+        && session.participantId is string
+        && request.time < session.expiresAt
+        && tokenIsUsable(centerId, session.tokenId)
+        && tokenData(centerId, session.tokenId).participantId == session.participantId
+        && participantIsActive(centerId, session.participantId);
     }
 
     function hasSessionScope(centerId, scope) {
@@ -473,22 +496,16 @@ service cloud.firestore {
     }
 
     function canReadParticipantOverride(centerId) {
-      return hasSessionScope(centerId, 'PERSONAL')
-        && hasSelectedParticipant(centerId)
+      return personalSessionIsUsable(centerId)
         && resource.data.participantId == sessionParticipantId(centerId);
     }
 
     function personalOverrideSessionIsValid(centerId, participantId) {
       let session = get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data;
-      let token = get(/databases/$(database)/documents/centers/$(centerId)/linkTokens/$(session.tokenId)).data;
-      return signedIn()
-        && get(/databases/$(database)/documents/centers/$(centerId)).data.status == 'ACTIVE'
-        && session.status == 'ACTIVE'
+      return personalSessionIsUsable(centerId)
         && session.scope == 'PERSONAL'
         && session.participantId == participantId
-        && request.time < session.expiresAt
-        && token.status == 'ACTIVE'
-        && request.time < token.expiresAt;
+        && participantIsActive(centerId, participantId);
     }
 
     function overrideKeysAreValid() {
@@ -1219,10 +1236,8 @@ service cloud.firestore {
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
           || (
-            (
-              hasSessionScope(centerId, 'PERSONAL')
-            )
-            && hasSelectedParticipant(centerId)
+            personalSessionIsUsable(centerId)
+            && ruleId == 'rule_' + sessionParticipantId(centerId)
             && resource.data.participantId == sessionParticipantId(centerId)
           );
         allow create: if isAdmin(centerId)

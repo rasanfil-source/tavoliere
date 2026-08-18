@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260818z';
+const CATALOG_RELEASE = '20260818aa';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -29,6 +29,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.controlPanel': 'Pannello di controllo',
     'app.header.verifyingAuth': 'Accesso al pannello in corso…',
     'auth.signingOut': 'Uscita in corso…',
+    'auth.resident.calendarUnavailable': 'Non riesco ad aprire le prenotazioni. Riprova tra un momento.',
     'common.actions.exit': 'Esci',
     'common.action.exit': 'Esci',
     'common.actions.save': 'Salva',
@@ -96,6 +97,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.controlPanel': 'Control panel',
     'app.header.verifyingAuth': 'Opening the control panel…',
     'auth.signingOut': 'Signing out…',
+    'auth.resident.calendarUnavailable': 'Reservations could not be opened. Please try again in a moment.',
     'common.actions.exit': 'Log out',
     'common.action.exit': 'Log out',
     'common.actions.save': 'Save',
@@ -128,6 +130,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.controlPanel': 'Panneau de contrôle',
     'app.header.verifyingAuth': 'Ouverture du panneau de contrôle…',
     'auth.signingOut': 'Déconnexion en cours…',
+    'auth.resident.calendarUnavailable': 'Impossible d’ouvrir les réservations. Réessayez dans un instant.',
     'common.actions.exit': 'Se déconnecter',
     'common.action.exit': 'Se déconnecter',
     'common.actions.save': 'Enregistrer',
@@ -160,6 +163,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.controlPanel': 'Panel de control',
     'app.header.verifyingAuth': 'Abriendo el panel de control…',
     'auth.signingOut': 'Cerrando sesión…',
+    'auth.resident.calendarUnavailable': 'No se pueden abrir las reservas. Inténtalo de nuevo en un momento.',
     'common.actions.exit': 'Cerrar sesión',
     'common.action.exit': 'Cerrar sesión',
     'common.actions.save': 'Guardar',
@@ -192,6 +196,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.controlPanel': 'Systemsteuerung',
     'app.header.verifyingAuth': 'Bedienfeld wird geöffnet…',
     'auth.signingOut': 'Abmeldung läuft…',
+    'auth.resident.calendarUnavailable': 'Die Reservierungen konnten nicht geöffnet werden. Bitte versuche es gleich noch einmal.',
     'common.actions.exit': 'Abmelden',
     'common.action.exit': 'Abmelden',
     'common.actions.save': 'Speichern',

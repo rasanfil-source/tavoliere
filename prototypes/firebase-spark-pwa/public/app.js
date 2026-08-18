@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260818z';
+} from './i18n/i18n.mjs?v=20260818aa';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -55,7 +55,7 @@ import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260818a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
-import { toUserMessage } from './core/user-error.mjs?v=20260818a';
+import { toUserMessage } from './core/user-error.mjs?v=20260818b';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -91,7 +91,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260818t'
+  participant: './participant-data.js?v=20260818u'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -3103,7 +3103,7 @@ async function performRefresh(source) {
   hideStartupSplash();
 }
 
-async function refreshParticipant(source) {
+async function refreshParticipant(source, options = {}) {
   const retryPermission = !String(source || '').endsWith(':auth-retry');
   if (state.residentAuthTransition) return;
   let request = beginParticipantRequest();
@@ -3249,11 +3249,21 @@ async function refreshParticipant(source) {
           await recoverStoredResidentSession();
         }
         if (!isCurrentParticipantRequest(request)) return;
-        await refreshParticipant(`${source}:auth-retry`);
-        return;
+        return await refreshParticipant(`${source}:auth-retry`, options);
       } catch (retryError) {
         error = retryError;
       }
+    }
+    if (options.loginHandshake) {
+      state.residentReady = false;
+      state.residentRestorePending = false;
+      renderResidentAccess(true);
+      renderMode();
+      const loginMessage = isCenterAccessRevokedError(error)
+        ? t('auth.resident.calendarUnavailable')
+        : friendlyErrorMessage(error, t('auth.resident.calendarUnavailable'));
+      elements.residentLoginStatus.textContent = loginMessage;
+      return false;
     }
     const preserveResidentView = error?.preserveResidentIdentity === true
       || shouldPreserveResidentViewAfterRefreshError({
@@ -3267,7 +3277,12 @@ async function refreshParticipant(source) {
       renderResidentAccess(false);
       renderMode();
     }
-    const message = friendlyErrorMessage(error, 'Prenotazione non disponibile');
+    if (error?.refreshStage) {
+      console.error('[resident-calendar]', error.refreshStage, error.code || error.message || error);
+    }
+    const message = isCenterAccessRevokedError(error) && state.friendlyAccess
+      ? t('auth.resident.calendarUnavailable')
+      : friendlyErrorMessage(error, 'Prenotazione non disponibile');
     if (!preserveResidentView && isCenterAccessRevokedError(error)) {
       clearParticipantDataAfterAccessRevocation();
       renderResidentAccess(true);
@@ -3284,6 +3299,7 @@ async function refreshParticipant(source) {
   } finally {
     hideStartupSplash();
   }
+  return true;
 }
 
 function isCenterAccessRevokedError(error) {
@@ -3354,13 +3370,18 @@ async function handleResidentLogin(event) {
     state.selectedParticipant = result.participant;
     state.residentReady = true;
     state.residentRestorePending = false;
-    openResidentEntryGate();
     state.residentAuthTransition = '';
     applyResidentEntryView();
+    // Handshake session-first: il calendario resta smontato finché le letture
+    // necessarie al periodo corrente non sono state autorizzate davvero.
+    renderResidentAccess(true);
+    renderMode();
+    const authorized = await refreshParticipant('avvio', { loginHandshake: true });
+    if (!authorized) return;
+    openResidentEntryGate();
     elements.residentPasswordInput.value = '';
     renderResidentAccess(false);
     renderMode();
-    await refreshParticipant('avvio');
   } catch (error) {
     state.residentAuthTransition = '';
     elements.residentLoginStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
