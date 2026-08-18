@@ -252,6 +252,11 @@ test('le viste personali non caricano il riepilogo completo del centro', () => {
   assert.doesNotMatch(app, /listPublicParticipants\(\),\s*loadParticipantDaySummaries/);
 });
 
+test('le preferenze locali residenti non sovrascrivono lo stile del pannello amministrativo', () => {
+  assert.match(app, /if \(!state\.residentReady \|\| state\.adminRole \|\| \(state\.mode === 'admin' && !state\.residentSettingsMode\)\)\s*\{\s*return settings;/);
+  assert.match(app, /if \(state\.residentReady \|\| state\.adminRole\) \{\s*const residentPreferences = loadResidentPreferences\(\);/);
+});
+
 test('gli aggiornamenti concorrenti vengono serializzati e accodati', () => {
   assert.match(app, /if \(state\.refreshInFlight\)/);
   assert.match(app, /state\.pendingRefreshSource/);

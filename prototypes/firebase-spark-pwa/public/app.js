@@ -294,7 +294,14 @@ function loadResidentPreferences() {
 }
 
 function applyResidentPreferences(settings) {
-  if (!state.residentReady) return settings;
+  // The center-level settings must win while the control panel is active.
+  // An administrator can also have a resident session restored in the same
+  // tab; applying that tab's old preferences here would silently bring back
+  // a previous interface style (and make the week/Agenda rendering appear to
+  // change as the mode is mounted again).
+  if (!state.residentReady || state.adminRole || (state.mode === 'admin' && !state.residentSettingsMode)) {
+    return settings;
+  }
   const preferences = loadResidentPreferences();
   return {
     ...settings,
@@ -4161,7 +4168,7 @@ async function handleAdminAdaptationsSave() {
       ...settings,
       language: languageToSave
     };
-    if (state.residentReady) {
+    if (state.residentReady || state.adminRole) {
       const residentPreferences = loadResidentPreferences();
       storeResidentPreferences({
         ...residentPreferences,
