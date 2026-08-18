@@ -449,6 +449,7 @@ const state = {
   friendlyAccess: ['participant', 'week'].includes(initialMode)
     || new URLSearchParams(window.location.search).get('access') === 'friendly',
   residentReady: false,
+  residentAuthTransition: '',
   residentSettingsMode: false,
   residentAdministratorAuthorized: false,
   residentRestorePending: Boolean(loadStoredResidentSignature()),
@@ -476,6 +477,8 @@ const state = {
   weekStartDate: startOfWeek(new Date()),
   monthDate: startOfMonth(new Date()),
   adminRole: '',
+  adminAuthorizationPending: false,
+  adminAccessReconcilePromise: null,
   adminMassPermission: false,
   adminCanManageMass: false,
   adminCanManageDailyOperations: false,
@@ -1223,16 +1226,20 @@ async function bootstrapApp() {
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
-  if (hasAdminInterface) initializeAuthPanel();
   initializeResidentAccess();
-  renderMode();
-  hideStartupSplash();
 
   const settingsPromise = loadCenterContactSettings().catch(() => null);
   const i18nPromise = initI18n({
     development: window.location.hostname === 'localhost',
     centerLocale: state.centerContactSettings.language || null
   });
+  // Translation files are local, small and required before auth status text
+  // can be painted. Firestore settings continue loading in parallel and do
+  // not delay the first usable frame.
+  await i18nPromise;
+  renderAllViews();
+  if (hasAdminInterface) initializeAuthPanel();
+  hideStartupSplash();
   const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
   if (centerSettings) {
     state.centerContactSettings = applyResidentPreferences(centerSettings);
@@ -1492,6 +1499,12 @@ function handleInAppNavigation(event) {
     void hydrateAdminNavigation().catch(showAuthError);
     return;
   }
+  if (state.residentReady || (state.mode === 'week' && canUseWeekWithoutParticipant())) {
+    // Rebuild immediately from the in-memory model. Original and the modern
+    // styles use different icons/markup, so waiting for the network refresh
+    // leaves the previous visual language visible for several moments.
+    renderParticipantMeals();
+  }
   refreshNow('navigazione');
 }
 
@@ -1500,6 +1513,7 @@ async function hydrateAdminNavigation() {
   const user = getCurrentUser();
   if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
     state.residentSettingsMode = false;
+    beginAdminAuthorizationCheck();
     await applyAdminAuthState(user);
     renderMode();
     return;
@@ -1509,8 +1523,7 @@ async function hydrateAdminNavigation() {
   // strong admin role is still held in memory. Reconcile it exactly as the
   // initial auth watcher does; this also mounts either resident settings or
   // the administrator sign-in panel without requiring a page refresh.
-  setSignedOutState();
-  renderMode();
+  await reconcileAdminAccessWithoutStrongUser();
 }
 
 function handleMealViewSwipeStart(event) {
@@ -1895,7 +1908,7 @@ function initializeAuthPanel() {
     if (authSettled) {
       return;
     }
-    setSignedOutState();
+    void reconcileAdminAccessWithoutStrongUser();
   }, 1800);
 
   elements.authButton.disabled = false;
@@ -1904,20 +1917,62 @@ function initializeAuthPanel() {
     authSettled = true;
     window.clearTimeout(authFallback);
     if (!user) {
-      setSignedOutState();
+      void reconcileAdminAccessWithoutStrongUser();
       return;
     }
 
     if (user.isAnonymous || isResidentTechnicalEmail(user.email)) {
-      setSignedOutState();
-      elements.authStatus.textContent = t('role.admin'); // elements.authStatus.textContent = 'Accesso amministratore'
+      void reconcileAdminAccessWithoutStrongUser();
       return;
     }
 
-    showAuthenticatedAdministratorControls();
-    elements.authStatus.textContent = t('app.header.verifyingAuth');
+    beginAdminAuthorizationCheck();
     applyAdminAuthState(user, revision, () => authRevision).catch(showAuthError);
   });
+}
+
+function beginAdminAuthorizationCheck() {
+  state.adminAuthorizationPending = true;
+  elements.adminShell.setAttribute('aria-busy', 'true');
+  elements.adminShell.open = state.mode === 'admin';
+  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = true;
+  elements.adminEmailAuth.hidden = true;
+  elements.adminPanel.hidden = true;
+  elements.operationalLinks.hidden = true;
+  elements.authStatus.textContent = t('app.header.verifyingAuth');
+}
+
+function finishAdminAuthorizationCheck() {
+  state.adminAuthorizationPending = false;
+  elements.adminShell.removeAttribute('aria-busy');
+}
+
+function reconcileAdminAccessWithoutStrongUser() {
+  if (state.adminAccessReconcilePromise) return state.adminAccessReconcilePromise;
+  let request;
+  request = (async () => {
+    setSignedOutState();
+    const canRestoreResident = state.mode === 'admin'
+      && (state.residentReady || Boolean(loadStoredResidentSignature()));
+    if (!canRestoreResident) {
+      renderMode();
+      return;
+    }
+    beginAdminAuthorizationCheck();
+    await restoreResidentSettingsPanel();
+    finishAdminAuthorizationCheck();
+    renderMode();
+  })().catch((error) => {
+    finishAdminAuthorizationCheck();
+    showAuthError(error);
+  }).finally(() => {
+    if (state.adminAccessReconcilePromise === request) {
+      state.adminAccessReconcilePromise = null;
+    }
+  });
+  state.adminAccessReconcilePromise = request;
+  return request;
 }
 
 async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
@@ -2035,7 +2090,9 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     elements.bootstrapButton.hidden = true;
     elements.operationalLinks.hidden = true;
   }
-  elements.adminPanel.hidden = !isAdmin || state.platformOwner;
+  // Keep the complete panel atomic: participants, roles and operational links
+  // must be ready before any actionable control becomes visible.
+  elements.adminPanel.hidden = true;
   if (elements.adminInviteAcceptPanel) {
     elements.adminInviteAcceptPanel.hidden = !invitationPending
       && !access.invitationError
@@ -2092,12 +2149,15 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       await refreshParticipant('autorizzazione');
     }
   }
+  finishAdminAuthorizationCheck();
+  elements.adminPanel.hidden = !isAdmin || state.platformOwner;
   renderMode();
 }
 
 
 
 function setSignedOutState() {
+  finishAdminAuthorizationCheck();
   state.adminRole = '';
   state.adminPersonDirty = false;
   state.adminCenterDirty = false;
@@ -2120,10 +2180,6 @@ function setSignedOutState() {
   const hasAdministratorInvitation = hasCenterInvitation || hasRoleInvitation;
   const storedDecision = hasRoleInvitation ? loadAdminInvitationDecision(roleInvitationId) : '';
   const invitationNeedsDecision = hasRoleInvitation && !storedDecision;
-
-  if (state.mode === 'admin' && (state.residentReady || loadStoredResidentSignature())) {
-    void restoreResidentSettingsPanel();
-  }
 
   elements.adminAuthMethods.hidden = invitationNeedsDecision;
   elements.authActions.hidden = invitationNeedsDecision;
@@ -2570,6 +2626,8 @@ async function handlePlatformCenterListClick(event) {
 }
 
 function showAuthError(error) {
+  finishAdminAuthorizationCheck();
+  elements.adminPanel.hidden = true;
   showAuthenticatedAdministratorControls();
   elements.authStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
 }
@@ -2917,6 +2975,7 @@ async function performRefresh(source) {
 }
 
 async function refreshParticipant(source) {
+  if (state.residentAuthTransition) return;
   let request = beginParticipantRequest();
   const hadVisibleData = state.mode === 'summary'
     ? state.todayOverview.length > 0
@@ -2931,6 +2990,9 @@ async function refreshParticipant(source) {
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession();
+      // A login/logout may have superseded this refresh while session restore
+      // was awaiting Firebase. A stale request must never remount the login.
+      if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (restored) {
         state.participants = restored.participants;
         state.selectedParticipant = restored.participant;
@@ -3110,6 +3172,9 @@ function renderResidentAccess(showLogin) {
 
 async function handleResidentLogin(event) {
   event.preventDefault();
+  if (state.residentAuthTransition) return;
+  state.residentAuthTransition = 'signing-in';
+  invalidateViewRequests();
   elements.residentLoginButton.disabled = true;
   elements.residentLoginStatus.textContent = 'Accesso in corso...';
   try {
@@ -3121,16 +3186,19 @@ async function handleResidentLogin(event) {
     state.selectedParticipant = result.participant;
     state.residentReady = true;
     state.residentRestorePending = false;
+    state.residentAuthTransition = '';
     applyResidentEntryView();
     elements.residentPasswordInput.value = '';
     renderResidentAccess(false);
     renderMode();
     await refreshParticipant('avvio');
   } catch (error) {
+    state.residentAuthTransition = '';
     elements.residentLoginStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
     elements.residentPasswordInput.focus();
     elements.residentPasswordInput.select();
   } finally {
+    state.residentAuthTransition = '';
     elements.residentLoginButton.disabled = false;
   }
 }
@@ -3145,11 +3213,21 @@ function togglePasswordVisibility(input, toggle) {
 }
 
 async function handleForgetDevice() {
+  if (state.residentAuthTransition) return;
+  state.residentAuthTransition = 'signing-out';
+  invalidateViewRequests();
   const leavingAdminPanel = state.mode === 'admin';
-  await forgetResidentDevice();
+  try {
+    await forgetResidentDevice();
+  } catch (error) {
+    state.residentAuthTransition = '';
+    throw error;
+  }
   state.residentReady = false;
   state.residentRestorePending = false;
   state.selectedParticipant = null;
+  state.residentAuthTransition = '';
+  invalidateViewRequests();
   if (!state.adminRole) state.adminParticipants = [];
   if (leavingAdminPanel) {
     // Logout from the control panel must return to a real resident entry
@@ -5164,7 +5242,12 @@ function renderParticipantMeals() {
     } else {
       elements.todayOverview.innerHTML = '';
     }
-    elements.participantMeals.innerHTML = `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
+    // During friendly login/restore there is intentionally no selected
+    // participant yet. Do not expose the administrative empty-list message:
+    // it looks like a failed login and can survive a stale render.
+    elements.participantMeals.innerHTML = state.friendlyAccess && !state.residentReady
+      ? ''
+      : `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
     elements.participantSummary.innerHTML = '';
     elements.participantSummary.hidden = true;
     return;
@@ -5212,6 +5295,7 @@ function renderParticipantMeals() {
     : 'Segna Messa no per i giorni modificabili';
   const weekRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
     weekStart: formatDateId(state.weekStartDate),
     today: formatDateId(getCenterToday()),
     showMassColumn,
