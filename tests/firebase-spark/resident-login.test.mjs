@@ -308,6 +308,20 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
   assert.match(app, /state\.residentRestorePending = !state\.residentReady/);
 });
 
+test('un account Google non autorizzato non blocca il successivo accesso residente', () => {
+  const adminProbe = participantData.match(
+    /async function getAuthorizedAdministratorUser\(\)[\s\S]*?\n}/
+  )?.[0] || '';
+  const login = participantData.match(
+    /export async function signInFriendlyResident\(signature, commonPassword\)[\s\S]*?\n}/
+  )?.[0] || '';
+  assert.match(adminProbe, /catch \(error\)/);
+  assert.match(adminProbe, /permission-denied/);
+  assert.match(adminProbe, /return null/);
+  assert.match(login, /withResidentTechnicalSession/);
+  assert.match(login, /createPersonalAnonymousSession/);
+});
+
 test('la vista settimana usa una matrice con intestazioni pasto e comandi compatti', () => {
   const weekHandler = app.match(/async function handleWeekBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   const weekMealHandler = app.match(/async function handleWeekMealBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
@@ -708,11 +722,13 @@ test('la scheda Persone resta aperta dopo il salvataggio e presenta un elenco co
   assert.match(styles, /\.admin-person-name strong \{[\s\S]*display: inline-flex;/);
 });
 
-test('il responsabile salvato viene collegato alla Persona senza una nuova casella ruolo', () => {
+test('la Persona designata come amministratore riceve una membership persistente', () => {
   assert.match(app, /await linkCurrentAdministratorParticipant\(administratorParticipantId\)/);
   assert.match(adminCenter, /export async function linkCurrentAdministratorParticipant/);
   assert.match(adminCenter, /batch\.update\(doc\(db, 'centers', centerId, 'admins', user\.uid\)/);
-  assert.doesNotMatch(index, /data-admin-participant-admin/);
+  assert.match(index, /data-admin-participant-administrator/);
+  assert.match(app, /assignCenterAdministratorParticipant/);
+  assert.match(participantData, /administratorParticipantId:\s*normalizedParticipantId/);
 });
 
 test('il pannello amministratore distingue sospensione ed eliminazione definitiva', () => {

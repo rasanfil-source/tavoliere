@@ -27,7 +27,10 @@ const MEAL_TYPES = [
 ];
 const WINDOW_DAY_BATCH_SIZE = 132;
 const DATE_ID_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
+const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
+const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban']);
 
 export async function saveCenterConfiguration({
@@ -40,6 +43,8 @@ export async function saveCenterConfiguration({
   defaultView,
   summaryLayout,
   kitchenLayout,
+  monthLayout,
+  summaryResidentLabel,
   language,
   commonPassword,
   administratorSharedPassword,
@@ -77,8 +82,10 @@ export async function saveCenterConfiguration({
     themePalette: typeof themePalette === 'string' ? themePalette : 'smeraldo',
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: defaultView === 'week' ? 'week' : 'month',
-    summaryLayout: normalizeLayout(summaryLayout, 'international'),
-    kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
+    summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+    monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, summaryLayout === 'future' ? 'initials' : 'name'),
     language: typeof language === 'string' && language.trim()
       ? language
       : (typeof center.language === 'string' && center.language.trim() ? center.language : 'it'),
@@ -216,6 +223,8 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       defaultView: target.defaultView,
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
+      monthLayout: target.monthLayout,
+      summaryResidentLabel: target.summaryResidentLabel,
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
@@ -263,6 +272,8 @@ async function completeConfiguration({
       defaultView: target.defaultView,
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
+      monthLayout: target.monthLayout,
+      summaryResidentLabel: target.summaryResidentLabel,
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
@@ -366,8 +377,12 @@ function yieldToMainThread() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function normalizeLayout(value, fallback) {
-  return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
+function normalizeLayout(value, fallback, allowedValues) {
+  return allowedValues.has(value) ? value : fallback;
+}
+
+function normalizeResidentLabel(value, fallback = 'name') {
+  return ALLOWED_RESIDENT_LABEL_VALUES.has(value) ? value : fallback;
 }
 
 function normalizeInterfaceStyle(value) {

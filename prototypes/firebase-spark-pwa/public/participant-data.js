@@ -191,13 +191,25 @@ async function getAuthorizedAdministratorUser() {
     return null;
   }
 
-  const adminSnapshot = await getDoc(doc(
-    db,
-    'centers',
-    getActiveCenterId(),
-    'admins',
-    user.uid
-  ));
+  let adminSnapshot;
+  try {
+    adminSnapshot = await getDoc(doc(
+      db,
+      'centers',
+      getActiveCenterId(),
+      'admins',
+      user.uid
+    ));
+  } catch (error) {
+    // Un account Google rimasto autenticato sul dispositivo può non avere
+    // alcun ruolo nel centro aperto. Le regole Firestore negano correttamente
+    // la lettura della membership, ma questo non deve impedire alla stessa
+    // persona di entrare come residente con sigla e password comune.
+    if (error?.code === 'permission-denied' || error?.code === 'firestore/permission-denied') {
+      return null;
+    }
+    throw error;
+  }
   if (!adminSnapshot.exists()) return null;
   const admin = adminSnapshot.data();
   const role = normalizeCenterRole(admin.role);
@@ -979,7 +991,7 @@ function groupRulesByParticipant(rules) {
 
 export async function saveAdminParticipant(participantId, profile) {
   const normalizedProfile = validateParticipantProfile(profile);
-  const { displayName, signature, groupId, dietTags, phone } = normalizedProfile;
+  const { displayName, signature, initials, groupId, dietTags, phone } = normalizedProfile;
   const expectedRevision = normalizeRevision(profile.expectedRevision);
 
   const duplicateSnapshot = await getDocs(query(
@@ -1003,6 +1015,7 @@ export async function saveAdminParticipant(participantId, profile) {
     centerId,
     signature,
     displayName,
+    initials,
     groupId,
     dietTags,
     liturgicalRole: normalizedProfile.liturgicalRole,
@@ -1068,6 +1081,32 @@ export async function saveAdminParticipant(participantId, profile) {
   summaryRulesCache = null;
   invalidateCenterContactSettingsCache();
   return resolvedId;
+}
+
+export async function assignCenterAdministratorParticipant(participantId, previousParticipantId = '') {
+  const centerId = getActiveCenterId();
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) throw new Error('Seleziona la persona da nominare amministratore');
+
+  const participantRef = doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId);
+  const participantSnapshot = await getDoc(participantRef);
+  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
+  if (participant.status !== 'ACTIVE') {
+    throw new Error('La persona scelta deve essere attiva');
+  }
+
+  await setDoc(doc(db, 'centers', centerId), {
+    administratorName: String(participant.displayName || '').trim(),
+    administratorSignature: String(participant.signature || '').trim().toUpperCase(),
+    administratorParticipantId: normalizedParticipantId,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  invalidateCenterContactSettingsCache();
+  return {
+    participantId: normalizedParticipantId,
+    displayName: String(participant.displayName || '').trim(),
+    signature: String(participant.signature || '').trim().toUpperCase()
+  };
 }
 
 export async function setAdminParticipantActiveStatus(participantId, active, expectedRevision) {

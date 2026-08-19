@@ -643,8 +643,8 @@
                     <span data-i18n="admin.sharedPassword.warning">Hai revocato il ruolo di vice amministratore. Per favore cambia la password amministratori.</span>
                   </aside>
                   <section class="resident-admin-unlock" data-resident-admin-unlock hidden>
-                    <p data-i18n="admin.viceAuth.help">Per usare le funzioni da vice amministratore, autenticati con il tuo account personale.</p>
-                    <div class="admin-auth-method-buttons">
+                    <p data-i18n="admin.sharedPassword.unlockHelp">Inserisci la password amministratori per aprire le funzioni autorizzate.</p>
+                    <div class="admin-auth-method-buttons" hidden>
                       <button type="button" class="primary-action" data-vice-auth-google data-i18n="auth.google.signIn">Accedi con Google</button>
                       <button type="button" class="primary-action" data-vice-auth-email-choice aria-expanded="false" data-i18n="auth.email.enter">Entra con email</button>
                     </div>
@@ -659,6 +659,16 @@
                       </label>
                       <button type="submit" class="secondary-action" data-i18n="auth.email.signIn">Accedi con email</button>
                     </form>
+                    <div class="resident-admin-password-form">
+                      <label class="field-label">
+                        <span data-i18n="admin.sharedPassword.label">Password amministratori</span>
+                        <span class="password-field">
+                          <input type="password" data-resident-admin-password minlength="6" maxlength="64" autocomplete="current-password">
+                          <button type="button" class="password-toggle tertiary-action" data-password-toggle="resident-admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
+                        </span>
+                      </label>
+                      <button type="button" class="primary-action" data-resident-admin-unlock-button data-i18n="admin.sharedPassword.unlock">Apri il pannello</button>
+                    </div>
                     <p data-resident-admin-unlock-status aria-live="polite"></p>
                   </section>
 
@@ -690,6 +700,7 @@
                         <select id="admin-summary-layout-select" data-admin-summary-layout-select aria-label="Vista del riepilogo">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
+                          <option value="future" data-i18n="admin.adaptations.layout.future">Futuro</option>
                         </select>
                       </label>
                       <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select">
@@ -699,7 +710,22 @@
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
                         </select>
                       </label>
+                      <label class="field-label admin-layout-setting" for="admin-month-layout-select">
+                        <span data-i18n="admin.adaptations.monthLayout.label">Vista del mese</span>
+                        <select id="admin-month-layout-select" data-admin-month-layout-select aria-label="Vista del mese">
+                          <option value="grid" data-i18n="admin.adaptations.layout.grid">Griglia</option>
+                          <option value="future" data-i18n="admin.adaptations.layout.future">Futuro</option>
+                        </select>
+                      </label>
                     </div>
+                    <label class="field-label admin-summary-resident-label" for="admin-summary-resident-label-select">
+                      <span data-i18n="admin.adaptations.summaryResidentLabel.label">Residenti nel riepilogo</span>
+                      <select id="admin-summary-resident-label-select" data-admin-summary-resident-label-select>
+                        <option value="name" data-i18n="admin.adaptations.summaryResidentLabel.name">Nome</option>
+                        <option value="signature" data-i18n="admin.adaptations.summaryResidentLabel.signature">Sigla</option>
+                        <option value="initials" data-i18n="admin.adaptations.summaryResidentLabel.initials">Iniziali</option>
+                      </select>
+                    </label>
                   </fieldset>
 
                   <fieldset class="admin-theme-picker" data-admin-theme-picker>
@@ -825,6 +851,10 @@
                     <span data-i18n="admin.people.signature">Sigla</span>
                     <input type="text" data-admin-participant-signature minlength="2" maxlength="12" pattern="[A-Za-z0-9]{2,12}" autocomplete="off" required>
                   </label>
+                  <label class="field-label admin-person-field-initials">
+                    <span data-i18n="admin.people.initials">Iniziali</span>
+                    <input type="text" data-admin-participant-initials maxlength="6" autocomplete="off" autocapitalize="characters">
+                  </label>
                   <label class="field-label admin-person-field-group">
                     <span data-i18n="admin.people.group">Gruppo</span>
                     <select data-admin-participant-group>
@@ -854,6 +884,10 @@
                   <label class="checkbox-row" data-admin-role-option>
                     <input type="checkbox" data-admin-participant-vice>
                     <span data-i18n="role.vice">Vice amministratore</span>
+                  </label>
+                  <label class="checkbox-row" data-admin-administrator-option>
+                    <input type="checkbox" data-admin-participant-administrator>
+                    <span data-i18n="role.admin">Amministratore</span>
                   </label>
                   <label class="checkbox-row">
                     <input type="checkbox" data-admin-phone-consent>
@@ -1017,6 +1051,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260818an"></script>
+  <script type="module" src="/app.js?v=20260819a"></script>
   </body>
 </html>

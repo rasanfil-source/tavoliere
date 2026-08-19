@@ -12,7 +12,10 @@ export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
-const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
+const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
+const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
 const CENTER_AVATAR_MAX_LENGTH = 300000;
 const ALLOWED_THEME_PALETTES = new Set([
@@ -43,11 +46,14 @@ export function loadCachedCenterContactSettings() {
       themePalette: normalizeThemePalette(cached.themePalette),
       interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
-      summaryLayout: normalizeLayout(cached.summaryLayout, 'international'),
-      kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic'),
+      summaryLayout: normalizeLayout(cached.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+      kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+      monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel),
       language: normalizeCenterLanguage(cached.language),
       administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
       administratorSignature: typeof cached.administratorSignature === 'string' ? cached.administratorSignature.trim() : '',
+      administratorParticipantId: typeof cached.administratorParticipantId === 'string' ? cached.administratorParticipantId.trim() : '',
       adminEmail: typeof cached.adminEmail === 'string' ? cached.adminEmail.trim() : '',
       administratorProfileRequired: cached.administratorProfileRequired === true,
       administratorProfileComplete: cached.administratorProfileComplete !== false,
@@ -156,6 +162,8 @@ export async function updateCenterSettings({
   defaultView,
   summaryLayout,
   kitchenLayout,
+  monthLayout,
+  summaryResidentLabel,
   language,
   commonPassword,
   administratorSharedPassword,
@@ -212,8 +220,10 @@ export async function updateCenterSettings({
     themePalette: normalizeThemePalette(themePalette),
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
-    summaryLayout: normalizeLayout(summaryLayout, 'international'),
-    kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
+    summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+    monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, summaryLayout === 'future' ? 'initials' : 'name'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
@@ -315,11 +325,14 @@ function refreshCenterContactSettings() {
         themePalette: normalizeThemePalette(data.themePalette),
         interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
-        summaryLayout: normalizeLayout(data.summaryLayout, 'international'),
-        kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic'),
+        summaryLayout: normalizeLayout(data.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+        kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+        monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, data.summaryLayout === 'future' ? 'initials' : 'name'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
+        administratorParticipantId: typeof data.administratorParticipantId === 'string' ? data.administratorParticipantId.trim() : '',
         adminEmail: typeof data.adminEmail === 'string' ? data.adminEmail.trim() : '',
         administratorProfileRequired: data.administratorProfileRequired === true,
         administratorProfileComplete: data.administratorProfileRequired !== true
@@ -359,8 +372,12 @@ function normalizeInterfaceStyle(value) {
   return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'original';
 }
 
-function normalizeLayout(value, fallback) {
-  return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
+function normalizeLayout(value, fallback, allowedValues) {
+  return allowedValues.has(value) ? value : fallback;
+}
+
+function normalizeResidentLabel(value, fallback = 'name') {
+  return ALLOWED_RESIDENT_LABEL_VALUES.has(value) ? value : fallback;
 }
 
 async function resolveCenterAvatar(avatarVersion) {

@@ -187,7 +187,10 @@ function buildColumn(
       diningTotal + invitedCount + sickMeal.count > 0,
     names: includeNames
       ? diningParticipants.map((participant) => ({
+          participantId: participant.participantId,
           displayName: participant.displayName,
+          signature: participant.signature || "",
+          initials: participant.initials || "",
           dietTags: getSpecialDietTags(participant),
           phone: participant.phone || "",
           phoneConsent: participant.phoneConsent === true,

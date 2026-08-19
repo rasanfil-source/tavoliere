@@ -15,6 +15,7 @@ export function mountSummaryMatrix(
     operationDays = [],
     kitchen = false,
     layout = "classic",
+    residentLabel = "name",
     activeIndex = 0,
     onActiveIndexChange = () => {},
   } = {},
@@ -22,6 +23,11 @@ export function mountSummaryMatrix(
   const screens = kitchen
     ? buildKitchenMatrixScreens(days, operationDays)
     : buildSummaryMatrixScreens(days, [], operationDays);
+
+  if (layout === "future" && !kitchen) {
+    renderFutureSummary(container, screens, residentLabel);
+    return;
+  }
 
   if (screens.every((screen) => screen.columns.length === 0)) {
     container.innerHTML = `<p class="empty-state">${escapeHtml(t("summary.noMeal"))}</p>`;
@@ -55,6 +61,59 @@ export function mountSummaryMatrix(
   window.requestAnimationFrame(() => {
     scrollSummaryMatrix(container, activeIndex, { kitchen, smooth: false });
   });
+}
+
+function renderFutureSummary(container, screens, residentLabel) {
+  container.innerHTML = `
+    <div class="summary-future-grid">
+      ${screens.map((screen) => `
+        <article class="summary-future-card">
+          <header class="summary-future-card-head">
+            <strong>${escapeHtml(t(screen.labelKey))}</strong>
+            <time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time>
+          </header>
+          <div class="summary-future-meals">
+            ${screen.columns.map((column) => renderFutureMeal(column, residentLabel)).join("")}
+          </div>
+          ${renderFutureMass(screen)}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderFutureMeal(column, residentLabel) {
+  const names = Array.isArray(column.names) ? column.names : [];
+  const dietCount = Number(column.specialDiets?.participantCount || 0);
+  return `
+    <section class="summary-future-meal">
+      <div class="summary-future-meal-main">
+        <span class="summary-future-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
+        <span class="summary-future-meal-name">${escapeHtml(localizedMealLabel(column))}</span>
+        <strong class="summary-future-meal-total">${escapeHtml(String(column.total || 0))}</strong>
+      </div>
+      ${dietCount ? `<p class="summary-future-diets">${escapeHtml(t("week.operations.diet.count", { count: dietCount }))}</p>` : ""}
+      ${names.length ? `<div class="summary-future-people">${names.map((person) => renderFuturePerson(person, residentLabel)).join("")}</div>` : ""}
+    </section>
+  `;
+}
+
+function renderFuturePerson(person, residentLabel) {
+  const fallbackInitials = String(person.displayName || "")
+    .trim().split(/\s+/).filter(Boolean).slice(0, 3).map((part) => part[0]).join("").toUpperCase();
+  const text = residentLabel === "signature"
+    ? person.signature || person.displayName
+    : residentLabel === "initials"
+      ? person.initials || fallbackInitials || person.signature
+      : person.displayName;
+  return `<span class="summary-future-person" title="${escapeHtml(person.displayName || text)}">${escapeHtml(text || "–")}</span>`;
+}
+
+function renderFutureMass(screen) {
+  const status = screen.columns.find((column) => column.dayIndex === screen.index)?.dayMassStatus;
+  if (!status || status === "UNKNOWN") return "";
+  const yes = status === "YES";
+  return `<div class="summary-future-mass"><span>${escapeHtml(t("summary.mass"))}</span><strong class="summary-future-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong></div>`;
 }
 
 export function scrollSummaryMatrix(
