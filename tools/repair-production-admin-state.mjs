@@ -37,6 +37,12 @@ const admins = await listDocuments(`centers/${centerId}/admins`);
 const profiles = await listDocuments('adminProfiles');
 const invitations = (await listDocuments('adminInvitations'))
   .filter((item) => decodeFields(item.fields).centerId === centerId);
+const administratorInvitations = invitations.filter((item) => (
+  decodeFields(item.fields).role === 'ADMIN'
+));
+const managerInvitations = invitations.filter((item) => (
+  decodeFields(item.fields).role === 'MANAGER'
+));
 const ownerMatches = admins.filter((item) => String(decodeFields(item.fields).email || '').toLowerCase() === ownerEmail);
 if (ownerMatches.length !== 1) {
   throw new Error(`Atteso un solo account amministrativo per ${ownerEmail}; trovati ${ownerMatches.length}.`);
@@ -74,7 +80,8 @@ const summary = {
   removeEmail,
   administratorsToRemove: adminsToRemove.length,
   profilesToRemove: profilesToRemove.length,
-  invitationsToRemove: invitations.length,
+  invitationsToRemove: administratorInvitations.length,
+  managerInvitationsPreserved: managerInvitations.length,
   viceAdministratorsPreserved: admins.filter((item) => (
     documentId(item.name) !== ownerUid && decodeFields(item.fields).role === 'MANAGER'
   )).length,
@@ -95,7 +102,7 @@ await writeFile(backupPath, JSON.stringify({
     center: centerDocument,
     admins,
     profiles: [ownerProfile, ...profilesToRemove],
-    invitations
+    invitations: administratorInvitations
   }
 }, null, 2), 'utf8');
 
@@ -141,7 +148,7 @@ const writes = [
   ]),
   ...adminsToRemove.map((item) => ({ delete: item.name })),
   ...profilesToRemove.map((item) => ({ delete: item.name })),
-  ...invitations.map((item) => ({ delete: item.name }))
+  ...administratorInvitations.map((item) => ({ delete: item.name }))
 ];
 if (writes.length > 450) throw new Error(`Troppe scritture atomiche (${writes.length}); riparazione interrotta.`);
 
@@ -160,6 +167,9 @@ if (!commitResponse.ok) {
 const remainingAdmins = await listDocuments(`centers/${centerId}/admins`);
 const remainingInvitations = (await listDocuments('adminInvitations'))
   .filter((item) => decodeFields(item.fields).centerId === centerId);
+const remainingAdministratorInvitations = remainingInvitations.filter((item) => (
+  decodeFields(item.fields).role === 'ADMIN'
+));
 const repairedOwnerDocument = remainingAdmins.find((item) => documentId(item.name) === ownerUid);
 const repairedAdmin = repairedOwnerDocument ? decodeFields(repairedOwnerDocument.fields) : {};
 const conflictingOwners = remainingAdmins.filter((item) => {
@@ -181,7 +191,7 @@ const verified = Boolean(repairedOwnerDocument)
   && repairedAdmin.role === 'OWNER'
   && repairedAdmin.massPermission === true
   && repairedAdmin.dailyOperationsPermission === true
-  && remainingInvitations.length === 0
+  && remainingAdministratorInvitations.length === 0
   && conflictingOwners.length === 0
   && removedAccountStillPresent === false;
 if (!verified) throw new Error('Verifica successiva alla riparazione non superata. Usa il backup locale.');
@@ -192,7 +202,8 @@ console.log(JSON.stringify({
   centerId,
   ownerUid,
   remainingAdministrators: remainingAdmins.length,
-  remainingInvitations: remainingInvitations.length,
+  remainingAdministratorInvitations: remainingAdministratorInvitations.length,
+  preservedManagerInvitations: remainingInvitations.length - remainingAdministratorInvitations.length,
   conflictingOwners: conflictingOwners.length,
   removedAccountStillPresent
 }, null, 2));
