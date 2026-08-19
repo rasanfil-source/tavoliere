@@ -421,9 +421,11 @@ service cloud.firestore {
         );
     }
 
-    // Un solo controllo coerente per tutte le letture del residente. Mantiene
-    // la revoca tramite token, ma evita di ricomporre in modi diversi la stessa
-    // catena sessione-token-persona nelle query del calendario.
+    // Session-first: token e persona vengono verificati quando la sessione
+    // personale viene creata. Le letture operative successive si fidano del
+    // documento accessSessions, evitando di rivalutare l'intera catena per
+    // ogni singola cella del calendario. Disattivazione ed eliminazione della
+    // persona revocano esplicitamente le sue sessioni.
     function personalSessionIsUsable(centerId) {
       let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
       let session = get(sessionPath).data;
@@ -434,10 +436,8 @@ service cloud.firestore {
         && session.status == 'ACTIVE'
         && session.scope == 'PERSONAL'
         && session.participantId is string
-        && request.time < session.expiresAt
-        && tokenIsUsable(centerId, session.tokenId)
-        && tokenData(centerId, session.tokenId).participantId == session.participantId
-        && participantIsActive(centerId, session.participantId);
+        && session.tokenId is string
+        && request.time < session.expiresAt;
     }
 
     function hasSessionScope(centerId, scope) {

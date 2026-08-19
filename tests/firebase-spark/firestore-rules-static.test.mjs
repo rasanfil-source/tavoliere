@@ -104,9 +104,10 @@ test('public sessions are read only for participant reservations', () => {
   assert.match(personalSession, /personalSessionIsUsable\(centerId\)/);
   assert.match(personalSession, /session\.scope == 'PERSONAL'/);
   assert.match(personalSession, /session\.participantId == participantId/);
-  assert.match(personalSessionGate, /tokenIsUsable\(centerId, session\.tokenId\)/);
-  assert.match(personalSessionGate, /tokenData\(centerId, session\.tokenId\)\.participantId == session\.participantId/);
-  assert.match(personalSessionGate, /participantIsActive\(centerId, session\.participantId\)/);
+  assert.match(personalSessionGate, /session\.tokenId is string/);
+  assert.match(personalSessionGate, /request\.time < session\.expiresAt/);
+  assert.doesNotMatch(personalSessionGate, /tokenIsUsable|tokenData|participantIsActive/);
+  assert.match(personalSession, /participantIsActive\(centerId, participantId\)/);
   assert.doesNotMatch(validator, /hasSessionScope\(centerId, 'PUBLIC'\)/);
 });
 
