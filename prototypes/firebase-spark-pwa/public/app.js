@@ -45,7 +45,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260818z';
+} from './center-settings.js?v=20260818za';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -74,7 +74,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260818u';
+} from './summary-matrix-view.js?v=20260818ua';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -83,10 +83,11 @@ const RESIDENT_SETTINGS_ACCESS = 'resident-settings';
 const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
+const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPending.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260818a',
+  admin: './admin-center.js?v=20260818b',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817b',
@@ -137,6 +138,7 @@ const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
 const linkCurrentAdministratorParticipant = callDomain('admin', 'linkCurrentAdministratorParticipant');
 const listPlatformCenters = callDomain('admin', 'listPlatformCenters');
 const listAdministratorInvitations = callDomain('admin', 'listAdministratorInvitations');
+const loadCurrentAdminMembership = callDomain('admin', 'loadCurrentAdminMembership');
 const revokeAdministratorInvitation = callDomain('admin', 'revokeAdministratorInvitation');
 const revokeCenterAdministrator = callDomain('admin', 'revokeCenterAdministrator');
 const rejectAdministratorInvitation = callDomain('admin', 'rejectAdministratorInvitation');
@@ -278,12 +280,13 @@ const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
 const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
-const MEAL_VIEW_SWIPE_MIN_X = 72;
+const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
 const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban']);
 let mealViewSwipeStart = null;
+let mealViewSwipeTimer = 0;
 
 function applyInterfaceStyle(value) {
   const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'original';
@@ -299,6 +302,40 @@ function isResidentEntryGateClosed() {
     ) === '1';
   } catch {
     return false;
+  }
+}
+
+function getAdminSuccessionStorageKey(centerId, adminUid) {
+  return `${ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX}${centerId}.${adminUid}`;
+}
+
+function storePendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return;
+  try {
+    window.localStorage.setItem(
+      getAdminSuccessionStorageKey(centerId, adminUid),
+      String(Date.now())
+    );
+  } catch {
+    // Il controllo del ruolo resta disponibile al ritorno/focus anche senza storage.
+  }
+}
+
+function hasPendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return false;
+  try {
+    return Boolean(window.localStorage.getItem(getAdminSuccessionStorageKey(centerId, adminUid)));
+  } catch {
+    return false;
+  }
+}
+
+function clearPendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return;
+  try {
+    window.localStorage.removeItem(getAdminSuccessionStorageKey(centerId, adminUid));
+  } catch {
+    // La membership Firebase rimane comunque la fonte autorevole del ruolo.
   }
 }
 
@@ -524,6 +561,7 @@ const state = {
   adminPanelHydrating: false,
   adminHydrationVersion: 0,
   adminAccessReconcilePromise: null,
+  adminSuccessionPollTimerId: 0,
   adminMassPermission: false,
   adminCanManageMass: false,
   adminCanManageDailyOperations: false,
@@ -675,6 +713,9 @@ const elements = {
   adminCenterSwitcher: document.querySelector('[data-admin-center-switcher]'),
   adminCenterSelect: document.querySelector('[data-admin-center-select]'),
   adminPanel: document.querySelector('[data-admin-panel]'),
+  adminSuccessionNotice: document.querySelector('[data-admin-succession-notice]'),
+  adminSuccessionNoticeTitle: document.querySelector('[data-admin-succession-notice-title]'),
+  adminSuccessionNoticeMessage: document.querySelector('[data-admin-succession-notice-message]'),
   adminOverviewRole: document.querySelector('[data-admin-overview-role]'),
   adminOverviewActivePeople: document.querySelector('[data-admin-overview-active-people]'),
   adminOverviewSuspendedPeople: document.querySelector('[data-admin-overview-suspended-people]'),
@@ -1013,10 +1054,10 @@ document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
 elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
 elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
-elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
 elements.weekPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
-elements.weekPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.weekPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.weekPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
@@ -1603,7 +1644,7 @@ async function hydrateAdminNavigation() {
 
 function handleMealViewSwipeStart(event) {
   const touch = event.touches?.[0];
-  if (!touch || event.target.closest('input, select, textarea, button, a, dialog, [contenteditable="true"]')) {
+  if (!touch || event.target.closest('input, select, textarea, dialog, [contenteditable="true"]')) {
     mealViewSwipeStart = null;
     return;
   }
@@ -1620,11 +1661,20 @@ function handleMealViewSwipeEnd(event) {
   if (Math.abs(deltaX) < MEAL_VIEW_SWIPE_MIN_X
       || Math.abs(deltaY) > MEAL_VIEW_SWIPE_MAX_Y
       || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) return;
-  if (state.mode === 'participant' && deltaX < 0) {
-    elements.participantWeekNavLinks[0]?.click();
-  } else if (state.mode === 'week' && deltaX > 0) {
-    elements.monthNavLinks[0]?.click();
+  event.preventDefault();
+  const direction = deltaX < 0 ? 1 : -1;
+  const panel = state.mode === 'participant' ? elements.participantPanel : elements.weekPanel;
+  window.clearTimeout(mealViewSwipeTimer);
+  panel?.classList.remove('meal-snap-forward', 'meal-snap-backward');
+  panel?.classList.add(direction > 0 ? 'meal-snap-forward' : 'meal-snap-backward');
+  if (state.mode === 'participant') {
+    shiftMonth(direction);
+  } else if (state.mode === 'week') {
+    shiftWeek(direction * 7);
   }
+  mealViewSwipeTimer = window.setTimeout(() => {
+    panel?.classList.remove('meal-snap-forward', 'meal-snap-backward');
+  }, 260);
 }
 
 function cancelMealViewSwipe() {
@@ -2110,6 +2160,9 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       elements.adminEmailStatus.textContent = 'Attivazione in corso...';
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
+      if (result.role === 'ADMIN') {
+        storePendingAdminSuccession(result.centerId, user.uid);
+      }
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
       await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
@@ -2145,8 +2198,27 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     return;
   }
 
+  const activeCenterId = access.centerId || getActiveCenterId();
+  if (access.active && access.role === 'ADMIN' && access.roleInvitationId) {
+    // Recover the waiting state even after a reload or when acceptance was
+    // completed in another tab of the same browser.
+    storePendingAdminSuccession(activeCenterId, user.uid);
+  }
+  const successionWasPending = hasPendingAdminSuccession(activeCenterId, user.uid);
+  const successionCompleted = access.active
+    && access.role === 'OWNER'
+    && successionWasPending;
+  if (successionCompleted) {
+    clearPendingAdminSuccession(activeCenterId, user.uid);
+    cancelAdminSuccessionRoleCheck();
+  }
+
   const isAdmin = access.active;
   const invitationPending = access.invitationPending === true;
+  const requiresDifferentAdminIdentity = !isAdmin
+    && !isPlatformOwner
+    && !invitationPending
+    && !access.needsInitialization;
   state.platformOwner = isPlatformOwner;
   state.adminRole = isAdmin ? access.role : '';
   state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
@@ -2160,10 +2232,11 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   elements.adminShell.dataset.platformOwner = isPlatformOwner ? 'true' : 'false';
   elements.adminShell.open = isAdmin || invitationPending || access.needsInitialization || state.platformOwner || state.mode === 'admin';
   elements.authActions.classList.add('auth-actions-signed-in');
-  elements.authActions.hidden = true;
-  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = !requiresDifferentAdminIdentity;
+  elements.adminAuthMethods.hidden = !requiresDifferentAdminIdentity;
   elements.authButton.textContent = t('common.actions.exit');
-  elements.adminEmailAuth.hidden = true;
+  elements.adminEmailChoice.hidden = !requiresDifferentAdminIdentity;
+  elements.adminEmailAuth.hidden = !requiresDifferentAdminIdentity || !state.adminInviteEmailExpanded;
   elements.authStatus.textContent = isPlatformOwner
     ? user.email || t('role.platformOwner')
     : isAdmin
@@ -2177,6 +2250,9 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
           : invitationResponse === 'REJECTED'
             ? t('app.header.invitationRejected')
             : t('app.header.unauthorizedAccount');
+  if (requiresDifferentAdminIdentity) {
+    elements.adminEmailStatus.textContent = t('admin.succession.identityMismatch');
+  }
   const roleLabels = {
     OWNER: t('role.owner'),
     ADMIN: t('role.admin'),
@@ -2238,6 +2314,9 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     elements.adminAdministratorPassword.value = '';
   }
   elements.ownerInvitationPanel.hidden = !state.platformOwner;
+  renderAdminSuccessionNotice(
+    successionCompleted ? 'completed' : successionWasPending && access.role === 'ADMIN' ? 'waiting' : ''
+  );
   applyAdminCapabilityVisibility();
   if (state.platformOwner) {
     await refreshPlatformCenterList();
@@ -2264,6 +2343,11 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   finishAdminAuthorizationCheck();
   elements.adminPanel.hidden = !isAdmin || state.platformOwner;
   renderMode();
+  if (successionCompleted) {
+    await showOwnershipTransferCompleted();
+  } else if (successionWasPending && access.role === 'ADMIN') {
+    scheduleAdminSuccessionRoleCheck();
+  }
 }
 
 
@@ -2372,6 +2456,66 @@ function clearAdminAuthorizationState() {
   state.weekOperationalDateId = '';
   state.residentAdministratorAuthorized = false;
   state.platformOwner = false;
+  cancelAdminSuccessionRoleCheck();
+  renderAdminSuccessionNotice('');
+}
+
+function renderAdminSuccessionNotice(mode = '') {
+  if (!elements.adminSuccessionNotice) return;
+  const content = mode === 'waiting'
+    ? {
+        title: t('admin.invitations.acceptedWaitTitle'),
+        message: t('admin.invitations.acceptedWaitMessage')
+      }
+    : mode === 'completed'
+      ? {
+          title: t('admin.succession.completedTitle'),
+          message: t('admin.succession.completedMessage')
+        }
+      : null;
+  elements.adminSuccessionNotice.hidden = !content;
+  elements.adminSuccessionNoticeTitle.textContent = content?.title || '';
+  elements.adminSuccessionNoticeMessage.textContent = content?.message || '';
+}
+
+function showOwnershipTransferCompleted() {
+  return showActionDialog({
+    title: t('admin.succession.completedTitle'),
+    message: t('admin.succession.completedMessage'),
+    confirmLabel: t('common.actions.confirm'),
+    hideCancel: true
+  });
+}
+
+function cancelAdminSuccessionRoleCheck() {
+  if (!state.adminSuccessionPollTimerId) return;
+  window.clearTimeout(state.adminSuccessionPollTimerId);
+  state.adminSuccessionPollTimerId = 0;
+}
+
+function scheduleAdminSuccessionRoleCheck(delay = 8000) {
+  cancelAdminSuccessionRoleCheck();
+  if (state.mode !== 'admin' || state.adminRole !== 'ADMIN') return;
+  const user = getCurrentUser();
+  const centerId = getActiveCenterId();
+  if (!user || user.isAnonymous || !hasPendingAdminSuccession(centerId, user.uid)) return;
+  state.adminSuccessionPollTimerId = window.setTimeout(async () => {
+    state.adminSuccessionPollTimerId = 0;
+    if (document.visibilityState === 'hidden') {
+      scheduleAdminSuccessionRoleCheck(12000);
+      return;
+    }
+    try {
+      const membership = await loadCurrentAdminMembership(user);
+      if (!membership.active || membership.role !== state.adminRole) {
+        await applyAdminAuthState(user);
+        return;
+      }
+    } catch {
+      // Un errore di rete temporaneo non deve interrompere l'attesa del passaggio.
+    }
+    scheduleAdminSuccessionRoleCheck(12000);
+  }, delay);
 }
 
 function renderAdminCenterSwitcher(centers = [], activeCenterId = '', isPlatformOwner = false) {
@@ -3616,6 +3760,7 @@ function renderAdminLeadershipForm() {
   )).join('');
   elements.adminSuccessorSelect.disabled = !canTransferOwnership || successors.length === 0;
   elements.adminTransferOwnership.disabled = !canTransferOwnership || successors.length === 0;
+  elements.adminSuccessorSelect.closest('.admin-succession-fields').hidden = false;
 
   const currentUid = getCurrentUser()?.uid || '';
   const acceptedInvitation = state.adminRole === 'OWNER'
@@ -3693,6 +3838,9 @@ function handleInviteAccept() {
       elements.adminEmailStatus.textContent = 'Accettazione in corso...';
       const result = await acceptAdministratorInvitation();
       clearAdminInvitationDecision(getAdminRoleInvitationId());
+      if (result.role === 'ADMIN') {
+        storePendingAdminSuccession(result.centerId, user.uid);
+      }
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
       await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
@@ -3770,12 +3918,12 @@ async function performAdministratorInvitationGeneration() {
     if (elements.adminInvitationStatus) {
       elements.adminInvitationStatus.hidden = false;
       elements.adminInvitationStatus.textContent =
-        `Invito preparato per ${displayName}. Invia il collegamento e attendi la conferma.`;
+        `Passaggio preparato per ${displayName}. Invia il collegamento: quando la persona si sarà identificata, qui apparirà il comando per completare il passaggio.`;
     }
     elements.adminInvitationLink.value = invitationUrl.toString();
     elements.adminInvitationResult.hidden = false;
 
-    elements.adminLeadershipStatus.textContent = 'Invito amministratore generato.';
+    elements.adminLeadershipStatus.textContent = 'Collegamento preparato.';
   } catch (error) {
     elements.adminLeadershipStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
     if (elements.adminInvitationStatus) {
@@ -3934,11 +4082,21 @@ async function refreshAdminInvitationList() {
 function refreshAdminRolesWhenVisible() {
   if (document.visibilityState === 'hidden'
       || state.mode !== 'admin'
-      || !state.adminRole
-      || !hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+      || !state.adminRole) {
     return;
   }
-  operationGuard.run('admin:role-state-refresh', refreshAdminInvitationList).catch((error) => {
+  operationGuard.run('admin:role-state-refresh', async () => {
+    const user = getCurrentUser();
+    if (!user || user.isAnonymous || user.uid !== state.adminAuthUid) return;
+    const membership = await loadCurrentAdminMembership(user);
+    if (!membership.active || membership.role !== state.adminRole) {
+      await applyAdminAuthState(user);
+      return;
+    }
+    if (hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+      await refreshAdminInvitationList();
+    }
+  }).catch((error) => {
     if (elements.adminInvitationManagementStatus) {
       elements.adminInvitationManagementStatus.textContent = friendlyErrorMessage(
         error,
@@ -4438,6 +4596,14 @@ function invitationPrompt(role = '') {
 }
 
 function showRoleInvitationAccepted(role) {
+  if (role === 'OWNER') {
+    return showActionDialog({
+      title: t('admin.succession.completedTitle'),
+      message: t('admin.succession.completedMessage'),
+      confirmLabel: t('common.actions.confirm'),
+      hideCancel: true
+    });
+  }
   return showActionDialog({
     title: role === 'MANAGER'
       ? t('admin.invitations.viceActivatedTitle')

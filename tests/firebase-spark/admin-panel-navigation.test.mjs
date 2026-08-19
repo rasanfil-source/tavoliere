@@ -3,9 +3,10 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const projectRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
-const [html, css, app, firebaseClient, centerSettings, adminCenter, administratorAuth, summaryView] = await Promise.all([
+const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter, administratorAuth, summaryView] = await Promise.all([
   readFile(new URL('index.html', projectRoot), 'utf8'),
   readFile(new URL('styles.css', projectRoot), 'utf8'),
+  readFile(new URL('summary-matrix-refinements.css', projectRoot), 'utf8'),
   readFile(new URL('app.js', projectRoot), 'utf8'),
   readFile(new URL('firebase-client.js', projectRoot), 'utf8'),
   readFile(new URL('center-settings.js', projectRoot), 'utf8'),
@@ -94,6 +95,16 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
 
 test('il riepilogo Essenziale usa le icone lineari di Elegante', () => {
   assert.match(summaryView, /interfaceStyle === "cool" \|\| interfaceStyle === "urban"/);
+});
+
+test('swipe mese e settimana cambia il periodo e applica uno snap leggero', () => {
+  assert.match(app, /handleMealViewSwipeStart[\s\S]*?closest\('input, select, textarea, dialog, \[contenteditable="true"\]'\)/);
+  assert.match(app, /touchend', handleMealViewSwipeEnd, \{ passive: false \}/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /state\.mode === 'participant'[\s\S]*shiftMonth\(direction\)/);
+  assert.match(app, /state\.mode === 'week'[\s\S]*shiftWeek\(direction \* 7\)/);
+  assert.match(refinements, /@keyframes meal-snap-forward/);
+  assert.match(refinements, /prefers-reduced-motion:\s*reduce/);
 });
 
 test('Impostazioni presenta testi compatti e Aspetto subito dopo la vista preferita', () => {
@@ -318,7 +329,7 @@ test('un amministratore può recuperare la password senza perdere il link di inv
 test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona associata', () => {
   assert.doesNotMatch(html, /data-admin-role-badge/);
   assert.doesNotMatch(app, /adminRoleBadge/);
-  assert.match(html, /Per trasferire il ruolo di amministratore di questo sistema, prima invita[\s\S]*conferma il trasferimento/);
+  assert.match(html, /Scegli la Persona[\s\S]*completa qui il passaggio[\s\S]*il tuo incarico terminerà/);
   assert.match(html, /data-admin-invitation-result/);
   assert.match(html, /data-admin-invitation-link/);
   assert.match(html, /data-admin-invitation-copy/);
@@ -331,9 +342,8 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.doesNotMatch(app, /const successors = state\.adminInvitations/);
   assert.match(adminCenter, /administratorName: String\(successorParticipant\.displayName/);
   assert.match(adminCenter, /administratorSignature: String\(successorParticipant\.signature/);
-  assert.match(adminCenter, /adminEmail: String\(successor\.email/);
+  assert.match(adminCenter, /adminEmail: successorEmail/);
   assert.match(adminCenter, /administratorPasswordRequired: successor\.administratorPasswordRequired === true/);
-  assert.match(adminCenter, /administratorPasswordRequired: requiresAdministratorPassword\(user\)/);
 });
 
 test('l’accettazione dell’invito accende una spia senza listener permanente', () => {
@@ -353,6 +363,18 @@ test('inviti e amministratori si aggiornano al ritorno nel pannello e mostrano i
   assert.match(app, /document\.addEventListener\('visibilitychange', refreshAdminRolesWhenVisible\)/);
   assert.match(app, /invitation\.createdAt[\s\S]*admin\.invitations\.sentOn/);
   assert.match(app, /invitation\.expiresAt[\s\S]*admin\.invitations\.expiresOn/);
+});
+
+test('il nuovo responsabile rileva il trasferimento senza ricaricare e un account non associato resta gestibile', () => {
+  assert.match(adminCenter, /export async function loadCurrentAdminMembership/);
+  assert.match(adminCenter, /roleInvitationId: String\(data\.invitationId/);
+  assert.match(app, /storePendingAdminSuccession\(result\.centerId, user\.uid\)/);
+  assert.match(app, /scheduleAdminSuccessionRoleCheck/);
+  assert.match(app, /const membership = await loadCurrentAdminMembership\(user\)/);
+  assert.match(app, /membership\.role !== state\.adminRole[\s\S]*applyAdminAuthState\(user\)/);
+  assert.match(app, /admin\.succession\.completedMessage/);
+  assert.match(app, /requiresDifferentAdminIdentity[\s\S]*adminAuthMethods\.hidden = !requiresDifferentAdminIdentity/);
+  assert.match(app, /admin\.succession\.identityMismatch/);
 });
 
 test('l autenticazione del candidato non accetta automaticamente l invito', () => {

@@ -1859,3 +1859,25 @@ html[data-interface-style="urban"] .month-grid button:focus-visible {
     grid-column: 1 / -1;
   }
 }
+
+.participant-panel.meal-snap-forward,
+.participant-panel.meal-snap-backward {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(.2, .7, .2, 1);
+}
+
+.participant-panel.meal-snap-forward { animation-name: meal-snap-forward; }
+.participant-panel.meal-snap-backward { animation-name: meal-snap-backward; }
+
+@keyframes meal-snap-forward {
+  50% { transform: translateX(-18px); opacity: .82; }
+}
+
+@keyframes meal-snap-backward {
+  50% { transform: translateX(18px); opacity: .82; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .participant-panel.meal-snap-forward,
+  .participant-panel.meal-snap-backward { animation: none; }
+}

@@ -34,7 +34,7 @@
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
     <link rel="stylesheet" href="/styles.css?v=20260817r">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260818aa">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260818ac">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -422,6 +422,10 @@
           </section>
 
           <section class="admin-panel" data-admin-panel hidden>
+            <aside class="admin-succession-notice" data-admin-succession-notice hidden role="status" aria-live="polite">
+              <strong data-admin-succession-notice-title></strong>
+              <span data-admin-succession-notice-message></span>
+            </aside>
             <section class="owner-invitation-panel" data-owner-invitation-panel hidden>
               <div class="section-title">
                 <h2>Pannello Proprietario</h2>
@@ -739,10 +743,10 @@
               <div class="admin-role-stack" id="admin-access-section" data-admin-mobile-section="access" tabindex="-1">
                 <section class="admin-control-section" data-admin-leadership hidden>
                   <div class="section-title">
-                    <h2 data-i18n="admin.access.handoverTitle">Amministratore: passaggio di consegne</h2>
+                    <h2 data-i18n="admin.access.handoverTitle">Responsabile del centro</h2>
                   </div>
                   <p data-admin-leadership-status aria-live="polite" data-i18n="admin.access.leadershipHelp">
-                    Per trasferire il ruolo di amministratore di questo sistema, prima invita il nuovo amministratore. Dopo che avrà accettato, selezionalo come nuovo responsabile e conferma il trasferimento.
+                    Scegli la Persona e inviale il collegamento. Quando si sarà identificata, completa qui il passaggio: diventerà responsabile e il tuo incarico terminerà.
                   </p>
 
                   <div class="admin-candidate-fields">
@@ -753,7 +757,7 @@
                     <button type="button" class="secondary-action" data-admin-candidate-new-person data-i18n="admin.people.newPerson">Nuova persona</button>
                   </div>
 
-                  <button type="button" class="secondary-action admin-inline-action" data-admin-invitation-generate data-i18n="admin.invitations.generate">Invita amministratore</button>
+                    <button type="button" class="secondary-action admin-inline-action" data-admin-invitation-generate data-i18n="admin.invitations.generate">Prepara il passaggio</button>
 
                   <p class="admin-invitation-status" data-admin-invitation-status aria-live="polite" hidden></p>
                   <div class="admin-invitation-result" data-admin-invitation-result hidden>
@@ -1013,6 +1017,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260818al"></script>
+  <script type="module" src="/app.js?v=20260818an"></script>
   </body>
 </html>

@@ -117,8 +117,11 @@ test('il pannello viene escluso dalle viste operative e monta una sola scheda al
 
 test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () => {
   assert.match(app, /addEventListener\('touchstart', handleMealViewSwipeStart/);
-  assert.match(app, /state\.mode === 'participant' && deltaX < 0/);
-  assert.match(app, /state\.mode === 'week' && deltaX > 0/);
+  assert.match(app, /handleMealViewSwipeStart[\s\S]*?closest\('input, select, textarea, dialog, \[contenteditable="true"\]'\)/);
+  assert.match(app, /touchend', handleMealViewSwipeEnd, \{ passive: false \}/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /state\.mode === 'participant'[\s\S]*shiftMonth\(direction\)/);
+  assert.match(app, /state\.mode === 'week'[\s\S]*shiftWeek\(direction \* 7\)/);
   assert.match(styles, /\[data-participant-panel\],[\s\S]*\[data-week-panel\] \{[\s\S]*touch-action: pan-y/);
 });
 

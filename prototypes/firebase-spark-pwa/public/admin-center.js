@@ -660,13 +660,20 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     throw new Error('La Persona del successore deve essere attiva');
   }
 
+  const successorEmail = String(
+    successor.email || successorProfileSnapshot.data()?.email || ''
+  ).trim().toLowerCase();
+  if (!successorEmail) {
+    throw new Error('Il successore deve avere un indirizzo email autenticato');
+  }
+
   const now = serverTimestamp();
   const batch = writeBatch(db);
   batch.set(doc(db, 'centers', centerId), {
     ownerUid: normalizedSuccessorUid,
     administratorName: String(successorParticipant.displayName || '').trim(),
     administratorSignature: String(successorParticipant.signature || '').trim().toUpperCase(),
-    adminEmail: String(successor.email || '').trim().toLowerCase(),
+    adminEmail: successorEmail,
     administratorProfileComplete: true,
     administratorPasswordRequired: successor.administratorPasswordRequired === true,
     updatedAt: now
@@ -726,7 +733,12 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     summary: `Responsabilità trasferita da ${user.email || user.uid} a ${successor.email || normalizedSuccessorUid}`
   }, user);
   await batch.commit();
-  return { centerId, previousOwnerUid: user.uid, ownerUid: normalizedSuccessorUid };
+  return {
+    centerId,
+    previousOwnerUid: user.uid,
+    ownerUid: normalizedSuccessorUid,
+    adminEmail: successorEmail
+  };
 }
 
 export function activateAdminCenter(centerId) {
@@ -747,6 +759,8 @@ async function readCenterAdmin(user, centerId) {
       }),
       canManageDailyOperations: hasCapability(role, CAPABILITIES.MANAGE_DAILY_OPERATIONS),
       passwordSetupRequired: data.passwordSetupRequired === true,
+      roleInvitationId: String(data.invitationId || ''),
+      email: String(data.email || ''),
       centerId,
       needsInitialization: false,
       redirectCenterId: ''
@@ -757,6 +771,13 @@ async function readCenterAdmin(user, centerId) {
     }
     throw error;
   }
+}
+
+export async function loadCurrentAdminMembership(user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous) {
+    return emptyAccess();
+  }
+  return readCenterAdmin(user, getActiveCenterId());
 }
 
 export async function completeAdministratorPasswordSetup(user = getCurrentUser()) {
@@ -823,6 +844,8 @@ function emptyAccess() {
     canManageMass: false,
     canManageDailyOperations: false,
     passwordSetupRequired: false,
+    roleInvitationId: '',
+    email: '',
     centerId: '',
     invitationId: '',
     invitationError: false,

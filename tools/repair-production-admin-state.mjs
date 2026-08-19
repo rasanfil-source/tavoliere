@@ -10,6 +10,7 @@ const args = new Set(process.argv.slice(2));
 const apply = args.has('--apply');
 const projectId = readArgument('--project') || 'tavola-comune';
 const ownerEmail = String(readArgument('--owner-email') || '').trim().toLowerCase();
+const removeEmail = String(readArgument('--remove-email') || '').trim().toLowerCase();
 if (!ownerEmail) throw new Error('Specifica --owner-email.');
 
 const account = firebaseAuth.getGlobalDefaultAccount();
@@ -36,20 +37,26 @@ const admins = await listDocuments(`centers/${centerId}/admins`);
 const profiles = await listDocuments('adminProfiles');
 const invitations = (await listDocuments('adminInvitations'))
   .filter((item) => decodeFields(item.fields).centerId === centerId);
-const auditEvents = await listDocuments(`centers/${centerId}/auditEvents`);
-const ownerAdmin = admins.find((item) => String(decodeFields(item.fields).email || '').toLowerCase() === ownerEmail);
-if (!ownerAdmin) throw new Error(`Nessun amministratore del centro corrisponde a ${ownerEmail}.`);
-const ownerUid = documentId(ownerAdmin.name);
-if (center.ownerUid !== ownerUid) {
-  throw new Error('Il responsabile richiesto non coincide con ownerUid: riparazione automatica interrotta.');
+const ownerMatches = admins.filter((item) => String(decodeFields(item.fields).email || '').toLowerCase() === ownerEmail);
+if (ownerMatches.length !== 1) {
+  throw new Error(`Atteso un solo account amministrativo per ${ownerEmail}; trovati ${ownerMatches.length}.`);
 }
-const ownerProfile = profiles.find((item) => documentId(item.name) === ownerUid);
-if (!ownerProfile) throw new Error('Profilo del responsabile richiesto non trovato.');
+const ownerAdmin = ownerMatches[0];
+const ownerUid = documentId(ownerAdmin.name);
+const existingOwnerProfile = profiles.find((item) => documentId(item.name) === ownerUid);
+const ownerProfile = existingOwnerProfile || {
+  name: `${documentRoot}/adminProfiles/${ownerUid}`,
+  fields: {}
+};
 
-const otherAdmins = admins.filter((item) => documentId(item.name) !== ownerUid);
-const otherAdminUids = new Set(otherAdmins.map((item) => documentId(item.name)));
-const otherProfiles = profiles.filter((item) => otherAdminUids.has(documentId(item.name)));
-for (const profile of otherProfiles) {
+const adminsToRemove = admins.filter((item) => {
+  const data = decodeFields(item.fields);
+  return documentId(item.name) !== ownerUid
+    && (data.role === 'OWNER' || data.role === 'ADMIN');
+});
+const adminUidsToRemove = new Set(adminsToRemove.map((item) => documentId(item.name)));
+const profilesToRemove = profiles.filter((item) => adminUidsToRemove.has(documentId(item.name)));
+for (const profile of profilesToRemove) {
   const profileData = decodeFields(profile.fields);
   const externalCenters = (profileData.centerIds || []).filter((item) => item !== centerId);
   if (externalCenters.length > 0) {
@@ -61,12 +68,16 @@ const summary = {
   projectId,
   centerId,
   centerName: center.name || centerId,
+  previousOwnerUid: center.ownerUid || '',
   ownerUid,
   ownerEmail,
-  administratorsToRemove: otherAdmins.length,
-  profilesToRemove: otherProfiles.length,
+  removeEmail,
+  administratorsToRemove: adminsToRemove.length,
+  profilesToRemove: profilesToRemove.length,
   invitationsToRemove: invitations.length,
-  auditEventsToRemove: auditEvents.length,
+  viceAdministratorsPreserved: admins.filter((item) => (
+    documentId(item.name) !== ownerUid && decodeFields(item.fields).role === 'MANAGER'
+  )).length,
   mode: apply ? 'APPLY' : 'DRY_RUN'
 };
 console.log(JSON.stringify(summary, null, 2));
@@ -83,9 +94,8 @@ await writeFile(backupPath, JSON.stringify({
   documents: {
     center: centerDocument,
     admins,
-    profiles: [ownerProfile, ...otherProfiles],
-    invitations,
-    auditEvents
+    profiles: [ownerProfile, ...profilesToRemove],
+    invitations
   }
 }, null, 2), 'utf8');
 
@@ -129,10 +139,9 @@ const writes = [
     'centerId', 'centerIds', 'participantId', 'status', 'email', 'role',
     'massPermission', 'dailyOperationsPermission', 'updatedAt'
   ]),
-  ...otherAdmins.map((item) => ({ delete: item.name })),
-  ...otherProfiles.map((item) => ({ delete: item.name })),
-  ...invitations.map((item) => ({ delete: item.name })),
-  ...auditEvents.map((item) => ({ delete: item.name }))
+  ...adminsToRemove.map((item) => ({ delete: item.name })),
+  ...profilesToRemove.map((item) => ({ delete: item.name })),
+  ...invitations.map((item) => ({ delete: item.name }))
 ];
 if (writes.length > 450) throw new Error(`Troppe scritture atomiche (${writes.length}); riparazione interrotta.`);
 
@@ -151,16 +160,30 @@ if (!commitResponse.ok) {
 const remainingAdmins = await listDocuments(`centers/${centerId}/admins`);
 const remainingInvitations = (await listDocuments('adminInvitations'))
   .filter((item) => decodeFields(item.fields).centerId === centerId);
-const remainingAuditEvents = await listDocuments(`centers/${centerId}/auditEvents`);
-const repairedAdmin = remainingAdmins.length === 1 ? decodeFields(remainingAdmins[0].fields) : {};
-const verified = remainingAdmins.length === 1
-  && documentId(remainingAdmins[0].name) === ownerUid
+const repairedOwnerDocument = remainingAdmins.find((item) => documentId(item.name) === ownerUid);
+const repairedAdmin = repairedOwnerDocument ? decodeFields(repairedOwnerDocument.fields) : {};
+const conflictingOwners = remainingAdmins.filter((item) => {
+  const data = decodeFields(item.fields);
+  return documentId(item.name) !== ownerUid
+    && data.status === 'ACTIVE'
+    && (data.role === 'OWNER' || data.role === 'ADMIN');
+});
+const removedAccountStillPresent = removeEmail
+  ? remainingAdmins.some((item) => String(decodeFields(item.fields).email || '').toLowerCase() === removeEmail)
+  : false;
+const refreshedCenters = await listDocuments('centers');
+const repairedCenterDocument = refreshedCenters.find((item) => documentId(item.name) === centerId);
+const repairedCenter = repairedCenterDocument ? decodeFields(repairedCenterDocument.fields) : {};
+const verified = Boolean(repairedOwnerDocument)
+  && repairedCenter.ownerUid === ownerUid
+  && String(repairedCenter.adminEmail || '').toLowerCase() === ownerEmail
   && repairedAdmin.status === 'ACTIVE'
   && repairedAdmin.role === 'OWNER'
   && repairedAdmin.massPermission === true
   && repairedAdmin.dailyOperationsPermission === true
   && remainingInvitations.length === 0
-  && remainingAuditEvents.length === 0;
+  && conflictingOwners.length === 0
+  && removedAccountStillPresent === false;
 if (!verified) throw new Error('Verifica successiva alla riparazione non superata. Usa il backup locale.');
 
 console.log(JSON.stringify({
@@ -170,7 +193,8 @@ console.log(JSON.stringify({
   ownerUid,
   remainingAdministrators: remainingAdmins.length,
   remainingInvitations: remainingInvitations.length,
-  remainingAuditEvents: remainingAuditEvents.length
+  conflictingOwners: conflictingOwners.length,
+  removedAccountStillPresent
 }, null, 2));
 
 function updateWrite(name, data, fieldPaths) {

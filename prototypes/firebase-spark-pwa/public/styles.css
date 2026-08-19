@@ -5574,6 +5574,23 @@ button[aria-busy="true"]:disabled {
   display: block;
 }
 
+.admin-succession-notice {
+  display: grid;
+  gap: 5px;
+  margin: 0 auto 16px;
+  max-width: 720px;
+  padding: 14px 16px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  color: var(--ink);
+}
+
+.admin-succession-notice strong,
+.admin-succession-notice span {
+  display: block;
+}
+
 body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .admin-section-nav {
   display: none;
 }
