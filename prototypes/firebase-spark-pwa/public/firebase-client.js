@@ -278,12 +278,16 @@ export function isResidentTechnicalEmail(email) {
   return residentTechnicalEmailPattern.test(String(email || '').trim());
 }
 
-export function getAdministratorTechnicalEmail(centerId) {
+export function getAdministratorTechnicalEmail(centerId, passwordVersion = 0) {
   const normalizedCenterId = String(centerId || '').trim().toLowerCase();
   if (!/^[A-Za-z0-9_-]{1,120}$/.test(normalizedCenterId)) {
     throw new Error('Identificativo del centro non valido');
   }
-  return `${ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX}${normalizedCenterId}${RESIDENT_TECHNICAL_EMAIL_DOMAIN}`;
+  const normalizedVersion = Number(passwordVersion || 0);
+  const versionSuffix = Number.isInteger(normalizedVersion) && normalizedVersion > 0
+    ? `_v${normalizedVersion}`
+    : '';
+  return `${ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX}${normalizedCenterId}${versionSuffix}${RESIDENT_TECHNICAL_EMAIL_DOMAIN}`;
 }
 
 export function isAdministratorTechnicalEmail(email) {
@@ -388,8 +392,14 @@ export async function setResidentTechnicalPassword(centerId, previousPassword, n
   }
 }
 
-export async function setAdministratorTechnicalPassword(centerId, previousPassword, nextPassword) {
-  const email = getAdministratorTechnicalEmail(centerId);
+export async function setAdministratorTechnicalPassword(
+  centerId,
+  previousPassword,
+  nextPassword,
+  { currentEmail = '', nextVersion = 1 } = {}
+) {
+  const email = String(currentEmail || '').trim().toLowerCase()
+    || getAdministratorTechnicalEmail(centerId);
   const next = String(nextPassword || '');
   const previous = String(previousPassword || '');
   if (next.length < 6 || next.length > 64) {
@@ -411,7 +421,7 @@ export async function setAdministratorTechnicalPassword(centerId, previousPasswo
     if (!credential) {
       try {
         credential = await createUserWithEmailAndPassword(maintenanceAuth, email, formattedNext);
-        return { email, created: true };
+        return { email, uid: credential.user.uid, created: true };
       } catch (error) {
         if (error?.code !== 'auth/email-already-in-use') throw error;
         if (!formattedPrevious) {
@@ -420,10 +430,32 @@ export async function setAdministratorTechnicalPassword(centerId, previousPasswo
             email,
             formattedNext
           ).catch(() => null);
-          if (alreadyConfigured) return { email, created: false };
-          const missing = new Error('Inserisci anche la password amministratori attuale');
-          missing.code = 'auth/current-administrator-password-required';
-          throw missing;
+          if (alreadyConfigured) {
+            return { email, uid: alreadyConfigured.user.uid, created: false };
+          }
+
+          // L'amministratore già autenticato può sostituire una password condivisa
+          // dimenticata. La nuova identità tecnica disattiva quella precedente non
+          // appena il centro ne salva l'UID, senza conservare password in Firestore.
+          const replacementEmail = getAdministratorTechnicalEmail(centerId, nextVersion);
+          let replacement = await signInWithEmailAndPassword(
+            maintenanceAuth,
+            replacementEmail,
+            formattedNext
+          ).catch(() => null);
+          if (!replacement) {
+            replacement = await createUserWithEmailAndPassword(
+              maintenanceAuth,
+              replacementEmail,
+              formattedNext
+            );
+          }
+          return {
+            email: replacementEmail,
+            uid: replacement.user.uid,
+            created: true,
+            replaced: true
+          };
         }
         throw error;
       }
@@ -431,7 +463,7 @@ export async function setAdministratorTechnicalPassword(centerId, previousPasswo
     if (formattedPrevious !== formattedNext) {
       await updatePassword(credential.user, formattedNext);
     }
-    return { email, created: false };
+    return { email, uid: credential.user.uid, created: false };
   } finally {
     await signOut(maintenanceAuth).catch(() => undefined);
   }
@@ -441,7 +473,8 @@ export async function authorizeResidentAdministratorSession({
   centerId,
   participantId,
   password,
-  passwordVersion
+  passwordVersion,
+  technicalEmail = ''
 }) {
   const primaryUser = getCurrentUser();
   if (!primaryUser?.isAnonymous) {
@@ -455,7 +488,8 @@ export async function authorizeResidentAdministratorSession({
   }
 
   const maintenanceAuth = await getResidentMaintenanceAuth();
-  const email = getAdministratorTechnicalEmail(centerId);
+  const email = String(technicalEmail || '').trim().toLowerCase()
+    || getAdministratorTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
   try {
     await signInWithEmailAndPassword(maintenanceAuth, email, technicalPassword);

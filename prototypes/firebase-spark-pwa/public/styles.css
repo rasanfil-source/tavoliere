@@ -5557,6 +5557,16 @@ button[aria-busy="true"]:disabled {
   background: var(--today-surface);
 }
 
+.admin-shared-password-heading {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-shared-password-heading .field-help {
+  margin: 0;
+}
+
 .admin-password-rotation-warning,
 .resident-admin-unlock {
   display: grid;

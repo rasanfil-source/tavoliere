@@ -35,8 +35,14 @@ service cloud.firestore {
     }
 
     function isAdministratorTechnicalUser(centerId) {
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
       return hasAdministratorTechnicalEmail()
-        && request.auth.token.email.lower() == ('amministratori+' + centerId + '@tavola-comune.local').lower();
+        && (
+          get(centerPath).data.get('adminTechnicalUid', '') == request.auth.uid
+          || get(centerPath).data.get('adminTechnicalUid', '') == ''
+            && request.auth.token.email.lower()
+              == ('amministratori+' + centerId + '@tavola-comune.local').lower()
+        );
     }
 
     function isInteractiveAdminUser() {

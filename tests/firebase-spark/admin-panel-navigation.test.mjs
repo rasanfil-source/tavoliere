@@ -93,6 +93,18 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
+test('la configurazione permette di impostare o sostituire la password amministratori', () => {
+  const configuration = html.match(/id="admin-configuration-section"[\s\S]*?<div class="admin-role-stack"/)?.[0] || '';
+  assert.match(configuration, /data-admin-shared-password-row/);
+  assert.match(configuration, /data-admin-shared-password-current/);
+  assert.match(configuration, /data-admin-shared-password-new/);
+  assert.match(configuration, /admin\.sharedPassword\.configurationHelp/);
+  assert.match(app, /adminSharedPasswordRow\.hidden = !canConfigureCenter \|\| state\.residentSettingsMode/);
+  assert.doesNotMatch(app, /newSharedAdminPassword && state\.centerContactSettings\.adminSharedPasswordSet[\s\S]*!currentSharedAdminPassword/);
+  assert.match(firebaseClient, /getAdministratorTechnicalEmail\(centerId, nextVersion\)/);
+  assert.match(firebaseClient, /uid: replacement\.user\.uid/);
+});
+
 test('il riepilogo Essenziale usa le icone lineari di Elegante', () => {
   assert.match(summaryView, /interfaceStyle === "cool" \|\| interfaceStyle === "urban"/);
 });

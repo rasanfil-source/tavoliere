@@ -311,6 +311,17 @@ test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /match \/kitchenNotes\/\{mealDate\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
 });
 
+test('la rotazione della password amministratori revoca la precedente identità tecnica', () => {
+  assert.match(
+    rules,
+    /function isAdministratorTechnicalUser\(centerId\)[\s\S]*adminTechnicalUid[\s\S]*request\.auth\.uid/
+  );
+  assert.match(
+    rules,
+    /match \/viceSessions\/\{authUid\}[\s\S]*allow create: if isAdministratorTechnicalUser\(centerId\)/
+  );
+});
+
 test('un account amministratore può appartenere a più centri senza duplicare l identità', () => {
   assert.match(rules, /function isBootstrapOwner\(\)[\s\S]*request\.auth\.uid == 'kWYvLr1fkKVuhZ8I8HrVivN2ra03'/);
   assert.match(rules, /request\.auth\.token\.email == 'donraimondo@parrocchiasanteugenio\.it'/);

@@ -1213,8 +1213,36 @@ test('la password amministratori autorizza il vice e la rotazione revoca la sess
 
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await context.firestore().doc(centerPath()).set({
-      adminPasswordVersion: 2
+      adminPasswordVersion: 2,
+      adminTechnicalUid: 'administrator_technical_v2'
     }, { merge: true });
+    await context.firestore().doc(`${centerPath()}/viceSessions/${PERSONAL_UID}`).delete();
+  });
+  await assertFails(technicalDb.doc(`${centerPath()}/viceSessions/${PERSONAL_UID}`).set({
+    centerId: CENTER_ID,
+    authUid: PERSONAL_UID,
+    participantId: MARIO_ID,
+    passwordVersion: 2,
+    status: 'ACTIVE',
+    expiresAt,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  const replacementTechnicalDb = testEnv
+    .authenticatedContext('administrator_technical_v2', administratorTechnicalToken(2))
+    .firestore();
+  await assertSucceeds(replacementTechnicalDb.doc(`${centerPath()}/viceSessions/${PERSONAL_UID}`).set({
+    centerId: CENTER_ID,
+    authUid: PERSONAL_UID,
+    participantId: MARIO_ID,
+    passwordVersion: 2,
+    status: 'ACTIVE',
+    expiresAt,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(`${centerPath()}/viceSessions/${PERSONAL_UID}`).delete();
   });
   await assertFails(personalDb.doc(`${centerPath()}/dailyHealth/${dateId}`).set({
     centerId: CENTER_ID,
@@ -2192,9 +2220,10 @@ function residentTechnicalToken() {
   };
 }
 
-function administratorTechnicalToken() {
+function administratorTechnicalToken(passwordVersion = 0) {
+  const versionSuffix = passwordVersion > 0 ? `_v${passwordVersion}` : '';
   return {
-    email: `amministratori+${CENTER_ID}@tavola-comune.local`,
+    email: `amministratori+${CENTER_ID}${versionSuffix}@tavola-comune.local`,
     email_verified: false,
     firebase: {
       sign_in_provider: 'password'

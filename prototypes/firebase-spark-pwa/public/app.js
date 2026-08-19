@@ -611,6 +611,8 @@ const state = {
     adminPasswordSet: false,
     adminSharedPasswordSet: false,
     adminPasswordVersion: 0,
+    adminTechnicalEmail: '',
+    adminTechnicalUid: '',
     adminPasswordRotationRequired: false,
     avatarVersion: '',
     avatarDataUrl: loadCachedCenterAvatar(),
@@ -4342,10 +4344,6 @@ async function performAdminCenterSettingsSave() {
     const newAdminPassword = elements.adminAdministratorPassword?.value || '';
     const newSharedAdminPassword = elements.adminSharedPasswordNew?.value || '';
     const currentSharedAdminPassword = elements.adminSharedPasswordCurrent?.value || '';
-    if (newSharedAdminPassword && state.centerContactSettings.adminSharedPasswordSet
-        && !currentSharedAdminPassword) {
-      throw new Error(t('admin.sharedPassword.currentRequired'));
-    }
     const passwordRequired = requiresAdministratorPassword(getCurrentUser());
     if (passwordRequired && !state.centerContactSettings.adminPasswordSet && !newAdminPassword) {
       throw new Error('Inserisci la password amministratore');
@@ -5702,6 +5700,12 @@ function applyAdminCapabilityVisibility() {
     if (elements.adminCommonPasswordInput) {
       elements.adminCommonPasswordInput.disabled = !canConfigureCenter;
     }
+  }
+  if (elements.adminSharedPasswordRow) {
+    elements.adminSharedPasswordRow.hidden = !canConfigureCenter || state.residentSettingsMode;
+    [elements.adminSharedPasswordCurrent, elements.adminSharedPasswordNew].forEach((input) => {
+      if (input) input.disabled = !canConfigureCenter || state.residentSettingsMode;
+    });
   }
   if (elements.adminAdministratorPasswordRow) {
     elements.adminAdministratorPasswordRow.hidden = state.adminRole !== 'OWNER'
@@ -7187,7 +7191,8 @@ async function handleResidentAdministratorUnlock() {
       centerId: getActiveCenterId(),
       participantId: state.selectedParticipant.participantId,
       password: elements.residentAdminPassword.value,
-      passwordVersion: state.centerContactSettings.adminPasswordVersion
+      passwordVersion: state.centerContactSettings.adminPasswordVersion,
+      technicalEmail: state.centerContactSettings.adminTechnicalEmail
     });
     state.residentAdministratorAuthorized = true;
     elements.residentAdminPassword.value = '';

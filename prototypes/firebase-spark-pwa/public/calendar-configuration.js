@@ -93,6 +93,10 @@ export async function saveCenterConfiguration({
     administratorSharedPassword: typeof administratorSharedPassword === 'string'
       && administratorSharedPassword.length >= 6 ? administratorSharedPassword : null,
     adminPasswordVersion: Number(center.adminPasswordVersion || 0),
+    adminTechnicalEmail: typeof center.adminTechnicalEmail === 'string'
+      ? center.adminTechnicalEmail.trim().toLowerCase()
+      : '',
+    adminTechnicalUid: typeof center.adminTechnicalUid === 'string' ? center.adminTechnicalUid : '',
     administratorName,
     administratorSignature,
     adminEmail: typeof adminEmail === 'string' ? adminEmail : undefined
@@ -105,11 +109,17 @@ export async function saveCenterConfiguration({
     );
   }
   if (target.administratorSharedPassword !== null) {
-    await setAdministratorTechnicalPassword(
+    const technicalIdentity = await setAdministratorTechnicalPassword(
       centerId,
       typeof currentAdministratorSharedPassword === 'string' ? currentAdministratorSharedPassword : '',
-      target.administratorSharedPassword
+      target.administratorSharedPassword,
+      {
+        currentEmail: target.adminTechnicalEmail,
+        nextVersion: target.adminPasswordVersion + 1
+      }
     );
+    target.adminTechnicalEmail = technicalIdentity.email;
+    target.adminTechnicalUid = technicalIdentity.uid;
   }
   const activeJob = jobSnapshot.exists() && jobSnapshot.data().status === 'ACTIVE'
     ? jobSnapshot.data()
@@ -238,6 +248,8 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       centerUpdate.adminPasswordVersion = target.adminPasswordVersion + 1;
       centerUpdate.adminSharedPasswordSet = true;
       centerUpdate.adminPasswordRotationRequired = false;
+      centerUpdate.adminTechnicalEmail = target.adminTechnicalEmail;
+      centerUpdate.adminTechnicalUid = target.adminTechnicalUid;
     }
     if (target.adminEmail !== undefined) {
       centerUpdate.adminEmail = target.adminEmail;
@@ -287,6 +299,8 @@ async function completeConfiguration({
       centerUpdate.adminPasswordVersion = target.adminPasswordVersion + 1;
       centerUpdate.adminSharedPasswordSet = true;
       centerUpdate.adminPasswordRotationRequired = false;
+      centerUpdate.adminTechnicalEmail = target.adminTechnicalEmail;
+      centerUpdate.adminTechnicalUid = target.adminTechnicalUid;
     }
     if (target.adminEmail !== undefined) {
       centerUpdate.adminEmail = target.adminEmail;

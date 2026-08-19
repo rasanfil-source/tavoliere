@@ -587,15 +587,19 @@
                     <small class="field-help"><span data-i18n="admin.commonPassword.help">Vuoto = password invariata · </span><span data-admin-common-password-status></span></small>
                   </label>
                   <div class="admin-shared-password-fields admin-field-wide" data-admin-shared-password-row hidden>
+                    <div class="admin-shared-password-heading">
+                      <strong data-i18n="admin.sharedPassword.label">Password amministratori</strong>
+                      <small class="field-help" data-i18n="admin.sharedPassword.configurationHelp">Usata per aprire le funzioni dei vice amministratori. Se non ricordi quella attuale, lasciala vuota e impostane una nuova.</small>
+                    </div>
                     <label class="field-label">
-                      <span data-i18n="admin.sharedPassword.currentLabel">Password amministratori attuale</span>
+                      <span data-i18n="admin.sharedPassword.currentLabel">Password attuale (se la ricordi)</span>
                       <span class="password-field">
                         <input type="password" data-admin-shared-password-current maxlength="64" autocomplete="current-password">
                         <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-shared-current" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
                       </span>
                     </label>
                     <label class="field-label">
-                      <span data-i18n="admin.sharedPassword.newLabel">Nuova password amministratori</span>
+                      <span data-i18n="admin.sharedPassword.newLabel">Imposta una nuova password</span>
                       <span class="password-field">
                         <input type="password" data-admin-shared-password-new minlength="6" maxlength="64" autocomplete="new-password">
                         <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-shared-new" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
