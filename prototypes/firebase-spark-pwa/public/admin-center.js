@@ -94,7 +94,7 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
   const requestedCenterId = getActiveCenterId();
   const existingAccess = await readCenterAdmin(user, requestedCenterId);
   if (existingAccess.active) {
-    await saveAdminProfile(user, requestedCenterId, existingAccess.role);
+    void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
     return {
       ...existingAccess,
       availableCenters: await listAccessibleAdminCenters(user)

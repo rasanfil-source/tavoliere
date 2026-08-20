@@ -683,7 +683,6 @@ const elements = {
   accountFooter: document.querySelector('[data-account-footer]'),
   topbarContextNav: document.querySelector('[data-topbar-context-nav]'),
   controlPanelEntry: document.querySelector('[data-control-panel-entry]'),
-  adminPasswordAlertDot: document.querySelector('[data-admin-password-alert-dot]'),
   mealsReturnEntry: document.querySelector('[data-meals-return-entry]'),
   adminShell: document.querySelector('[data-admin-shell]'),
   adminAuthMethods: document.querySelector('[data-admin-auth-methods]'),
@@ -2036,6 +2035,7 @@ function isAdminSectionAllowed(section) {
 }
 
 function isAdministratorProfileComplete() {
+  if (state.adminRole === 'OWNER' || state.adminRole === 'ADMIN') return true;
   return state.centerContactSettings.administratorProfileRequired !== true
     || state.centerContactSettings.administratorProfileComplete === true;
 }
@@ -3805,16 +3805,13 @@ async function refreshAdminParticipants() {
   try {
     const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
     const canManageRoles = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
-    const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
     const [adminParticipants, adminAccounts, centerSettings, coverage, operationalLinks, adminInvitations] = await Promise.all([
       listAdminParticipants(),
       canManageRoles ? listCenterAdministrators() : Promise.resolve([]),
-      loadCenterContactSettings({ forceRefresh: true }),
+      loadCenterContactSettings(),
       loadMealWindowCoverage(),
       canViewOperationalLinks
-        ? canManageOperationalLinks
-          ? ensureOperationalLinks()
-          : loadOperationalLinks({ forceRefresh: true })
+        ? loadOperationalLinks({ forceRefresh: true }).catch(() => state.operationalLinks)
         : Promise.resolve(state.operationalLinks),
       canManageRoles ? listAdministratorInvitations() : Promise.resolve([])
     ]);
@@ -3864,6 +3861,14 @@ async function refreshAdminParticipants() {
       syncAdminContactForm();
     }
     initializeOperationalLinks();
+    if (hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) {
+      void ensureOperationalLinks().then((links) => {
+        if (!requestCoordinator.isCurrentRequest(request)) return;
+        state.operationalLinks = links;
+        initializeOperationalLinks();
+        renderAdminOverview();
+      }).catch(() => undefined);
+    }
     elements.adminStatus.textContent = !profileComplete
       ? t('admin.people.completeProfile')
       : state.adminPersonDirty ? t('admin.people.unsavedChanges') : t('admin.people.ready');
@@ -4732,11 +4737,6 @@ function syncAdminAdaptationsForm() {
   if (elements.adminPasswordRotationWarning) {
     elements.adminPasswordRotationWarning.hidden = true;
   }
-  if (elements.adminPasswordAlertDot) {
-    elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired
-      || state.residentAdministratorAuthorized
-      || state.adminRole === 'MANAGER';
-  }
 }
 
 function invitationPrompt(role = '') {
@@ -5182,11 +5182,6 @@ function renderMode() {
   elements.controlPanelEntry.hidden = !isOrdinaryView
     || (!needsResidentLogin && !canOpenControlPanel);
   updateControlPanelEntryHref();
-  if (elements.adminPasswordAlertDot) {
-    elements.adminPasswordAlertDot.hidden = !state.centerContactSettings.adminPasswordRotationRequired
-      || state.residentAdministratorAuthorized
-      || state.adminRole === 'MANAGER';
-  }
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
     || (state.platformOwner && !state.residentSettingsMode);
@@ -6873,7 +6868,7 @@ async function handleMonthMealButton(event, button) {
   if (!state.selectedParticipant) return;
   const day = state.participantMonth.find((item) => item.date === button.dataset.monthDate);
   const meal = day?.meals.find((item) => item.mealTypeId === button.dataset.monthMealId);
-  if (!meal || !meal.isOpen) return;
+  if (!meal || meal.isOpen === false || day?.isPast) return;
 
   const effect = button.dataset.monthEffect;
   await saveMealOptimistically({
@@ -7284,7 +7279,8 @@ function renderFutureMonthScopeButton(label, weekStart, mealTypeId, { scope = ''
   const meals = isMonth ? getMonthScopeMeals(null, null) : getMonthScopeMeals(weekStart, mealTypeId);
   const effect = isMonth ? getMonthSelectionEffect() : getMonthScopeEffect(weekStart, mealTypeId);
   const selected = effect === 'ABSENT';
-  const hasPendingMeals = meals.some((meal) => (
+  const editableMeals = meals.filter((meal) => meal.isOpen !== false);
+  const hasPendingMeals = editableMeals.some((meal) => (
     state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId))
   ));
   const action = effect === 'PRESENT' ? 'Prenota' : 'Libera';
@@ -7299,7 +7295,7 @@ function renderFutureMonthScopeButton(label, weekStart, mealTypeId, { scope = ''
   const selectedClass = selected ? ' month-future-scope-selected' : '';
   const monthClass = isMonth ? ' month-future-month-scope' : '';
   return `
-    <button type="button" class="month-future-scope${monthClass}${selectedClass}" data-month-scope="${resolvedScope}" data-week-start="${escapeHtml(weekStart || '')}" data-meal-type="${escapeHtml(mealTypeId || '')}" data-month-effect="${effect}" aria-pressed="${selected}" aria-label="${escapeHtml(`${label}: ${actionLabel}`)}" title="${escapeHtml(actionLabel)}"${meals.length === 0 || hasPendingMeals ? ' disabled' : ''}>
+    <button type="button" class="month-future-scope${monthClass}${selectedClass}" data-month-scope="${resolvedScope}" data-week-start="${escapeHtml(weekStart || '')}" data-meal-type="${escapeHtml(mealTypeId || '')}" data-month-effect="${effect}" aria-pressed="${selected}" aria-label="${escapeHtml(`${label}: ${actionLabel}`)}" title="${escapeHtml(actionLabel)}"${editableMeals.length === 0 || hasPendingMeals ? ' disabled' : ''}>
       <span class="month-future-scope-glyph" aria-hidden="true">${icon}</span>
     </button>
   `;
@@ -7312,7 +7308,8 @@ function renderFutureMonthMeal(day, mealTypeId) {
   const isPresent = meal.effect === 'PRESENT';
   const pending = state.pendingMealKeys.has(getMealPendingKey(day.date, meal.mealTypeId));
   const stateLabel = getMealStateLabel(isPresent);
-  return `<button type="button" class="month-future-meal${isPresent ? ' month-future-meal-present' : ''}${day.isPast || !meal.isOpen ? ' month-future-meal-locked' : ''}" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(meal.mealTypeId)}" data-month-effect="${isPresent ? 'ABSENT' : 'PRESENT'}" aria-pressed="${isPresent}" aria-label="${escapeHtml(stateLabel)}"${meal.isOpen && !pending ? '' : ' disabled'}>${isPresent ? '✓' : '–'}</button>`;
+  const editable = !day.isPast && meal.isOpen !== false;
+  return `<button type="button" class="month-future-meal${isPresent ? ' month-future-meal-present' : ''}${!editable ? ' month-future-meal-locked' : ''}" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(meal.mealTypeId)}" data-month-effect="${isPresent ? 'ABSENT' : 'PRESENT'}" aria-pressed="${isPresent}" aria-label="${escapeHtml(stateLabel)}"${editable && !pending ? '' : ' disabled'}>${isPresent ? '✓' : '–'}</button>`;
 }
 
 function renderWeekInvitedStatus(invitedMeals = {}) {

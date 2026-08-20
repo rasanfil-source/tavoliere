@@ -154,23 +154,6 @@
   position: relative;
 }
 
-.control-panel-alert-dot {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--danger, #b42318);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger, #b42318) 45%, transparent);
-  animation: control-panel-alert-pulse 1.35s ease-out infinite;
-}
-
-@keyframes control-panel-alert-pulse {
-  70%, 100% { box-shadow: 0 0 0 8px transparent; }
-}
-
 .topbar-context-action svg {
   width: 23px;
   height: 23px;

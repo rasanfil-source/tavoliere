@@ -526,7 +526,7 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   const profileFallback = adminCenter.indexOf("getDoc(doc(db, ADMIN_PROFILE_COLLECTION, user.uid))");
   assert.ok(requestedCenterCheck >= 0 && requestedCenterCheck < profileFallback);
   assert.doesNotMatch(adminCenter, /Questo account gestisce già il centro/);
-  assert.match(adminCenter, /await saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
+  assert.match(adminCenter, /saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
   assert.match(adminCenter, /revokePrevious && currentProfileSnapshot\.data\(\)\?\.centerId === centerId[\s\S]*batch\.set\(currentProfileRef/);
   assert.match(adminCenter, /successorProfileSnapshot\.data\(\)\?\.centerId === centerId/);
 });
