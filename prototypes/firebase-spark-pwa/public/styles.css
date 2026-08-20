@@ -2955,6 +2955,14 @@ body[data-resident-login-visible="true"] .account-footer {
     flex-direction: column;
   }
 
+  /* I comandi di annullamento e ripristino restano affiancati anche su
+     schermi stretti, così sono percepiti come una coppia di azioni. */
+  .admin-section-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
   .admin-participant-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3821,7 +3829,7 @@ body[data-resident-login-visible="true"] .account-footer {
 }
 
 .mass-card.mass-card-yes .mass-card-content span {
-  background: var(--mass-yes-bg, #e9f5e9);
+  background: transparent;
 }
 
 .mass-card.mass-card-no {
@@ -4112,7 +4120,7 @@ body[data-resident-login-visible="true"] .account-footer {
 }
 
 .week-mass-button-yes > strong {
-  background: var(--mass-yes-bg, #e9f5e9);
+  background: transparent;
 }
 
 .week-mass-button-no {
@@ -5510,6 +5518,29 @@ body[data-resident-login-visible="true"] .account-footer {
   }
 }
 
+html:not([data-interface-style="future"]) .month-day > .month-day-number-today {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+html:not([data-interface-style="future"]) .month-day-number-today .month-day-number-value {
+  background: transparent;
+  color: var(--today-ink);
+  box-shadow: none;
+}
+
+/* Originale: il bordo esterno del giorno corrente resta assente, mentre il
+   numero mantiene il contrasto pieno usato in precedenza. */
+html[data-interface-style="original"] .month-day-number-today .month-day-number-value {
+  background: var(--today-ink);
+  color: #fff;
+  box-shadow: none;
+}
+
+@media (max-width: 620px) {
+  .week-day-button > span { display: none; }
+}
+
 /* La posizione dei comandi multipli nella griglia mensile è configurabile
    dal pannello Impostazioni. Il layout resta identico, cambia solo il lato. */
 .month-weekday-row.month-controls-left .month-weekday-month-control {
@@ -6205,14 +6236,24 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
    ------------------------------------------------------------------- */
 
 .summary-future-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex !important;
+  grid-template-columns: none !important;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   gap: 14px;
   width: 100%;
+  scrollbar-width: none;
 }
 
+.summary-future-grid::-webkit-scrollbar { display: none; }
+
 .summary-future-card {
-  min-width: 0;
+  flex: 0 0 100%;
+  min-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  scroll-snap-align: start;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -6233,7 +6274,7 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 .summary-future-card-head strong {
   color: var(--ink);
   font-family: Fraunces, Georgia, serif;
-  font-size: 1rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
 }
 
 .summary-future-card-head time {
@@ -6269,6 +6310,7 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   min-width: 0;
   color: var(--ink);
   font-weight: 700;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
 }
 
 .summary-future-meal-total {
@@ -6301,6 +6343,17 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 
 .summary-future-metric-guests strong {
   color: var(--primary);
+}
+
+.summary-future-metric-guests {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  column-gap: 10px;
+}
+
+.summary-future-metric-guests strong {
+  margin-left: 0;
 }
 
 .summary-future-metric-sick strong {
@@ -6344,12 +6397,20 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   font-size: 0.82rem;
 }
 
-.summary-future-mass strong {
-  min-width: 42px;
-  padding: 5px 10px;
-  border-radius: 7px;
-  text-align: center;
-}
+  .summary-future-mass strong {
+    min-width: 42px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    text-align: center;
+  }
+
+  .summary-future-mass strong small {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.72em;
+    font-weight: inherit;
+    line-height: 1.1;
+  }
 
 .summary-future-mass-yes {
   background: color-mix(in srgb, var(--affirmative) 16%, var(--surface));
@@ -6408,6 +6469,46 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   place-items: center;
 }
 
+.month-future-scope {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 27px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, box-shadow 120ms ease-out, color 120ms ease-out;
+}
+
+.month-future-month-scope {
+  min-height: 29px;
+  font-weight: 900;
+}
+
+.month-future-scope-glyph {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  line-height: 1;
+}
+
+.month-future-scope-selected {
+  background: var(--complete-surface);
+  color: var(--confirmed);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--confirmed) 28%, transparent);
+}
+
+.month-future-scope:not(:disabled):hover,
+.month-future-scope:not(:disabled):focus-visible {
+  outline: 2px solid var(--hover-ring);
+  background: var(--hover-surface);
+}
+
 .month-future-date,
 .month-future-meal {
   display: grid;
@@ -6460,14 +6561,16 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 .month-future-meal:not(:disabled):hover,
 .month-future-meal:not(:disabled):focus-visible,
 .month-future-date:not(:disabled):hover,
-.month-future-date:not(:disabled):focus-visible {
+.month-future-date:not(:disabled):focus-visible,
+.month-future-scope:not(:disabled):active {
   outline: 2px solid var(--hover-ring);
   background: var(--hover-surface);
 }
 
 .month-future-meal-locked,
 .month-future-meal:disabled,
-.month-future-date:disabled {
+.month-future-date:disabled,
+.month-future-scope:disabled {
   cursor: default;
   opacity: 0.42;
 }
@@ -6486,7 +6589,6 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 
 @media (max-width: 620px) {
   .summary-future-grid {
-    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -6516,7 +6618,8 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 
   .month-future-date,
   .month-future-meal,
-  .month-future-empty {
+  .month-future-empty,
+  .month-future-scope {
     min-height: 25px;
   }
 }

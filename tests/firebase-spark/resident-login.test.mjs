@@ -381,6 +381,19 @@ test('la vista mese mobile porta la griglia in primo piano senza scavalcare l ut
   assert.match(app, /scheduleMonthAutoScroll\(\)/);
 });
 
+test('la vista futura mantiene selezioni singole e azioni collettive', () => {
+  assert.match(app, /function renderFutureMonth\(\)/);
+  assert.match(app, /function renderFutureMonthScopeButton\(label, weekStart, mealTypeId/);
+  assert.match(app, /renderFutureMonthScopeButton\('Mese', null, null, \{ scope: 'month' \}\)/);
+  assert.match(app, /renderFutureMonthScopeButton\('Settimana', weekStart, null\)/);
+  assert.match(app, /renderFutureMonthScopeButton\(getLocalizedMealLabel\(mealTypeId\), weekStart, mealTypeId\)/);
+  assert.match(app, /data-month-scope="\$\{resolvedScope\}"/);
+  assert.match(app, /data-month-effect="\$\{effect\}"/);
+  assert.match(app, /handleMonthBulkButton\(scopeButton\)/);
+  assert.match(styles, /\.month-future-scope \{/);
+  assert.match(styles, /\.month-future-scope-selected \{/);
+});
+
 test('riepilogo e cucina portano il selettore giorni in primo piano solo quando serve', () => {
   assert.match(index, /data-summary-date-tabs/);
   assert.match(index, /data-kitchen-date-tabs/);
@@ -426,6 +439,38 @@ test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati oper
   assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\)[\s\S]*finishAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = !isAdmin/);
   assert.match(app, /adminPanelHydrating: false/);
   assert.match(app, /hydrationVersion === state\.adminHydrationVersion/);
+});
+
+test('il refresh del pannello completa il ripristino residente o vice pendente', () => {
+  const reconcile = app.match(
+    /function reconcileAdminAccessWithoutStrongUser\(\)[\s\S]*?\n\}/
+  )?.[0] || '';
+  assert.match(reconcile, /if \(state\.residentAuthTransition\)/);
+  assert.doesNotMatch(reconcile, /residentRestorePending[\s\S]*return Promise\.resolve/);
+  assert.match(reconcile, /await restoreResidentSettingsPanel\(\)/);
+  assert.match(reconcile, /!isResidentEntryGateClosed\(\)/);
+  assert.match(
+    app,
+    /function renderResidentSettingsPanel\(\)[\s\S]*elements\.authStatus\.textContent = state\.selectedParticipant/
+  );
+});
+
+test('l uscita residente non impedisce il successivo accesso Google o email', () => {
+  assert.match(
+    app,
+    /residentRestorePending: Boolean\(loadStoredResidentSignature\(\)\)[\s\S]*&& !isResidentEntryGateClosed\(\)/
+  );
+  const reconcile = app.match(
+    /function reconcileAdminAccessWithoutStrongUser\(\)[\s\S]*?\n\}/
+  )?.[0] || '';
+  assert.match(reconcile, /const canRestoreResident = state\.mode === 'admin'[\s\S]*!isResidentEntryGateClosed\(\)/);
+});
+
+test('il logout dal pannello vice torna al nuovo accesso residente', () => {
+  const ownerExit = app.match(/async function handleOwnerExit\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(ownerExit, /state\.adminRole === 'MANAGER'/);
+  assert.match(ownerExit, /state\.residentAdministratorAuthorized/);
+  assert.match(ownerExit, /return handleForgetDevice\(\)/);
 });
 
 test('le transizioni auth non possono smontare una sessione residente in corso', () => {
@@ -849,6 +894,16 @@ test('la spunta vice usa direttamente sigla e password amministratori nel login 
   assert.doesNotMatch(index, /data-vice-auth-email-form/);
   assert.match(app, /signInFriendlyViceAdministrator/);
   assert.match(app, /result\.administratorAuthorized === true/);
+  const directViceAccess = app.match(
+    /if \(result\.administratorAuthorized === true\) \{([\s\S]*?)\n    \}\n    \/\/ L'ingresso esplicito/
+  )?.[1] || '';
+  assert.match(directViceAccess, /state\.residentEntryKind = 'shared-admin'/);
+  assert.match(directViceAccess, /applyResidentEntryView\(\)/);
+  assert.match(directViceAccess, /refreshParticipant\('avvio', \{ loginHandshake: true \}\)/);
+  assert.match(directViceAccess, /openResidentEntryGate\(\)/);
+  assert.doesNotMatch(directViceAccess, /state\.mode = 'admin'/);
+  assert.doesNotMatch(directViceAccess, /activateResidentAdministratorPanel\(\)/);
+  assert.match(app, /if \(state\.adminRole && hasStrongAdministratorIdentity\(\)\)/);
   assert.match(participantData, /export async function signInFriendlyViceAdministrator/);
   assert.match(participantData, /withAdministratorTechnicalSession/);
   assert.match(participantData, /loadCenterContactSettings\(\{ forceRefresh: true \}\)/);
