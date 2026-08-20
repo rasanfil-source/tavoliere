@@ -6445,24 +6445,9 @@ function renderWeekControls() {
 }
 
 function renderMonthGrid() {
-  if (document.documentElement.dataset.interfaceStyle === 'future') {
-    renderFutureMonth();
-    return;
-  }
+  const isFuture = document.documentElement.dataset.interfaceStyle === 'future';
   const monthCells = buildMonthCells(state.monthDate, state.participantMonth);
-  const monthWeeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7));
-  const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
-  const monthEffect = getMonthSelectionEffect();
-  const monthHasOpenMeals = state.participantMonth
-    .flatMap((day) => day.meals || [])
-    .some((meal) => meal.isOpen);
   const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
-  const monthControlMarkup = `
-    <span class="month-weekday-month-control">
-      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
-        <span class="month-toggle-glyph" aria-hidden="true">M</span>
-      </button>
-    </span>`;
   const monthRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
     interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
@@ -6479,12 +6464,33 @@ function renderMonthGrid() {
       (day.meals || []).map((meal) => meal.mealTypeId)
     ])
   });
-  if (elements.monthGrid.dataset.renderKey === monthRenderKey
-      && elements.monthGrid.querySelector('.month-sheet-body')) {
+  const hasGridBody = isFuture
+    ? Boolean(elements.monthGrid.querySelector('.month-future'))
+    : Boolean(elements.monthGrid.querySelector('.month-sheet-body'));
+  if (elements.monthGrid.dataset.renderKey === monthRenderKey && hasGridBody) {
     syncMonthGridFromState();
     scheduleMonthAutoScroll();
     return;
   }
+
+  if (isFuture) {
+    renderFutureMonth();
+    elements.monthGrid.dataset.renderKey = monthRenderKey;
+    return;
+  }
+
+  const monthWeeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7));
+  const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
+  const monthEffect = getMonthSelectionEffect();
+  const monthHasOpenMeals = state.participantMonth
+    .flatMap((day) => day.meals || [])
+    .some((meal) => meal.isOpen);
+  const monthControlMarkup = `
+    <span class="month-weekday-month-control">
+      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
+        <span class="month-toggle-glyph" aria-hidden="true">M</span>
+      </button>
+    </span>`;
 
   const focusSnapshot = captureFocusWithin(elements.monthGrid);
   elements.monthGrid.innerHTML = `
@@ -7299,6 +7305,7 @@ function renderFutureMonth() {
   const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
   const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const monthScopeButton = renderFutureMonthScopeButton('Mese', null, null, { scope: 'month' });
+  const focusSnapshot = captureFocusWithin(elements.monthGrid);
   elements.monthGrid.innerHTML = `
     <div class="month-future month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(formatMonthLabel(state.monthDate))}">
       <div class="month-future-row month-future-weekdays">
@@ -7322,6 +7329,7 @@ function renderFutureMonth() {
       }).join('')}
     </div>
   `;
+  restoreFocusWithin(elements.monthGrid, focusSnapshot);
   scheduleMonthAutoScroll();
 }
 
@@ -7356,7 +7364,9 @@ function renderFutureMonthScopeButton(label, weekStart, mealTypeId, { scope = ''
 function renderFutureMonthMeal(day, mealTypeId) {
   if (!day.inCurrentMonth) return '<span class="month-future-empty">–</span>';
   const meal = (day.meals || []).find((item) => item.mealTypeId === mealTypeId);
-  if (!meal) return '<span class="month-future-empty">–</span>';
+  if (!meal) {
+    return `<button type="button" class="month-future-meal month-future-meal-locked" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(mealTypeId)}" data-month-effect="PRESENT" disabled aria-label="${escapeHtml(getLocalizedMealLabel(mealTypeId))}">–</button>`;
+  }
   const isPresent = meal.effect === 'PRESENT';
   const pending = state.pendingMealKeys.has(getMealPendingKey(day.date, meal.mealTypeId));
   const stateLabel = getMealStateLabel(isPresent);
@@ -8210,14 +8220,14 @@ function syncMonthMealButton(button, meal) {
   const isFutureButton = button.classList.contains('month-future-meal');
   if (isFutureButton) {
     button.classList.toggle('month-future-meal-present', isPresent);
-    button.classList.toggle('month-future-meal-locked', meal.isOpen === false);
+    button.classList.toggle('month-future-meal-locked', !meal.isOpen);
     button.textContent = isPresent ? '✓' : '–';
   }
   button.dataset.monthEffect = isPresent ? 'ABSENT' : 'PRESENT';
   button.setAttribute('aria-pressed', String(isPresent));
   button.setAttribute('aria-label', actionLabel);
   button.title = meal.isOpen ? stateLabel : formatCutoffLabel(meal);
-  button.disabled = meal.isOpen === false || pending;
+  button.disabled = !meal.isOpen || pending;
   const mark = button.querySelector('.month-flag-mark');
   if (mark) mark.textContent = isPresent ? '✓' : mealLabel.slice(0, 1);
 }
@@ -8323,6 +8333,7 @@ function syncMonthSelectionControls() {
     button.dataset.monthEffect = effect;
     button.classList.toggle('month-toggle-button-selected', button.dataset.monthScope === 'month' && selected);
     button.classList.toggle('month-scope-toggle-selected', button.dataset.monthScope !== 'month' && selected);
+    button.classList.toggle('month-future-scope-selected', selected);
     button.setAttribute('aria-pressed', String(selected));
     button.disabled = busy || meals.length === 0 || hasPendingMeals;
   });

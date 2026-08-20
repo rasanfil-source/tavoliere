@@ -401,8 +401,37 @@ test('la vista futura mantiene selezioni singole e azioni collettive', () => {
   assert.match(app, /data-month-scope="\$\{resolvedScope\}"/);
   assert.match(app, /data-month-effect="\$\{effect\}"/);
   assert.match(app, /handleMonthBulkButton\(scopeButton\)/);
+  assert.match(app, /function renderFutureMonthMeal\(day, mealTypeId\)/);
+  assert.match(app, /class="month-future-meal month-future-meal-locked" data-month-meal/);
+  assert.match(app, /button\.classList\.toggle\('month-future-scope-selected', selected\)/);
+  assert.match(app, /button\.classList\.toggle\('month-future-meal-present', isPresent\)/);
+  assert.match(app, /button\.textContent = isPresent \? '✓' : '–'/);
+  assert.match(app, /elements\.monthGrid\.querySelector\('\.month-future'\)/);
   assert.match(styles, /\.month-future-scope \{/);
   assert.match(styles, /\.month-future-scope-selected \{/);
+});
+
+test('la vista futura mese allinea creazione modifica e sincronizzazione delle prenotazioni', () => {
+  const futureMealRenderer = app.match(/function renderFutureMonthMeal\(day, mealTypeId\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(futureMealRenderer, /data-month-meal/);
+  assert.match(futureMealRenderer, /data-month-date/);
+  assert.match(futureMealRenderer, /data-month-meal-id/);
+  assert.match(futureMealRenderer, /data-month-effect="\$\{isPresent \? 'ABSENT' : 'PRESENT'\}"/);
+  assert.match(futureMealRenderer, /aria-pressed="\$\{isPresent\}"/);
+
+  const monthGridRenderer = app.match(/function renderMonthGrid\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(monthGridRenderer, /isFuture\s*\?\s*Boolean\(elements\.monthGrid\.querySelector\('\.month-future'\)\)/);
+  assert.match(monthGridRenderer, /elements\.monthGrid\.dataset\.renderKey === monthRenderKey && hasGridBody/);
+  assert.match(monthGridRenderer, /renderFutureMonth\(\);\s*elements\.monthGrid\.dataset\.renderKey = monthRenderKey;/);
+
+  const syncMeal = app.match(/function syncMonthMealButton\(button, meal\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(syncMeal, /button\.classList\.contains\('month-future-meal'\)/);
+  assert.match(syncMeal, /button\.classList\.toggle\('month-future-meal-present', isPresent\)/);
+  assert.match(syncMeal, /button\.classList\.toggle\('month-future-meal-locked', !meal\.isOpen\)/);
+  assert.match(syncMeal, /button\.textContent = isPresent \? '✓' : '–'/);
+
+  const syncControls = app.match(/function syncMonthSelectionControls\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(syncControls, /button\.classList\.toggle\('month-future-scope-selected', selected\)/);
 });
 
 test('riepilogo e cucina portano il selettore giorni in primo piano solo quando serve', () => {
@@ -908,7 +937,7 @@ test('la spunta vice usa direttamente sigla e password amministratori nel login 
   assert.match(app, /signInFriendlyViceAdministrator/);
   assert.match(app, /result\.administratorAuthorized === true/);
   const directViceAccess = app.match(
-    /if \(result\.administratorAuthorized === true\) \{([\s\S]*?)\n    \}\n    \/\/ L'ingresso esplicito/
+    /if \(result\.administratorAuthorized === true\) \{([\s\S]*?)\r?\n    \}\r?\n    \/\/ L'ingresso esplicito/
   )?.[1] || '';
   assert.match(directViceAccess, /state\.residentEntryKind = 'shared-admin'/);
   assert.match(directViceAccess, /applyResidentEntryView\(\)/);
