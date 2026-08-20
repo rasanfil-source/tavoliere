@@ -326,6 +326,38 @@ export async function withResidentTechnicalSession(centerId, password, operation
   }
 }
 
+// Sessione tecnica usata quando il residente inserisce direttamente la
+// password amministratori nel modulo iniziale. Non modifica la sessione
+// Firebase principale: serve soltanto a validare la password e a eseguire le
+// poche operazioni iniziali autorizzate per il vice.
+export async function withAdministratorTechnicalSession(
+  centerId,
+  password,
+  passwordVersion,
+  operation,
+  technicalEmailOverride = ''
+) {
+  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const email = String(technicalEmailOverride || '').trim().toLowerCase()
+    || getAdministratorTechnicalEmail(centerId, passwordVersion);
+  const technicalPassword = formatTechnicalAuthPassword(password);
+  try {
+    const credential = await signInWithEmailAndPassword(
+      maintenanceAuth,
+      email,
+      technicalPassword
+    );
+    return await operation({
+      auth: maintenanceAuth,
+      db: getFirestore(maintenanceAuth.app),
+      user: credential.user,
+      email
+    });
+  } finally {
+    await signOut(maintenanceAuth).catch(() => undefined);
+  }
+}
+
 // Verifica la password comune senza sostituire la sessione Firebase principale.
 // È essenziale quando un amministratore entra nelle viste operative e poi torna
 // al pannello di controllo.

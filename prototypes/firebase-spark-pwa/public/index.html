@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260816a">
-    <link rel="stylesheet" href="/styles.css?v=20260817r">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260818ac">
+    <link rel="stylesheet" href="/styles.css?v=20260819b">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260819b">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -620,7 +620,6 @@
                   <div class="admin-center-avatar-controls">
                     <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
                     <div class="field-label admin-center-avatar-picker">
-                      <span data-i18n="admin.avatar.chooseFile">Scegli file</span>
                       <div class="admin-center-avatar-input-wrapper">
                         <input type="file" id="admin-center-avatar-input" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif" class="visually-hidden">
                         <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseFile">Scegli file</label>
@@ -648,21 +647,6 @@
                   </aside>
                   <section class="resident-admin-unlock" data-resident-admin-unlock hidden>
                     <p data-i18n="admin.sharedPassword.unlockHelp">Inserisci la password amministratori per aprire le funzioni autorizzate.</p>
-                    <div class="admin-auth-method-buttons" hidden>
-                      <button type="button" class="primary-action" data-vice-auth-google data-i18n="auth.google.signIn">Accedi con Google</button>
-                      <button type="button" class="primary-action" data-vice-auth-email-choice aria-expanded="false" data-i18n="auth.email.enter">Entra con email</button>
-                    </div>
-                    <form class="admin-email-auth" data-vice-auth-email-form hidden>
-                      <label class="field-label">
-                        <span data-i18n="auth.email.label">Email</span>
-                        <input type="email" data-vice-auth-email autocomplete="email" required>
-                      </label>
-                      <label class="field-label">
-                        <span data-i18n="auth.password.label">Password</span>
-                        <input type="password" data-vice-auth-password autocomplete="current-password" minlength="6" required>
-                      </label>
-                      <button type="submit" class="secondary-action" data-i18n="auth.email.signIn">Accedi con email</button>
-                    </form>
                     <div class="resident-admin-password-form">
                       <label class="field-label">
                         <span data-i18n="admin.sharedPassword.label">Password amministratori</span>
@@ -692,6 +676,7 @@
                       <option value="original" data-i18n="admin.adaptations.interfaceStyle.original">Originale</option>
                       <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool">Cool</option>
                       <option value="urban" data-i18n="admin.adaptations.interfaceStyle.urban">Urban</option>
+                      <option value="future" data-i18n="admin.adaptations.interfaceStyle.future">Futura</option>
                     </select>
                   </fieldset>
 
@@ -704,7 +689,7 @@
                         <select id="admin-summary-layout-select" data-admin-summary-layout-select aria-label="Vista del riepilogo">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
-                          <option value="future" data-i18n="admin.adaptations.layout.future">Futuro</option>
+                          <option value="future" data-i18n="admin.adaptations.layout.future">Futura</option>
                         </select>
                       </label>
                       <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select">
@@ -712,13 +697,6 @@
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
-                        </select>
-                      </label>
-                      <label class="field-label admin-layout-setting" for="admin-month-layout-select">
-                        <span data-i18n="admin.adaptations.monthLayout.label">Vista del mese</span>
-                        <select id="admin-month-layout-select" data-admin-month-layout-select aria-label="Vista del mese">
-                          <option value="grid" data-i18n="admin.adaptations.layout.grid">Griglia</option>
-                          <option value="future" data-i18n="admin.adaptations.layout.future">Futuro</option>
                         </select>
                       </label>
                     </div>
@@ -729,6 +707,14 @@
                         <option value="signature" data-i18n="admin.adaptations.summaryResidentLabel.signature">Sigla</option>
                         <option value="initials" data-i18n="admin.adaptations.summaryResidentLabel.initials">Iniziali</option>
                       </select>
+                    </label>
+                    <label class="field-label admin-month-controls-side" for="admin-month-controls-side-select">
+                      <span data-i18n="admin.adaptations.monthControlsSide.label">Pulsanti nella vista mese</span>
+                      <select id="admin-month-controls-side-select" data-admin-month-controls-side-select aria-label="Posizione dei pulsanti nella vista mese">
+                        <option value="right" data-i18n="admin.adaptations.monthControlsSide.right">Destra</option>
+                        <option value="left" data-i18n="admin.adaptations.monthControlsSide.left">Sinistra</option>
+                      </select>
+                      <small class="field-help" data-i18n="admin.adaptations.monthControlsSide.help">Scegli su quale lato mostrare i pulsanti di selezione multipla.</small>
                     </label>
                   </fieldset>
 
@@ -1055,6 +1041,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260819a"></script>
+  <script type="module" src="/app.js?v=20260820d"></script>
   </body>
 </html>

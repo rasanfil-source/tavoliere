@@ -1184,11 +1184,6 @@ h2 {
   margin: 28px 0 12px;
 }
 
-body[data-resident-login-visible="true"] .account-footer {
-  width: min(100%, 420px);
-  margin-inline: auto;
-}
-
 .footer-exit-button {
   display: inline-flex;
   align-items: center;
@@ -1409,11 +1404,15 @@ body[data-center-activation="true"] .admin-shell-body {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .avatar-file-button {
   cursor: pointer;
   display: inline-flex;
+  max-width: 100%;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   padding: 6px 12px;
@@ -1423,9 +1422,26 @@ body[data-center-activation="true"] .admin-shell-body {
 }
 
 .avatar-file-name {
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.85rem;
   color: var(--muted);
   word-break: break-all;
+}
+
+/* L'input nativo resta accessibile da tastiera, ma la sua UI non viene
+   mostrata accanto al pulsante personalizzato: era la causa del controllo
+   apparentemente duplicato. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .admin-center-avatar-actions {
@@ -2550,7 +2566,22 @@ button[aria-busy="true"]:disabled {
 }
 
 .admin-person-toggle-active input {
-  accent-color: var(--good);
+  /* La spunta Attiva/Sospesa segue il tema scelto dal centro. */
+  accent-color: var(--primary);
+}
+
+/* Su mobile il comando Esci occupa sempre la larghezza disponibile.  Su
+   desktop viene ridotto solo nella schermata di accesso residenti, dove deve
+   allinearsi al box largo 420px; nel pannello amministrativo resta pieno. */
+body[data-resident-login-visible="true"] .account-footer {
+  width: 100%;
+}
+
+@media (min-width: 621px) {
+  body[data-resident-login-visible="true"] .account-footer {
+    width: min(100%, 420px);
+    margin-inline: auto;
+  }
 }
 
 .admin-person-delete {
@@ -4528,7 +4559,8 @@ button[aria-busy="true"]:disabled {
 
 .week-invited-meals input {
   box-sizing: border-box;
-  width: 100%;
+  width: min(100%, 420px);
+  margin-inline: auto;
   min-height: 42px;
 }
 
@@ -5477,6 +5509,22 @@ button[aria-busy="true"]:disabled {
     --month-weekday-control-height: 38px;
   }
 }
+
+/* La posizione dei comandi multipli nella griglia mensile è configurabile
+   dal pannello Impostazioni. Il layout resta identico, cambia solo il lato. */
+.month-weekday-row.month-controls-left .month-weekday-month-control {
+  justify-items: start;
+}
+
+@media (max-width: 620px) {
+  .month-week-row.month-controls-left .month-week-mobile-header .month-scope-group {
+    grid-column: 1;
+  }
+
+  .month-week-row.month-controls-left .month-week-action-row {
+    grid-column: 1;
+  }
+}
 .admin-coverage-status {
   margin: 8px 0 18px;
   color: var(--muted);
@@ -5567,6 +5615,30 @@ button[aria-busy="true"]:disabled {
   margin: 0;
 }
 
+/* I due campi devono iniziare dalla stessa riga: il margine predefinito di
+   .field-label e il messaggio di stato del secondo campo non devono alterare
+   l'allineamento della griglia desktop. */
+.admin-shared-password-fields > .field-label {
+  min-width: 0;
+  margin-top: 0;
+  align-self: start;
+}
+
+.admin-shared-password-fields .password-field,
+.admin-shared-password-fields .password-field input {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-shared-password-fields .password-field {
+  width: 100%;
+}
+
+.admin-shared-password-fields .password-field input {
+  width: auto;
+  max-width: 100%;
+}
+
 .admin-password-rotation-warning,
 .resident-admin-unlock {
   display: grid;
@@ -5612,6 +5684,124 @@ body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .adm
 @media (max-width: 620px) {
   .admin-shared-password-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Futura: la settimana adotta la stessa grammatica leggera del mese intero. */
+html[data-interface-style="future"] .week-matrix {
+  gap: 2px;
+  padding: clamp(6px, 1.8vw, 12px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+html[data-interface-style="future"] .week-matrix-header,
+html[data-interface-style="future"] .week-matrix-row {
+  gap: 2px;
+}
+
+html[data-interface-style="future"] :is(
+  .week-scope-button,
+  .week-meal-heading,
+  .week-mass-heading,
+  .week-day-button,
+  .week-meal-button,
+  .week-mass-button
+) {
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="future"] :is(.week-meal-heading, .week-mass-heading) {
+  color: var(--primary);
+}
+
+html[data-interface-style="future"] .week-meal-button-present {
+  background: color-mix(in srgb, var(--confirmed) 14%, var(--surface));
+  color: var(--confirmed);
+}
+
+html[data-interface-style="future"] .week-matrix-row-today {
+  outline: 1px solid var(--today-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--today-surface) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--today-line) 38%, transparent);
+}
+
+html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-person-initials {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.admin-person-initials::before {
+  content: "·";
+  margin-right: 7px;
+}
+
+.admin-person-status-label.is-active {
+  color: var(--confirmed, var(--good));
+  font-weight: 700;
+}
+
+.admin-person-status-label.is-suspended {
+  color: var(--danger, #8f342d);
+}
+
+.admin-center-avatar,
+.admin-center-avatar-controls,
+.admin-center-avatar-picker,
+.admin-center-avatar-input-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.avatar-file-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+@media (max-width: 620px) {
+  .admin-center-avatar {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .admin-center-avatar-preview-wrap {
+    width: 58px;
+    height: 58px;
+  }
+
+  .admin-center-avatar-input-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .avatar-file-button {
+    width: 100%;
+  }
+
+  .avatar-file-name {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -6006,6 +6196,329 @@ body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .adm
   background: none;
   border: none;
   cursor: pointer;
+}
+
+/* -------------------------------------------------------------------
+   Vista Futuro
+   Il mese resta interamente visibile; il riepilogo usa schede leggere.
+   I colori derivano sempre dalla palette attiva.
+   ------------------------------------------------------------------- */
+
+.summary-future-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.summary-future-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.summary-future-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+}
+
+.summary-future-card-head strong {
+  color: var(--ink);
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1rem;
+}
+
+.summary-future-card-head time {
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.summary-future-meals {
+  display: grid;
+}
+
+.summary-future-meal {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary-future-meal-main {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-future-meal-icon {
+  display: grid;
+  color: var(--primary);
+  font-size: 1.05rem;
+  place-items: center;
+}
+
+.summary-future-meal-name {
+  min-width: 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.summary-future-meal-total {
+  color: var(--primary);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.summary-future-diets {
+  margin: 5px 0 0 32px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.summary-future-metric,
+.summary-future-special-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0 0 32px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.summary-future-metric strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.summary-future-metric-guests strong {
+  color: var(--primary);
+}
+
+.summary-future-metric-sick strong {
+  color: var(--danger);
+}
+
+.summary-future-special-row .summary-matrix-diets {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.74rem;
+}
+
+.summary-future-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.summary-future-person {
+  display: inline-grid;
+  min-width: 30px;
+  min-height: 30px;
+  place-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-future-mass {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.summary-future-mass strong {
+  min-width: 42px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  text-align: center;
+}
+
+.summary-future-mass-yes {
+  background: color-mix(in srgb, var(--affirmative) 16%, var(--surface));
+  color: var(--affirmative);
+}
+
+.summary-future-mass-no {
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  color: var(--danger);
+}
+
+.month-future {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: clamp(8px, 2vw, 14px);
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.month-future-week {
+  display: grid;
+  gap: 3px;
+  padding-block: 3px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.month-future-week:last-child {
+  border-bottom: 0;
+}
+
+.month-future-row {
+  display: grid;
+  grid-template-columns: 30px repeat(7, minmax(0, 1fr));
+  align-items: center;
+  gap: clamp(2px, 0.8vw, 6px);
+}
+
+.month-future.month-controls-right .month-future-row {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) 30px;
+}
+
+.month-future-weekdays {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.month-future-gutter {
+  display: grid;
+  min-width: 0;
+  color: var(--primary);
+  place-items: center;
+}
+
+.month-future-date,
+.month-future-meal {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.month-future-date {
+  min-height: 29px;
+  border-radius: 8px;
+  font-weight: 750;
+}
+
+.month-future-date:not(:disabled) {
+  cursor: pointer;
+}
+
+.month-future-date-today {
+  outline: 1px solid var(--today-line);
+  background: var(--today-surface);
+  color: var(--today-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--today-line) 50%, transparent);
+}
+
+.month-future-date-past:not(.month-future-date-today) {
+  color: color-mix(in srgb, var(--muted) 56%, var(--surface));
+}
+
+.month-future-meal,
+.month-future-empty {
+  min-height: 27px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+}
+
+.month-future-meal {
+  cursor: pointer;
+  color: color-mix(in srgb, var(--muted) 58%, var(--surface));
+}
+
+.month-future-meal-present {
+  background: color-mix(in srgb, var(--confirmed) 14%, var(--surface));
+  color: var(--confirmed);
+  font-weight: 900;
+}
+
+.month-future-meal:not(:disabled):hover,
+.month-future-meal:not(:disabled):focus-visible,
+.month-future-date:not(:disabled):hover,
+.month-future-date:not(:disabled):focus-visible {
+  outline: 2px solid var(--hover-ring);
+  background: var(--hover-surface);
+}
+
+.month-future-meal-locked,
+.month-future-meal:disabled,
+.month-future-date:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.month-future-empty {
+  display: grid;
+  color: color-mix(in srgb, var(--muted) 36%, var(--surface));
+  place-items: center;
+}
+
+.center-avatar-fallback {
+  object-fit: contain;
+  padding: 4px;
+  background: var(--surface);
+}
+
+@media (max-width: 620px) {
+  .summary-future-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .summary-future-card-head,
+  .summary-future-meal,
+  .summary-future-mass {
+    padding-inline: 11px;
+  }
+
+  .month-future {
+    gap: 6px;
+    padding: 6px 4px;
+  }
+
+  .month-future-row {
+    grid-template-columns: 24px repeat(7, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .month-future.month-controls-right .month-future-row {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) 24px;
+  }
+
+  .month-future-week {
+    padding-bottom: 5px;
+  }
+
+  .month-future-date,
+  .month-future-meal,
+  .month-future-empty {
+    min-height: 25px;
+  }
 }
 
 /* Pannello autenticato: l'email vive nella testata principale, senza fascia duplicata. */

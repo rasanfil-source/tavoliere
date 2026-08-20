@@ -4,7 +4,7 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260818s';
+import { db } from './firebase-client.js?v=20260820t';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
 
@@ -15,6 +15,7 @@ const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
 const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
 const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
+const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
 const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
 const CENTER_AVATAR_MAX_LENGTH = 300000;
@@ -27,7 +28,7 @@ const ALLOWED_THEME_PALETTES = new Set([
   'inchiostro',
   'neutro'
 ]);
-const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban']);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban', 'future']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 let centerContactSettingsRevision = 0;
@@ -49,6 +50,7 @@ export function loadCachedCenterContactSettings() {
       summaryLayout: normalizeLayout(cached.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
       monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+      monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
       summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel),
       language: normalizeCenterLanguage(cached.language),
       administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
@@ -165,6 +167,7 @@ export async function updateCenterSettings({
   summaryLayout,
   kitchenLayout,
   monthLayout,
+  monthControlsSide,
   summaryResidentLabel,
   language,
   commonPassword,
@@ -173,6 +176,7 @@ export async function updateCenterSettings({
   administratorName,
   administratorSignature,
   adminEmail,
+  adaptationsOnly = false,
   onProgress
 }) {
   const normalizedName = String(name || '').trim();
@@ -213,7 +217,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260818xa');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260820a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -225,7 +229,11 @@ export async function updateCenterSettings({
     summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
-    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, summaryLayout === 'future' ? 'initials' : 'name'),
+    monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+    // Futura è uno stile dell'interfaccia, non un valore di summaryLayout.
+    // Quando il campo non esiste ancora, il riepilogo Futura parte quindi con
+    // le iniziali come previsto, senza attendere un salvataggio manuale.
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, interfaceStyle === 'future' ? 'initials' : 'name'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
@@ -235,6 +243,7 @@ export async function updateCenterSettings({
     administratorName: normalizedAdministratorName,
     administratorSignature: normalizedAdministratorSignature,
     adminEmail: normalizedAdministratorEmail,
+    adaptationsOnly: adaptationsOnly === true,
     onProgress
   });
   invalidateCenterContactSettingsCache();
@@ -306,8 +315,13 @@ function refreshCenterContactSettings() {
   }
   const requestRevision = centerContactSettingsRevision;
   let request;
-  request = getDoc(doc(db, 'centers', getActiveCenterId()))
-    .then(async (snapshot) => {
+  const centerId = getActiveCenterId();
+  request = Promise.all([
+    getDoc(doc(db, 'centers', centerId)),
+    getDoc(doc(db, 'centers', centerId, 'presentationSettings', 'current')).catch(() => null),
+    getDoc(doc(db, 'centers', centerId, 'participantMetadata', 'current')).catch(() => null)
+  ])
+    .then(async ([snapshot, presentationSnapshot, participantMetadataSnapshot]) => {
       // A save may have invalidated this request while Firestore was still
       // resolving. Re-read authoritative settings instead of publishing the
       // stale snapshot into memory or localStorage.
@@ -315,7 +329,12 @@ function refreshCenterContactSettings() {
         if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
         return refreshCenterContactSettings();
       }
-      const data = snapshot.exists() ? snapshot.data() : {};
+      const centerData = snapshot.exists() ? snapshot.data() : {};
+      const presentationData = presentationSnapshot?.exists() ? presentationSnapshot.data() : {};
+      const participantMetadata = participantMetadataSnapshot?.exists()
+        ? participantMetadataSnapshot.data()
+        : {};
+      const data = { ...centerData, ...presentationData };
       const avatarVersion = typeof data.avatarVersion === 'string' ? data.avatarVersion : '';
       const avatarDataUrl = await resolveCenterAvatar(avatarVersion)
         .catch(() => loadCachedCenterAvatar());
@@ -330,7 +349,8 @@ function refreshCenterContactSettings() {
         summaryLayout: normalizeLayout(data.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
         monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
-        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, data.summaryLayout === 'future' ? 'initials' : 'name'),
+        monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, data.interfaceStyle === 'future' ? 'initials' : 'name'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
@@ -347,7 +367,9 @@ function refreshCenterContactSettings() {
         adminTechnicalEmail: typeof data.adminTechnicalEmail === 'string' ? data.adminTechnicalEmail : '',
         adminTechnicalUid: typeof data.adminTechnicalUid === 'string' ? data.adminTechnicalUid : '',
         adminPasswordRotationRequired: data.adminPasswordRotationRequired === true,
-        participantDataVersion: timestampVersion(data.participantDataUpdatedAt),
+        participantDataVersion: timestampVersion(
+          participantMetadata.updatedAt || centerData.participantDataUpdatedAt
+        ),
         avatarVersion,
         avatarDataUrl
       };
@@ -373,7 +395,7 @@ function normalizeThemePalette(value) {
 }
 
 function normalizeInterfaceStyle(value) {
-  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'original';
+  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'cool';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {

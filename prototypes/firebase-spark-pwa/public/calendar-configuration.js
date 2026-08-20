@@ -10,7 +10,7 @@ import {
   getCurrentUser,
   setAdministratorTechnicalPassword,
   setResidentTechnicalPassword
-} from './firebase-client.js?v=20260818s';
+} from './firebase-client.js?v=20260820t';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
@@ -30,8 +30,9 @@ const DATE_ID_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
 const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
 const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
+const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
 const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
-const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban']);
+const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'future']);
 
 export async function saveCenterConfiguration({
   name,
@@ -44,6 +45,7 @@ export async function saveCenterConfiguration({
   summaryLayout,
   kitchenLayout,
   monthLayout,
+  monthControlsSide,
   summaryResidentLabel,
   language,
   commonPassword,
@@ -52,23 +54,22 @@ export async function saveCenterConfiguration({
   administratorName,
   administratorSignature,
   adminEmail,
+  adaptationsOnly = false,
   onProgress
 }) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
   const user = getCurrentUser();
-  if (!user || user.isAnonymous) {
+  if (!user || (user.isAnonymous && adaptationsOnly !== true)) {
     throw new Error('Accesso amministratore richiesto');
   }
 
   const centerId = getActiveCenterId();
   const centerRef = doc(db, 'centers', centerId);
   const jobRef = doc(db, 'centers', centerId, 'privateSettings', 'calendarReconfiguration');
-  const [centerSnapshot, jobSnapshot] = await Promise.all([
-    getDoc(centerRef),
-    getDoc(jobRef)
-  ]);
+  const centerSnapshot = await getDoc(centerRef);
+  const jobSnapshot = adaptationsOnly ? null : await getDoc(jobRef);
   if (!centerSnapshot.exists()) {
     throw new Error('Il centro selezionato non esiste');
   }
@@ -85,7 +86,8 @@ export async function saveCenterConfiguration({
     summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
-    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, summaryLayout === 'future' ? 'initials' : 'name'),
+    monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, interfaceStyle === 'future' ? 'initials' : 'name'),
     language: typeof language === 'string' && language.trim()
       ? language
       : (typeof center.language === 'string' && center.language.trim() ? center.language : 'it'),
@@ -101,6 +103,11 @@ export async function saveCenterConfiguration({
     administratorSignature,
     adminEmail: typeof adminEmail === 'string' ? adminEmail : undefined
   };
+  if (adaptationsOnly === true) {
+    await savePresentationOnly(centerId, user, target);
+    reportProgress(onProgress, { completedDays: 0, totalDays: 0, status: 'COMPLETED' });
+    return { ...target, administratorSharedPassword: null };
+  }
   if (target.commonPassword !== null) {
     await setResidentTechnicalPassword(
       centerId,
@@ -121,11 +128,13 @@ export async function saveCenterConfiguration({
     target.adminTechnicalEmail = technicalIdentity.email;
     target.adminTechnicalUid = technicalIdentity.uid;
   }
-  const activeJob = jobSnapshot.exists() && jobSnapshot.data().status === 'ACTIVE'
+  const activeJob = jobSnapshot?.exists() && jobSnapshot.data().status === 'ACTIVE'
     ? jobSnapshot.data()
     : null;
-  const scheduleChanged = center.timezone !== target.timezone
-    || !sameCutoffs(normalizeReservationCutoffs(center.reservationCutoffs), target.reservationCutoffs);
+  const scheduleChanged = adaptationsOnly !== true && (
+    center.timezone !== target.timezone
+    || !sameCutoffs(normalizeReservationCutoffs(center.reservationCutoffs), target.reservationCutoffs)
+  );
   const canResume = activeJob && jobMatchesTarget(activeJob, target);
 
   if (!scheduleChanged && !canResume) {
@@ -234,6 +243,7 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
       monthLayout: target.monthLayout,
+      monthControlsSide: target.monthControlsSide,
       summaryResidentLabel: target.summaryResidentLabel,
       language: target.language || 'it',
       administratorName: target.administratorName,
@@ -255,7 +265,29 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       centerUpdate.adminEmail = target.adminEmail;
     }
     transaction.set(centerRef, centerUpdate, { merge: true });
+    transaction.set(
+      doc(db, 'centers', centerId, 'presentationSettings', 'current'),
+      presentationData(centerId, target),
+      { merge: true }
+    );
     appendSettingsAuditEvent(transaction, centerId, userUid, target.commonPassword !== null);
+  });
+}
+
+async function savePresentationOnly(centerId, user, target) {
+  await runTransaction(db, async (transaction) => {
+    transaction.set(
+      doc(db, 'centers', centerId, 'presentationSettings', 'current'),
+      presentationData(centerId, target),
+      { merge: true }
+    );
+    appendSettingsAuditEvent(
+      transaction,
+      centerId,
+      user.uid,
+      false,
+      user.isAnonymous ? 'viceAuditEvents' : 'auditEvents'
+    );
   });
 }
 
@@ -285,6 +317,7 @@ async function completeConfiguration({
       summaryLayout: target.summaryLayout,
       kitchenLayout: target.kitchenLayout,
       monthLayout: target.monthLayout,
+      monthControlsSide: target.monthControlsSide,
       summaryResidentLabel: target.summaryResidentLabel,
       language: target.language || 'it',
       administratorName: target.administratorName,
@@ -306,6 +339,11 @@ async function completeConfiguration({
       centerUpdate.adminEmail = target.adminEmail;
     }
     transaction.set(centerRef, centerUpdate, { merge: true });
+    transaction.set(
+      doc(db, 'centers', centerId, 'presentationSettings', 'current'),
+      presentationData(centerId, target),
+      { merge: true }
+    );
     transaction.set(jobRef, calendarJobData({
       centerId,
       operationId,
@@ -319,12 +357,18 @@ async function completeConfiguration({
   });
 }
 
-function appendSettingsAuditEvent(transaction, centerId, userUid, passwordChanged = false) {
+function appendSettingsAuditEvent(
+  transaction,
+  centerId,
+  userUid,
+  passwordChanged = false,
+  collectionName = 'auditEvents'
+) {
   const summaryParts = ['Aggiornate le impostazioni operative del centro'];
   if (passwordChanged) {
     summaryParts.push('password comune modificata');
   }
-  transaction.set(doc(collection(db, 'centers', centerId, 'auditEvents')), {
+  transaction.set(doc(collection(db, 'centers', centerId, collectionName)), {
     centerId,
     actorUid: userUid,
     action: 'UPDATE_CENTER_SETTINGS',
@@ -333,6 +377,23 @@ function appendSettingsAuditEvent(transaction, centerId, userUid, passwordChange
     summary: summaryParts.join(', '),
     createdAt: serverTimestamp()
   });
+}
+
+function presentationData(centerId, target) {
+  return {
+    centerId,
+    participantContactSharingEnabled: target.participantContactSharingEnabled,
+    themePalette: target.themePalette,
+    interfaceStyle: target.interfaceStyle,
+    defaultView: target.defaultView,
+    summaryLayout: target.summaryLayout,
+    kitchenLayout: target.kitchenLayout,
+    monthLayout: target.monthLayout,
+    monthControlsSide: target.monthControlsSide,
+    summaryResidentLabel: target.summaryResidentLabel,
+    language: target.language || 'it',
+    updatedAt: serverTimestamp()
+  };
 }
 
 function calendarJobData({
@@ -400,5 +461,5 @@ function normalizeResidentLabel(value, fallback = 'name') {
 }
 
 function normalizeInterfaceStyle(value) {
-  return ALLOWED_INTERFACE_STYLE_VALUES.has(value) ? value : 'original';
+  return ALLOWED_INTERFACE_STYLE_VALUES.has(value) ? value : 'cool';
 }

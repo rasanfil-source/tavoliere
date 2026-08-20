@@ -7,6 +7,7 @@ export const CENTER_ROLES = Object.freeze({
 export const CAPABILITIES = Object.freeze({
   OPEN_ADMIN_AREA: 'openAdminArea',
   VIEW_CENTER_OVERVIEW: 'viewCenterOverview',
+  MANAGE_ADAPTATIONS: 'manageAdaptations',
   MANAGE_CENTER_SETTINGS: 'manageCenterSettings',
   MANAGE_CENTER_AVATAR: 'manageCenterAvatar',
   MANAGE_CALENDAR: 'manageCalendar',
@@ -28,6 +29,7 @@ export const CAPABILITIES = Object.freeze({
 const OWNER_CAPABILITIES = [
   CAPABILITIES.OPEN_ADMIN_AREA,
   CAPABILITIES.VIEW_CENTER_OVERVIEW,
+  CAPABILITIES.MANAGE_ADAPTATIONS,
   CAPABILITIES.MANAGE_CENTER_SETTINGS,
   CAPABILITIES.MANAGE_CENTER_AVATAR,
   CAPABILITIES.MANAGE_CALENDAR,
@@ -50,13 +52,19 @@ const ADMIN_CAPABILITIES = OWNER_CAPABILITIES.filter((capability) => ![
   CAPABILITIES.TRANSFER_OWNERSHIP
 ].includes(capability));
 
-// Il vice amministratore usa tutto il pannello operativo, tranne la scheda
-// Amministratore (MANAGE_ADMINS / TRANSFER_OWNERSHIP). La membership Firebase
-// resta l'unica fonte dei privilegi: la spunta sulla Persona non basta.
-const MANAGER_CAPABILITIES = OWNER_CAPABILITIES.filter((capability) => ![
-  CAPABILITIES.MANAGE_ADMINS,
-  CAPABILITIES.TRANSFER_OWNERSHIP
-].includes(capability));
+// Il vice entra come residente con sigla e password amministratori. Il suo
+// pannello è deliberatamente operativo e ristretto: Persone, Link e
+// Impostazioni. Configurazione, Attività e passaggio di consegne restano
+// riservati a responsabile/amministratori con autenticazione forte.
+const MANAGER_CAPABILITIES = [
+  CAPABILITIES.OPEN_ADMIN_AREA,
+  CAPABILITIES.MANAGE_ADAPTATIONS,
+  CAPABILITIES.MANAGE_PARTICIPANTS,
+  CAPABILITIES.DELETE_PARTICIPANTS,
+  CAPABILITIES.MANAGE_DAILY_OPERATIONS,
+  CAPABILITIES.MANAGE_MASS,
+  CAPABILITIES.VIEW_OPERATIONAL_LINKS
+];
 
 const ROLE_CAPABILITIES = Object.freeze({
   [CENTER_ROLES.OWNER]: new Set(OWNER_CAPABILITIES),
@@ -87,8 +95,8 @@ export function getRoleCapabilities(role, options = {}) {
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }
-  // La spunta identifica chi può ricevere l'invito personale, ma non concede
-  // privilegi da sola: serve una membership Firebase MANAGER attiva.
+  // La spunta identifica la Persona ammessa; l'abilitazione effettiva richiede
+  // anche una sessione residente con la password amministratori corrente.
   if (options.platformOwner === true) {
     capabilities.add(CAPABILITIES.MANAGE_PLATFORM_CENTERS);
   }

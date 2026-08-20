@@ -28,7 +28,7 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260818s';
+} from './firebase-client.js?v=20260820t';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -45,14 +45,14 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260818za';
+} from './center-settings.js?v=20260820a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
 } from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260818a';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260819b';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import { toUserMessage } from './core/user-error.mjs?v=20260818b';
@@ -74,7 +74,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260818ua';
+} from './summary-matrix-view.js?v=20260820a';
 
 const initialMode = resolveMode();
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -87,13 +87,13 @@ const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPen
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260818b',
+  admin: './admin-center.js?v=20260819b',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260818u'
+  participant: './participant-data.js?v=20260820e'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -131,7 +131,6 @@ const createCenterInvitation = callDomain('admin', 'createCenterInvitation');
 const createPlatformAdministratorInvitation = callDomain('admin', 'createPlatformAdministratorInvitation');
 const deactivatePlatformCenter = callDomain('admin', 'deactivatePlatformCenter');
 const createAdministratorInvitation = callDomain('admin', 'createAdministratorInvitation');
-const createViceAdministratorInvitation = callDomain('admin', 'createViceAdministratorInvitation');
 const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministratorAccess');
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
@@ -172,6 +171,7 @@ const restoreResidentIdentityForAuthorizedAdministrator = callDomain(
   'restoreResidentIdentityForAuthorizedAdministrator'
 );
 const signInFriendlyResident = callDomain('participant', 'signInFriendlyResident');
+const signInFriendlyViceAdministrator = callDomain('participant', 'signInFriendlyViceAdministrator');
 const listPublicParticipants = callDomain('participant', 'listPublicParticipants');
 const listAdminParticipants = callDomain('participant', 'listAdminParticipants');
 const listCenterAdministrators = callDomain('participant', 'listCenterAdministrators');
@@ -285,12 +285,12 @@ const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
-const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban']);
+const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'future']);
 let mealViewSwipeStart = null;
 let mealViewSwipeTimer = 0;
 
 function applyInterfaceStyle(value) {
-  const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'original';
+  const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'cool';
   document.documentElement.dataset.interfaceStyle = style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
   return style;
@@ -388,6 +388,7 @@ function applyResidentPreferences(settings) {
     ...(preferences.interfaceStyle ? { interfaceStyle: preferences.interfaceStyle } : {}),
     ...(preferences.defaultView ? { defaultView: preferences.defaultView } : {}),
     ...(preferences.summaryLayout ? { summaryLayout: preferences.summaryLayout } : {}),
+    ...(preferences.monthControlsSide ? { monthControlsSide: preferences.monthControlsSide } : {}),
     ...(preferences.language ? { language: preferences.language } : {})
   };
 }
@@ -532,6 +533,7 @@ const state = {
   residentSettingsMode: new URLSearchParams(window.location.search).get('access')
     === RESIDENT_SETTINGS_ACCESS,
   residentAdministratorAuthorized: false,
+  residentEntryKind: '',
   residentRestorePending: Boolean(loadStoredResidentSignature()),
   residentSettingsRestorePending: false,
   participantMeals: [],
@@ -558,6 +560,11 @@ const state = {
   monthDate: startOfMonth(new Date()),
   adminRole: '',
   adminAuthUid: '',
+  // True only while the backend reports that this account must initialize a
+  // center.  Do not infer activation from a stale invite token kept in local
+  // storage: residents/vice-admins can legitimately have such a token left
+  // over from an earlier flow.
+  adminNeedsInitialization: false,
   adminAuthorizationPending: false,
   adminPanelHydrating: false,
   adminHydrationVersion: 0,
@@ -594,11 +601,12 @@ const state = {
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
     themePalette: 'smeraldo',
-    interfaceStyle: 'original',
+    interfaceStyle: 'cool',
     defaultView: loadCachedDefaultView(),
     summaryLayout: 'international',
     kitchenLayout: 'classic',
     monthLayout: 'grid',
+    monthControlsSide: 'right',
     summaryResidentLabel: 'name',
     language: 'it',
     administratorName: '',
@@ -741,6 +749,7 @@ const elements = {
   adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
   adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
   adminMonthLayoutSelect: document.querySelector('[data-admin-month-layout-select]'),
+  adminMonthControlsSideSelect: document.querySelector('[data-admin-month-controls-side-select]'),
   adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
   adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
@@ -882,11 +891,6 @@ const elements = {
   residentAdminPasswordToggle: document.querySelector('[data-password-toggle="resident-admin"]'),
   residentAdminUnlockButton: document.querySelector('[data-resident-admin-unlock-button]'),
   residentAdminUnlockStatus: document.querySelector('[data-resident-admin-unlock-status]'),
-  viceAuthGoogle: document.querySelector('[data-vice-auth-google]'),
-  viceAuthEmailChoice: document.querySelector('[data-vice-auth-email-choice]'),
-  viceAuthEmailForm: document.querySelector('[data-vice-auth-email-form]'),
-  viceAuthEmail: document.querySelector('[data-vice-auth-email]'),
-  viceAuthPassword: document.querySelector('[data-vice-auth-password]'),
   adminCommonPasswordStatus: document.querySelector('[data-admin-common-password-status]'),
   adminCommonPasswordToggle: document.querySelector('[data-password-toggle="common-password"]'),
   adminAdministratorName: document.querySelector('[data-admin-administrator-name]'),
@@ -1214,15 +1218,6 @@ if (elements.residentAdminPasswordToggle) {
 }
 if (elements.residentAdminUnlockButton) {
   elements.residentAdminUnlockButton.addEventListener('click', handleResidentAdministratorUnlock);
-}
-if (elements.viceAuthGoogle) {
-  elements.viceAuthGoogle.addEventListener('click', handleViceGoogleAuthentication);
-}
-if (elements.viceAuthEmailChoice) {
-  elements.viceAuthEmailChoice.addEventListener('click', handleViceEmailChoice);
-}
-if (elements.viceAuthEmailForm) {
-  elements.viceAuthEmailForm.addEventListener('submit', handleViceEmailAuthentication);
 }
 if (elements.initializerPasswordToggle) {
   elements.initializerPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.initializerPassword, elements.initializerPasswordToggle));
@@ -1560,7 +1555,7 @@ function updateConnectivityState() {
   });
 }
 
-function handleInAppNavigation(event) {
+async function handleInAppNavigation(event) {
   const link = event.currentTarget;
   const targetUrl = new URL(link.href, window.location.href);
   const targetMode = targetUrl.searchParams.get('view');
@@ -1589,8 +1584,25 @@ function handleInAppNavigation(event) {
     } else {
       targetUrl.searchParams.delete('access');
     }
+  }
+  if (isOperationalTarget && hasStrongAdministratorIdentity() && state.adminRole) {
+    state.residentEntryKind = 'strong-admin';
     if (!state.residentReady) {
-      targetUrl.searchParams.delete('c');
+      try {
+        const restored = await restoreResidentIdentityForAuthorizedAdministrator();
+        if (restored) {
+          state.participants = restored.participants;
+          state.selectedParticipant = restored.participant;
+          state.residentReady = true;
+          state.residentRestorePending = false;
+        }
+      } catch (error) {
+        // Il collegamento Prenotarsi deve restare utilizzabile anche se la
+        // scheda persona dell'amministratore non e' ancora collegata: in quel
+        // caso mostriamo il normale accesso residente, senza interrompere la
+        // navigazione con un errore tecnico.
+        console.warn('[admin-to-resident]', error?.code || error?.message || error);
+      }
     }
   }
   window.history.pushState({}, '', targetUrl.pathname + targetUrl.search);
@@ -2000,9 +2012,9 @@ function isAdminSectionAllowed(section) {
   }
   const capabilityMap = {
     configuration: [CAPABILITIES.MANAGE_CENTER_SETTINGS],
-    overview: [CAPABILITIES.VIEW_CENTER_OVERVIEW],
+    overview: [CAPABILITIES.VIEW_CENTER_OVERVIEW, CAPABILITIES.VIEW_OPERATIONAL_LINKS],
     people: [CAPABILITIES.MANAGE_PARTICIPANTS],
-    adaptations: [CAPABILITIES.MANAGE_CENTER_SETTINGS],
+    adaptations: [CAPABILITIES.MANAGE_ADAPTATIONS],
     access: [CAPABILITIES.MANAGE_ADMINS],
     activity: [CAPABILITIES.VIEW_AUDIT_LOG, CAPABILITIES.MANAGE_CALENDAR]
   };
@@ -2231,6 +2243,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     && !invitationPending
     && !access.needsInitialization;
   state.platformOwner = isPlatformOwner;
+  state.adminNeedsInitialization = !isPlatformOwner && access.needsInitialization === true;
   state.adminRole = isAdmin ? access.role : '';
   state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
   state.adminMassPermission = isAdmin && access.massPermission === true;
@@ -2456,6 +2469,7 @@ function clearAdminAuthorizationState() {
   state.adminAccessReconcilePromise = null;
   state.adminRole = '';
   state.adminAuthUid = '';
+  state.adminNeedsInitialization = false;
   state.adminPersonDirty = false;
   state.adminCenterDirty = false;
   state.adminMassPermission = false;
@@ -3307,6 +3321,9 @@ async function refreshParticipant(source, options = {}) {
         state.selectedParticipant = restored.participant;
         state.residentReady = true;
         state.residentRestorePending = false;
+        if (restored.strongAdministrator === true) {
+          state.residentEntryKind = 'strong-admin';
+        }
         if (applyResidentEntryView()) {
           request = beginParticipantRequest();
         }
@@ -3482,6 +3499,7 @@ function isCenterAccessRevokedError(error) {
 function clearParticipantDataAfterAccessRevocation() {
   state.residentReady = false;
   state.residentRestorePending = false;
+  state.residentEntryKind = '';
   state.selectedParticipant = null;
   state.participants = [];
   state.participantMeals = [];
@@ -3530,19 +3548,48 @@ async function handleResidentLogin(event) {
   elements.residentLoginButton.disabled = true;
   elements.residentLoginStatus.textContent = 'Accesso in corso...';
   try {
-    const result = await signInFriendlyResident(
-      elements.residentSignatureInput.value,
-      elements.residentPasswordInput.value
-    );
-    const residentUser = getCurrentUser();
-    if (!residentUser || residentUser.isAnonymous || isResidentTechnicalEmail(residentUser.email)) {
-      clearAdminAuthorizationState();
+    let result;
+    try {
+      result = await signInFriendlyViceAdministrator(
+        elements.residentSignatureInput.value,
+        elements.residentPasswordInput.value,
+        state.centerContactSettings
+      );
+    } catch {
+      // Lo stesso modulo accetta anche la password amministratori per un
+      // residente già qualificato come vice. Se la persona non è un vice o la
+      // password non coincide, proseguiamo con il normale accesso residente.
+      result = await signInFriendlyResident(
+        elements.residentSignatureInput.value,
+        elements.residentPasswordInput.value
+      );
     }
     state.participants = result.participants;
     state.selectedParticipant = result.participant;
     state.residentReady = true;
     state.residentRestorePending = false;
     state.residentAuthTransition = '';
+    if (result.administratorAuthorized === true) {
+      state.residentAdministratorAuthorized = true;
+      state.residentEntryKind = 'shared-admin';
+      state.mode = 'admin';
+      state.friendlyAccess = false;
+      state.residentSettingsMode = false;
+      const adminUrl = new URL(window.location.href);
+      adminUrl.searchParams.set('view', 'admin');
+      adminUrl.searchParams.delete('access');
+      window.history.replaceState({}, '', adminUrl.pathname + adminUrl.search);
+      await activateResidentAdministratorPanel();
+      elements.residentPasswordInput.value = '';
+      renderResidentAccess(false);
+      renderMode();
+      return;
+    }
+    // L'ingresso esplicito con la password comune apre sempre il percorso
+    // residente. Un'eventuale identità Firebase forte rimasta nel browser non
+    // deve trasformare questo specifico accesso in un pannello completo.
+    clearAdminAuthorizationState();
+    state.residentEntryKind = 'common';
     applyResidentEntryView();
     // Handshake session-first: il calendario resta smontato finché le letture
     // necessarie al periodo corrente non sono state autorizzate davvero.
@@ -3596,6 +3643,7 @@ async function handleForgetDevice() {
     closeResidentEntryGate();
     state.residentReady = false;
     state.residentRestorePending = false;
+    state.residentEntryKind = '';
     state.selectedParticipant = null;
     state.residentAuthTransition = '';
     state.mode = 'participant';
@@ -3634,6 +3682,7 @@ async function handleForgetDevice() {
   }
   state.residentReady = false;
   state.residentRestorePending = false;
+  state.residentEntryKind = '';
   state.selectedParticipant = null;
   state.residentAuthTransition = '';
   invalidateViewRequests();
@@ -3680,7 +3729,7 @@ async function refreshAdminParticipants() {
     const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
     const [adminParticipants, adminAccounts, centerSettings, coverage, operationalLinks, adminInvitations] = await Promise.all([
       listAdminParticipants(),
-      listCenterAdministrators(),
+      canManageRoles ? listCenterAdministrators() : Promise.resolve([]),
       loadCenterContactSettings({ forceRefresh: true }),
       loadMealWindowCoverage(),
       canViewOperationalLinks
@@ -4187,7 +4236,8 @@ function renderAdminInvitationList() {
   if (!canManageRoles) return;
 
   const now = Date.now();
-  elements.adminInvitationList.innerHTML = state.adminInvitations.map((invitation) => {
+  const visibleInvitations = state.adminInvitations.filter((invitation) => invitation.role === 'ADMIN');
+  elements.adminInvitationList.innerHTML = visibleInvitations.map((invitation) => {
     const expiresAt = invitation.expiresAt?.toDate?.() || new Date(invitation.expiresAt || 0);
     const expired = Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now;
     const active = invitation.status === 'ACTIVE' && !expired;
@@ -4222,9 +4272,9 @@ function renderAdminInvitationList() {
         ${canRevoke ? `<button type="button" class="tertiary-action" data-revoke-admin-invitation="${escapeHtml(invitation.invitationId)}">${escapeHtml(t('admin.invitations.revoke'))}</button>` : ''}
       </article>`;
   }).join('');
-  elements.adminInvitationManagementStatus.textContent = state.adminInvitations.length === 0
+  elements.adminInvitationManagementStatus.textContent = visibleInvitations.length === 0
     ? t('admin.invitations.none')
-    : t('admin.invitations.recentCount', { count: state.adminInvitations.length });
+    : t('admin.invitations.recentCount', { count: visibleInvitations.length });
 }
 
 async function handleAdminInvitationListClick(event) {
@@ -4367,11 +4417,12 @@ async function performAdminCenterSettingsSave() {
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
       themePalette: state.centerContactSettings.themePalette || 'smeraldo',
-      interfaceStyle: state.centerContactSettings.interfaceStyle || 'original',
+      interfaceStyle: state.centerContactSettings.interfaceStyle || 'cool',
       defaultView: state.centerContactSettings.defaultView || 'month',
       summaryLayout: state.centerContactSettings.summaryLayout || 'international',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
       monthLayout: state.centerContactSettings.monthLayout || 'grid',
+      monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
       summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       language: state.centerContactSettings.language || 'it',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
@@ -4546,7 +4597,7 @@ function syncAdminCenterSettingsForm() {
 
 function syncAdminAdaptationsForm() {
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
-  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'original';
+  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'cool';
   document.documentElement.dataset.theme = currentPalette;
   applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
@@ -4564,9 +4615,12 @@ function syncAdminAdaptationsForm() {
   if (elements.adminMonthLayoutSelect) {
     elements.adminMonthLayoutSelect.value = state.centerContactSettings.monthLayout || 'grid';
   }
+  if (elements.adminMonthControlsSideSelect) {
+    elements.adminMonthControlsSideSelect.value = state.centerContactSettings.monthControlsSide || 'right';
+  }
   if (elements.adminSummaryResidentLabelSelect) {
     elements.adminSummaryResidentLabelSelect.value = state.centerContactSettings.summaryResidentLabel
-      || (state.centerContactSettings.summaryLayout === 'future' ? 'initials' : 'name');
+      || (currentInterfaceStyle === 'future' ? 'initials' : 'name');
   }
   if (elements.adminSharedPasswordStatus) {
     const isSet = Boolean(state.centerContactSettings.adminSharedPasswordSet);
@@ -4588,14 +4642,11 @@ function syncAdminAdaptationsForm() {
   if (elements.adminLanguageSelect) {
     elements.adminLanguageSelect.value = state.centerContactSettings.language || 'it';
   }
-  const participantCanAdminister = Boolean(state.selectedParticipant) && (
-    state.selectedParticipant.viceAdminRole === true
-    || selectedParticipantIsCenterAdministrator()
-  );
   if (elements.residentAdminUnlock) {
-    elements.residentAdminUnlock.hidden = !state.residentSettingsMode
-      || !participantCanAdminister
-      || state.residentAdministratorAuthorized;
+    // L'accesso del vice avviene ora direttamente dal modulo iniziale con
+    // sigla + password amministratori. Non mostriamo al residente ordinario
+    // funzioni bloccate o un secondo passaggio di autenticazione.
+    elements.residentAdminUnlock.hidden = true;
   }
   if (elements.adminPasswordRotationWarning) {
     elements.adminPasswordRotationWarning.hidden = true;
@@ -4653,9 +4704,15 @@ function handleThemeSelectChange(event) {
 function handleInterfaceStyleSelectChange(event) {
   const selectedStyle = INTERFACE_STYLE_VALUES.has(event.target.value)
     ? event.target.value
-    : 'original';
+    : 'cool';
   state.pendingInterfaceStyle = selectedStyle;
   applyInterfaceStyle(selectedStyle);
+  if (selectedStyle === 'future'
+      && elements.adminSummaryResidentLabelSelect
+      && (!state.centerContactSettings.summaryResidentLabel
+        || state.centerContactSettings.summaryResidentLabel === 'name')) {
+    elements.adminSummaryResidentLabelSelect.value = 'initials';
+  }
   if (elements.adminThemeStatus) {
     elements.adminThemeStatus.textContent = t('admin.adaptations.interfaceStyle.preview');
   }
@@ -4670,7 +4727,7 @@ async function handleAdminAdaptationsSave() {
     const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
     const interfaceStyleToSave = state.pendingInterfaceStyle
       || state.centerContactSettings.interfaceStyle
-      || 'original';
+      || 'cool';
     const sharingEnabled = elements.adminContactSharingSelect
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
@@ -4681,6 +4738,7 @@ async function handleAdminAdaptationsSave() {
         interfaceStyle: interfaceStyleToSave,
         defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
         summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
         language: languageToSave
       };
       storeResidentPreferences(preferences);
@@ -4704,6 +4762,7 @@ async function handleAdminAdaptationsSave() {
       summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
       kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
       monthLayout: elements.adminMonthLayoutSelect ? elements.adminMonthLayoutSelect.value : state.centerContactSettings.monthLayout,
+      monthControlsSide: elements.adminMonthControlsSideSelect ? elements.adminMonthControlsSideSelect.value : state.centerContactSettings.monthControlsSide,
       summaryResidentLabel: elements.adminSummaryResidentLabelSelect
         ? elements.adminSummaryResidentLabelSelect.value
         : state.centerContactSettings.summaryResidentLabel,
@@ -4712,7 +4771,8 @@ async function handleAdminAdaptationsSave() {
       administratorName: state.centerContactSettings.administratorName || getCurrentUser()?.displayName || '',
       administratorSignature: state.centerContactSettings.administratorSignature || '',
       adminEmail: state.centerContactSettings.adminEmail || getCurrentUser()?.email || '',
-      reservationCutoffs: state.centerContactSettings.reservationCutoffs
+      reservationCutoffs: state.centerContactSettings.reservationCutoffs,
+      adaptationsOnly: true
     });
     state.centerContactSettings = {
       ...state.centerContactSettings,
@@ -4727,13 +4787,14 @@ async function handleAdminAdaptationsSave() {
         interfaceStyle: settings.interfaceStyle || interfaceStyleToSave,
         defaultView: settings.defaultView || elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
         summaryLayout: settings.summaryLayout || elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        monthControlsSide: settings.monthControlsSide || elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
         language: languageToSave
       });
     }
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
-    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'original');
+    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
     applyTranslations(document);
@@ -4752,18 +4813,18 @@ function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'smeraldo';
-  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'original');
+  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
   state.pendingThemePalette = 'smeraldo';
-  state.pendingInterfaceStyle = 'original';
+  state.pendingInterfaceStyle = 'cool';
   document.documentElement.dataset.theme = 'smeraldo';
-  applyInterfaceStyle('original');
+  applyInterfaceStyle('cool');
   updateThemeSelectControl('smeraldo');
-  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'original';
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -4927,14 +4988,20 @@ function renderMode() {
   document.documentElement.dataset.theme = activePalette;
   const activeInterfaceStyle = state.pendingInterfaceStyle
     || state.centerContactSettings.interfaceStyle
-    || 'original';
+    || 'cool';
   applyInterfaceStyle(activeInterfaceStyle);
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
   const isSummary = state.mode === 'summary';
   const isKitchen = state.mode === 'kitchen';
   const isAdminView = state.mode === 'admin';
-  const isCenterActivation = isAdminView && Boolean(getAdminInvitationId());
+  // A stale center-invitation token must not turn an ordinary admin/vice
+  // panel into the old "Attivazione centro" screen.  Activation is a real
+  // backend state, reported by loadAdminCenterAccess.
+  const isCenterActivation = isAdminView
+    && state.adminNeedsInitialization === true
+    && !state.adminRole
+    && !state.residentSettingsMode;
   document.body.dataset.mode = state.mode;
   document.body.dataset.centerActivation = isCenterActivation ? 'true' : 'false';
   const needsResidentLogin = state.friendlyAccess
@@ -4993,10 +5060,12 @@ function renderMode() {
     : '';
   elements.sessionRole.hidden = !elements.sessionRole.textContent;
   renderCenterAvatar(isParticipant || isWeek || isSummary || isKitchen, centerName);
-  const browserTitle = isSummary && centerName
-    ? `${elements.title.textContent} - ${centerName}`
-    : elements.title.textContent;
-  document.title = `${browserTitle} · Prenotazione pasti`;
+  const browserTitle = isAdminView
+    ? t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    : isSummary && centerName
+      ? `${elements.title.textContent} - ${centerName}`
+      : elements.title.textContent;
+  document.title = isAdminView ? browserTitle : `${browserTitle} · Prenotazione pasti`;
   elements.residentLogin.hidden = !showResidentLogin;
   elements.participantPanel.hidden = !isParticipant || needsResidentLogin || state.platformOwner;
   elements.weekPanel.hidden = !isWeek || needsResidentLogin || state.platformOwner;
@@ -5011,7 +5080,8 @@ function renderMode() {
     elements.kitchenPanel.hidden = true;
   }
   const isOrdinaryView = isParticipant || isWeek || isSummary;
-  const showResidentExit = isOrdinaryView;
+  const showResidentExit = isOrdinaryView
+    || (isAdminView && state.residentSettingsMode);
   const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
   const canOpenControlPanel = hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA)
@@ -5026,7 +5096,9 @@ function renderMode() {
     || isCenterActivation
     || (state.platformOwner && !state.residentSettingsMode);
   elements.forgetDeviceButton.hidden = !showResidentExit;
-  elements.ownerExitButton.hidden = !isAdminView || isCenterActivation;
+  // Nel pannello completo il comando Esci deve restare sempre disponibile,
+  // anche per un amministratore appena riconciliato o dopo un cambio vista.
+  elements.ownerExitButton.hidden = !isAdminView;
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
     elements.authActions.hidden = true;
@@ -5060,8 +5132,7 @@ function renderMode() {
 
 function renderCenterAvatar(showInCurrentMode, centerName) {
   const configuredDataUrl = state.centerContactSettings.avatarDataUrl || '';
-  const usesFutureView = state.centerContactSettings.summaryLayout === 'future'
-    || state.centerContactSettings.monthLayout === 'future';
+  const usesFutureView = state.centerContactSettings.interfaceStyle === 'future';
   const dataUrl = configuredDataUrl || (usesFutureView ? '/icons/splash-512-transparent.png' : '');
   const show = showInCurrentMode && Boolean(dataUrl);
   elements.centerAvatar.classList.toggle('center-avatar-fallback', show && !configuredDataUrl);
@@ -5248,6 +5319,7 @@ function renderAdminPeopleList() {
       participantId: participant.participantId,
       displayName: participant.displayName,
       signature: participant.signature,
+      initials: participant.initials,
       groupId: participant.groupId,
       status: participant.status,
       dietTags: participant.dietTags,
@@ -5279,6 +5351,7 @@ function renderAdminPeopleList() {
     const participantId = escapeHtml(participant.participantId);
     const displayName = escapeHtml(participant.displayName || t('admin.people.unnamed'));
     const signature = escapeHtml(participant.signature || t('admin.people.noSignature'));
+    const initials = escapeHtml(participant.initials || '—');
     const groupLabel = participant.groupId === 'group_ospiti' ? t('role.guest') : t('role.resident');
     const statusLabel = participant.status === 'ACTIVE' ? t('admin.people.statusActive') : t('admin.people.statusSuspended');
     const roleLabels = [
@@ -5309,6 +5382,7 @@ function renderAdminPeopleList() {
           <strong>
             <span class="admin-person-signature" title="${escapeHtml(t('admin.people.signatureTitle'))}">${signature}</span>
             <span class="admin-person-display">${displayName}</span>
+            <span class="admin-person-initials" title="${escapeHtml(t('admin.people.initials'))}">${initials}</span>
           </strong>
           <span class="admin-person-details">${details}${phoneIcon}</span>
         </button>
@@ -5317,7 +5391,7 @@ function renderAdminPeopleList() {
             data-admin-person-toggle-active="${participantId}"
             ${statusPending || deletePending ? 'disabled aria-busy="true"' : ''}
             ${isActive ? 'checked' : ''}>
-          <span style="${isActive ? '' : 'color: #8f342d;'}">${statusLabel}</span>
+          <span class="admin-person-status-label${isActive ? ' is-active' : ' is-suspended'}">${statusLabel}</span>
         </label>
         ${canDeleteParticipants ? `
           <button type="button" class="admin-person-delete" data-admin-person-delete="${participantId}"${deletePending ? ' disabled aria-busy="true"' : ''}
@@ -5369,8 +5443,8 @@ function getConfiguredAdministratorParticipantId() {
 }
 
 function canDesignateCenterAdministrator() {
-  return ['OWNER', 'ADMIN'].includes(state.adminRole)
-    || state.residentAdministratorAuthorized === true && selectedParticipantIsCenterAdministrator();
+  return state.adminRole === 'OWNER'
+    || state.residentAdministratorAuthorized === true;
 }
 
 async function handleAdminPeopleListChange(event) {
@@ -5651,8 +5725,9 @@ function applyAdminCapabilityVisibility() {
   }
   const canConfigureCenter = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   const canManageAdaptations = state.residentSettingsMode
-    || hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
+    || hasCurrentCapability(CAPABILITIES.MANAGE_ADAPTATIONS);
   const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
+  const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
   const canManagePeople = hasCurrentCapability(CAPABILITIES.MANAGE_PARTICIPANTS);
   const canManageAccess = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
   const canViewActivity = hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG);
@@ -5662,7 +5737,7 @@ function applyAdminCapabilityVisibility() {
     state.adminActiveSection = ADMIN_SECTIONS.find((section) => isAdminSectionAllowed(section)) || 'overview';
     state.adminMobileSection = state.adminActiveSection;
   }
-  elements.adminNavOverview.hidden = state.residentSettingsMode || !profileComplete;
+  elements.adminNavOverview.hidden = state.residentSettingsMode || !profileComplete || !canViewOperationalLinks;
   elements.adminNavPeople.hidden = !canManagePeople;
   if (elements.adminNavAdaptations) {
     elements.adminNavAdaptations.hidden = !canManageAdaptations;
@@ -5968,10 +6043,10 @@ function shouldOpenResidentSettingsPanel() {
   // A strong Firebase session can remain on a shared device after an
   // administrator has used it. It must not turn the control panel opened by
   // an ordinary resident into the complete administrative panel.
-  return state.residentReady && (
-    !hasStrongAdministratorIdentity()
-    || !selectedResidentCanUseFullControlPanel()
-  );
+  if (!state.residentReady) return false;
+  if (state.residentEntryKind === 'common') return true;
+  if (state.residentEntryKind === 'strong-admin') return false;
+  return !state.residentAdministratorAuthorized && !state.adminRole;
 }
 
 function setResidentSettingsAccessBoundary(enabled) {
@@ -6078,7 +6153,10 @@ function renderTodayOverview() {
     mountSummaryMatrix(elements.todayOverview, {
       days: state.summaryDays,
       operationDays: state.summaryOperations,
-      layout: state.centerContactSettings.summaryLayout || 'international',
+      layout: state.centerContactSettings.summaryLayout === 'future'
+        || document.documentElement.dataset.interfaceStyle === 'future'
+        ? 'future'
+        : state.centerContactSettings.summaryLayout || 'international',
       residentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: (index) => {
@@ -6222,7 +6300,7 @@ function renderWeekControls() {
 }
 
 function renderMonthGrid() {
-  if (state.centerContactSettings.monthLayout === 'future') {
+  if (document.documentElement.dataset.interfaceStyle === 'future') {
     renderFutureMonth();
     return;
   }
@@ -6233,11 +6311,19 @@ function renderMonthGrid() {
   const monthHasOpenMeals = state.participantMonth
     .flatMap((day) => day.meals || [])
     .some((meal) => meal.isOpen);
+  const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
+  const monthControlMarkup = `
+    <span class="month-weekday-month-control">
+      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
+        <span class="month-toggle-glyph" aria-hidden="true">M</span>
+      </button>
+    </span>`;
   const monthRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
     interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
     language: document.documentElement.lang || 'it',
     month: formatMonthId(state.monthDate),
+    monthControlsSide: controlsOnLeft ? 'left' : 'right',
     today: formatDateId(getCenterToday()),
     // The first paint can legitimately happen before the reservation payload
     // arrives. Include only the meal structure (not mutable effects) so that
@@ -6267,20 +6353,25 @@ function renderMonthGrid() {
         return `
           <div class="month-week-cluster">
             ${index === 0 ? `
-              <div class="month-weekday-row" aria-label="Giorni della settimana">
+              <div class="month-weekday-row month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="Giorni della settimana">
+                ${controlsOnLeft ? monthControlMarkup : ''}
                 ${weekdayLabels.map((label) => `<span class="month-weekday-cell">${label}</span>`).join('')}
-                <span class="month-weekday-month-control">
-                  <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
-                    <span class="month-toggle-glyph" aria-hidden="true">M</span>
-                  </button>
-                </span>
+                ${controlsOnLeft ? '' : monthControlMarkup}
               </div>
             ` : ''}
-            <div class="month-week-row">
+            <div class="month-week-row month-controls-${controlsOnLeft ? 'left' : 'right'}">
               <div class="month-week-mobile-header">
+                ${controlsOnLeft ? renderMonthScopeButtons('Settimana', weekStart, null) : ''}
                 ${week.map(renderMonthDayNumber).join('')}
-                ${renderMonthScopeButtons('Settimana', weekStart, null)}
+                ${controlsOnLeft ? '' : renderMonthScopeButtons('Settimana', weekStart, null)}
               </div>
+              ${controlsOnLeft ? `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+                <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
+                ${renderMonthScopeButtons('Settimana', weekStart, null)}
+                ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
+                ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
+                ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
+              </aside>` : ''}
               ${week.map((day) => {
                 const classes = [
                   'month-day',
@@ -6296,13 +6387,13 @@ function renderMonthGrid() {
                   </article>
                 `;
               }).join('')}
-              <aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+              ${controlsOnLeft ? '' : `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
                 <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
                 ${renderMonthScopeButtons('Settimana', weekStart, null)}
                 ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
                 ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
                 ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
-              </aside>
+              </aside>`}
             </div>
           </div>
         `;
@@ -6841,17 +6932,7 @@ async function performAdminSaveContact() {
         name: assigned.displayName
       });
     }
-    if (viceAdminRole) {
-      const invitation = await createViceAdministratorInvitation(savedParticipantId);
-      if (invitation?.invitationId) {
-        const invitationUrl = new URL('/', window.location.origin);
-        invitationUrl.searchParams.set('view', 'admin');
-        invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
-        invitationUrl.searchParams.set('adminRole', 'MANAGER');
-        invitationUrl.searchParams.set('c', getActiveCenterId());
-        openAccessShareDialog(t('role.vice'), invitationUrl.toString());
-      }
-    } else if (participant?.viceAdminRole === true) {
+    if (!viceAdminRole && participant?.viceAdminRole === true) {
       // La membership viene revocata nel database: nascondere una scheda non
       // sarebbe sufficiente e una sessione Firebase già aperta non la riattiva.
       await revokeViceAdministratorAccess(savedParticipantId);
@@ -7071,22 +7152,21 @@ function renderFutureMonth() {
   const weeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7))
     .filter((week) => week.some((day) => day.inCurrentMonth));
   const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
+  const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
+  const futureGutter = '<span class="month-future-gutter"></span>';
   elements.monthGrid.innerHTML = `
-    <div class="month-future" aria-label="${escapeHtml(formatMonthLabel(state.monthDate))}">
+    <div class="month-future month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(formatMonthLabel(state.monthDate))}">
       <div class="month-future-row month-future-weekdays">
-        <span class="month-future-gutter"></span>
-        ${weekdayLabels.map((label) => `<span>${label}</span>`).join('')}
+        ${controlsOnLeft ? futureGutter + weekdayLabels.map((label) => `<span>${label}</span>`).join('') : weekdayLabels.map((label) => `<span>${label}</span>`).join('') + futureGutter}
       </div>
       ${weeks.map((week) => `
         <section class="month-future-week">
           <div class="month-future-row month-future-dates">
-            <span class="month-future-gutter"></span>
-            ${week.map((day) => `<button type="button" data-month-day="${escapeHtml(day.date)}" class="month-future-date${day.isToday ? ' month-future-date-today' : ''}${day.isPast ? ' month-future-date-past' : ''}"${day.inCurrentMonth ? '' : ' disabled'}>${day.inCurrentMonth ? day.dayNumber : ''}</button>`).join('')}
+            ${controlsOnLeft ? futureGutter + week.map((day) => `<button type="button" data-month-day="${escapeHtml(day.date)}" class="month-future-date${day.isToday ? ' month-future-date-today' : ''}${day.isPast ? ' month-future-date-past' : ''}"${day.inCurrentMonth ? '' : ' disabled'}>${day.inCurrentMonth ? day.dayNumber : ''}</button>`).join('') : week.map((day) => `<button type="button" data-month-day="${escapeHtml(day.date)}" class="month-future-date${day.isToday ? ' month-future-date-today' : ''}${day.isPast ? ' month-future-date-past' : ''}"${day.inCurrentMonth ? '' : ' disabled'}>${day.inCurrentMonth ? day.dayNumber : ''}</button>`).join('') + futureGutter}
           </div>
           ${['breakfast', 'lunch', 'dinner'].map((mealTypeId) => `
             <div class="month-future-row month-future-meal-row">
-              <span class="month-future-gutter" aria-hidden="true">${getMealIcon(mealTypeId)}</span>
-              ${week.map((day) => renderFutureMonthMeal(day, mealTypeId)).join('')}
+              ${controlsOnLeft ? `<span class="month-future-gutter" aria-hidden="true">${getMealIcon(mealTypeId)}</span>` + week.map((day) => renderFutureMonthMeal(day, mealTypeId)).join('') : week.map((day) => renderFutureMonthMeal(day, mealTypeId)).join('') + `<span class="month-future-gutter" aria-hidden="true">${getMealIcon(mealTypeId)}</span>`}
             </div>
           `).join('')}
         </section>
@@ -7176,6 +7256,9 @@ async function refreshResidentAdministratorAuthorization() {
     state.residentAdministratorAuthorized = authorization.active === true
       && Number(authorization.passwordVersion || 0)
         === Number(state.centerContactSettings.adminPasswordVersion || 0);
+    if (state.residentAdministratorAuthorized) {
+      state.residentEntryKind = 'shared-admin';
+    }
   } catch {
     state.residentAdministratorAuthorized = false;
   }
@@ -7195,6 +7278,7 @@ async function handleResidentAdministratorUnlock() {
       technicalEmail: state.centerContactSettings.adminTechnicalEmail
     });
     state.residentAdministratorAuthorized = true;
+    state.residentEntryKind = 'shared-admin';
     elements.residentAdminPassword.value = '';
     elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.unlocked');
     await activateResidentAdministratorPanel();
@@ -7209,9 +7293,10 @@ async function handleResidentAdministratorUnlock() {
 }
 
 function getResidentAuthorizedRole() {
-  if (selectedParticipantIsCenterAdministrator()) return 'ADMIN';
-  if (state.selectedParticipant?.viceAdminRole === true) return 'MANAGER';
-  return '';
+  // La password amministratori è una chiave operativa condivisa: anche quando
+  // la usa il responsabile, concede deliberatamente lo stesso perimetro del
+  // vice. Il pannello completo richiede invece Google o email personale.
+  return state.residentAdministratorAuthorized ? 'MANAGER' : '';
 }
 
 async function activateResidentAdministratorPanel() {
@@ -7238,53 +7323,6 @@ async function activateResidentAdministratorPanel() {
   renderAdminMobileSection();
   renderMode();
   return true;
-}
-
-async function handleViceGoogleAuthentication() {
-  elements.viceAuthGoogle.disabled = true;
-  elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
-  const restoreResidentBoundary = state.residentSettingsMode;
-  if (restoreResidentBoundary) setResidentSettingsAccessBoundary(false);
-  try {
-    await signInWithGoogle();
-  } catch (error) {
-    if (restoreResidentBoundary) {
-      setResidentSettingsAccessBoundary(true);
-      renderResidentSettingsPanel();
-    }
-    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.google.signIn'));
-    elements.viceAuthGoogle.disabled = false;
-  }
-}
-
-function handleViceEmailChoice() {
-  const expanded = elements.viceAuthEmailForm.hidden;
-  elements.viceAuthEmailForm.hidden = !expanded;
-  elements.viceAuthEmailChoice.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  if (expanded) elements.viceAuthEmail.focus();
-}
-
-async function handleViceEmailAuthentication(event) {
-  event.preventDefault();
-  const submit = elements.viceAuthEmailForm.querySelector('[type="submit"]');
-  submit.disabled = true;
-  elements.residentAdminUnlockStatus.textContent = t('app.header.verifyingAuth');
-  const restoreResidentBoundary = state.residentSettingsMode;
-  if (restoreResidentBoundary) setResidentSettingsAccessBoundary(false);
-  try {
-    await signInAdministratorWithEmail(
-      elements.viceAuthEmail.value,
-      elements.viceAuthPassword.value
-    );
-    elements.viceAuthPassword.value = '';
-  } catch (error) {
-    if (restoreResidentBoundary) {
-      setResidentSettingsAccessBoundary(true);
-      renderResidentSettingsPanel();
-    }
-    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(error, t('auth.email.signIn'));
-    submit.disabled = false;
-  }
 }
 
 async function handleWeekInvitedSave() {

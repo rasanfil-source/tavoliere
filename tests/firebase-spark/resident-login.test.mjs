@@ -174,7 +174,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /elements\.residentLogin\.hidden = !showResidentLogin/);
   assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
-  assert.match(app, /elements\.ownerExitButton\.hidden = !isAdminView \|\| isCenterActivation/);
+  assert.match(app, /elements\.ownerExitButton\.hidden = !isAdminView/);
   assert.match(app, /async function handleOwnerExit\(\)[\s\S]*await signOutCurrentUser\(\)[\s\S]*setSignedOutState\(\)/);
   assert.match(
     app,
@@ -276,7 +276,7 @@ test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabi
   assert.match(logout, /if \(!leavingPrivilegedControlPanel\)[\s\S]*return;[\s\S]*await forgetResidentDevice\(\)[\s\S]*clearAdminAuthorizationState\(\)/);
   const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(login, /openResidentEntryGate\(\)/);
-  assert.match(login, /residentUser\.isAnonymous[\s\S]*clearAdminAuthorizationState\(\)/);
+  assert.match(login, /clearAdminAuthorizationState\(\)[\s\S]*state\.residentEntryKind = 'common'/);
   assert.match(app, /function clearAdminAuthorizationState\(\)[\s\S]*state\.adminHydrationVersion \+= 1[\s\S]*state\.adminRole = ''[\s\S]*state\.adminCanManageDailyOperations = false[\s\S]*state\.residentAdministratorAuthorized = false/);
 });
 
@@ -633,7 +633,8 @@ test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo',
   assert.match(participantData, /export async function ensurePublicDemoSession\(\) \{[\s\S]*return authorizedAdministrator/);
   assert.match(app, /elements\.controlPanelEntry,[\s\S]*elements\.mealsReturnEntry[\s\S]*handleInAppNavigation/);
   assert.match(app, /const isControlPanelTarget = targetMode === 'admin'/);
-  assert.match(app, /if \(!state\.residentReady\) \{\s*targetUrl\.searchParams\.delete\('c'\)/);
+  assert.match(app, /if \(isOperationalTarget && hasStrongAdministratorIdentity\(\) && state\.adminRole\)[\s\S]*restoreResidentIdentityForAuthorizedAdministrator\(\)/);
+  assert.match(participantData, /membershipParticipantId[\s\S]*administratorParticipantId[\s\S]*strongAdministrator: true/);
   assert.match(app, /elements\.controlPanelEntry\.hidden = !isOrdinaryView\s*\|\| \(!needsResidentLogin && !canOpenControlPanel\)/);
 });
 
@@ -838,15 +839,23 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /state\.mode === 'week' && canManageDailyOperations\(\) && !state\.adminRole/);
 });
 
-test('la spunta vice prepara un invito personale e non sostituisce l accesso residente', () => {
+test('la spunta vice usa direttamente sigla e password amministratori nel login residente', () => {
   assert.match(index, /data-admin-participant-vice/);
   assert.doesNotMatch(index, /data-admin-vice-flow/);
-  assert.match(app, /createViceAdministratorInvitation/);
+  assert.doesNotMatch(app, /createViceAdministratorInvitation/);
+  assert.doesNotMatch(adminCenter, /export async function createViceAdministratorInvitation/);
   assert.match(app, /revokeViceAdministratorAccess/);
-  assert.match(index, /data-vice-auth-google/);
-  assert.match(index, /data-vice-auth-email-form/);
-  assert.match(app, /signInWithGoogle/);
-  assert.match(app, /signInAdministratorWithEmail/);
+  assert.doesNotMatch(index, /data-vice-auth-google/);
+  assert.doesNotMatch(index, /data-vice-auth-email-form/);
+  assert.match(app, /signInFriendlyViceAdministrator/);
+  assert.match(app, /result\.administratorAuthorized === true/);
+  assert.match(participantData, /export async function signInFriendlyViceAdministrator/);
+  assert.match(participantData, /withAdministratorTechnicalSession/);
+  assert.match(participantData, /loadCenterContactSettings\(\{ forceRefresh: true \}\)/);
+  assert.match(participantData, /const technicalEmails = \[\.\.\.new Set/);
+  assert.match(firebaseClient, /technicalEmailOverride = ''/);
+  assert.match(app, /authorizeResidentAdministratorSession/);
+  assert.match(app, /elements\.residentAdminUnlock\.hidden = true/);
 });
 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {

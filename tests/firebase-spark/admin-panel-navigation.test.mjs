@@ -85,11 +85,11 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
 test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il centro', () => {
   const styleSelect = html.match(/<select data-admin-interface-style-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const styleValues = [...styleSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(styleValues, ['original', 'cool', 'urban']);
+  assert.deepEqual(styleValues, ['original', 'cool', 'urban', 'future']);
   assert.match(html, /data-i18n="admin\.adaptations\.interfaceStyle\.label">Aspetto/);
   assert.match(app, /applyInterfaceStyle\(activeInterfaceStyle\)/);
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
-  assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban'\]\)/);
+  assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban', 'future'\]\)/);
   assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
@@ -211,7 +211,7 @@ test('il vice non può aprire la scheda Amministratore neppure con un deep-link'
 test('il residente semplice vede e monta soltanto la scheda Impostazioni', () => {
   assert.match(app, /function selectedResidentCanUseFullControlPanel\(\)/);
   assert.match(app, /const RESIDENT_SETTINGS_ACCESS = 'resident-settings'/);
-  assert.match(app, /function shouldOpenResidentSettingsPanel\(\)[\s\S]*?!hasStrongAdministratorIdentity\(\)[\s\S]*?!selectedResidentCanUseFullControlPanel\(\)/);
+  assert.match(app, /function shouldOpenResidentSettingsPanel\(\)[\s\S]*?!state\.residentAdministratorAuthorized[\s\S]*?!state\.adminRole/);
   assert.match(app, /function updateControlPanelEntryHref\(\)[\s\S]*?adminEntryUrl\.searchParams\.set\('access', RESIDENT_SETTINGS_ACCESS\)/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?renderResidentSettingsPanel\(\);[\s\S]*?reconcileAdminAccessWithoutStrongUser\(\);[\s\S]*?return;/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?elements\.adminNavConfiguration\.hidden = true;[\s\S]*?elements\.adminNavAdaptations\.hidden = false;[\s\S]*?elements\.adminNavAccess\.hidden = true;[\s\S]*?mountAdminSection\('adaptations'\);[\s\S]*?return;/);

@@ -1264,8 +1264,28 @@ test('il residente ordinario non puo aprire o modificare Agenda', async () => {
   }));
 });
 
-test('il vice gestisce le persone ma non configurazione ruoli o eliminazioni definitive', async () => {
+test('il vice gestisce le persone ed elimina una persona ordinaria senza assegnare ruoli', async () => {
   const viceDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
+  const disposableId = 'participant_disposable_manager';
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(privateParticipantPath(disposableId)).set({
+      displayName: 'Persona eliminabile',
+      signature: 'PE',
+      status: 'DISABLED',
+      revision: 1,
+      viceAdminRole: false,
+      liturgicalRole: false
+    });
+    await db.doc(publicParticipantPath(disposableId)).set({
+      displayName: 'Persona eliminabile',
+      signature: 'PE',
+      status: 'DISABLED',
+      viceAdminRole: false,
+      liturgicalRole: false
+    });
+  });
 
   await assertSucceeds(viceDb.doc(privateParticipantPath(MARIO_ID)).set({
     dietTags: ['2']
@@ -1279,8 +1299,148 @@ test('il vice gestisce le persone ma non configurazione ruoli o eliminazioni def
   await assertFails(viceDb.doc(publicParticipantPath(MARIO_ID)).set({
     liturgicalRole: true
   }, { merge: true }));
-  await assertFails(viceDb.doc(privateParticipantPath(MARIO_ID)).delete());
-  await assertFails(viceDb.doc(publicParticipantPath(MARIO_ID)).delete());
+  await assertSucceeds(viceDb.doc(privateParticipantPath(disposableId)).delete());
+  await assertSucceeds(viceDb.doc(publicParticipantPath(disposableId)).delete());
+});
+
+test('una sessione vice validata gestisce persone pulizia impostazioni visive e log ma non ruoli o manutenzione', async () => {
+  const targetId = 'participant_vice_scope';
+  const targetUid = 'anon_vice_scope_target';
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
+    await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
+    await db.doc(`${centerPath()}/privateSettings/operationalLinks`).set({
+      centerId: CENTER_ID,
+      publicTokenId: 'public_token',
+      kitchenTokenId: 'kitchen_token',
+      updatedAt: firebase.firestore.Timestamp.fromDate(new Date())
+    });
+  });
+
+  const viceDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertSucceeds(viceDb.doc(`${centerPath()}/privateSettings/operationalLinks`).get());
+  await assertSucceeds(viceDb.doc(privateParticipantPath(targetId)).set({
+    displayName: 'Persona gestita dal vice',
+    signature: 'PV',
+    status: 'ACTIVE',
+    revision: 1,
+    viceAdminRole: false,
+    liturgicalRole: false,
+    dietTags: [],
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(viceDb.doc(publicParticipantPath(targetId)).set({
+    displayName: 'Persona gestita dal vice',
+    signature: 'PV',
+    status: 'ACTIVE',
+    viceAdminRole: false,
+    liturgicalRole: false,
+    dietTags: [],
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(viceDb.doc(rulePath(targetId)).set({
+    participantId: targetId,
+    status: 'ACTIVE',
+    mealTypeIds: ['breakfast', 'lunch', 'dinner'],
+    startsOn: '2026-01-01',
+    endsOn: null,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(viceDb.doc(privateParticipantPath(targetId)).set({
+    dietTags: ['3'],
+    revision: 2,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(viceDb.doc(publicParticipantPath(targetId)).set({
+    viceAdminRole: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+
+  await assertSucceeds(viceDb.doc(`${centerPath()}/presentationSettings/current`).set({
+    centerId: CENTER_ID,
+    participantContactSharingEnabled: true,
+    themePalette: 'terracotta',
+    interfaceStyle: 'cool',
+    defaultView: 'week',
+    summaryLayout: 'international',
+    kitchenLayout: 'classic',
+    monthLayout: 'grid',
+    summaryResidentLabel: 'initials',
+    language: 'it',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(viceDb.doc(`${centerPath()}/viceAuditEvents/event_vice_scope`).set({
+    centerId: CENTER_ID,
+    actorUid: PERSONAL_UID,
+    action: 'UPSERT_PARTICIPANT',
+    targetType: 'PARTICIPANT',
+    targetId,
+    summary: 'Persona aggiornata dal vice',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertFails(viceDb.doc(centerPath()).set({
+    name: 'Configurazione generale vietata',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(viceDb.doc(adminPath(PERSONAL_UID)).set({
+    centerId: CENTER_ID,
+    status: 'ACTIVE',
+    role: 'ADMIN'
+  }));
+
+  await assertSucceeds(viceDb.doc(privateParticipantPath(targetId)).set({
+    status: 'DISABLED',
+    revision: 3,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(viceDb.doc(publicParticipantPath(targetId)).set({
+    status: 'DISABLED',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(viceDb.doc(rulePath(targetId)).set({
+    status: 'DISABLED',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(`${centerPath()}/accessSessions/${targetUid}`).set({
+      centerId: CENTER_ID,
+      participantId: targetId,
+      scope: 'PERSONAL',
+      status: 'ACTIVE'
+    });
+    await db.doc(`${centerPath()}/viceSessions/${targetUid}`).set({
+      centerId: CENTER_ID,
+      authUid: targetUid,
+      participantId: targetId,
+      status: 'ACTIVE'
+    });
+    await db.doc(`${centerPath()}/linkTokens/personal_${targetId}`).set({
+      scope: 'PERSONAL',
+      participantId: targetId,
+      status: 'ACTIVE'
+    });
+    await db.doc(overridePath(targetId, OPEN_WINDOW_ID)).set({
+      centerId: CENTER_ID,
+      participantId: targetId,
+      mealDate: '2026-08-05',
+      mealTypeId: 'lunch',
+      mealWindowId: OPEN_WINDOW_ID,
+      source: 'PERSONAL'
+    });
+  });
+
+  const cleanup = viceDb.batch();
+  cleanup.delete(viceDb.doc(`${centerPath()}/accessSessions/${targetUid}`));
+  cleanup.delete(viceDb.doc(`${centerPath()}/viceSessions/${targetUid}`));
+  cleanup.delete(viceDb.doc(`${centerPath()}/linkTokens/personal_${targetId}`));
+  cleanup.delete(viceDb.doc(overridePath(targetId, OPEN_WINDOW_ID)));
+  cleanup.delete(viceDb.doc(rulePath(targetId)));
+  cleanup.delete(viceDb.doc(publicParticipantPath(targetId)));
+  cleanup.delete(viceDb.doc(privateParticipantPath(targetId)));
+  await assertSucceeds(cleanup.commit());
 });
 
 test('l amministratore eredita assegnazione liturgica e sospensione persone', async () => {
@@ -2017,6 +2177,7 @@ async function seedBaseData() {
     });
     await db.doc(adminPath(VICE_ADMIN_UID)).set({
       status: 'ACTIVE',
+      participantId: MARIO_ID,
       email: 'vice@example.test',
       role: 'MANAGER',
       massPermission: false,
@@ -2031,6 +2192,7 @@ async function seedBaseData() {
       centerId: CENTER_ID,
       groupId: 'group_residenti',
       displayName: 'Mario',
+      viceAdminRole: true,
       status: 'ACTIVE'
     });
     await db.doc(publicParticipantPath(LUCA_ID)).set({

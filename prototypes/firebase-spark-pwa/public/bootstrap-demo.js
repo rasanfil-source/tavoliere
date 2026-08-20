@@ -10,7 +10,7 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260818s';
+import { db } from './firebase-client.js?v=20260820t';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import {
   buildMealWindowRecords,
@@ -22,7 +22,7 @@ import {
   normalizeReservationCutoffs
 } from './schedule-utils.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260818a';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260819b';
 
 export const BOOTSTRAP_ADMIN_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 

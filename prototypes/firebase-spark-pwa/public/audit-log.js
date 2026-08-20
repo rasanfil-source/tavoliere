@@ -7,7 +7,7 @@ import {
   query,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260818s';
+import { db, getCurrentUser } from './firebase-client.js?v=20260820t';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 
 export const AUDIT_ACTIONS = Object.freeze({
@@ -23,9 +23,10 @@ export const AUDIT_ACTIONS = Object.freeze({
 });
 
 export function appendAuditEvent(batch, event, user = getCurrentUser()) {
-  if (!batch || !user || user.isAnonymous) return;
+  if (!batch || !user) return;
   const centerId = getActiveCenterId();
-  batch.set(doc(collection(db, 'centers', centerId, 'auditEvents')), {
+  const collectionName = user.isAnonymous ? 'viceAuditEvents' : 'auditEvents';
+  batch.set(doc(collection(db, 'centers', centerId, collectionName)), {
     centerId,
     actorUid: user.uid,
     action: String(event.action || '').slice(0, 80),
@@ -39,10 +40,24 @@ export function appendAuditEvent(batch, event, user = getCurrentUser()) {
 export async function listAuditEvents(maximum = 20) {
   const requested = Number(maximum);
   const pageSize = Number.isFinite(requested) ? Math.min(50, Math.max(1, Math.round(requested))) : 20;
-  const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'auditEvents'),
+  const centerId = getActiveCenterId();
+  const buildQuery = (collectionName) => query(
+    collection(db, 'centers', centerId, collectionName),
     orderBy('createdAt', 'desc'),
     limit(pageSize)
-  ));
-  return snapshot.docs.map((item) => ({ eventId: item.id, ...item.data() }));
+  );
+  const [administratorSnapshot, viceSnapshot] = await Promise.all([
+    getDocs(buildQuery('auditEvents')),
+    getDocs(buildQuery('viceAuditEvents'))
+  ]);
+  return [...administratorSnapshot.docs, ...viceSnapshot.docs]
+    .map((item) => ({ eventId: item.id, ...item.data() }))
+    .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt))
+    .slice(0, pageSize);
+}
+
+function timestampValue(value) {
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return 0;
 }

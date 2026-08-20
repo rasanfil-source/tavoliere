@@ -16,13 +16,16 @@ import {
 import {
   db,
   getCurrentUser,
+  getAdministratorTechnicalEmail,
   isResidentTechnicalEmail,
   replaceWithAnonymousUser,
   signOutCurrentUser,
+  authorizeResidentAdministratorSession,
   verifyResidentCommonPassword,
   waitForAuthReady,
-  withResidentTechnicalSession
-} from './firebase-client.js?v=20260818s';
+  withResidentTechnicalSession,
+  withAdministratorTechnicalSession
+} from './firebase-client.js?v=20260820t';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
@@ -33,13 +36,13 @@ import {
 } from './domain/participant-profile.mjs?v=20260816g';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260818a';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
 import { isRecoverableSessionError } from './core/user-error.mjs?v=20260818b';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260818za';
+} from './center-settings.js?v=20260820a';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -47,7 +50,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260818za';
+} from './center-settings.js?v=20260820a';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -297,20 +300,19 @@ export async function restoreFriendlyResidentSession() {
   const participantId = loadStoredResidentParticipantId();
   const token = loadStoredResidentToken();
   await waitForAuthReady();
+  const strongAuthenticatedUser = getStrongAuthenticatedUser();
+  const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  if (authorizedAdministrator) {
+    return restoreResidentIdentityForAuthorizedAdministrator();
+  }
   if (!signature || !participantId || !token.tokenId || !token.expiresAt) {
     return null;
   }
-
-  const strongAuthenticatedUser = getStrongAuthenticatedUser();
-  const authorizedAdministrator = await getAuthorizedAdministratorUser();
   if (strongAuthenticatedUser && !authorizedAdministrator) {
     // Show the resident form so the user can provide the common password.
     return null;
   }
   try {
-    if (authorizedAdministrator) {
-      return restoreResidentIdentityForAuthorizedAdministrator();
-    }
     await ensurePersonalSession(participantId, token);
     const participant = await loadPublicParticipantById(participantId);
     if (!participant) {
@@ -341,17 +343,51 @@ export async function restoreFriendlyResidentSession() {
 }
 
 export async function restoreResidentIdentityForAuthorizedAdministrator() {
-  const signature = loadStoredResidentSignature();
-  const participantId = loadStoredResidentParticipantId();
-  if (!signature || !participantId) {
-    return null;
-  }
+  const user = await getAuthorizedAdministratorUser();
+  if (!user) return null;
 
-  const participant = await loadPublicParticipantById(participantId);
-  if (!participant || normalizeResidentSignature(participant.signature) !== signature) {
+  // L'identità residente derivata dalla membership forte ha precedenza su
+  // qualsiasi residuo locale di un accesso precedente sullo stesso device.
+  const membershipSnapshot = await getDoc(doc(
+    db,
+    'centers',
+    getActiveCenterId(),
+    'admins',
+    user.uid
+  ));
+  const membershipParticipantId = String(
+    membershipSnapshot.data()?.participantId || ''
+  ).trim();
+  const settings = membershipParticipantId
+    ? null
+    : await loadCenterContactSettings({ forceRefresh: false });
+  const participantId = membershipParticipantId
+    || String(settings?.administratorParticipantId || '').trim()
+    || loadStoredResidentParticipantId();
+  const signature = membershipParticipantId
+    ? ''
+    : normalizeResidentSignature(settings?.administratorSignature)
+      || loadStoredResidentSignature();
+
+  const participant = participantId
+    ? await loadPublicParticipantById(participantId)
+    : signature
+      ? await loadPublicParticipantBySignature(signature)
+      : null;
+  if (!participant || (signature
+      && normalizeResidentSignature(participant.signature) !== signature)) {
     return null;
   }
-  return { participant, participants: [participant] };
+  const normalizedSignature = normalizeResidentSignature(participant.signature);
+  window.localStorage.setItem(
+    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY),
+    normalizedSignature
+  );
+  window.localStorage.setItem(
+    getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY),
+    participant.participantId
+  );
+  return { participant, participants: [participant], strongAdministrator: true };
 }
 
 export async function forgetResidentDevice() {
@@ -406,6 +442,92 @@ export async function ensureStoredResidentSession() {
     throw new Error('Accesso personale richiesto');
   }
   return ensurePersonalSession(participantId, token);
+}
+
+// Accesso diretto del vice dal medesimo modulo residente. La password
+// amministratori viene verificata dalla membership tecnica, poi la persona
+// riceve la normale sessione personale e la vice-sessione operativa. In questo
+// modo il residente non vede un secondo sblocco nelle Impostazioni.
+export async function signInFriendlyViceAdministrator(signature, administratorPassword, knownSettings = null) {
+  const normalized = normalizeResidentSignature(signature);
+  if (!normalized || !administratorPassword) {
+    throw new Error('Inserisci sigla e password.');
+  }
+  const centerId = getActiveCenterId();
+  // La lettura di publicParticipants è protetta: prima si valida la password
+  // sull'account tecnico amministratori, poi si legge la persona usando quella
+  // stessa sessione tecnica. In precedenza la lettura avveniva anonimamente e
+  // faceva ricadere il flusso sulla password comune.
+  // Le impostazioni passate dalla schermata possono provenire dalla cache
+  // dell'accesso precedente. Per questa operazione rara rileggiamo sempre il
+  // documento autorevole, mantenendo il valore noto solo come fallback offline.
+  const settings = await loadCenterContactSettings({ forceRefresh: true })
+    .catch(() => knownSettings || {});
+  const passwordVersion = Number(settings.adminPasswordVersion || 0);
+  if (!settings.adminSharedPasswordSet || passwordVersion < 1) {
+    throw new Error('Password amministratori non disponibile.');
+  }
+  let participant = null;
+  let token;
+  let technicalEmail = '';
+  const technicalEmails = [...new Set([
+    String(settings.adminTechnicalEmail || '').trim().toLowerCase(),
+    getAdministratorTechnicalEmail(centerId, passwordVersion),
+    getAdministratorTechnicalEmail(centerId)
+  ].filter(Boolean))];
+  let lastTechnicalError = null;
+  for (const candidateEmail of technicalEmails) {
+    try {
+      await withAdministratorTechnicalSession(
+        centerId,
+        administratorPassword,
+        passwordVersion,
+        async ({ db: technicalDb, email }) => {
+          participant = await loadPublicParticipantBySignature(normalized, technicalDb);
+          if (!participant) {
+            throw new Error('La tua sigla non risulta tra i residenti attivi.');
+          }
+          const isAuthorizedPerson = participant.viceAdminRole === true
+            || normalizeResidentSignature(participant.signature)
+              === normalizeResidentSignature(settings.administratorSignature);
+          if (!isAuthorizedPerson) {
+            throw new Error('Questa persona non è autorizzata come vice-amministratore.');
+          }
+          token = await createPersonalTokenForParticipant(participant.participantId, technicalDb);
+          technicalEmail = email;
+        },
+        candidateEmail
+      );
+      lastTechnicalError = null;
+      break;
+    } catch (error) {
+      lastTechnicalError = error;
+      const retryableCredentialError = [
+        'auth/invalid-credential',
+        'auth/wrong-password',
+        'auth/user-not-found',
+        'auth/invalid-email'
+      ].includes(error?.code);
+      if (!retryableCredentialError) throw error;
+    }
+  }
+  if (lastTechnicalError) throw lastTechnicalError;
+  if (!participant || !token) throw new Error('Accesso amministrativo non riuscito.');
+
+  await createPersonalAnonymousSession(participant.participantId, token);
+  rememberResidentIdentity(participant, normalized, token);
+  await authorizeResidentAdministratorSession({
+    centerId,
+    participantId: participant.participantId,
+    password: administratorPassword,
+    passwordVersion,
+    technicalEmail: technicalEmail || settings.adminTechnicalEmail
+  });
+  return {
+    participant,
+    participants: [participant],
+    administratorAuthorized: true
+  };
 }
 
 export async function recoverStoredResidentSession() {
@@ -1009,6 +1131,7 @@ export async function saveAdminParticipant(participantId, profile) {
   const participantRef = doc(db, 'centers', centerId, 'participants', resolvedId);
   const publicParticipantRef = doc(db, 'centers', centerId, 'publicParticipants', resolvedId);
   const ruleRef = doc(db, 'centers', centerId, 'reservationRules', `rule_${resolvedId}`);
+  const metadataRef = doc(db, 'centers', centerId, 'participantMetadata', 'current');
   const centerSettings = await loadCenterContactSettings();
   const status = normalizedProfile.active ? 'ACTIVE' : 'DISABLED';
   const common = {
@@ -1026,7 +1149,7 @@ export async function saveAdminParticipant(participantId, profile) {
   };
   await runTransaction(db, async (transaction) => {
     const participantSnapshot = await transaction.get(participantRef);
-    const ruleSnapshot = await transaction.get(ruleRef);
+    const ruleSnapshot = participantId ? await transaction.get(ruleRef) : null;
     if (participantId && !participantSnapshot.exists()) {
       const error = new Error('La persona non esiste più. Aggiorna l’elenco.');
       error.code = 'aborted';
@@ -1037,15 +1160,15 @@ export async function saveAdminParticipant(participantId, profile) {
       expectedRevision
     );
     const revision = nextRevision(currentRevision);
-    const existingRule = ruleSnapshot.exists() ? ruleSnapshot.data() : {};
+    const existingRule = ruleSnapshot?.exists() ? ruleSnapshot.data() : {};
 
-    transaction.set(centerRef, {
-      participantDataUpdatedAt: serverTimestamp(),
-      ...(participantSnapshot.data()?.viceAdminRole === true && normalizedProfile.viceAdminRole !== true
-        ? { adminPasswordRotationRequired: true }
-        : {}),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    transaction.set(metadataRef, { centerId, updatedAt: serverTimestamp() }, { merge: true });
+    if (participantSnapshot.data()?.viceAdminRole === true && normalizedProfile.viceAdminRole !== true) {
+      transaction.set(centerRef, {
+        adminPasswordRotationRequired: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
     transaction.set(participantRef, {
       ...common,
       revision,
@@ -1139,13 +1262,17 @@ export async function setAdminParticipantActiveStatus(participantId, active, exp
     revision = nextRevision(currentRevision);
     displayName = String(participant.displayName || normalizedId);
 
-    transaction.set(doc(db, 'centers', centerId), {
-      participantDataUpdatedAt: serverTimestamp(),
-      ...(participant.viceAdminRole === true && status === 'DISABLED'
-        ? { adminPasswordRotationRequired: true }
-        : {}),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    transaction.set(
+      doc(db, 'centers', centerId, 'participantMetadata', 'current'),
+      { centerId, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    if (participant.viceAdminRole === true && status === 'DISABLED') {
+      transaction.set(doc(db, 'centers', centerId), {
+        adminPasswordRotationRequired: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
     transaction.update(participantRef, { status, revision, updatedAt: serverTimestamp() });
     if (publicParticipantSnapshot.exists()) {
       transaction.update(publicParticipantRef, { status, updatedAt: serverTimestamp() });
@@ -1187,15 +1314,11 @@ export async function deleteAdminParticipant(participantId) {
   const centerId = getActiveCenterId();
   const participantRef = doc(db, 'centers', centerId, 'participants', normalizedId);
   const publicParticipantRef = doc(db, 'centers', centerId, 'publicParticipants', normalizedId);
-  const [participantSnapshot, publicParticipantSnapshot, ...relatedSnapshots] = await Promise.all([
+  const ruleRef = doc(db, 'centers', centerId, 'reservationRules', `rule_${normalizedId}`);
+  const [participantSnapshot, publicParticipantSnapshot, ruleSnapshot] = await Promise.all([
     getDoc(participantRef),
     getDoc(publicParticipantRef),
-    ...['reservationRules', 'reservationOverrides', 'accessSessions', 'viceSessions'].map((collectionName) => (
-      getDocs(query(
-        collection(db, 'centers', centerId, collectionName),
-        where('participantId', '==', normalizedId)
-      ))
-    ))
+    getDoc(ruleRef)
   ]);
 
   if (!participantSnapshot.exists()) {
@@ -1207,13 +1330,22 @@ export async function deleteAdminParticipant(participantId) {
   if (publicParticipantSnapshot.exists()) {
     disableBatch.update(publicParticipantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
   }
-  relatedSnapshots[0].docs.forEach((snapshot) => {
-    disableBatch.update(snapshot.ref, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  });
+  if (ruleSnapshot.exists()) {
+    disableBatch.update(ruleSnapshot.ref, { status: 'DISABLED', updatedAt: serverTimestamp() });
+  }
   await commitWithRetry(() => disableBatch.commit());
 
-  const [ruleSnapshot, overrideSnapshot, sessionSnapshot, viceSessionSnapshot] = relatedSnapshots;
-  const ruleRefs = ruleSnapshot.docs.map((item) => item.ref);
+  // Le credenziali e le prenotazioni collegate diventano leggibili al vice solo
+  // dopo questo passaggio: le regole verificano che la persona sia DISABLED.
+  const [overrideSnapshot, sessionSnapshot, viceSessionSnapshot] = await Promise.all([
+    ...['reservationOverrides', 'accessSessions', 'viceSessions'].map((collectionName) => (
+      getDocs(query(
+        collection(db, 'centers', centerId, collectionName),
+        where('participantId', '==', normalizedId)
+      ))
+    ))
+  ]);
+  const ruleRefs = ruleSnapshot.exists() ? [ruleSnapshot.ref] : [];
   const personalTokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
     String(item.data().tokenId || '').trim()
   )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
@@ -1235,13 +1367,17 @@ export async function deleteAdminParticipant(participantId) {
   if (publicParticipantSnapshot.exists()) {
     finalBatch.delete(publicParticipantRef);
   }
-  finalBatch.set(doc(db, 'centers', centerId), {
-    participantDataUpdatedAt: serverTimestamp(),
-    ...(participantSnapshot.data().viceAdminRole === true
-      ? { adminPasswordRotationRequired: true }
-      : {}),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
+  finalBatch.set(
+    doc(db, 'centers', centerId, 'participantMetadata', 'current'),
+    { centerId, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+  if (participantSnapshot.data().viceAdminRole === true) {
+    finalBatch.set(doc(db, 'centers', centerId), {
+      adminPasswordRotationRequired: true,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
   appendAuditEvent(finalBatch, {
     action: AUDIT_ACTIONS.DELETE_PARTICIPANT,
     targetType: 'PARTICIPANT',

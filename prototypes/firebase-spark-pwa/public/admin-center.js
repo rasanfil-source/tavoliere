@@ -12,7 +12,7 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260818s';
+import { db, getCurrentUser } from './firebase-client.js?v=20260820t';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   createOwnedCenterId,
@@ -20,7 +20,7 @@ import {
   setActiveCenterId
 } from './center-context.js?v=20260816h';
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260818a';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816g';
 
@@ -359,65 +359,6 @@ export async function createAdministratorInvitation(participantId, user = getCur
   return createRoleInvitation({ centerId, participantId: normalizedParticipantId, role: 'ADMIN' }, user);
 }
 
-export async function createViceAdministratorInvitation(participantId, user = getCurrentUser()) {
-  if (!db || !user || user.isAnonymous) {
-    throw new Error('Accesso amministratore richiesto');
-  }
-  const normalizedParticipantId = String(participantId || '').trim();
-  if (!normalizedParticipantId) throw new Error('Seleziona il vice amministratore');
-  const centerId = getActiveCenterId();
-  const access = await readCenterAdmin(user, centerId);
-  if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
-    throw new Error('Solo il responsabile o l’amministratore può invitare un vice');
-  }
-  const participantSnapshot = await getDoc(
-    doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId)
-  );
-  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
-  if (participant.status !== 'ACTIVE' || participant.viceAdminRole !== true) {
-    throw new Error('La persona deve essere attiva e indicata come vice amministratore');
-  }
-
-  const [membershipsSnapshot, invitationsSnapshot] = await Promise.all([
-    getDocs(query(
-      collection(db, 'centers', centerId, 'admins'),
-      where('participantId', '==', normalizedParticipantId),
-      where('role', '==', 'MANAGER'),
-      limit(10)
-    )),
-    getDocs(query(
-      collection(db, ADMIN_INVITATION_COLLECTION),
-      where('centerId', '==', centerId),
-      where('role', '==', 'MANAGER'),
-      limit(50)
-    ))
-  ]);
-  if (membershipsSnapshot.docs.some((item) => item.data().status === 'ACTIVE')) {
-    return { active: true, role: 'MANAGER' };
-  }
-  const existing = invitationsSnapshot.docs.find((item) => {
-    const data = item.data();
-    const expiresAt = data.expiresAt?.toDate?.();
-    return data.role === 'MANAGER'
-      && data.participantId === normalizedParticipantId
-      && data.status === 'ACTIVE'
-      && expiresAt instanceof Date
-      && expiresAt.getTime() > Date.now();
-  });
-  if (existing) {
-    return {
-      invitationId: existing.id,
-      expiresAt: existing.data().expiresAt.toDate(),
-      role: 'MANAGER'
-    };
-  }
-  return createRoleInvitation({
-    centerId,
-    participantId: normalizedParticipantId,
-    role: 'MANAGER'
-  }, user);
-}
-
 export async function revokeViceAdministratorAccess(participantId, user = getCurrentUser()) {
   if (!db || !user || user.isAnonymous) {
     throw new Error('Accesso amministratore richiesto');
@@ -429,7 +370,7 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
   if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
     throw new Error('Solo il responsabile o l’amministratore può revocare un vice');
   }
-  const [membershipsSnapshot, invitationsSnapshot] = await Promise.all([
+  const [membershipsSnapshot, invitationsSnapshot, viceSessionsSnapshot] = await Promise.all([
     getDocs(query(
       collection(db, 'centers', centerId, 'admins'),
       where('participantId', '==', normalizedParticipantId),
@@ -441,6 +382,11 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
       where('centerId', '==', centerId),
       where('role', '==', 'MANAGER'),
       limit(50)
+    )),
+    getDocs(query(
+      collection(db, 'centers', centerId, 'viceSessions'),
+      where('participantId', '==', normalizedParticipantId),
+      limit(20)
     ))
   ]);
   const now = serverTimestamp();
@@ -469,6 +415,7 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
       updatedAt: now
     }, { merge: true });
   });
+  viceSessionsSnapshot.docs.forEach((item) => batch.delete(item.ref));
   await batch.commit();
 }
 
@@ -488,6 +435,7 @@ export async function listAdministratorInvitations(user = getCurrentUser()) {
   ));
   return snapshot.docs
     .map((item) => ({ invitationId: item.id, ...item.data() }))
+    .filter((item) => item.role === 'ADMIN')
     .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt));
 }
 

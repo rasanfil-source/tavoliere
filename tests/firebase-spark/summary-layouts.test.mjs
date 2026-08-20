@@ -74,15 +74,15 @@ test('telefono e WhatsApp restano ben distinti nel popup', () => {
 });
 
 test('Classic e Internazionale aprono i contatti dal nome del commensale', () => {
-  assert.match(view, /renderClassicNamesRow\(screen\)/);
+  assert.match(view, /renderClassicNamesRow\(screen, residentLabel\)/);
   assert.match(view, /summary-matrix-people-icon/);
-  assert.match(view, /renderNamesCell\(column, \{ compactActions: true \}\)/);
+  assert.match(view, /renderNamesCell\(column, \{ compactActions: true, residentLabel \}\)/);
   assert.match(view, /class="summary-matrix-person-trigger" popovertarget=/);
   assert.match(view, /class="summary-matrix-contact-popover"[^>]*popover role="dialog"/);
   assert.match(view, /summary\.contactPerson/);
   assert.match(styles, /\.summary-matrix-contact-popover::backdrop/);
   assert.match(styles, /text-underline-offset: 3px;\s*}\s*\.summary-matrix-person-trigger \.summary-matrix-person-name/);
-  assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column, \{ compactActions: true \}\)/);
+  assert.match(view, /renderInternationalCard[\s\S]*renderNamesCell\(column, \{ compactActions: true, residentLabel \}\)/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-names \{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-names > li \{[\s\S]*flex: 0 1 auto/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 30px;[\s\S]*line-height: 1\.05/);

@@ -70,11 +70,11 @@ test('l invito personale del vice usa uno schema chiuso e una membership revocab
   assert.match(adminCreate, /keys\(\)\.hasOnly\(\[/);
   assert.match(adminCreate, /invitationMembershipClaimIsValid\(centerId, adminUid\)/);
   assert.match(invitationClaim, /request\.resource\.data\.centerId == centerId/);
-  assert.match(invitationClaim, /request\.resource\.data\.massPermission == true/);
+  assert.match(invitationClaim, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
   assert.match(invitationClaim, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
-  assert.match(rules, /function managerAssignmentIsCurrent\(centerId\)[\s\S]*viceAdminRole/);
+  assert.match(rules, /function activeViceParticipant\(centerId, participantId\)[\s\S]*viceAdminRole/);
   assert.match(rules, /function administratorAuthenticationMatches\(centerId\)[\s\S]*sign_in_provider/);
-  assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorAuthenticationMatches\(centerId\)[\s\S]*managerAssignmentIsCurrent\(centerId\)/);
+  assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorPasswordRequired[\s\S]*activeViceParticipant\(centerId, participantId\)/);
 });
 
 test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {
@@ -169,7 +169,7 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
   assert.match(
     rules,
-    /match \/admins\/\{adminUid\}[\s\S]*allow update: if canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
+    /match \/admins\/\{adminUid\}[\s\S]*canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
   );
 });
 
@@ -238,8 +238,8 @@ test('kitchen and public summary sessions can read reservation rules for counts'
 });
 
 test('participant changes invalidate the kitchen rules cache', () => {
-  assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
-  assert.match(centerSettings, /participantDataVersion:\s*timestampVersion/);
+  assert.match(participantData, /participantMetadata', 'current'[\s\S]*updatedAt: serverTimestamp\(\)/);
+  assert.match(centerSettings, /participantDataVersion:\s*timestampVersion\([\s\S]*participantMetadata\.updatedAt/);
 });
 
 test('participant overrides are queried by participant and date range', () => {
@@ -290,22 +290,34 @@ test('admin participant list keeps disabled people available for reactivation', 
 
 test('l amministratore puo eliminare una persona e i dati operativi collegati', () => {
   assert.match(participantData, /export async function deleteAdminParticipant/);
-  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions', 'viceSessions'\]/);
+  assert.match(participantData, /const ruleRef = doc\(db, 'centers', centerId, 'reservationRules'/);
+  assert.match(participantData, /\['reservationOverrides', 'accessSessions', 'viceSessions'\]/);
   assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
   assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
   assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
-  assert.match(participantData, /const \[ruleSnapshot, overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = relatedSnapshots/);
+  assert.match(participantData, /const \[overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = await Promise\.all/);
   assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);
-  assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
-  assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow delete: if isAdmin\(centerId\)/);
+  assert.match(participantData, /participantMetadata', 'current'[\s\S]*updatedAt: serverTimestamp\(\)/);
+  assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*viceMayCleanDisabledParticipant/);
   assert.match(rules, /function tokenIsUsable\(centerId, tokenId\)[\s\S]*scope != 'PERSONAL'[\s\S]*participantIsActive/);
+});
+
+test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () => {
+  assert.match(rules, /function canUseViceAdministratorTools\(centerId\)/);
+  assert.match(rules, /function viceAdaptationUpdateIsValid\(centerId\)[\s\S]*affectedKeys\(\)\.hasOnly/);
+  assert.match(rules, /function viceParticipantWriteDoesNotAssignRoles[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
+  assert.match(rules, /function viceParticipantUpdateDoesNotChangeRoles[\s\S]*hasAny\(\[[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
+  assert.match(rules, /function viceMayCleanDisabledParticipant[\s\S]*status == 'DISABLED'/);
+  assert.match(rules, /settingsId == 'operationalLinks'/);
 });
 
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /function adminCanManageDailyOperations\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN', 'MANAGER'\]/);
   assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*hasAuthorizedResidentAdministratorSession\(centerId\)/);
   assert.match(rules, /match \/viceSessions\/\{authUid\}[\s\S]*isAdministratorTechnicalUser\(centerId\)[\s\S]*passwordVersion/);
+  assert.match(rules, /match \/publicParticipants\/\{participantId\}[\s\S]*isAdministratorTechnicalUser\(centerId\)/);
+  assert.match(rules, /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\) \|\| isAdministratorTechnicalUser\(centerId\)/);
   assert.match(rules, /residentMayAdminister\(centerId, request\.resource\.data\.participantId\)/);
   assert.match(rules, /match \/dailyHealth\/\{dateId\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
   assert.match(rules, /match \/kitchenNotes\/\{mealDate\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);

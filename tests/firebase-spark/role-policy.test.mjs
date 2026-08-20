@@ -37,13 +37,14 @@ test('l amministratore gestisce il centro ma non puo sostituire il responsabile'
   assert.equal(capabilities.has(CAPABILITIES.ASSIGN_LITURGY), true);
 });
 
-test('il vice usa tutte le funzioni operative ma non la scheda Amministratore', () => {
+test('il vice usa Persone Link e Impostazioni ma non le schede riservate', () => {
   const capabilities = getRoleCapabilities(CENTER_ROLES.MANAGER);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_PARTICIPANTS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_DAILY_OPERATIONS), true);
   assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
-  assert.equal(capabilities.has(CAPABILITIES.MANAGE_CENTER_SETTINGS), true);
-  assert.equal(capabilities.has(CAPABILITIES.MANAGE_OPERATIONAL_LINKS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADAPTATIONS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_CENTER_SETTINGS), false);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_OPERATIONAL_LINKS), false);
   assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADMINS), false);
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
