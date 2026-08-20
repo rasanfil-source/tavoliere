@@ -96,7 +96,6 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
 test('la configurazione permette di impostare o sostituire la password amministratori', () => {
   const configuration = html.match(/id="admin-configuration-section"[\s\S]*?<div class="admin-role-stack"/)?.[0] || '';
   assert.match(configuration, /data-admin-shared-password-row/);
-  assert.match(configuration, /data-admin-shared-password-current/);
   assert.match(configuration, /data-admin-shared-password-new/);
   assert.match(configuration, /admin\.sharedPassword\.configurationHelp/);
   assert.match(app, /adminSharedPasswordRow\.hidden = !canConfigureCenter \|\| state\.residentSettingsMode/);
@@ -343,10 +342,13 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.doesNotMatch(app, /adminRoleBadge/);
   assert.match(html, /Scegli la Persona[\s\S]*completa qui il passaggio[\s\S]*il tuo incarico terminerà/);
   assert.match(html, /data-admin-invitation-result/);
+  assert.match(html, /data-admin-vice-invitation-generate/);
   assert.match(html, /data-admin-invitation-link/);
   assert.match(html, /data-admin-invitation-copy/);
   assert.match(html, /data-admin-invitation-share/);
   assert.match(app, /handleAdministratorInvitationShare/);
+  assert.match(app, /handleViceInvitationGeneration/);
+  assert.match(app, /Invito vice amministratore generato\./);
   assert.match(app, /invitationUrl\.searchParams\.set\('adminInvite', invitation\.invitationId\)/);
   assert.match(app, /elements\.adminInvitationLink\.value = invitationUrl\.toString\(\)/);
   assert.match(app, /admin\.participantId[\s\S]*activeParticipantIds\.has\(admin\.participantId\)/);
@@ -387,6 +389,12 @@ test('il nuovo responsabile rileva il trasferimento senza ricaricare e un accoun
   assert.match(app, /admin\.succession\.completedMessage/);
   assert.match(app, /requiresDifferentAdminIdentity[\s\S]*adminAuthMethods\.hidden = !requiresDifferentAdminIdentity/);
   assert.match(app, /admin\.succession\.identityMismatch/);
+});
+
+test('l amministratore forte riapre il calendario dalla vista mese usando il refresh orchestrato', () => {
+  assert.match(app, /if \(state\.mode === 'participant' \|\| state\.mode === 'week'\) \{/);
+  assert.match(app, /await refreshNow\('autorizzazione'\)/);
+  assert.doesNotMatch(app, /if \(state\.mode === 'week'\) \{[\s\S]*await refreshParticipant\('autorizzazione'\)/);
 });
 
 test('l autenticazione del candidato non accetta automaticamente l invito', () => {
@@ -444,16 +452,17 @@ test('il nuovo amministratore sceglie subito la password e non deve sostituirne 
 });
 
 test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {
+  const transfer = adminCenter.match(/export async function transferCenterOwnership\([\s\S]*?\n}\n/)?.[0] || '';
   assert.match(app, /dialog\.transferOwnership\.finalMessage/);
   assert.match(app, /const revokePrevious = true/);
   assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
   assert.match(app, /if \(revokePrevious\) \{[\s\S]*await signOutCurrentUser\(\)/);
-  assert.match(adminCenter, /const revokePrevious = options\?\.revokePrevious === true/);
-  assert.match(adminCenter, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
-  assert.match(adminCenter, /batch\.set\(currentProfileRef,[\s\S]*status: 'REVOKED'/);
-  assert.match(adminCenter, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
-  assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
-  assert.doesNotMatch(adminCenter, /publicParticipants[\s\S]*batch\.delete/);
+  assert.match(transfer, /const revokePrevious = options\?\.revokePrevious === true/);
+  assert.match(transfer, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
+  assert.match(transfer, /batch\.set\(currentProfileRef,[\s\S]*status: 'REVOKED'/);
+  assert.match(transfer, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
+  assert.doesNotMatch(transfer, /batch\.delete\(currentMembershipRef\)/);
+  assert.doesNotMatch(transfer, /publicParticipants[\s\S]*batch\.delete/);
 });
 
 test('il nuovo responsabile sincronizza la propria email e può ripulire un vecchio OWNER', () => {

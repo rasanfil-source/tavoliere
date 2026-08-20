@@ -308,6 +308,17 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
   assert.match(app, /state\.residentRestorePending = !state\.residentReady/);
 });
 
+test('un amministratore forte ripristina la propria persona anche senza una vecchia sessione residente locale', () => {
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  const restoreAdmin = participantData.match(/export async function restoreResidentIdentityForAuthorizedAdministrator\([\s\S]*?\n}/)?.[0] || '';
+  assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\);/);
+  assert.match(restoreAdmin, /const storedParticipantId = loadStoredResidentParticipantId\(\);/);
+  assert.match(restoreAdmin, /const storedSignature = loadStoredResidentSignature\(\);/);
+  assert.match(restoreAdmin, /const membershipParticipantId = String\(/);
+  assert.match(restoreAdmin, /loadCenterContactSettings\(\{ forceRefresh: false \}\)/);
+  assert.match(restoreAdmin, /return \{\s*participant,\s*participants: \[participant\],\s*strongAdministrator: true\s*\};/);
+});
+
 test('un account Google non autorizzato non blocca il successivo accesso residente', () => {
   const adminProbe = participantData.match(
     /async function getAuthorizedAdministratorUser\(\)[\s\S]*?\n}/
@@ -887,8 +898,10 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
 test('la spunta vice usa direttamente sigla e password amministratori nel login residente', () => {
   assert.match(index, /data-admin-participant-vice/);
   assert.doesNotMatch(index, /data-admin-vice-flow/);
-  assert.doesNotMatch(app, /createViceAdministratorInvitation/);
-  assert.doesNotMatch(adminCenter, /export async function createViceAdministratorInvitation/);
+  assert.match(index, /data-admin-vice-invitation-generate/);
+  assert.match(app, /const createViceInvitation = callDomain\('admin', 'createViceInvitation'\);/);
+  assert.match(app, /handleViceInvitationGeneration/);
+  assert.match(adminCenter, /export async function createViceInvitation/);
   assert.match(app, /revokeViceAdministratorAccess/);
   assert.doesNotMatch(index, /data-vice-auth-google/);
   assert.doesNotMatch(index, /data-vice-auth-email-form/);
@@ -916,11 +929,15 @@ test('la spunta vice usa direttamente sigla e password amministratori nel login 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {
   assert.match(index, /data-admin-leadership/);
   assert.match(index, /data-admin-invitation-generate/);
+  assert.match(index, /data-admin-vice-invitation-generate/);
   assert.match(index, /data-admin-successor-select/);
   assert.match(index, /data-admin-transfer-ownership/);
   assert.match(adminCenter, /export async function createAdministratorInvitation/);
+  assert.match(adminCenter, /export async function createViceInvitation/);
   assert.match(adminCenter, /export async function transferCenterOwnership/);
   assert.match(adminCenter, /role: 'ADMIN'/);
+  assert.match(adminCenter, /const role = invitation\.role === 'MANAGER' \? 'MANAGER' : 'ADMIN';/);
+  assert.match(adminCenter, /const massPermission = role === 'ADMIN';/);
   assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
   assert.match(app, /CAPABILITIES\.TRANSFER_OWNERSHIP/);

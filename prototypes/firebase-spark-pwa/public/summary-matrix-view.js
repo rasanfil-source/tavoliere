@@ -4,7 +4,7 @@ import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260818w
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260817h";
+} from "./summary-matrix-model.js?v=20260820i";
 
 let contactPopupSequence = 0;
 
@@ -25,7 +25,7 @@ export function mountSummaryMatrix(
     : buildSummaryMatrixScreens(days, [], operationDays);
 
   if (layout === "future" && !kitchen) {
-    renderFutureSummary(container, screens, residentLabel);
+    renderFutureSummary(container, screens, residentLabel, activeIndex, onActiveIndexChange);
     return;
   }
 
@@ -63,11 +63,11 @@ export function mountSummaryMatrix(
   });
 }
 
-function renderFutureSummary(container, screens, residentLabel) {
+function renderFutureSummary(container, screens, residentLabel, activeIndex = 0, onActiveIndexChange = () => {}) {
   container.innerHTML = `
-    <div class="summary-future-grid">
+    <div class="summary-future-grid" data-summary-future-track>
       ${screens.map((screen) => `
-        <article class="summary-future-card">
+        <article class="summary-future-card" data-summary-future-screen="${screen.index}" aria-hidden="${screen.index !== activeIndex}">
           <header class="summary-future-card-head">
             <strong>${escapeHtml(t(screen.labelKey))}</strong>
             <time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time>
@@ -80,6 +80,21 @@ function renderFutureSummary(container, screens, residentLabel) {
       `).join("")}
     </div>
   `;
+  const track = container.querySelector('[data-summary-future-track]');
+  let scrollTimer = 0;
+  track?.addEventListener('scroll', () => {
+    window.clearTimeout(scrollTimer);
+    scrollTimer = window.setTimeout(() => {
+      const index = Math.max(0, Math.min(1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth + 14))));
+      track.querySelectorAll('[data-summary-future-screen]').forEach((screen) => {
+        screen.setAttribute('aria-hidden', String(Number(screen.dataset.summaryFutureScreen) !== index));
+      });
+      onActiveIndexChange(index);
+    }, 100);
+  }, { passive: true });
+  window.requestAnimationFrame(() => {
+    if (track) track.scrollTo({ left: Math.max(0, activeIndex) * (track.clientWidth + 14), behavior: 'auto' });
+  });
 }
 
 function renderFutureMeal(column, residentLabel) {
@@ -105,6 +120,9 @@ function renderFutureMeal(column, residentLabel) {
 }
 
 function renderFutureMetric(labelKey, count, kind) {
+  if (kind === "guests") {
+    return `<p class="summary-future-metric summary-future-metric-guests"><strong>${escapeHtml(String(count))}</strong><span>${escapeHtml(t(labelKey))}</span></p>`;
+  }
   return `<p class="summary-future-metric summary-future-metric-${escapeHtml(kind)}"><span>${escapeHtml(t(labelKey))}</span><strong>${escapeHtml(String(count))}</strong></p>`;
 }
 
@@ -116,14 +134,30 @@ function renderFuturePerson(person, residentLabel) {
     : residentLabel === "initials"
       ? person.initials || fallbackInitials || person.signature
       : person.displayName;
-  return `<span class="summary-future-person" title="${escapeHtml(person.displayName || text)}">${escapeHtml(text || "–")}</span>`;
+  const diets = Array.isArray(person.dietTags)
+    ? person.dietTags.map((tag) => formatDietIdentifier(tag)).filter(Boolean)
+    : [];
+  const label = `${escapeHtml(text || "–")}${diets.length ? `&nbsp;<small>(${escapeHtml(diets.join(", "))})</small>` : ""}`;
+  const phone = normalizePhone(person.phone);
+  const call = person.phoneConsent && phone
+    ? `<a class="summary-matrix-call" href="tel:${escapeHtml(phone)}" aria-label="${escapeHtml(t("summary.callPerson", { name: person.displayName }))}"><span class="summary-matrix-phone-icon" aria-hidden="true">☎</span></a>`
+    : "";
+  const whatsapp = person.whatsappEnabled && person.phoneConsent && phone
+    ? `<a class="summary-matrix-whatsapp" href="https://wa.me/${escapeHtml(phone.replace(/\D/g, ""))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(t("summary.messagePerson", { name: person.displayName }))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`
+    : "";
+  if (call || whatsapp) {
+    const popupId = `summary-contact-popup-${++contactPopupSequence}`;
+    return `<span class="summary-future-person summary-matrix-name-with-popup"><button type="button" class="summary-matrix-person-trigger" popovertarget="${popupId}" aria-haspopup="dialog" aria-label="${escapeHtml(t("summary.contactPerson", { name: person.displayName }))}">${label}</button><span class="summary-matrix-contact-popover" id="${popupId}" popover role="dialog"><span class="summary-matrix-contact-actions">${call}${whatsapp}</span></span></span>`;
+  }
+  return `<span class="summary-future-person" title="${escapeHtml(person.displayName || text)}">${label}</span>`;
 }
 
 function renderFutureMass(screen) {
   const status = screen.columns.find((column) => column.dayIndex === screen.index)?.dayMassStatus;
   if (!status || status === "UNKNOWN") return "";
   const yes = status === "YES";
-  return `<div class="summary-future-mass"><span>${escapeHtml(t("summary.mass"))}</span><strong class="summary-future-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong></div>`;
+  const massDayLabel = relativeDayLabel(Math.min(2, Number(screen.index || 0) + 1));
+  return `<div class="summary-future-mass"><span>${escapeHtml(t("summary.mass"))}</span><strong class="summary-future-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}<small>(${escapeHtml(massDayLabel)})</small></strong></div>`;
 }
 
 export function scrollSummaryMatrix(
@@ -133,6 +167,19 @@ export function scrollSummaryMatrix(
 ) {
   const prefix = kitchen ? "kitchen" : "summary";
   const normalizedIndex = Number(index) === 1 ? 1 : 0;
+  if (!kitchen) {
+    const futureTrack = container?.querySelector('[data-summary-future-track]');
+    if (futureTrack) {
+      futureTrack.scrollTo({
+        left: normalizedIndex * (futureTrack.clientWidth + 14),
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+      futureTrack.querySelectorAll('[data-summary-future-screen]').forEach((screen) => {
+        screen.setAttribute('aria-hidden', String(Number(screen.dataset.summaryFutureScreen) !== normalizedIndex));
+      });
+      return true;
+    }
+  }
   const track = container?.querySelector(`[data-${prefix}-matrix-track]`);
   const screen = track?.querySelector(
     `[data-${prefix}-screen="${normalizedIndex}"]`,
@@ -227,7 +274,7 @@ function mealIcon(mealTypeId) {
 
 function interfaceIcon(kind, fallback = "•") {
   const interfaceStyle = document.documentElement.dataset.interfaceStyle;
-  const usesLineIcons = interfaceStyle === "cool" || interfaceStyle === "urban";
+  const usesLineIcons = interfaceStyle === "cool" || interfaceStyle === "urban" || interfaceStyle === "future";
   if (!usesLineIcons || !kind) {
     return fallback;
   }

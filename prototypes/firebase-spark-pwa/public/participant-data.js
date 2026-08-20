@@ -303,7 +303,7 @@ export async function restoreFriendlyResidentSession() {
   const strongAuthenticatedUser = getStrongAuthenticatedUser();
   const authorizedAdministrator = await getAuthorizedAdministratorUser();
   if (authorizedAdministrator) {
-    return restoreResidentIdentityForAuthorizedAdministrator();
+    return restoreResidentIdentityForAuthorizedAdministrator(authorizedAdministrator);
   }
   if (!signature || !participantId || !token.tokenId || !token.expiresAt) {
     return null;
@@ -335,16 +335,29 @@ export async function restoreFriendlyResidentSession() {
     }
     clearStoredResidentIdentity();
     clearCurrentSession();
-    if (!authorizedAdministrator) {
-      await signOutCurrentUser();
-    }
+    await signOutCurrentUser();
     return null;
   }
 }
 
-export async function restoreResidentIdentityForAuthorizedAdministrator() {
-  const user = await getAuthorizedAdministratorUser();
-  if (!user) return null;
+export async function restoreResidentIdentityForAuthorizedAdministrator(user = null) {
+  const authorizedUser = user || await getAuthorizedAdministratorUser();
+  const membershipUser = authorizedUser || getCurrentUser();
+  if (!membershipUser || membershipUser.isAnonymous) return null;
+
+  const storedParticipantId = loadStoredResidentParticipantId();
+  const storedSignature = loadStoredResidentSignature();
+  if (storedParticipantId && storedSignature) {
+    const storedParticipant = await loadPublicParticipantById(storedParticipantId);
+    if (storedParticipant
+      && normalizeResidentSignature(storedParticipant.signature) === storedSignature) {
+      return {
+        participant: storedParticipant,
+        participants: [storedParticipant],
+        strongAdministrator: true
+      };
+    }
+  }
 
   // L'identità residente derivata dalla membership forte ha precedenza su
   // qualsiasi residuo locale di un accesso precedente sullo stesso device.
@@ -353,7 +366,7 @@ export async function restoreResidentIdentityForAuthorizedAdministrator() {
     'centers',
     getActiveCenterId(),
     'admins',
-    user.uid
+    membershipUser.uid
   ));
   const membershipParticipantId = String(
     membershipSnapshot.data()?.participantId || ''

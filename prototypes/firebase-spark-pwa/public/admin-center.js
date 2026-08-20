@@ -359,6 +359,29 @@ export async function createAdministratorInvitation(participantId, user = getCur
   return createRoleInvitation({ centerId, participantId: normalizedParticipantId, role: 'ADMIN' }, user);
 }
 
+export async function createViceInvitation(participantId, user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous) {
+    throw new Error('Accesso amministratore richiesto');
+  }
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) {
+    throw new Error('Seleziona la persona da nominare vice amministratore');
+  }
+  const centerId = getActiveCenterId();
+  const access = await readCenterAdmin(user, centerId);
+  if (!access.active || !['OWNER', 'ADMIN'].includes(access.role)) {
+    throw new Error('Solo un amministratore può nominare un vice amministratore');
+  }
+  const participantSnapshot = await getDoc(
+    doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId)
+  );
+  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
+  if (participant.status !== 'ACTIVE' || participant.viceAdminRole !== true) {
+    throw new Error('Attiva prima la spunta "Vice amministratore" sulla scheda di questa persona');
+  }
+  return createRoleInvitation({ centerId, participantId: normalizedParticipantId, role: 'MANAGER' }, user);
+}
+
 export async function revokeViceAdministratorAccess(participantId, user = getCurrentUser()) {
   if (!db || !user || user.isAnonymous) {
     throw new Error('Accesso amministratore richiesto');
@@ -837,6 +860,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
   if (!hasVerifiedAdministratorIdentity(user)) {
     throw new Error('Conferma il tuo indirizzo email prima di accettare l\'invito');
   }
+  const role = invitation.role === 'MANAGER' ? 'MANAGER' : 'ADMIN';
+  const massPermission = role === 'ADMIN';
   const now = serverTimestamp();
   const batch = writeBatch(db);
   batch.set(doc(db, 'centers', invitation.centerId, 'admins', user.uid), {
@@ -845,8 +870,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     invitationId,
     status: 'ACTIVE',
     email: user.email || '',
-    role: invitation.role,
-    massPermission: true,
+    role,
+    massPermission,
     dailyOperationsPermission: true,
     administratorPasswordRequired: requiresAdministratorPassword(user),
     // Nel flusso di successione la persona sceglie già la propria password.
@@ -860,8 +885,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     participantId: invitation.participantId || '',
     status: 'ACTIVE',
     email: user.email || '',
-    role: invitation.role,
-    massPermission: true,
+    role,
+    massPermission,
     dailyOperationsPermission: true,
     createdAt: now,
     updatedAt: now

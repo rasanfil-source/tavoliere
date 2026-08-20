@@ -1203,6 +1203,9 @@ test('la password amministratori autorizza il vice e la rotazione revoca la sess
   }));
 
   const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertSucceeds(personalDb.collection(`${centerPath()}/publicParticipants`).get());
+  await assertSucceeds(personalDb.collection(`${centerPath()}/reservationRules`).get());
+  await assertSucceeds(personalDb.collection(`${centerPath()}/reservationOverrides`).get());
   await assertSucceeds(personalDb.doc(`${centerPath()}/dailyHealth/${dateId}`).set({
     centerId: CENTER_ID,
     dateId,
@@ -1366,6 +1369,7 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
     summaryLayout: 'international',
     kitchenLayout: 'classic',
     monthLayout: 'grid',
+    monthControlsSide: 'right',
     summaryResidentLabel: 'initials',
     language: 'it',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()

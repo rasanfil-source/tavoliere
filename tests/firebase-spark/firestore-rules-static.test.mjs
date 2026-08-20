@@ -321,6 +321,14 @@ test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /residentMayAdminister\(centerId, request\.resource\.data\.participantId\)/);
   assert.match(rules, /match \/dailyHealth\/\{dateId\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
   assert.match(rules, /match \/kitchenNotes\/\{mealDate\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
+  assert.match(
+    rules,
+    /match \/reservationRules\/\{ruleId\}[\s\S]*allow read: if !isAdmin\(centerId\)[\s\S]*canUseViceAdministratorTools\(centerId\)/
+  );
+  assert.match(
+    rules,
+    /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow read: if !isAdmin\(centerId\)[\s\S]*canUseViceAdministratorTools\(centerId\)/
+  );
 });
 
 test('la rotazione della password amministratori revoca la precedente identità tecnica', () => {

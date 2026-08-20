@@ -99,13 +99,13 @@ const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPen
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260819b',
+  admin: './admin-center.js?v=20260820u',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817b',
   kitchen: './kitchen-data.js?v=20260816g',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260820e'
+  participant: './participant-data.js?v=20260820f'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -143,6 +143,7 @@ const createCenterInvitation = callDomain('admin', 'createCenterInvitation');
 const createPlatformAdministratorInvitation = callDomain('admin', 'createPlatformAdministratorInvitation');
 const deactivatePlatformCenter = callDomain('admin', 'deactivatePlatformCenter');
 const createAdministratorInvitation = callDomain('admin', 'createAdministratorInvitation');
+const createViceInvitation = callDomain('admin', 'createViceInvitation');
 const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministratorAccess');
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
@@ -808,6 +809,7 @@ const elements = {
   inviteReject: document.querySelector('[data-invite-reject]'),
   inviteAcceptActions: document.querySelector('[data-admin-invite-accept-actions]'),
   adminInvitationGenerate: document.querySelector('[data-admin-invitation-generate]'),
+  adminViceInvitationGenerate: document.querySelector('[data-admin-vice-invitation-generate]'),
   adminInvitationStatus: document.querySelector('[data-admin-invitation-status]'),
   adminInvitationResult: document.querySelector('[data-admin-invitation-result]'),
   adminInvitationLink: document.querySelector('[data-admin-invitation-link]'),
@@ -1129,6 +1131,9 @@ elements.adminCenterSettingsSave.addEventListener('click', handleAdminCenterSett
 elements.adminCenterSettingsSection.addEventListener('input', markAdminCenterDirty);
 elements.adminCenterSettingsSection.addEventListener('change', markAdminCenterDirty);
 elements.adminInvitationGenerate.addEventListener('click', handleAdministratorInvitationGeneration);
+if (elements.adminViceInvitationGenerate) {
+  elements.adminViceInvitationGenerate.addEventListener('click', handleViceInvitationGeneration);
+}
 if (elements.adminCandidateNewPerson) {
   elements.adminCandidateNewPerson.addEventListener('click', handleAdminCandidateNewPersonClick);
 }
@@ -2391,7 +2396,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   if (isAdmin && !state.platformOwner) {
     await refreshAdminParticipants();
     if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
-    if (state.mode === 'week') {
+    if (state.mode === 'participant' || state.mode === 'week') {
       if (!state.residentReady) {
         const restored = await restoreResidentIdentityForAuthorizedAdministrator();
         if (restored) {
@@ -2402,7 +2407,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       }
       renderResidentAccess(false);
       renderMode();
-      await refreshParticipant('autorizzazione');
+      await refreshNow('autorizzazione');
       if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     }
   }
@@ -3960,6 +3965,10 @@ function handleAdministratorInvitationGeneration() {
   return operationGuard.run('admin:administrator-invitation', performAdministratorInvitationGeneration);
 }
 
+function handleViceInvitationGeneration() {
+  return operationGuard.run('admin:vice-invitation', performViceInvitationGeneration);
+}
+
 function handleAdminCandidateNewPersonClick() {
   selectAdminSection('people', { focus: true });
   handleAdminNewParticipant();
@@ -4736,6 +4745,49 @@ function syncAdminAdaptationsForm() {
   }
   if (elements.adminPasswordRotationWarning) {
     elements.adminPasswordRotationWarning.hidden = true;
+  }
+}
+
+async function performViceInvitationGeneration() {
+  if (!hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) return;
+  if (!elements.adminViceInvitationGenerate) return;
+  elements.adminViceInvitationGenerate.disabled = true;
+  elements.adminLeadershipStatus.textContent = 'Genero l\u2019invito...';
+  try {
+    const participantId = elements.adminCandidateSelect
+      ? elements.adminCandidateSelect.value
+      : '';
+    const invitation = await createViceInvitation(participantId);
+    const invitationUrl = new URL('/', window.location.origin);
+    invitationUrl.searchParams.set('view', 'admin');
+    invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
+    invitationUrl.searchParams.set('adminRole', 'MANAGER');
+    invitationUrl.searchParams.set('c', getActiveCenterId());
+
+    const participant = (state.adminParticipants || []).find(
+      (item) => item.participantId === participantId
+    );
+    const displayName = participant?.displayName || participant?.signature || 'La persona';
+
+    if (elements.adminInvitationStatus) {
+      elements.adminInvitationStatus.hidden = false;
+      elements.adminInvitationStatus.textContent =
+        `Invito da vice amministratore preparato per ${displayName}. Invia il collegamento e attendi la conferma.`;
+    }
+    elements.adminInvitationLink.value = invitationUrl.toString();
+    elements.adminInvitationResult.hidden = false;
+
+    elements.adminLeadershipStatus.textContent = 'Invito vice amministratore generato.';
+  } catch (error) {
+    elements.adminLeadershipStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
+    if (elements.adminInvitationStatus) {
+      elements.adminInvitationStatus.hidden = true;
+      elements.adminInvitationStatus.textContent = '';
+    }
+    elements.adminInvitationResult.hidden = true;
+    elements.adminInvitationLink.value = '';
+  } finally {
+    elements.adminViceInvitationGenerate.disabled = false;
   }
 }
 

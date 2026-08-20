@@ -47,11 +47,11 @@ export function loadCachedCenterContactSettings() {
       themePalette: normalizeThemePalette(cached.themePalette),
       interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
-      summaryLayout: normalizeLayout(cached.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+      summaryLayout: normalizeLayout(cached.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
       monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
       monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel),
+      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel, 'initials'),
       language: normalizeCenterLanguage(cached.language),
       administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
       administratorSignature: typeof cached.administratorSignature === 'string' ? cached.administratorSignature.trim() : '',
@@ -226,14 +226,14 @@ export async function updateCenterSettings({
     themePalette: normalizeThemePalette(themePalette),
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
-    summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
     // Futura è uno stile dell'interfaccia, non un valore di summaryLayout.
     // Quando il campo non esiste ancora, il riepilogo Futura parte quindi con
     // le iniziali come previsto, senza attendere un salvataggio manuale.
-    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, interfaceStyle === 'future' ? 'initials' : 'name'),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'initials'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
@@ -346,11 +346,11 @@ function refreshCenterContactSettings() {
         themePalette: normalizeThemePalette(data.themePalette),
         interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
-        summaryLayout: normalizeLayout(data.summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+        summaryLayout: normalizeLayout(data.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
         monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
         monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, data.interfaceStyle === 'future' ? 'initials' : 'name'),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'initials'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
@@ -395,14 +395,14 @@ function normalizeThemePalette(value) {
 }
 
 function normalizeInterfaceStyle(value) {
-  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'cool';
+  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'future';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {
   return allowedValues.has(value) ? value : fallback;
 }
 
-function normalizeResidentLabel(value, fallback = 'name') {
+function normalizeResidentLabel(value, fallback = 'initials') {
   return ALLOWED_RESIDENT_LABEL_VALUES.has(value) ? value : fallback;
 }
 

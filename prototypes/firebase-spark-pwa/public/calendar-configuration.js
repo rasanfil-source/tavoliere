@@ -83,7 +83,7 @@ export async function saveCenterConfiguration({
     themePalette: typeof themePalette === 'string' ? themePalette : 'smeraldo',
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: defaultView === 'week' ? 'week' : 'month',
-    summaryLayout: normalizeLayout(summaryLayout, 'international', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),

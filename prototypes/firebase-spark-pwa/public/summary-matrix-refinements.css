@@ -1591,6 +1591,19 @@ html[data-interface-style="urban"] .month-grid button:focus-visible {
   background: var(--mass-no-bg);
 }
 
+/* Cucina Classic: come nel riepilogo, Sì/No sono testo nella fascia, non
+   pillole con un secondo contorno interno. */
+.summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-no {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .kitchen-notes {
   margin-top: 14px;
   padding: 15px 16px;
@@ -1844,6 +1857,14 @@ html[data-interface-style="urban"] .month-grid button:focus-visible {
   padding-inline: 2px;
   font-size: 0.56rem;
   letter-spacing: -0.015em;
+}
+
+/* International: keep the long Dopodomani label inside the compact control. */
+.summary-layout-international .summary-day-tone-2 .summary-mass-control-day {
+  padding-inline: 1px;
+  font-size: clamp(0.42rem, 1.25vw, 0.58rem);
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .summary-mass-control-state {

@@ -1460,8 +1460,11 @@ service cloud.firestore {
             && ruleId == 'rule_' + sessionParticipantId(centerId)
             && resource.data.participantId == sessionParticipantId(centerId)
           );
+        // Il riepilogo calcola i pasti dell'intero centro: un vice validato
+        // deve poter leggere tutte le regole, pur continuando a modificarle
+        // soltanto nel perimetro ristretto definito qui sotto.
         allow read: if !isAdmin(centerId)
-          && viceMayManageParticipantAfterWrite(centerId, resource.data.participantId);
+          && canUseViceAdministratorTools(centerId);
         allow create: if isAdmin(centerId)
           && ruleId == 'rule_' + request.resource.data.participantId
           && request.resource.data.participantId is string
@@ -1514,8 +1517,10 @@ service cloud.firestore {
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
           || canReadParticipantOverride(centerId);
+        // Stesso principio per gli override: lettura completa necessaria al
+        // riepilogo, scritture e cancellazioni restano governate separatamente.
         allow read: if !isAdmin(centerId)
-          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
+          && canUseViceAdministratorTools(centerId);
 
         allow create: if overrideKeysAreValid()
           && overrideIdentityIsValid(centerId, overrideId)

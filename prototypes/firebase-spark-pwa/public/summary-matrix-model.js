@@ -375,9 +375,13 @@ function getDietAssignments(operationDay) {
 
 function getInvitedMealCount(operationDay, mealTypeId) {
   const dailyHealth = operationDay?.dailyHealth || operationDay;
+  const invitedMeals = dailyHealth?.invitedMeals
+    || operationDay?.invitedMeals
+    || operationDay?.dailyOperation?.invitedMeals
+    || {};
   return Math.min(
     999,
-    Math.max(0, Math.floor(Number(dailyHealth?.invitedMeals?.[mealTypeId]) || 0)),
+    Math.max(0, Math.floor(Number(invitedMeals[mealTypeId]) || 0)),
   );
 }
 
