@@ -8155,11 +8155,17 @@ function syncMonthMealButton(button, meal) {
   button.classList.toggle('month-flag-absent', !isPresent);
   button.classList.toggle('month-flag-locked', !meal.isOpen);
   button.classList.toggle('month-flag-pending', pending);
+  const isFutureButton = button.classList.contains('month-future-meal');
+  if (isFutureButton) {
+    button.classList.toggle('month-future-meal-present', isPresent);
+    button.classList.toggle('month-future-meal-locked', meal.isOpen === false);
+    button.textContent = isPresent ? '✓' : '–';
+  }
   button.dataset.monthEffect = isPresent ? 'ABSENT' : 'PRESENT';
   button.setAttribute('aria-pressed', String(isPresent));
   button.setAttribute('aria-label', actionLabel);
   button.title = meal.isOpen ? stateLabel : formatCutoffLabel(meal);
-  button.disabled = !meal.isOpen || pending;
+  button.disabled = meal.isOpen === false || pending;
   const mark = button.querySelector('.month-flag-mark');
   if (mark) mark.textContent = isPresent ? '✓' : mealLabel.slice(0, 1);
 }
