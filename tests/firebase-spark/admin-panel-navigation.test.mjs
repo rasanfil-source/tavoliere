@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const projectRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
-const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter, administratorAuth, summaryView] = await Promise.all([
+const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter, administratorAuth, summaryView, participantData] = await Promise.all([
   readFile(new URL('index.html', projectRoot), 'utf8'),
   readFile(new URL('styles.css', projectRoot), 'utf8'),
   readFile(new URL('summary-matrix-refinements.css', projectRoot), 'utf8'),
@@ -12,7 +12,8 @@ const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter,
   readFile(new URL('center-settings.js', projectRoot), 'utf8'),
   readFile(new URL('admin-center.js', projectRoot), 'utf8'),
   import(new URL('domain/administrator-auth.mjs', projectRoot)),
-  readFile(new URL('summary-matrix-view.js', projectRoot), 'utf8')
+  readFile(new URL('summary-matrix-view.js', projectRoot), 'utf8'),
+  readFile(new URL('participant-data.js', projectRoot), 'utf8')
 ]);
 
 test('il riepilogo amministrativo non richiede il vecchio indicatore visivo del calendario', () => {
@@ -104,7 +105,25 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban-plus', 'future'\]\)/);
   assert.match(centerSettings, /value === 'urban' \? 'urban-plus' : value/);
+  assert.match(styleSelect, /value="urban-plus"[^>]*selected/);
+  assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
+  assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
   assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
+});
+
+test('il nuovo amministratore richiede una persona diversa da quello attuale', () => {
+  assert.match(html, /data-admin-candidate-select>[\s\S]*admin\.invitations\.choosePerson">Scegli una persona/);
+  assert.match(app, /const configuredAdministratorId = getConfiguredAdministratorParticipantId\(\)/);
+  assert.match(app, /participant\.participantId !== configuredAdministratorId/);
+  assert.match(app, /<option value="" selected disabled>/);
+});
+
+test('i link operativi non sono utilizzabili senza token e viaggiano con il login vice', () => {
+  assert.match(participantData, /privateSettings'[\s\S]*'operationalLinks'/);
+  assert.match(participantData, /administratorAuthorized: true,[\s\S]*operationalLinks/);
+  assert.match(app, /normalizeOperationalLinksFromAuthorizedLogin\(result\.operationalLinks\)/);
+  assert.match(app, /button\.disabled = !canView \|\| !tokenReady/);
+  assert.match(app, /status\.textContent = tokenId \? t\('admin\.access\.active'\) : t\('admin\.access\.notReady'\)/);
 });
 
 test('il nome di presentazione appartiene al solo responsabile e non modifica lo splash successivo', () => {

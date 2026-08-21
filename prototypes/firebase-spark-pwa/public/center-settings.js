@@ -220,7 +220,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821d');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821e');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -409,7 +409,7 @@ function normalizeAppDisplayName(value) {
 
 function normalizeInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'future';
+  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'urban-plus';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {

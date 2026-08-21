@@ -467,5 +467,5 @@ function normalizeResidentLabel(value, fallback = 'name') {
 
 function normalizeInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  return ALLOWED_INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
+  return ALLOWED_INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'urban-plus';
 }

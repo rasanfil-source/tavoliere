@@ -1100,6 +1100,8 @@ service cloud.firestore {
 
       match /privateSettings/{settingsId} {
         allow read: if canManageCenterConfiguration(centerId);
+        allow read: if isAdministratorTechnicalUser(centerId)
+          && settingsId == 'operationalLinks';
         allow read: if isAdmin(centerId)
           && adminRole(centerId) == 'MANAGER'
           && settingsId == 'operationalLinks';

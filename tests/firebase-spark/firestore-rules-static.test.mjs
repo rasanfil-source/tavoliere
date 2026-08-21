@@ -329,6 +329,13 @@ test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () =
   );
 });
 
+test('la password amministratori può leggere soltanto i link operativi durante il login', () => {
+  assert.match(
+    rules,
+    /match \/privateSettings\/\{settingsId\}[\s\S]*isAdministratorTechnicalUser\(centerId\)[\s\S]*settingsId == 'operationalLinks'/
+  );
+});
+
 test('le regole conservano urban-plus come valore tecnico della nuova Essenziale', () => {
   assert.equal(
     (rules.match(/interfaceStyle in \['original', 'cool', 'urban', 'urban-plus', 'future'\]/g) || []).length,

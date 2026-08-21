@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260821ad';
+} from './i18n/i18n.mjs?v=20260821ae';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -46,7 +46,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260821d';
+} from './center-settings.js?v=20260821e';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -107,7 +107,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260821d'
+  participant: './participant-data.js?v=20260821e'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -310,7 +310,7 @@ const mealReminderInFlight = new Set();
 
 function applyInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
+  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'urban-plus';
   document.documentElement.dataset.interfaceVariant = style;
   document.documentElement.dataset.interfaceStyle = style === 'urban-plus' ? 'urban' : style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
@@ -1791,11 +1791,44 @@ function initializeOperationalLinks() {
   renderOperationalLinkMetadata();
 }
 
+function normalizeOperationalLinksFromAuthorizedLogin(data) {
+  if (!data || typeof data !== 'object') return null;
+  const normalizeToken = (value) => {
+    const token = String(value || '').trim();
+    return /^[A-Za-z0-9_]{8,160}$/.test(token)
+      && !['public_demo', 'kitchen_demo'].includes(token)
+      ? token
+      : '';
+  };
+  const publicTokenId = normalizeToken(data.publicTokenId);
+  const kitchenTokenId = normalizeToken(data.kitchenTokenId);
+  if (!publicTokenId && !kitchenTokenId) return null;
+  return {
+    publicTokenId,
+    kitchenTokenId,
+    publicStatus: publicTokenId ? 'ACTIVE' : 'INACTIVE',
+    kitchenStatus: kitchenTokenId ? 'ACTIVE' : 'INACTIVE',
+    publicCreatedAt: data.publicCreatedAt || data.updatedAt || null,
+    kitchenCreatedAt: data.kitchenCreatedAt || data.updatedAt || null
+  };
+}
+
 function syncOperationalLinkActionState(
   canView = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS)
 ) {
   document.querySelectorAll('[data-access-link], [data-share-access-link]').forEach((button) => {
-    button.disabled = !canView;
+    const kind = button.dataset.accessLink || button.dataset.shareAccessLink;
+    const tokenReady = kind === 'cucina'
+      ? Boolean(state.operationalLinks.kitchenTokenId)
+      : Boolean(state.operationalLinks.publicTokenId);
+    button.disabled = !canView || !tokenReady;
+  });
+  document.querySelectorAll('[data-copy-link]').forEach((button) => {
+    const kitchen = button.dataset.copyLink === '[data-kitchen-link]';
+    const tokenReady = kitchen
+      ? Boolean(state.operationalLinks.kitchenTokenId)
+      : Boolean(state.operationalLinks.publicTokenId);
+    button.disabled = !canView || !tokenReady;
   });
 }
 
@@ -1808,15 +1841,15 @@ function buildOperationalLink(view, token, centerId, access = '') {
 
 function renderOperationalLinkMetadata() {
   const linkRows = [
-    [elements.publicLinkStatus, elements.publicLinkMeta, state.operationalLinks.publicCreatedAt],
-    [elements.kitchenLinkStatus, elements.kitchenLinkMeta, state.operationalLinks.kitchenCreatedAt]
+    [elements.publicLinkStatus, elements.publicLinkMeta, state.operationalLinks.publicCreatedAt, state.operationalLinks.publicTokenId],
+    [elements.kitchenLinkStatus, elements.kitchenLinkMeta, state.operationalLinks.kitchenCreatedAt, state.operationalLinks.kitchenTokenId]
   ];
-  linkRows.forEach(([status, metadata, createdAt]) => {
-    status.textContent = t('admin.access.active');
+  linkRows.forEach(([status, metadata, createdAt, tokenId]) => {
+    status.textContent = tokenId ? t('admin.access.active') : t('admin.access.notReady');
     const date = normalizeClientDate(createdAt);
-    metadata.textContent = date
+    metadata.textContent = tokenId && date
       ? t('admin.access.activatedOn', { date: new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(date) })
-      : t('admin.access.noActivationDate');
+      : tokenId ? t('admin.access.noActivationDate') : t('admin.access.reloadRequired');
   });
 }
 
@@ -3874,6 +3907,8 @@ async function handleResidentLogin(event) {
     state.residentRestorePending = false;
     state.residentAuthTransition = '';
     if (result.administratorAuthorized === true) {
+      const authorizedLinks = normalizeOperationalLinksFromAuthorizedLogin(result.operationalLinks);
+      if (authorizedLinks) state.operationalLinks = authorizedLinks;
       transitionAuthLifecycle('RESIDENT_READY', { entry: 'vice', route: state.mode });
       // La password amministratori amplia la normale identità residente: non
       // sostituisce il percorso delle prenotazioni con il pannello. La persona
@@ -4181,9 +4216,14 @@ function renderAdminLeadershipForm() {
   }
 
   // Selettore candidato amministratore
-  const candidates = (state.adminParticipants || []).filter((p) => p.status === 'ACTIVE');
+  const configuredAdministratorId = getConfiguredAdministratorParticipantId();
+  const candidates = (state.adminParticipants || []).filter((participant) => (
+    participant.status === 'ACTIVE'
+      && participant.participantId !== configuredAdministratorId
+  ));
   if (elements.adminCandidateSelect) {
-    elements.adminCandidateSelect.innerHTML = candidates.map((participant) => {
+    const placeholder = `<option value="" selected disabled>${escapeHtml(t('admin.invitations.choosePerson'))}</option>`;
+    elements.adminCandidateSelect.innerHTML = placeholder + candidates.map((participant) => {
       const id = escapeHtml(participant.participantId);
       const name = escapeHtml(participant.displayName || participant.signature || 'Senza nome');
       return `<option value="${id}">${name}</option>`;
@@ -5085,7 +5125,7 @@ function handleThemeSelectChange(event) {
 function handleInterfaceStyleSelectChange(event) {
   const selectedStyle = INTERFACE_STYLE_VALUES.has(event.target.value)
     ? event.target.value
-    : 'cool';
+    : 'urban-plus';
   state.pendingInterfaceStyle = selectedStyle;
   applyInterfaceStyle(selectedStyle);
   if (elements.adminThemeStatus) {
@@ -5102,7 +5142,7 @@ async function handleAdminAdaptationsSave() {
     const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
     const interfaceStyleToSave = state.pendingInterfaceStyle
       || state.centerContactSettings.interfaceStyle
-      || 'cool';
+      || 'urban-plus';
     const sharingEnabled = elements.adminContactSharingSelect
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
@@ -5169,7 +5209,7 @@ async function handleAdminAdaptationsSave() {
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
-    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
+    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
     applyTranslations(document);
@@ -5188,18 +5228,18 @@ function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'inchiostro';
-  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
+  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
   state.pendingThemePalette = 'inchiostro';
-  state.pendingInterfaceStyle = 'cool';
+  state.pendingInterfaceStyle = 'urban-plus';
   document.documentElement.dataset.theme = 'inchiostro';
-  applyInterfaceStyle('cool');
+  applyInterfaceStyle('urban-plus');
   updateThemeSelectControl('inchiostro');
-  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'urban-plus';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -5372,7 +5412,7 @@ function renderMode() {
   document.documentElement.dataset.theme = activePalette;
   const activeInterfaceStyle = state.pendingInterfaceStyle
     || state.centerContactSettings.interfaceStyle
-    || 'cool';
+    || 'urban-plus';
   applyInterfaceStyle(activeInterfaceStyle);
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';

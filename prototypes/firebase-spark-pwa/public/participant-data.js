@@ -42,7 +42,7 @@ import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260821d';
+} from './center-settings.js?v=20260821e';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -50,7 +50,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260821d';
+} from './center-settings.js?v=20260821e';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -482,6 +482,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   }
   let participant = null;
   let token;
+  let operationalLinks = null;
   let technicalEmail = '';
   const technicalEmails = [...new Set([
     String(settings.adminTechnicalEmail || '').trim().toLowerCase(),
@@ -507,6 +508,18 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
             throw new Error('Questa persona non è autorizzata come vice-amministratore.');
           }
           token = await createPersonalTokenForParticipant(participant.participantId, technicalDb);
+          // Recupera i collegamenti mentre la password amministratori è ancora
+          // convalidata. La sessione anonima del residente/vice può essere
+          // autorizzata pochi istanti dopo; portare con sé questa lettura evita
+          // che il pannello costruisca nel frattempo URL privi del token `t`.
+          const linksSnapshot = await getDoc(doc(
+            technicalDb,
+            'centers',
+            centerId,
+            'privateSettings',
+            'operationalLinks'
+          )).catch(() => null);
+          operationalLinks = linksSnapshot?.exists() ? linksSnapshot.data() : null;
           technicalEmail = email;
         },
         candidateEmail
@@ -539,7 +552,8 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   return {
     participant,
     participants: [participant],
-    administratorAuthorized: true
+    administratorAuthorized: true,
+    operationalLinks
   };
 }
 
