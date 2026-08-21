@@ -1224,11 +1224,7 @@ service cloud.firestore {
           || isAdministratorTechnicalUser(centerId)
           || hasSessionScope(centerId, 'PUBLIC')
           || canManageDailyOperations(centerId)
-          || (
-            hasSessionScope(centerId, 'PERSONAL')
-            && hasSelectedParticipant(centerId)
-            && participantId == sessionParticipantId(centerId)
-          );
+          || hasSessionScope(centerId, 'PERSONAL');
         allow create: if isAdmin(centerId)
           && (
             !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
@@ -1481,14 +1477,9 @@ service cloud.firestore {
         allow read: if isAdmin(centerId)
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
-          || (
-            personalSessionIsUsable(centerId)
-            && ruleId == 'rule_' + sessionParticipantId(centerId)
-            && resource.data.participantId == sessionParticipantId(centerId)
-          );
-        // Il riepilogo calcola i pasti dell'intero centro: un vice validato
-        // deve poter leggere tutte le regole, pur continuando a modificarle
-        // soltanto nel perimetro ristretto definito qui sotto.
+          || hasSessionScope(centerId, 'PERSONAL');
+        // Il riepilogo calcola i pasti dell'intero centro: i residenti e il vice
+        // validato possono leggere tutte le regole.
         allow read: if !isAdmin(centerId)
           && canUseViceAdministratorTools(centerId);
         allow create: if isAdmin(centerId)
@@ -1542,9 +1533,9 @@ service cloud.firestore {
         allow read: if isAdmin(centerId)
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
-          || canReadParticipantOverride(centerId);
+          || hasSessionScope(centerId, 'PERSONAL');
         // Stesso principio per gli override: lettura completa necessaria al
-        // riepilogo, scritture e cancellazioni restano governate separatamente.
+        // riepilogo per tutti i commensali con sessione valida.
         allow read: if !isAdmin(centerId)
           && canUseViceAdministratorTools(centerId);
 

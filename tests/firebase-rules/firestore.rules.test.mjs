@@ -1292,9 +1292,11 @@ test('la password amministratori autorizza il vice e la rotazione revoca la sess
   }));
 });
 
-test('il residente ordinario non puo aprire o modificare Agenda', async () => {
+test('il residente ordinario puo consultare il riepilogo ma non modificare Agenda', async () => {
   const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
-  await assertFails(personalDb.collection(`${centerPath()}/publicParticipants`).get());
+  await assertSucceeds(personalDb.collection(`${centerPath()}/publicParticipants`).get());
+  await assertSucceeds(personalDb.collection(`${centerPath()}/reservationRules`).get());
+  await assertSucceeds(personalDb.collection(`${centerPath()}/reservationOverrides`).get());
   await assertFails(personalDb.doc(`${centerPath()}/dailyHealth/2026-08-10`).set({
     centerId: CENTER_ID,
     dateId: '2026-08-10',

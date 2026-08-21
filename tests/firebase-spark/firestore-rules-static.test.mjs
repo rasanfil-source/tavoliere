@@ -239,7 +239,7 @@ test('session update keeps immutable session fields unchanged', () => {
   assert.doesNotMatch(rules, /diff\(resource\.data\)\.changedKeys\(\)/);
 });
 
-test('kitchen and public summary sessions can read reservation rules for counts', () => {
+test('kitchen, public, and personal summary sessions can read reservation rules for counts', () => {
   assert.match(
     rules,
     /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'KITCHEN'\)/
@@ -247,6 +247,10 @@ test('kitchen and public summary sessions can read reservation rules for counts'
   assert.match(
     rules,
     /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'PUBLIC'\)/
+  );
+  assert.match(
+    rules,
+    /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'PERSONAL'\)/
   );
 });
 
