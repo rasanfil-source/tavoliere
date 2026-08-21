@@ -78,6 +78,18 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
 export async function ensureKitchenDemoSession() {
   await waitForAuthReady();
   let user = getCurrentUser();
+
+  // BYPASS: se nel browser è già presente una sessione Firebase autenticata
+  // (es. un amministratore/responsabile loggato con Google/email), non la si
+  // tratta MAI come visitatore anonimo "KITCHEN". Si usa direttamente il suo
+  // account, esattamente come fa ensurePublicDemoSession() in
+  // participant-data.js con getAuthorizedAdministratorUser(). Questo evita
+  // il permission-denied su accessSessions quando le regole Firestore
+  // limitano quella collezione ai soli utenti anonimi.
+  if (user && !user.isAnonymous) {
+    return user;
+  }
+
   if (!user) {
     const credential = await signInAnonymousUser();
     user = credential.user;

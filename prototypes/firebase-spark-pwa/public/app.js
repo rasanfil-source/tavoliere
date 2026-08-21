@@ -105,7 +105,7 @@ const domainModulePaths = {
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
-  kitchen: './kitchen-data.js?v=20260821a',
+  kitchen: './kitchen-data.js?v=20260821b',
   notes: './kitchen-notes.js?v=20260821a',
   participant: './participant-data.js?v=20260821e'
 };
