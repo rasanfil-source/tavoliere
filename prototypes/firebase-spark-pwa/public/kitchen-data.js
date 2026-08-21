@@ -9,7 +9,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260820u';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
+import { getActiveCenterId } from './center-context.js?v=20260816h';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
@@ -19,8 +19,6 @@ import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { formatDietLabel } from './diet-utils.mjs?v=20260818w';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
-const KITCHEN_TOKEN_STORAGE_KEY = 'tavolaComune.kitchenToken';
-const KITCHEN_DEMO_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');
 const SESSION_LIFETIME_DAYS = 30;
 const SESSION_RECHECK_MS = 5 * 60 * 1000;
 const STATIC_DATA_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -125,10 +123,6 @@ export async function ensureKitchenDemoSession() {
 }
 
 async function createKitchenSession(authUid, sessionExists) {
-  const tokenId = getKitchenTokenId();
-  if (!tokenId) {
-    throw new Error('Apri il collegamento cucina fornito dal responsabile del centro.');
-  }
   const sessionRef = doc(db, 'centers', getActiveCenterId(), 'accessSessions', authUid);
   const payload = sessionExists ? {
     updatedAt: serverTimestamp()
@@ -136,9 +130,8 @@ async function createKitchenSession(authUid, sessionExists) {
     centerId: getActiveCenterId(),
     scope: 'KITCHEN',
     targetType: 'CENTER',
-    tokenId,
     status: 'ACTIVE',
-    expiresAt: createSessionExpiry(KITCHEN_DEMO_EXPIRES_AT),
+    expiresAt: createSessionExpiry(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
@@ -284,27 +277,8 @@ function addDietCounts(target, dietTags) {
   tags.forEach((tag) => target.set(tag, (target.get(tag) || 0) + 1));
 }
 
-function createSessionExpiry(tokenExpiresAt) {
+function createSessionExpiry() {
   const expiresAt = new Date();
   expiresAt.setUTCDate(expiresAt.getUTCDate() + SESSION_LIFETIME_DAYS);
-  return expiresAt < tokenExpiresAt ? expiresAt : tokenExpiresAt;
-}
-
-
-function getKitchenTokenId() {
-  const tokenId = String(new URLSearchParams(window.location.search).get('t') || '').trim();
-  const storageKey = getCenterScopedStorageKey(KITCHEN_TOKEN_STORAGE_KEY);
-  if (tokenId) {
-    try {
-      window.localStorage.setItem(storageKey, tokenId);
-    } catch {
-      // Il collegamento nell'URL resta utilizzabile anche senza persistenza locale.
-    }
-    return tokenId;
-  }
-  try {
-    return String(window.localStorage.getItem(storageKey) || '').trim();
-  } catch {
-    return '';
-  }
+  return expiresAt;
 }

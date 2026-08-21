@@ -126,7 +126,8 @@ test('la PWA cucina ha identita propria e si apre direttamente sui conteggi', ()
   assert.equal(kitchenManifest.short_name, 'Cucina');
   assert.match(kitchenManifest.start_url, /view=kitchen/);
   assert.equal(kitchenManifest.start_url, '/?view=kitchen');
-  assert.match(kitchenData, /KITCHEN_TOKEN_STORAGE_KEY/);
-  assert.match(kitchenData, /getCenterScopedStorageKey\(KITCHEN_TOKEN_STORAGE_KEY\)/);
+  assert.doesNotMatch(kitchenData, /KITCHEN_TOKEN_STORAGE_KEY/);
+  assert.match(kitchenData, /scope: 'KITCHEN'/);
+  assert.match(kitchenData, /centerId: getActiveCenterId\(\)/);
   assert.equal(kitchenManifest.display, 'standalone');
 });

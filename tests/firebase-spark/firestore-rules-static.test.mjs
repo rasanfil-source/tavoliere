@@ -222,7 +222,6 @@ test('session update keeps immutable session fields unchanged', () => {
     'centerId',
     'scope',
     'targetType',
-    'tokenId',
     'status',
     'expiresAt',
     'createdAt'
@@ -232,6 +231,10 @@ test('session update keeps immutable session fields unchanged', () => {
       new RegExp(`request\\.resource\\.data\\.${field} == resource\\.data\\.${field}`)
     );
   }
+  assert.match(
+    rules,
+    /request\.resource\.data\.get\('tokenId', ''\) == resource\.data\.get\('tokenId', ''\)/
+  );
   assert.match(rules, /diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['updatedAt'\]\)/);
   assert.doesNotMatch(rules, /diff\(resource\.data\)\.changedKeys\(\)/);
 });

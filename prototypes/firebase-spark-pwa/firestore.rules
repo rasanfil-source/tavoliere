@@ -549,6 +549,7 @@ service cloud.firestore {
         && (
           get(sessionPath).data.scope == 'PERSONAL'
             && personalSessionIsUsable(centerId)
+          || get(sessionPath).data.scope == 'KITCHEN'
           || get(sessionPath).data.scope != 'PERSONAL'
             && tokenIsUsable(centerId, get(sessionPath).data.tokenId)
         );
@@ -1318,7 +1319,6 @@ service cloud.firestore {
             'centerId',
             'scope',
             'targetType',
-            'tokenId',
             'status',
             'expiresAt',
             'createdAt',
@@ -1339,25 +1339,28 @@ service cloud.firestore {
           && request.resource.data.centerId == centerId
           && request.resource.data.status == 'ACTIVE'
           && request.resource.data.expiresAt > request.time
-          && request.resource.data.expiresAt <= tokenData(centerId, request.resource.data.tokenId).expiresAt
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time
-          && tokenIsUsable(centerId, request.resource.data.tokenId)
-          && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
-          && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
           && (
             (
-              request.resource.data.scope == 'PUBLIC'
-              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
-            )
-            || (
               request.resource.data.scope == 'KITCHEN'
-              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+              && request.resource.data.targetType == 'CENTER'
+              && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
+              && !request.resource.data.keys().hasAny(['participantId', 'groupId', 'tokenId'])
             )
             || (
-              request.resource.data.scope == 'PERSONAL'
-              && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
-              && !request.resource.data.keys().hasAny(['groupId'])
+              request.resource.data.keys().hasAll(['tokenId'])
+              && request.resource.data.expiresAt <= tokenData(centerId, request.resource.data.tokenId).expiresAt
+              && tokenIsUsable(centerId, request.resource.data.tokenId)
+              && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
+              && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
+              && (
+                request.resource.data.scope == 'PUBLIC'
+                  && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+                || request.resource.data.scope == 'PERSONAL'
+                  && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
+                  && !request.resource.data.keys().hasAny(['groupId'])
+              )
             )
           );
         allow update: if signedIn()
@@ -1367,7 +1370,7 @@ service cloud.firestore {
           && request.resource.data.centerId == resource.data.centerId
           && request.resource.data.scope == resource.data.scope
           && request.resource.data.targetType == resource.data.targetType
-          && request.resource.data.tokenId == resource.data.tokenId
+          && request.resource.data.get('tokenId', '') == resource.data.get('tokenId', '')
           && request.resource.data.status == resource.data.status
           && request.resource.data.expiresAt == resource.data.expiresAt
           && request.resource.data.createdAt == resource.data.createdAt

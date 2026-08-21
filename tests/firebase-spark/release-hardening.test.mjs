@@ -43,7 +43,9 @@ test('gli accessi pubblici e cucina non usano token demo come fallback', () => {
   assert.doesNotMatch(participantData, /PUBLIC_DEMO_TOKEN_ID|public_demo/);
   assert.doesNotMatch(kitchenData, /KITCHEN_DEMO_TOKEN_ID|kitchen_demo/);
   assert.match(participantData, /if \(!tokenId\)[\s\S]*collegamento per residenti/);
-  assert.match(kitchenData, /if \(!tokenId\)[\s\S]*collegamento cucina/);
+  assert.doesNotMatch(kitchenData, /collegamento cucina/);
+  assert.doesNotMatch(kitchenData, /getKitchenTokenId/);
+  assert.match(kitchenData, /scope: 'KITCHEN'[\s\S]*targetType: 'CENTER'/);
 });
 
 test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
