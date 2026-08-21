@@ -953,7 +953,25 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /function applyDailyDietsToKitchenMeals/);
   assert.match(app, /function renderSickCard/);
   assert.match(app, /function renderKitchenSickPeople/);
-  assert.match(app, /state\.mode === 'week' && canManageDailyOperations\(\) && !state\.adminRole/);
+  assert.match(app, /state\.mode === 'week'[\s\S]*canManageDailyOperations\(\)[\s\S]*state\.adminParticipants\.length === 0/);
+});
+
+test('il refresh diretto della settimana ripristina le capability operative dell amministratore', () => {
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n\}/)?.[0] || '';
+  const strongAuthorization = app.match(
+    /async function refreshStrongAdministratorOperationalAuthorization\(\)[\s\S]*?\n\}/
+  )?.[0] || '';
+  assert.match(
+    refresh,
+    /await refreshResidentAdministratorAuthorization\(\);[\s\S]*await refreshStrongAdministratorOperationalAuthorization\(\);[\s\S]*loadCurrentParticipantCalendar/
+  );
+  assert.match(strongAuthorization, /state\.residentEntryKind !== 'strong-admin'/);
+  assert.match(strongAuthorization, /loadCurrentAdminMembership\(user\)/);
+  assert.match(strongAuthorization, /getCurrentUser\(\)\?\.uid !== user\?\.uid/);
+  assert.match(strongAuthorization, /state\.adminRole = membership\.role/);
+  assert.match(strongAuthorization, /state\.adminCanManageDailyOperations = membership\.canManageDailyOperations === true/);
+  assert.match(strongAuthorization, /state\.residentAdministratorAuthorized = false/);
+  assert.doesNotMatch(strongAuthorization, /state\.residentEntryKind === 'common'/);
 });
 
 test('la spunta vice usa direttamente sigla e password amministratori nel login residente', () => {

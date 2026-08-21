@@ -3454,7 +3454,10 @@ async function refreshParticipant(source, options = {}) {
     state.centerContactSettings = applyResidentPreferences(centerSettings);
     await applyCenterDefaultLanguage(state.centerContactSettings);
     await refreshResidentAdministratorAuthorization();
-    if (state.mode === 'week' && canManageDailyOperations() && !state.adminRole) {
+    await refreshStrongAdministratorOperationalAuthorization();
+    if (state.mode === 'week'
+        && canManageDailyOperations()
+        && (state.adminParticipants.length === 0 || source === 'manuale')) {
       state.adminParticipants = await listPublicParticipants({
         forceRefresh: source === 'manuale',
         staticVersion: centerSettings.participantDataVersion || '0'
@@ -7503,6 +7506,47 @@ async function refreshResidentAdministratorAuthorization() {
     state.residentAdministratorAuthorized = false;
   }
   return state.residentAdministratorAuthorized;
+}
+
+function clearStrongAdministratorOperationalAuthorization() {
+  state.adminRole = '';
+  state.adminAuthUid = '';
+  state.adminMassPermission = false;
+  state.adminCanManageMass = false;
+  state.adminCanManageDailyOperations = false;
+}
+
+async function refreshStrongAdministratorOperationalAuthorization() {
+  // An ordinary resident session must never inherit the Firebase account that
+  // may still be persisted on a shared device. Only the resident identity
+  // explicitly restored from an authorised strong administrator can use it.
+  if (state.residentEntryKind !== 'strong-admin' || !hasStrongAdministratorIdentity()) {
+    return false;
+  }
+
+  const user = getCurrentUser();
+  const membership = await loadCurrentAdminMembership(user);
+  // A logout, a resident login or another auth transition may have completed
+  // while Firestore was loading the membership. Ignore that obsolete result.
+  if (state.residentEntryKind !== 'strong-admin'
+      || getCurrentUser()?.uid !== user?.uid
+      || !hasStrongAdministratorIdentity()) {
+    return false;
+  }
+
+  const active = membership.active === true && Boolean(membership.role);
+  if (!active) {
+    clearStrongAdministratorOperationalAuthorization();
+    return false;
+  }
+
+  state.adminRole = membership.role;
+  state.adminAuthUid = user.uid;
+  state.adminMassPermission = membership.massPermission === true;
+  state.adminCanManageMass = membership.canManageMass === true;
+  state.adminCanManageDailyOperations = membership.canManageDailyOperations === true;
+  state.residentAdministratorAuthorized = false;
+  return state.adminCanManageDailyOperations;
 }
 
 async function handleResidentAdministratorUnlock() {
