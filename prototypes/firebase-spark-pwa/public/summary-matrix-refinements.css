@@ -1060,6 +1060,27 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 }
 
 @media (max-width: 620px) {
+  /* Nel mobile il numero vive nella testata separata della settimana. Le due
+     metà condividono il bordo affinché oggi formi una sola colonna continua. */
+  html[data-interface-variant="urban-plus"] .month-week-mobile-header
+    .month-day-number-today {
+    border: 1px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+
+  html[data-interface-variant="urban-plus"] .month-day-today {
+    border: 1px solid var(--primary);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 620px) {
   html[data-interface-family="cool"] .topbar {
     margin-inline: -1px;
     border-radius: 0 0 16px 16px;
