@@ -74,6 +74,7 @@
   "admin.adaptations.interfaceStyle.original": "Original",
   "admin.adaptations.interfaceStyle.cool": "Élégant",
   "admin.adaptations.interfaceStyle.urban": "Essentiel",
+  "admin.adaptations.interfaceStyle.urbanPlus": "Essentiel Plus",
   "admin.adaptations.interfaceStyle.future": "Futur",
   "admin.adaptations.interfaceStyle.preview": "Vous prévisualisez l'apparence. Enregistrez les paramètres pour l'appliquer.",
   "admin.adaptations.title": "Paramètres",

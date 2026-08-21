@@ -74,6 +74,10 @@ test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezio
   assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.month-flag-present \{[\s\S]*border-color: transparent;[\s\S]*background: transparent/);
   assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.week-meal-button\.meal-state-present \{[\s\S]*border-color: transparent;[\s\S]*background: var\(--cool-confirmed-soft\)/);
   assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.month-day-today,[\s\S]*border-color: var\(--primary\)/);
+  assert.match(app, /dataset\.interfaceStyle = style === 'urban-plus' \? 'urban' : style/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-flag,[\s\S]*border-color: var\(--view-border\);[\s\S]*background: var\(--view-control\)/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-flag-present \{[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(styles, /html\[data-interface-style="original"\] \.month-week-mobile-header[\s\S]*\.month-day-number-today \.month-day-number-value \{[\s\S]*width: 23px;[\s\S]*height: 23px/);
   assert.match(app, /getInterfaceIcon\('church', '⛪'\)/);
   assert.match(summaryStyles, /--mass-yes-bg: color-mix\(in srgb, var\(--affirmative\)/);
   assert.match(summaryStyles, /font-family: Fraunces, Georgia/);

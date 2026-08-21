@@ -28,7 +28,7 @@ const ALLOWED_THEME_PALETTES = new Set([
   'inchiostro',
   'neutro'
 ]);
-const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban', 'future']);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban', 'urban-plus', 'future']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 let centerContactSettingsRevision = 0;
@@ -217,7 +217,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260820a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,

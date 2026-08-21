@@ -45,7 +45,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260820a';
+} from './center-settings.js?v=20260821a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -105,7 +105,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260820g'
+  participant: './participant-data.js?v=20260821a'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -298,13 +298,14 @@ const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
-const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'future']);
+const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'urban-plus', 'future']);
 let mealViewSwipeStart = null;
 let mealViewSwipeTimer = 0;
 
 function applyInterfaceStyle(value) {
   const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'cool';
-  document.documentElement.dataset.interfaceStyle = style;
+  document.documentElement.dataset.interfaceVariant = style;
+  document.documentElement.dataset.interfaceStyle = style === 'urban-plus' ? 'urban' : style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
   return style;
 }

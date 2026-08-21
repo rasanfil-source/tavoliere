@@ -1042,6 +1042,23 @@ html[data-interface-style="urban"] .month-grid button:focus-visible {
   }
 }
 
+/* Essenziale più eredita integralmente Essenziale. L'unica differenza è il
+   ritorno dei riquadri dei singoli pasti nella sola griglia mensile. */
+html[data-interface-variant="urban-plus"] .month-flag,
+html[data-interface-variant="urban-plus"] .month-flag-absent {
+  border-color: var(--view-border);
+  border-radius: 8px;
+  background: var(--view-control);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+html[data-interface-variant="urban-plus"] .month-flag-present {
+  border-color: color-mix(in srgb, var(--confirmed) 45%, var(--view-border));
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+}
+
 @media (max-width: 620px) {
   html[data-interface-family="cool"] .topbar {
     margin-inline: -1px;

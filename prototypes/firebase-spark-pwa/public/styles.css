@@ -5521,6 +5521,14 @@ html[data-interface-style="original"] .month-day-number-today .month-day-number-
 }
 
 @media (max-width: 620px) {
+  html[data-interface-style="original"] .month-week-mobile-header
+    .month-day-number-today .month-day-number-value {
+    width: 23px;
+    height: 23px;
+  }
+}
+
+@media (max-width: 620px) {
   .week-day-button > span { display: none; }
 }
 
