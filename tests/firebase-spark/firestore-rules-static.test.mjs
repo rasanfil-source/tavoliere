@@ -329,7 +329,7 @@ test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () =
   );
 });
 
-test('le regole accettano Essenziale più tramite il valore ASCII urban-plus', () => {
+test('le regole conservano urban-plus come valore tecnico della nuova Essenziale', () => {
   assert.equal(
     (rules.match(/interfaceStyle in \['original', 'cool', 'urban', 'urban-plus', 'future'\]/g) || []).length,
     2

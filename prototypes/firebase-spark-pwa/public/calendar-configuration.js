@@ -32,7 +32,7 @@ const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
 const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
 const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
 const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
-const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'urban-plus', 'future']);
+const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
 
 export async function saveCenterConfiguration({
   name,
@@ -466,5 +466,6 @@ function normalizeResidentLabel(value, fallback = 'name') {
 }
 
 function normalizeInterfaceStyle(value) {
-  return ALLOWED_INTERFACE_STYLE_VALUES.has(value) ? value : 'cool';
+  const migratedValue = value === 'urban' ? 'urban-plus' : value;
+  return ALLOWED_INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
 }

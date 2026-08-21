@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260821ac';
+} from './i18n/i18n.mjs?v=20260821ad';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -46,7 +46,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260821c';
+} from './center-settings.js?v=20260821d';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -106,7 +106,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260821c'
+  participant: './participant-data.js?v=20260821d'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -299,12 +299,13 @@ const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
-const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'urban-plus', 'future']);
+const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let mealViewSwipeStart = null;
 let mealViewSwipeTimer = 0;
 
 function applyInterfaceStyle(value) {
-  const style = INTERFACE_STYLE_VALUES.has(value) ? value : 'cool';
+  const migratedValue = value === 'urban' ? 'urban-plus' : value;
+  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
   document.documentElement.dataset.interfaceVariant = style;
   document.documentElement.dataset.interfaceStyle = style === 'urban-plus' ? 'urban' : style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
@@ -4554,6 +4555,9 @@ async function performAdminCenterSettingsSave() {
     }
     const settings = await updateCenterSettings({
       name: elements.adminCenterName.value,
+      ...(state.adminRole === 'OWNER'
+        ? { appDisplayName: elements.adminAppDisplayName?.value }
+        : {}),
       timezone: elements.adminCenterTimezone.value,
       participantContactSharingEnabled: elements.adminContactSharingSelect
         ? elements.adminContactSharingSelect.value === 'enabled'
@@ -4694,6 +4698,15 @@ function markAdminCenterDirty(event) {
 
 function syncAdminCenterSettingsForm() {
   elements.adminCenterName.value = state.centerContactSettings.name || '';
+  const canEditAppDisplayName = state.adminRole === 'OWNER' && !state.residentSettingsMode;
+  if (elements.adminAppDisplayNamePicker) {
+    elements.adminAppDisplayNamePicker.hidden = !canEditAppDisplayName;
+  }
+  if (elements.adminAppDisplayName) {
+    elements.adminAppDisplayName.disabled = !canEditAppDisplayName;
+    elements.adminAppDisplayName.value = state.centerContactSettings.appDisplayName
+      || DEFAULT_APP_DISPLAY_NAME;
+  }
   elements.adminCenterTimezone.value = state.centerContactSettings.timezone || 'Europe/Rome';
   elements.adminCutoffLunch.value = state.centerContactSettings.reservationCutoffs?.lunch || '09:30';
   elements.adminCutoffDinner.value = state.centerContactSettings.reservationCutoffs?.dinner || '15:00';
@@ -4744,15 +4757,6 @@ function syncAdminAdaptationsForm() {
   applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
-  const canEditAppDisplayName = state.adminRole === 'OWNER' && !state.residentSettingsMode;
-  if (elements.adminAppDisplayNamePicker) {
-    elements.adminAppDisplayNamePicker.hidden = !canEditAppDisplayName;
-  }
-  if (elements.adminAppDisplayName) {
-    elements.adminAppDisplayName.disabled = !canEditAppDisplayName;
-    elements.adminAppDisplayName.value = state.centerContactSettings.appDisplayName
-      || DEFAULT_APP_DISPLAY_NAME;
-  }
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
   }
@@ -4917,9 +4921,6 @@ async function handleAdminAdaptationsSave() {
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
     const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
-    const appDisplayNameToSave = state.adminRole === 'OWNER' && !state.residentSettingsMode
-      ? elements.adminAppDisplayName?.value
-      : undefined;
     if (state.residentSettingsMode) {
       const preferences = {
         themePalette: paletteToSave,
@@ -4942,7 +4943,6 @@ async function handleAdminAdaptationsSave() {
     }
     const settings = await updateCenterSettings({
       name: state.centerContactSettings.name,
-      ...(appDisplayNameToSave === undefined ? {} : { appDisplayName: appDisplayNameToSave }),
       timezone: state.centerContactSettings.timezone,
       participantContactSharingEnabled: sharingEnabled,
       themePalette: paletteToSave,
@@ -5014,9 +5014,6 @@ function handleAdminAdaptationsReset() {
   applyInterfaceStyle('cool');
   updateThemeSelectControl('inchiostro');
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
-  if (elements.adminAppDisplayName && state.adminRole === 'OWNER') {
-    elements.adminAppDisplayName.value = DEFAULT_APP_DISPLAY_NAME;
-  }
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -6107,11 +6104,13 @@ function renderParticipantMeals() {
   const massBulkLabel = massBulkScheduled
     ? 'Segna Messa sì per i giorni modificabili'
     : 'Segna Messa no per i giorni modificabili';
+  const weekControlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const weekRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
     interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
     weekStart: formatDateId(state.weekStartDate),
     today: formatDateId(getCenterToday()),
+    controlsSide: weekControlsOnLeft ? 'left' : 'right',
     showMassColumn,
     headings: mealHeadings.map((meal) => [meal.mealTypeId, meal.label]),
     days: state.participantWeek.map((day) => day.date)
@@ -6125,13 +6124,16 @@ function renderParticipantMeals() {
     return;
   }
 
+  const weekScopeButtonMarkup = `
+    <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
+      <span class="week-heading-icon" aria-hidden="true">${getInterfaceIcon('calendar', '▦')}</span>
+      <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
+    </button>
+  `;
   elements.participantMeals.innerHTML = `
-    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''}" aria-label="Prenotazioni della settimana">
+    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''} week-controls-${weekControlsOnLeft ? 'left' : 'right'}" aria-label="Prenotazioni della settimana">
       <div class="week-matrix-header">
-        <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
-          <span class="week-heading-icon" aria-hidden="true">${getInterfaceIcon('calendar', '▦')}</span>
-          <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
-        </button>
+        ${weekControlsOnLeft ? weekScopeButtonMarkup : ''}
         ${showMassColumn ? `
           <button type="button" class="week-mass-heading${allOpenMassesScheduled ? ' week-mass-heading-complete' : ''}" data-week-mass-bulk data-week-mass-scheduled="${massBulkScheduled}" aria-pressed="${allOpenMassesScheduled}" aria-label="${massBulkLabel}" title="${massBulkLabel}"${openMassDays.length > 0 ? '' : ' disabled'}>
             <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">${getInterfaceIcon('church', '⛪')}</span>
@@ -6152,6 +6154,7 @@ function renderParticipantMeals() {
             </button>
           `;
         }).join('')}
+        ${weekControlsOnLeft ? '' : weekScopeButtonMarkup}
       </div>
       ${state.participantWeek.map((day) => {
         const dayEffect = getBulkSelectionEffect(day.meals);
@@ -6162,14 +6165,18 @@ function renderParticipantMeals() {
           ? ' week-matrix-row-subdued'
           : '';
         const dayAction = dayEffect === 'PRESENT' ? 'Prenota tutta la giornata' : 'Svuota tutta la giornata';
+        const dayButtonMarkup = `
+          <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
+            <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
+            ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
+          </button>
+        `;
         return `
           <article class="week-matrix-row${todayClass}${subduedClass}" data-day-date="${day.date}">
-            <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
-              <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
-              ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
-            </button>
+            ${weekControlsOnLeft ? dayButtonMarkup : ''}
             ${showMassColumn ? renderWeekMassButton(day, massByDate.get(day.date)) : ''}
             ${day.meals.map((meal) => renderMealCell(day.date, meal)).join('')}
+            ${weekControlsOnLeft ? '' : dayButtonMarkup}
           </article>
         `;
       }).join('')}

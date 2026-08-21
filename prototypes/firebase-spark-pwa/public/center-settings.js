@@ -29,7 +29,7 @@ const ALLOWED_THEME_PALETTES = new Set([
   'inchiostro',
   'neutro'
 ]);
-const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban', 'urban-plus', 'future']);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 let centerContactSettingsRevision = 0;
@@ -220,7 +220,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821c');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821d');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -408,7 +408,8 @@ function normalizeAppDisplayName(value) {
 }
 
 function normalizeInterfaceStyle(value) {
-  return ALLOWED_INTERFACE_STYLES.has(value) ? value : 'future';
+  const migratedValue = value === 'urban' ? 'urban-plus' : value;
+  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'future';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {

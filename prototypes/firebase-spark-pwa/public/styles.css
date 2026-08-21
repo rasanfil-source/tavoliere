@@ -3967,6 +3967,16 @@ body[data-resident-login-visible="true"] .account-footer {
   grid-template-columns: var(--week-day-column) repeat(4, minmax(0, 1fr));
 }
 
+.week-controls-right .week-matrix-header,
+.week-controls-right .week-matrix-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) var(--week-day-column);
+}
+
+.week-matrix-with-mass.week-controls-right .week-matrix-header,
+.week-matrix-with-mass.week-controls-right .week-matrix-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) var(--week-day-column);
+}
+
 .week-scope-button,
 .week-meal-heading,
 .week-mass-heading,

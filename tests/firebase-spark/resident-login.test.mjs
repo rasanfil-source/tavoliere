@@ -339,7 +339,7 @@ test('un account Google non autorizzato non blocca il successivo accesso residen
 test('la vista settimana usa una matrice con intestazioni pasto e comandi compatti', () => {
   const weekHandler = app.match(/async function handleWeekBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   const weekMealHandler = app.match(/async function handleWeekMealBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
-  assert.match(app, /class="week-matrix\$\{showMassColumn \? ' week-matrix-with-mass' : ''\}"/);
+  assert.match(app, /class="week-matrix\$\{showMassColumn \? ' week-matrix-with-mass' : ''\} week-controls-\$\{weekControlsOnLeft \? 'left' : 'right'\}"/);
   assert.match(app, /class="week-matrix-header"/);
   assert.match(app, /data-week-effect/);
   assert.match(app, /data-week-meal-effect/);
@@ -351,6 +351,15 @@ test('la vista settimana usa una matrice con intestazioni pasto e comandi compat
   assert.match(weekMealHandler, /saveParticipantMonthSelection/);
   assert.match(weekMealHandler, /mealTypeId/);
   assert.doesNotMatch(app, /class="day-bulk-actions"/);
+});
+
+test('la colonna dei giorni settimanali segue il lato scelto per i controlli mensili', () => {
+  assert.match(app, /weekControlsOnLeft = \(state\.centerContactSettings\.monthControlsSide \|\| 'right'\) === 'left'/);
+  assert.match(app, /controlsSide: weekControlsOnLeft \? 'left' : 'right'/);
+  assert.match(app, /weekControlsOnLeft \? weekScopeButtonMarkup : ''/);
+  assert.match(app, /weekControlsOnLeft \? dayButtonMarkup : ''/);
+  assert.match(styles, /\.week-controls-right \.week-matrix-header,[\s\S]*repeat\(3, minmax\(0, 1fr\)\) var\(--week-day-column\)/);
+  assert.match(styles, /\.week-matrix-with-mass\.week-controls-right[\s\S]*repeat\(4, minmax\(0, 1fr\)\) var\(--week-day-column\)/);
 });
 
 test('il comando mensile compatto sostituisce la barra doppia', () => {
