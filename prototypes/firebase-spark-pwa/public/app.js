@@ -45,7 +45,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260821a';
+} from './center-settings.js?v=20260821b';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -105,7 +105,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260821a'
+  participant: './participant-data.js?v=20260821b'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -621,14 +621,14 @@ const state = {
     name: '',
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
-    themePalette: 'smeraldo',
+    themePalette: 'inchiostro',
     interfaceStyle: 'future',
     defaultView: loadCachedDefaultView(),
     summaryLayout: 'classic',
     kitchenLayout: 'classic',
     monthLayout: 'grid',
     monthControlsSide: 'right',
-    summaryResidentLabel: 'initials',
+    summaryResidentLabel: 'name',
     language: 'it',
     administratorName: '',
     administratorSignature: '',
@@ -4540,14 +4540,14 @@ async function performAdminCenterSettingsSave() {
       participantContactSharingEnabled: elements.adminContactSharingSelect
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
-      themePalette: state.centerContactSettings.themePalette || 'smeraldo',
+      themePalette: state.centerContactSettings.themePalette || 'inchiostro',
       interfaceStyle: state.centerContactSettings.interfaceStyle || 'future',
       defaultView: state.centerContactSettings.defaultView || 'month',
       summaryLayout: state.centerContactSettings.summaryLayout || 'classic',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
       monthLayout: state.centerContactSettings.monthLayout || 'grid',
       monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
-      summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'initials',
+      summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       language: state.centerContactSettings.language || 'it',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorSharedPassword: newSharedAdminPassword,
@@ -4720,7 +4720,7 @@ function syncAdminCenterSettingsForm() {
 }
 
 function syncAdminAdaptationsForm() {
-  const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+  const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
   const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'future';
   document.documentElement.dataset.theme = currentPalette;
   applyInterfaceStyle(currentInterfaceStyle);
@@ -4743,8 +4743,7 @@ function syncAdminAdaptationsForm() {
     elements.adminMonthControlsSideSelect.value = state.centerContactSettings.monthControlsSide || 'right';
   }
   if (elements.adminSummaryResidentLabelSelect) {
-    elements.adminSummaryResidentLabelSelect.value = state.centerContactSettings.summaryResidentLabel
-      || (currentInterfaceStyle === 'future' ? 'initials' : 'name');
+    elements.adminSummaryResidentLabelSelect.value = state.centerContactSettings.summaryResidentLabel || 'name';
   }
   if (elements.adminSharedPasswordStatus) {
     const isSet = Boolean(state.centerContactSettings.adminSharedPasswordSet);
@@ -4872,12 +4871,6 @@ function handleInterfaceStyleSelectChange(event) {
     : 'cool';
   state.pendingInterfaceStyle = selectedStyle;
   applyInterfaceStyle(selectedStyle);
-  if (selectedStyle === 'future'
-      && elements.adminSummaryResidentLabelSelect
-      && (!state.centerContactSettings.summaryResidentLabel
-        || state.centerContactSettings.summaryResidentLabel === 'name')) {
-    elements.adminSummaryResidentLabelSelect.value = 'initials';
-  }
   if (elements.adminThemeStatus) {
     elements.adminThemeStatus.textContent = t('admin.adaptations.interfaceStyle.preview');
   }
@@ -4889,7 +4882,7 @@ async function handleAdminAdaptationsSave() {
     if (elements.adminAdaptationsSave) elements.adminAdaptationsSave.disabled = true;
     if (elements.adminAdaptationsCancel) elements.adminAdaptationsCancel.disabled = true;
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('common.status.saving');
-    const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+    const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
     const interfaceStyleToSave = state.pendingInterfaceStyle
       || state.centerContactSettings.interfaceStyle
       || 'cool';
@@ -4977,18 +4970,18 @@ async function handleAdminAdaptationsSave() {
 function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
-  document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'smeraldo';
+  document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'inchiostro';
   applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
-  state.pendingThemePalette = 'smeraldo';
+  state.pendingThemePalette = 'inchiostro';
   state.pendingInterfaceStyle = 'cool';
-  document.documentElement.dataset.theme = 'smeraldo';
+  document.documentElement.dataset.theme = 'inchiostro';
   applyInterfaceStyle('cool');
-  updateThemeSelectControl('smeraldo');
+  updateThemeSelectControl('inchiostro');
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
@@ -5158,7 +5151,7 @@ function loadImage(source) {
 function renderMode() {
   const activePalette = state.pendingThemePalette
     || state.centerContactSettings.themePalette
-    || 'smeraldo';
+    || 'inchiostro';
   document.documentElement.dataset.theme = activePalette;
   const activeInterfaceStyle = state.pendingInterfaceStyle
     || state.centerContactSettings.interfaceStyle
@@ -5362,7 +5355,10 @@ function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) 
   const previousOffset = state.kitchenDayOffset;
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
   state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
-  state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || state.kitchenNote;
+  const selectedNote = state.kitchenNotes[state.kitchenDayOffset];
+  state.kitchenNote = selectedNote?.dateId === formatDateId(getKitchenDate())
+    ? selectedNote.note
+    : null;
   state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || state.kitchenDailyOperation;
   state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || state.kitchenDailyHealth;
   elements.kitchenDayButtons.forEach((button) => {
@@ -6335,7 +6331,7 @@ function renderTodayOverview() {
       days: state.summaryDays,
       operationDays: state.summaryOperations,
       layout: state.centerContactSettings.summaryLayout || 'classic',
-      residentLabel: state.centerContactSettings.summaryResidentLabel || 'initials',
+      residentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: (index) => {
         selectSummaryMatrixDay(index, { scroll: false });
@@ -7636,10 +7632,13 @@ async function handleWeekInvitedSave() {
 }
 
 function renderWeekKitchenNotes() {
-  const messages = Array.isArray(state.weekOperationalNote?.messages)
-    ? state.weekOperationalNote.messages
-    : state.weekOperationalNote?.text
-      ? [{ id: 'legacy', text: state.weekOperationalNote.text }]
+  const isPastDay = state.weekOperationalDateId
+    && state.weekOperationalDateId < formatDateId(getCenterToday());
+  const visibleNote = isPastDay ? null : state.weekOperationalNote;
+  const messages = Array.isArray(visibleNote?.messages)
+    ? visibleNote.messages
+    : visibleNote?.text
+      ? [{ id: 'legacy', text: visibleNote.text }]
       : [];
   elements.weekKitchenNoteList.innerHTML = messages.map((message) => `
     <div class="week-kitchen-note-row">
@@ -7962,6 +7961,10 @@ function renderDietNameList(participants) {
 function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   renderKitchenHeading();
   if (state.kitchenDays.length > 0) {
+    const todayId = formatDateId(getCenterToday());
+    const visibleKitchenOperations = state.kitchenOperations.map((operation) => (
+      operation.dateId < todayId ? { ...operation, notes: [] } : operation
+    ));
     elements.kitchenNote.hidden = true;
     elements.kitchenSick.hidden = true;
     const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
@@ -7970,7 +7973,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
     }
     mountSummaryMatrix(elements.cards, {
       days: state.kitchenDays,
-      operationDays: state.kitchenOperations,
+      operationDays: visibleKitchenOperations,
       kitchen: true,
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,

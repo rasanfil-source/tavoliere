@@ -61,12 +61,12 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   const paletteSelect = html.match(/<select data-admin-theme-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const paletteValues = [...paletteSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(paletteValues, [
+    'inchiostro',
     'smeraldo',
     'terracotta',
     'confetto',
     'salvia',
     'oliva',
-    'inchiostro',
     'neutro'
   ]);
   assert.match(html, /value="terracotta" data-i18n="admin\.adaptations\.theme\.terracotta"/);
@@ -79,7 +79,11 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.match(app, /function renderMode\(\) \{[\s\S]*?const activePalette = state\.pendingThemePalette[\s\S]*?\|\| state\.centerContactSettings\.themePalette[\s\S]*?document\.documentElement\.dataset\.theme = activePalette/);
   assert.match(html, /Se ti piace, salva questa scelta di colori/);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
-  assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'smeraldo'/);
+  assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'inchiostro'/);
+  assert.match(html, /<html lang="it" data-theme="inchiostro">/);
+  assert.match(app, /themePalette: 'inchiostro'/);
+  assert.match(app, /summaryResidentLabel: 'name'/);
+  assert.match(centerSettings, /normalizeResidentLabel\(data\.summaryResidentLabel, 'name'\)/);
 });
 
 test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il centro', () => {

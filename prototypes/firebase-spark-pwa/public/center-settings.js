@@ -51,7 +51,7 @@ export function loadCachedCenterContactSettings() {
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
       monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
       monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel, 'initials'),
+      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel, 'name'),
       language: normalizeCenterLanguage(cached.language),
       administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
       administratorSignature: typeof cached.administratorSignature === 'string' ? cached.administratorSignature.trim() : '',
@@ -217,7 +217,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821b');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     timezone,
@@ -230,10 +230,7 @@ export async function updateCenterSettings({
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-    // Futura è uno stile dell'interfaccia, non un valore di summaryLayout.
-    // Quando il campo non esiste ancora, il riepilogo Futura parte quindi con
-    // le iniziali come previsto, senza attendere un salvataggio manuale.
-    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'initials'),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'name'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
@@ -350,7 +347,7 @@ function refreshCenterContactSettings() {
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
         monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
         monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'initials'),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'name'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
@@ -391,7 +388,7 @@ function normalizeCenterName(value) {
 }
 
 function normalizeThemePalette(value) {
-  return ALLOWED_THEME_PALETTES.has(value) ? value : 'smeraldo';
+  return ALLOWED_THEME_PALETTES.has(value) ? value : 'inchiostro';
 }
 
 function normalizeInterfaceStyle(value) {
@@ -402,7 +399,7 @@ function normalizeLayout(value, fallback, allowedValues) {
   return allowedValues.has(value) ? value : fallback;
 }
 
-function normalizeResidentLabel(value, fallback = 'initials') {
+function normalizeResidentLabel(value, fallback = 'name') {
   return ALLOWED_RESIDENT_LABEL_VALUES.has(value) ? value : fallback;
 }
 

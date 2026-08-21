@@ -46,7 +46,7 @@
   "admin.adaptations.language.centerDefaultHelp": "El administrador puede establecer el idioma predeterminado propuesto para este centro.",
   "admin.adaptations.language.help": "El idioma seleccionado se usa para la interfaz en este dispositivo.",
   "admin.adaptations.language.label": "Idioma de la aplicacion",
-  "admin.adaptations.layout.classic": "Classic",
+  "admin.adaptations.layout.classic": "Original",
   "admin.adaptations.layout.future": "Futura",
   "admin.adaptations.layout.international": "Internacional",
   "admin.adaptations.layouts.help": "Elige por separado el aspecto del resumen, el de cocina y el del mes.",

@@ -46,7 +46,7 @@
   "admin.adaptations.language.centerDefaultHelp": "L'amministratore può impostare la lingua predefinita proposta per questo centro.",
   "admin.adaptations.language.help": "La lingua scelta viene usata per l'interfaccia di questo dispositivo.",
   "admin.adaptations.language.label": "Lingua dell'app",
-  "admin.adaptations.layout.classic": "Classic",
+  "admin.adaptations.layout.classic": "Originale",
   "admin.adaptations.layout.future": "Futura",
   "admin.adaptations.layout.international": "Internazionale",
   "admin.adaptations.layouts.help": "Scegli separatamente l'aspetto del riepilogo, della cucina e del mese.",

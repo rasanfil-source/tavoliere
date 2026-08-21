@@ -46,7 +46,7 @@
   "admin.adaptations.language.centerDefaultHelp": "Der Administrator kann die standardmassig vorgeschlagene Sprache fur dieses Center festlegen.",
   "admin.adaptations.language.help": "Die ausgewahlte Sprache wird fur die Oberflache auf diesem Gerat verwendet.",
   "admin.adaptations.language.label": "App-Sprache",
-  "admin.adaptations.layout.classic": "Classic",
+  "admin.adaptations.layout.classic": "Original",
   "admin.adaptations.layout.future": "Zukunft",
   "admin.adaptations.layout.international": "International",
   "admin.adaptations.layouts.help": "Wählen Sie die Darstellung für Zusammenfassung, Küche und Monat getrennt.",

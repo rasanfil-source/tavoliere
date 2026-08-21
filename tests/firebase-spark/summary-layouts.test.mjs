@@ -8,7 +8,7 @@ const app = readFileSync(new URL('app.js', root), 'utf8');
 const view = readFileSync(new URL('summary-matrix-view.js', root), 'utf8');
 const styles = readFileSync(new URL('summary-matrix-refinements.css', root), 'utf8');
 
-test('riepilogo e cucina conservano Classic e Internazionale come viste distinte', () => {
+test('riepilogo e cucina conservano Originale e Internazionale come viste distinte', () => {
   assert.match(view, /summary-layout-\$\{layout\}/);
   assert.match(styles, /\.summary-layout-classic \.summary-matrix/);
   assert.match(styles, /\.summary-international-grid[\s\S]*grid-template-columns: repeat\(3/);
@@ -73,7 +73,7 @@ test('telefono e WhatsApp restano ben distinti nel popup', () => {
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.summary-matrix-contact-actions \{\s*gap: 6px/);
 });
 
-test('Classic e Internazionale aprono i contatti dal nome del commensale', () => {
+test('Originale e Internazionale aprono i contatti dal nome del commensale', () => {
   assert.match(view, /renderClassicNamesRow\(screen, residentLabel\)/);
   assert.match(view, /summary-matrix-people-icon/);
   assert.match(view, /renderNamesCell\(column, \{ compactActions: true, residentLabel \}\)/);
@@ -138,4 +138,44 @@ test('impostazioni e manutenzione presentano controlli graficamente raggruppati'
   assert.match(index, /fieldset class="admin-layout-settings-card"/);
   assert.match(index, /details class="admin-audit-disclosure" data-admin-audit-load/);
   assert.doesNotMatch(index, /Caricate solo quando servono\./);
+});
+
+test('Classic resta un valore interno ma viene presentato come Originale in ogni lingua', () => {
+  const expected = {
+    it: 'Originale',
+    en: 'Original',
+    fr: 'Original',
+    es: 'Original',
+    de: 'Original'
+  };
+  for (const [language, label] of Object.entries(expected)) {
+    const translations = JSON.parse(readFileSync(new URL(`i18n/${language}.json`, root), 'utf8'));
+    assert.equal(translations['admin.adaptations.layout.classic'], label);
+  }
+  assert.equal((index.match(/value="classic" data-i18n="admin\.adaptations\.layout\.classic">Originale/g) || []).length, 2);
+});
+
+test('Originale e Internazionale usano indicatori Messa distinti e proporzionati', () => {
+  assert.match(styles, /summary-layout-diners\.summary-layout-classic[\s\S]*\.summary-matrix-mass-yes[\s\S]*width: 28px;[\s\S]*height: 28px;[\s\S]*border-radius: 50%;[\s\S]*color: #fff/);
+  assert.match(styles, /summary-layout-kitchen\.summary-layout-classic[\s\S]*\.summary-matrix-mass-no[\s\S]*background: var\(--danger\)/);
+  assert.match(styles, /summary-layout-international \.summary-mass-control \.summary-matrix-mass-yes,[\s\S]*width: 34px;[\s\S]*height: 34px;[\s\S]*border-radius: 7px/);
+});
+
+test('il contorno di oggi conserva spazio interno in Elegante ed Essenziale', () => {
+  assert.match(styles, /html\[data-interface-style="cool"\] \.week-matrix-row-today,[\s\S]*html\[data-interface-style="urban"\] \.week-matrix-row-today \{[\s\S]*padding: 2px;[\s\S]*border: 1px solid var\(--primary\)/);
+  assert.match(styles, /week-matrix-row-today > button \{[\s\S]*min-height: calc\(var\(--week-cell-height\) - 4px\)/);
+});
+
+test('la manutenzione incolonna la scadenza e centra registro e archivio', () => {
+  assert.match(index, /admin-calendar-extension[\s\S]*section-title[\s\S]*data-admin-calendar-extension-status[\s\S]*<\/div>[\s\S]*admin-option-help/);
+  assert.match(styles, /\.admin-calendar-extension \{[\s\S]*grid-template-columns: minmax\(132px, 0\.72fr\) minmax\(190px, 1\.28fr\) auto/);
+  assert.match(styles, /\.admin-calendar-extension > \.section-title \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /\.admin-audit-disclosure > summary \{[\s\S]*justify-content: center/);
+  assert.match(styles, /\.admin-tools-row\[data-admin-tools\] \{[\s\S]*justify-content: center/);
+});
+
+test('le note non sopravvivono al cambio di giorno e quelle passate non vengono mostrate', () => {
+  assert.match(app, /const selectedNote = state\.kitchenNotes\[state\.kitchenDayOffset\];[\s\S]*selectedNote\?\.dateId === formatDateId\(getKitchenDate\(\)\)[\s\S]*: null/);
+  assert.match(app, /const isPastDay = state\.weekOperationalDateId[\s\S]*state\.weekOperationalDateId < formatDateId\(getCenterToday\(\)\);[\s\S]*const visibleNote = isPastDay \? null : state\.weekOperationalNote/);
+  assert.match(app, /const visibleKitchenOperations = state\.kitchenOperations\.map[\s\S]*operation\.dateId < todayId \? \{ \.\.\.operation, notes: \[\] \} : operation[\s\S]*operationDays: visibleKitchenOperations/);
 });

@@ -1978,6 +1978,222 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   }
 }
 
+/* Manutenzione: scadenza sotto il titolo, azioni leggibili e centrate. */
+.admin-calendar-extension {
+  grid-template-columns: minmax(132px, 0.72fr) minmax(190px, 1.28fr) auto;
+  align-items: center;
+}
+
+.admin-calendar-extension > .section-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+}
+
+.admin-calendar-extension > .section-title > h2,
+.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+  margin: 0;
+}
+
+.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.admin-calendar-extension > .admin-option-help {
+  grid-column: auto;
+  margin: 0;
+}
+
+.admin-audit-disclosure > summary {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+
+.admin-audit-disclosure > summary .disclosure-caret {
+  position: absolute;
+  right: 14px;
+}
+
+.admin-tools-row[data-admin-tools] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.admin-tools-row[data-admin-tools] .admin-export-copy {
+  width: auto;
+  text-align: center;
+}
+
+.admin-tools-row[data-admin-tools] .admin-download-action {
+  width: auto;
+}
+
+/* Originale: Sì/No usa un piccolo disco pieno, senza il vecchio anello. */
+.summary-layout-diners.summary-layout-classic .summary-mass-control-state,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control-state {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-no,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-no {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes {
+  background: var(--affirmative);
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-no,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-no {
+  background: var(--danger);
+}
+
+/* Internazionale: il quadratino di stato cresce senza allargare la fascia. */
+.summary-layout-international .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-international .summary-mass-control .summary-matrix-mass-no {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.summary-layout-international .summary-mass-state-yes .summary-matrix-mass-yes {
+  background: color-mix(in srgb, var(--affirmative) 18%, var(--surface));
+}
+
+.summary-layout-international .summary-mass-state-no .summary-matrix-mass-no {
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+}
+
+/* Elegante ed Essenziale: una sottile intercapedine impedisce ai controlli
+   interni di coprire il contorno continuo della giornata corrente. */
+html[data-interface-style="cool"] .week-matrix-row-today,
+html[data-interface-style="urban"] .week-matrix-row-today {
+  box-sizing: border-box;
+  padding: 2px;
+  border: 1px solid var(--primary);
+  box-shadow: none;
+}
+
+html[data-interface-style="cool"] .week-matrix-row-today > button,
+html[data-interface-style="urban"] .week-matrix-row-today > button {
+  min-height: calc(var(--week-cell-height) - 4px);
+}
+
+@media (max-width: 620px) {
+  .admin-calendar-extension {
+    grid-template-columns: minmax(108px, 0.62fr) minmax(0, 1.38fr);
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .admin-calendar-extension > .section-title {
+    grid-row: 1 / span 2;
+  }
+
+  .admin-calendar-extension > .admin-option-help {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-calendar-extension [data-bootstrap-button] {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: stretch;
+  }
+
+  .admin-tools-row[data-admin-tools] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .admin-tools-row[data-admin-tools] .admin-export-copy,
+  .admin-tools-row[data-admin-tools] .admin-download-action {
+    width: auto;
+  }
+
+  /* Il pieno si riduce; numero e sfondo azzurro esterno restano invariati. */
+  html[data-interface-style="original"] .month-week-mobile-header
+    .month-day-number-today {
+    border-color: var(--today-line);
+    background: var(--today-surface);
+  }
+
+  html[data-interface-style="original"] .month-week-mobile-header
+    .month-day-number-today .month-day-number-value {
+    width: 21px;
+    height: 21px;
+  }
+
+  html[data-interface-style="cool"] .month-week-mobile-header
+    .month-day-number-today .month-day-number-value {
+    width: 23px;
+    height: 23px;
+    min-width: 23px;
+    min-height: 23px;
+  }
+
+  html[data-interface-style="cool"] .month-week-mobile-header
+    .month-day-number-today {
+    border: 1px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+
+  html[data-interface-style="cool"] .month-day-today {
+    border: 1px solid var(--primary);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 370px) {
+  .admin-calendar-extension {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-calendar-extension > .section-title,
+  .admin-calendar-extension > .admin-option-help,
+  .admin-calendar-extension [data-bootstrap-button] {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
 .participant-panel.meal-snap-forward,
 .participant-panel.meal-snap-backward {
   animation-duration: 220ms;

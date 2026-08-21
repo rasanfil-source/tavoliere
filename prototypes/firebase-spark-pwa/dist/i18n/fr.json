@@ -46,7 +46,7 @@
   "admin.adaptations.language.centerDefaultHelp": "L'administrateur peut definir la langue par defaut proposee pour ce centre.",
   "admin.adaptations.language.help": "La langue selectionnee est utilisee pour l'interface sur cet appareil.",
   "admin.adaptations.language.label": "Langue de l'application",
-  "admin.adaptations.layout.classic": "Classic",
+  "admin.adaptations.layout.classic": "Original",
   "admin.adaptations.layout.future": "Futur",
   "admin.adaptations.layout.international": "International",
   "admin.adaptations.layouts.help": "Choisissez séparément la présentation du récapitulatif, de la cuisine et du mois.",

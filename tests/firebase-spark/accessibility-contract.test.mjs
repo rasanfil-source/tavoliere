@@ -16,7 +16,7 @@ const styles = readFileSync(
 );
 
 test('la pagina dichiara lingua viewport e regioni di stato', () => {
-  assert.match(index, /<html lang="it">/);
+  assert.match(index, /<html lang="it" data-theme="inchiostro">/);
   assert.match(index, /name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/);
   assert.match(index, /aria-live="polite"/);
   assert.match(index, /aria-labelledby="admin-overview-title"/);

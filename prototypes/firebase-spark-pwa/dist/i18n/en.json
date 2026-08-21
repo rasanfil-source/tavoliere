@@ -46,7 +46,7 @@
   "admin.adaptations.language.centerDefaultHelp": "The administrator can set the default language proposed for this center.",
   "admin.adaptations.language.help": "The selected language is used for the interface on this device.",
   "admin.adaptations.language.label": "App language",
-  "admin.adaptations.layout.classic": "Classic",
+  "admin.adaptations.layout.classic": "Original",
   "admin.adaptations.layout.future": "Future",
   "admin.adaptations.layout.international": "International",
   "admin.adaptations.layouts.help": "Choose the summary, kitchen, and month layouts separately.",

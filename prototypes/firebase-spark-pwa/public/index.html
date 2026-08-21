@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="inchiostro">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#16615a">
+    <meta name="theme-color" content="#233142">
     <meta name="description" content="Prenotazioni pasti, riepiloghi e conteggi cucina.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Prenotazione pasti">
@@ -19,7 +19,7 @@
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
-    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260821a">
+    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260821b">
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
@@ -27,14 +27,14 @@
           return;
         }
 
-        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260816a';
+        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260821a';
         document.title = 'Prenotazione pasti - Cucina';
         document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/styles.css?v=20260821a">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821b">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821e">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -680,7 +680,7 @@
                       <label class="field-label admin-layout-setting" for="admin-summary-layout-select">
                         <span data-i18n="admin.adaptations.summaryLayout.label">Vista del riepilogo</span>
                         <select id="admin-summary-layout-select" data-admin-summary-layout-select aria-label="Vista del riepilogo">
-                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
+                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Originale</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
                           <option value="future" data-i18n="admin.adaptations.layout.future">Futura</option>
                         </select>
@@ -688,7 +688,7 @@
                       <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select">
                         <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
-                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Classic</option>
+                          <option value="classic" data-i18n="admin.adaptations.layout.classic">Originale</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
                         </select>
                       </label>
@@ -715,14 +715,14 @@
                     <legend data-i18n="admin.adaptations.theme.label">Palette colori</legend>
                     <p class="field-help" data-i18n="admin.adaptations.theme.help">Scegli la combinazione di colori dell'app. L'anteprima si applica subito.</p>
                     <div class="theme-select-control">
-                      <span class="theme-swatch-preview theme-swatch-smeraldo" data-theme-select-preview aria-hidden="true"></span>
+                      <span class="theme-swatch-preview theme-swatch-inchiostro" data-theme-select-preview aria-hidden="true"></span>
                       <select data-admin-theme-select aria-label="Palette colori">
+                        <option value="inchiostro" data-i18n="admin.adaptations.theme.inchiostro">Inchiostro</option>
                         <option value="smeraldo" data-i18n="admin.adaptations.theme.smeraldo">Smeraldo</option>
                         <option value="terracotta" data-i18n="admin.adaptations.theme.terracotta">Terracotta</option>
                         <option value="confetto" data-i18n="admin.adaptations.theme.confetto">Confetto</option>
                         <option value="salvia" data-i18n="admin.adaptations.theme.salvia">Salvia</option>
                         <option value="oliva" data-i18n="admin.adaptations.theme.oliva">Oliva</option>
-                        <option value="inchiostro" data-i18n="admin.adaptations.theme.inchiostro">Inchiostro</option>
                         <option value="neutro" data-i18n="admin.adaptations.theme.neutro">Neutro caldo</option>
                       </select>
                     </div>
@@ -919,8 +919,8 @@
                 <div class="section-title">
                   <h2 id="admin-calendar-extension-title" data-i18n="admin.overview.calendar">Calendario prenotazioni</h2>
                   <p data-admin-calendar-extension-status aria-live="polite">Verifico la copertura disponibile.</p>
-                  <p class="admin-option-help" data-i18n="admin.calendar.extensionHelp">Calendario annuale. Prima della scadenza, usa questo comando per aggiungere un altro anno.</p>
                 </div>
+                <p class="admin-option-help" data-i18n="admin.calendar.extensionHelp">Calendario annuale. Prima della scadenza, usa questo comando per aggiungere un altro anno.</p>
                 <button type="button" class="secondary-action" data-bootstrap-button data-i18n="admin.calendar.extendAction">Estendi calendario prenotazioni</button>
               </section>
 
@@ -1035,6 +1035,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260821h"></script>
+  <script type="module" src="/app.js?v=20260821i"></script>
   </body>
 </html>
