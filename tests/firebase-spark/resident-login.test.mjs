@@ -175,6 +175,9 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /const showAdministratorAccess = isAdminView/);
   assert.match(app, /elements\.adminShell\.hidden = isKitchen \|\| !showAdministratorAccess/);
   assert.match(app, /elements\.ownerExitButton\.hidden = !isAdminView/);
+  assert.match(app, /const usePanelExit = isAdminView && state\.residentSettingsMode/);
+  assert.match(app, /elements\.forgetDeviceButton\.hidden = !showResidentExit \|\| usePanelExit/);
+  assert.match(app, /async function handleOwnerExit\(\) \{[\s\S]*if \(state\.residentSettingsMode\) \{[\s\S]*return handleForgetDevice\(\)/);
   assert.match(app, /async function handleOwnerExit\(\)[\s\S]*await signOutCurrentUser\(\)[\s\S]*setSignedOutState\(\)/);
   assert.match(
     app,

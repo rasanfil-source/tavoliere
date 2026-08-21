@@ -2686,6 +2686,11 @@ async function handleAuthButton() {
 
 async function handleOwnerExit() {
   if (!isFirebaseConfigured || state.residentAuthTransition) return;
+  if (state.residentSettingsMode) {
+    // Il pannello ristretto usa lo stesso comando interno del pannello
+    // amministrativo, ma deve chiudere soltanto la sessione residente.
+    return handleForgetDevice();
+  }
   if (state.adminRole === 'MANAGER'
       && state.residentAdministratorAuthorized
       && !hasStrongAdministratorIdentity()) {
@@ -5258,12 +5263,13 @@ function renderMode() {
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
     || (state.platformOwner && !state.residentSettingsMode);
-  elements.forgetDeviceButton.hidden = !showResidentExit;
+  const usePanelExit = isAdminView && state.residentSettingsMode;
+  elements.forgetDeviceButton.hidden = !showResidentExit || usePanelExit;
   // Nel pannello completo il comando Esci deve restare sempre disponibile,
   // anche per un amministratore appena riconciliato o dopo un cambio vista.
-  // Nel pannello ristretto del residente il comando di uscita appartiene al
-  // footer comune: non duplicarlo anche dentro il pannello amministrativo.
-  elements.ownerExitButton.hidden = !isAdminView || state.residentSettingsMode;
+  // Anche nel pannello ristretto del residente resta dentro il box bianco:
+  // handleOwnerExit conserva comunque il logout residente, non quello Firebase.
+  elements.ownerExitButton.hidden = !isAdminView;
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
     elements.authActions.hidden = true;
