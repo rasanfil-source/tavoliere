@@ -31,6 +31,8 @@
   "admin.activity.audit": "Activity log",
   "admin.activity.noEvents": "No recent activity",
   "admin.activity.title": "Maintenance",
+  "admin.adaptations.appDisplayName.help": "Name shown on the first-access screen. Only the person responsible for the center can change it.",
+  "admin.adaptations.appDisplayName.label": "Display name",
   "admin.adaptations.cancel": "Cancel",
   "admin.adaptations.changesCancelled": "Changes cancelled.",
   "admin.adaptations.contactSharing.disabled": "📵 Diner contact calls disabled",

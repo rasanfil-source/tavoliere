@@ -86,6 +86,15 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.match(centerSettings, /normalizeResidentLabel\(data\.summaryResidentLabel, 'name'\)/);
 });
 
+test('il proprietario condivide un unico messaggio breve senza nominare il centro', () => {
+  assert.equal((html.match(/data-owner-invitation-share/g) || []).length, 1);
+  assert.match(html, /data-owner-invitation-share[^>]*>[\s\S]*?Condividi/);
+  assert.match(app, /function buildOwnerInvitationShareText\(expiryLabel\)/);
+  assert.match(app, /Ecco il collegamento personale per accedere come responsabile del centro su Oggi a tavola/);
+  assert.doesNotMatch(app, /Ti invio il collegamento personale per configurare/);
+  assert.doesNotMatch(app, /buildOwnerInvitationShareText[\s\S]{0,1600}centerContactSettings\.name/);
+});
+
 test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il centro', () => {
   const styleSelect = html.match(/<select data-admin-interface-style-select[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
   const styleValues = [...styleSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
@@ -95,6 +104,19 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban', 'urban-plus', 'future'\]\)/);
   assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
+});
+
+test('il nome di presentazione appartiene al solo responsabile e non modifica lo splash successivo', () => {
+  assert.match(html, /<h1 data-title>Oggi a tavola<\/h1>/);
+  assert.match(html, /data-admin-app-display-name-picker hidden/);
+  assert.match(html, /data-admin-app-display-name[^>]*maxlength="60"/);
+  assert.match(app, /const canEditAppDisplayName = state\.adminRole === 'OWNER' && !state\.residentSettingsMode/);
+  assert.match(app, /appDisplayNameToSave = state\.adminRole === 'OWNER'/);
+  assert.match(app, /showResidentLogin[\s\S]*?\? appDisplayName/);
+  assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
+  const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.match(splash, /<img src="\/icons\/splash-512\.png/);
+  assert.doesNotMatch(splash, /Oggi a tavola|data-title/);
 });
 
 test('la configurazione permette di impostare o sostituire la password amministratori', () => {

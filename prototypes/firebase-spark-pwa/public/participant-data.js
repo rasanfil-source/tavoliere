@@ -42,7 +42,7 @@ import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260821b';
+} from './center-settings.js?v=20260821c';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -50,7 +50,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260821b';
+} from './center-settings.js?v=20260821c';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

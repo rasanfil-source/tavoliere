@@ -36,6 +36,7 @@ const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban', 'ur
 
 export async function saveCenterConfiguration({
   name,
+  appDisplayName,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
@@ -77,6 +78,7 @@ export async function saveCenterConfiguration({
   const center = centerSnapshot.data();
   const target = {
     name,
+    ...(typeof appDisplayName === 'string' ? { appDisplayName } : {}),
     timezone,
     reservationCutoffs: normalizeReservationCutoffs(reservationCutoffs),
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
@@ -382,6 +384,9 @@ function appendSettingsAuditEvent(
 function presentationData(centerId, target) {
   return {
     centerId,
+    ...(typeof target.appDisplayName === 'string'
+      ? { appDisplayName: target.appDisplayName }
+      : {}),
     participantContactSharingEnabled: target.participantContactSharingEnabled,
     themePalette: target.themePalette,
     interfaceStyle: target.interfaceStyle,

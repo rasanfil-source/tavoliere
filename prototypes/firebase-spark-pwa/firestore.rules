@@ -454,7 +454,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           'centerId', 'participantContactSharingEnabled', 'themePalette',
           'interfaceStyle', 'defaultView', 'summaryLayout', 'kitchenLayout',
-          'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language', 'updatedAt'
+          'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language',
+          'appDisplayName', 'updatedAt'
         ])
         && request.resource.data.centerId == centerId
         && request.resource.data.participantContactSharingEnabled is bool
@@ -467,6 +468,12 @@ service cloud.firestore {
         && request.resource.data.monthControlsSide in ['right', 'left']
         && request.resource.data.summaryResidentLabel in ['name', 'signature', 'initials']
         && request.resource.data.language is string
+        && (
+          !request.resource.data.keys().hasAny(['appDisplayName'])
+          || request.resource.data.appDisplayName is string
+            && request.resource.data.appDisplayName.size() > 0
+            && request.resource.data.appDisplayName.size() <= 60
+        )
         && request.resource.data.updatedAt == request.time;
     }
 
@@ -1145,9 +1152,20 @@ service cloud.firestore {
             || hasSessionScope(centerId, 'KITCHEN')
             || hasSessionScope(centerId, 'PERSONAL')
           );
-        allow create, update: if settingsId == 'current'
+        allow create: if settingsId == 'current'
           && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
-          && adaptationDocumentIsValid(centerId);
+          && adaptationDocumentIsValid(centerId)
+          && (
+            !request.resource.data.keys().hasAny(['appDisplayName'])
+            || isCenterOwner(centerId)
+          );
+        allow update: if settingsId == 'current'
+          && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
+          && adaptationDocumentIsValid(centerId)
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['appDisplayName'])
+            || isCenterOwner(centerId)
+          );
         allow delete: if false;
       }
 

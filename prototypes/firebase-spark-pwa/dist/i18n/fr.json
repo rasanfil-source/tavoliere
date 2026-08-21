@@ -31,6 +31,8 @@
   "admin.activity.audit": "Journal d'activite",
   "admin.activity.noEvents": "Aucune activite recente",
   "admin.activity.title": "Maintenance",
+  "admin.adaptations.appDisplayName.help": "Nom affiché sur l’écran du premier accès. Seul le responsable du centre peut le modifier.",
+  "admin.adaptations.appDisplayName.label": "Nom de présentation",
   "admin.adaptations.cancel": "Annuler",
   "admin.adaptations.changesCancelled": "Modifications annulées.",
   "admin.adaptations.contactSharing.disabled": "📵 Appels aux convives désactivés",

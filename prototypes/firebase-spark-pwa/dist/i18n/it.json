@@ -31,6 +31,8 @@
   "admin.activity.audit": "Registro attività",
   "admin.activity.noEvents": "Nessuna attività recente",
   "admin.activity.title": "Manutenzione",
+  "admin.adaptations.appDisplayName.help": "Nome mostrato nella schermata del primo accesso. Può modificarlo soltanto il responsabile del centro.",
+  "admin.adaptations.appDisplayName.label": "Nome di presentazione",
   "admin.adaptations.cancel": "Annulla",
   "admin.adaptations.changesCancelled": "Modifiche annullate.",
   "admin.adaptations.contactSharing.disabled": "📵 Chiamata ai commensali disattivata",

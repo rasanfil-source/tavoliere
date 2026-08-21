@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260821ab';
+} from './i18n/i18n.mjs?v=20260821ac';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -35,6 +35,7 @@ import {
   setActiveCenterId
 } from './center-context.js?v=20260816h';
 import {
+  DEFAULT_APP_DISPLAY_NAME,
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
   loadCenterContactSettings,
@@ -45,7 +46,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260821b';
+} from './center-settings.js?v=20260821c';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -105,7 +106,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260821b'
+  participant: './participant-data.js?v=20260821c'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -617,8 +618,10 @@ const state = {
   pendingCenterAvatarDataUrl: '',
   pendingThemePalette: '',
   pendingInterfaceStyle: '',
+  ownerInvitationExpiryLabel: '',
   centerContactSettings: {
     name: '',
+    appDisplayName: DEFAULT_APP_DISPLAY_NAME,
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
     themePalette: 'inchiostro',
@@ -773,6 +776,8 @@ const elements = {
   adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
   adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
+  adminAppDisplayNamePicker: document.querySelector('[data-admin-app-display-name-picker]'),
+  adminAppDisplayName: document.querySelector('[data-admin-app-display-name]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
@@ -785,7 +790,7 @@ const elements = {
   ownerInvitationResult: document.querySelector('[data-owner-invitation-result]'),
   ownerInvitationLink: document.querySelector('[data-owner-invitation-link]'),
   ownerInvitationCopy: document.querySelector('[data-owner-invitation-copy]'),
-  ownerInvitationShare: document.querySelector('[data-owner-invitation-share]'),
+  ownerInvitationShares: document.querySelectorAll('[data-owner-invitation-share]'),
   ownerInvitationStatus: document.querySelector('[data-owner-invitation-status]'),
   platformCenterList: document.querySelector('[data-platform-center-list]'),
   adminStatus: document.querySelector('[data-admin-status]'),
@@ -1106,9 +1111,11 @@ elements.adminEmailCreate.addEventListener('click', handleAdministratorEmailCrea
 elements.adminPasswordReset.addEventListener('click', handleAdministratorPasswordReset);
 elements.ownerInvitationGenerate.addEventListener('click', handleCenterInvitationGeneration);
 elements.ownerInvitationCopy.addEventListener('click', handleCenterInvitationCopy);
-if (elements.ownerInvitationShare && typeof navigator.share === 'function') {
-  elements.ownerInvitationShare.hidden = false;
-  elements.ownerInvitationShare.addEventListener('click', handleCenterInvitationShare);
+if (typeof navigator.share === 'function') {
+  elements.ownerInvitationShares.forEach((button) => {
+    button.hidden = false;
+    button.addEventListener('click', handleCenterInvitationShare);
+  });
 }
 elements.bootstrapButton.addEventListener('click', handleBootstrapButton);
 elements.centerInitializerButton.addEventListener('click', handleCenterInitialization);
@@ -2875,6 +2882,7 @@ async function handleRequiredAdminPasswordSetup(event) {
 
 async function handleCenterInvitationGeneration() {
   elements.ownerInvitationGenerate.disabled = true;
+  state.ownerInvitationExpiryLabel = '';
   elements.ownerInvitationStatus.textContent = t('admin.invitations.generating');
   try {
     const invitation = await createCenterInvitation();
@@ -2884,6 +2892,7 @@ async function handleCenterInvitationGeneration() {
     elements.ownerInvitationLink.value = url.toString();
     elements.ownerInvitationResult.hidden = false;
     const expiry = formatDateTime(invitation.expiresAt, { dateStyle: 'medium' }, getLocale());
+    state.ownerInvitationExpiryLabel = expiry;
     elements.ownerInvitationStatus.textContent = t('admin.invitations.validUntil', { date: expiry });
   } catch (error) {
     elements.ownerInvitationStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
@@ -2912,7 +2921,7 @@ async function handleCenterInvitationShare() {
   try {
     await navigator.share({
       title: 'Collegamento per il responsabile del centro',
-      text: 'Usa questo collegamento per configurare il centro:',
+      text: buildOwnerInvitationShareText(state.ownerInvitationExpiryLabel),
       url: elements.ownerInvitationLink.value
     });
   } catch (error) {
@@ -2920,6 +2929,13 @@ async function handleCenterInvitationShare() {
       elements.ownerInvitationStatus.textContent = friendlyErrorMessage(error, 'Condivisione non riuscita');
     }
   }
+}
+
+function buildOwnerInvitationShareText(expiryLabel) {
+  const expiry = expiryLabel
+    ? `Il collegamento scade il ${expiryLabel}`
+    : 'Il collegamento ha una scadenza limitata';
+  return `Ecco il collegamento personale per accedere come responsabile del centro su Oggi a tavola. Aprilo e completa l’identificazione. ${expiry} e non deve essere inoltrato.`;
 }
 
 async function refreshPlatformCenterList() {
@@ -4728,6 +4744,15 @@ function syncAdminAdaptationsForm() {
   applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
+  const canEditAppDisplayName = state.adminRole === 'OWNER' && !state.residentSettingsMode;
+  if (elements.adminAppDisplayNamePicker) {
+    elements.adminAppDisplayNamePicker.hidden = !canEditAppDisplayName;
+  }
+  if (elements.adminAppDisplayName) {
+    elements.adminAppDisplayName.disabled = !canEditAppDisplayName;
+    elements.adminAppDisplayName.value = state.centerContactSettings.appDisplayName
+      || DEFAULT_APP_DISPLAY_NAME;
+  }
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
   }
@@ -4892,6 +4917,9 @@ async function handleAdminAdaptationsSave() {
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
     const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
+    const appDisplayNameToSave = state.adminRole === 'OWNER' && !state.residentSettingsMode
+      ? elements.adminAppDisplayName?.value
+      : undefined;
     if (state.residentSettingsMode) {
       const preferences = {
         themePalette: paletteToSave,
@@ -4914,6 +4942,7 @@ async function handleAdminAdaptationsSave() {
     }
     const settings = await updateCenterSettings({
       name: state.centerContactSettings.name,
+      ...(appDisplayNameToSave === undefined ? {} : { appDisplayName: appDisplayNameToSave }),
       timezone: state.centerContactSettings.timezone,
       participantContactSharingEnabled: sharingEnabled,
       themePalette: paletteToSave,
@@ -4985,6 +5014,9 @@ function handleAdminAdaptationsReset() {
   applyInterfaceStyle('cool');
   updateThemeSelectControl('inchiostro');
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
+  if (elements.adminAppDisplayName && state.adminRole === 'OWNER') {
+    elements.adminAppDisplayName.value = DEFAULT_APP_DISPLAY_NAME;
+  }
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -5193,6 +5225,8 @@ function renderMode() {
     && !isResidentTechnicalEmail(currentUser.email);
   const showResidentLogin = needsResidentLogin
     && !isAdminView;
+  const appDisplayName = state.centerContactSettings.appDisplayName
+    || DEFAULT_APP_DISPLAY_NAME;
   document.body.dataset.residentLoginVisible = showResidentLogin ? 'true' : 'false';
   const sessionRole = state.platformOwner
     ? t('role.platformOwner')
@@ -5212,6 +5246,8 @@ function renderMode() {
   });
   elements.title.textContent = isCenterActivation
     ? 'Attivazione centro'
+    : showResidentLogin
+      ? appDisplayName
     : isParticipant
     ? mealTitle
     : isWeek
@@ -5235,7 +5271,11 @@ function renderMode() {
     : isSummary && centerName
       ? `${elements.title.textContent} - ${centerName}`
       : elements.title.textContent;
-  document.title = isAdminView ? browserTitle : `${browserTitle} · Prenotazione pasti`;
+  document.title = showResidentLogin
+    ? appDisplayName
+    : isAdminView
+      ? browserTitle
+      : `${browserTitle} · Prenotazione pasti`;
   elements.residentLogin.hidden = !showResidentLogin;
   elements.participantPanel.hidden = !isParticipant || needsResidentLogin || state.platformOwner;
   elements.weekPanel.hidden = !isWeek || needsResidentLogin || state.platformOwner;

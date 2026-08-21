@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260821ab';
+const CATALOG_RELEASE = '20260821ac';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -86,6 +86,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
     'admin.adaptations.title': 'Aspetto',
+    'admin.adaptations.appDisplayName.label': 'Nome di presentazione',
+    'admin.adaptations.appDisplayName.help': 'Nome mostrato nella schermata del primo accesso. Può modificarlo soltanto il responsabile del centro.',
     'admin.access.title': 'Amministratore',
     'admin.activity.title': 'Manutenzione',
     'admin.people.title': 'Persone',
@@ -119,6 +121,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'auth.resident.title': 'Resident access',
     'admin.overview.title': 'Administration area',
     'admin.adaptations.title': 'Appearance',
+    'admin.adaptations.appDisplayName.label': 'Display name',
+    'admin.adaptations.appDisplayName.help': 'Name shown on the first-access screen. Only the person responsible for the center can change it.',
     'admin.access.title': 'Administrator',
     'admin.activity.title': 'Maintenance',
     'admin.people.title': 'People',
@@ -152,6 +156,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'auth.resident.title': 'Accès résidents',
     'admin.overview.title': 'Espace administration',
     'admin.adaptations.title': 'Apparence',
+    'admin.adaptations.appDisplayName.label': 'Nom de présentation',
+    'admin.adaptations.appDisplayName.help': 'Nom affiché sur l’écran du premier accès. Seul le responsable du centre peut le modifier.',
     'admin.access.title': 'Administrateur',
     'admin.activity.title': 'Maintenance',
     'admin.people.title': 'Personnes',
@@ -185,6 +191,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'auth.resident.title': 'Acceso residentes',
     'admin.overview.title': 'Área de administración',
     'admin.adaptations.title': 'Apariencia',
+    'admin.adaptations.appDisplayName.label': 'Nombre de presentación',
+    'admin.adaptations.appDisplayName.help': 'Nombre mostrado en la pantalla del primer acceso. Solo la persona responsable del centro puede modificarlo.',
     'admin.access.title': 'Administrador',
     'admin.activity.title': 'Mantenimiento',
     'admin.people.title': 'Personas',
@@ -218,6 +226,8 @@ export const CORE_FALLBACKS = Object.freeze({
     'auth.resident.title': 'Bewohner-Zugang',
     'admin.overview.title': 'Verwaltungsbereich',
     'admin.adaptations.title': 'Erscheinungsbild',
+    'admin.adaptations.appDisplayName.label': 'Anzeigename',
+    'admin.adaptations.appDisplayName.help': 'Name auf dem Bildschirm des ersten Zugangs. Nur die für das Zentrum verantwortliche Person kann ihn ändern.',
     'admin.access.title': 'Administrator',
     'admin.activity.title': 'Wartung',
     'admin.people.title': 'Personen',

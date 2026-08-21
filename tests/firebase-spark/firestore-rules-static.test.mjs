@@ -184,6 +184,16 @@ test('il vice usa la configurazione ma non amministra il passaggio di consegne',
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);
 });
 
+test('solo il responsabile unico cambia il nome di presentazione', () => {
+  assert.match(rules, /'appDisplayName', 'updatedAt'/);
+  assert.match(rules, /appDisplayName\.size\(\) > 0/);
+  assert.match(rules, /appDisplayName\.size\(\) <= 60/);
+  assert.match(
+    rules,
+    /allow update: if settingsId == 'current'[\s\S]*affectedKeys\(\)\.hasAny\(\['appDisplayName'\]\)[\s\S]*isCenterOwner\(centerId\)/
+  );
+});
+
 test('l avatar del centro e leggibile dalle sessioni e modificabile dai ruoli del pannello', () => {
   assert.match(
     rules,

@@ -71,6 +71,39 @@ test('registered admin can update center and manage admin docs', async () => {
   }));
 });
 
+test('solo il responsabile unico modifica il nome di presentazione dell app', async () => {
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const administratorDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
+  const presentationPath = `${centerPath()}/presentationSettings/current`;
+  await assertSucceeds(ownerDb.doc(presentationPath).set({
+    centerId: CENTER_ID,
+    participantContactSharingEnabled: true,
+    themePalette: 'inchiostro',
+    interfaceStyle: 'future',
+    defaultView: 'month',
+    summaryLayout: 'classic',
+    kitchenLayout: 'classic',
+    monthLayout: 'grid',
+    monthControlsSide: 'right',
+    summaryResidentLabel: 'name',
+    language: 'it',
+    appDisplayName: 'Oggi a tavola',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(ownerDb.doc(presentationPath).set({
+    appDisplayName: 'Il pranzo è una cosa seria',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(administratorDb.doc(presentationPath).set({
+    appDisplayName: 'Nome non autorizzato',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertSucceeds(administratorDb.doc(presentationPath).set({
+    themePalette: 'smeraldo',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+});
+
 test('il responsabile revoca un amministratore e le regole lo bloccano subito', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const revokedDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
@@ -1377,6 +1410,10 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
     language: 'it',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
+  await assertFails(viceDb.doc(`${centerPath()}/presentationSettings/current`).set({
+    appDisplayName: 'Nome scelto dal vice',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
   await assertSucceeds(viceDb.doc(`${centerPath()}/viceAuditEvents/event_vice_scope`).set({
     centerId: CENTER_ID,
     actorUid: PERSONAL_UID,
