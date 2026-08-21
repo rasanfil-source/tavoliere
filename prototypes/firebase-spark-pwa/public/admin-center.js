@@ -12,7 +12,7 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260820t';
+import { db, getCurrentUser } from './firebase-client.js?v=20260820u';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   createOwnedCenterId,
@@ -22,7 +22,7 @@ import {
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816g';
+import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816h';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
 const CENTER_INVITATION_COLLECTION = 'centerInvitations';
@@ -94,7 +94,7 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
   const requestedCenterId = getActiveCenterId();
   const existingAccess = await readCenterAdmin(user, requestedCenterId);
   if (existingAccess.active) {
-    void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
+    await saveAdminProfile(user, requestedCenterId, existingAccess.role);
     return {
       ...existingAccess,
       availableCenters: await listAccessibleAdminCenters(user)

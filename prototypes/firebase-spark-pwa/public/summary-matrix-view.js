@@ -257,7 +257,7 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name" }) 
 
 function renderCaption(screen, kitchen) {
   if (kitchen) {
-    return `<caption class="sr-only">${escapeHtml(`${t("kitchen.title")}: ${t(screen.labelKey)}`)}</caption>`;
+    return `<caption class="sr-only">${escapeHtml(`${t("kitchen.view.title")}: ${t(screen.labelKey)}`)}</caption>`;
   }
   return `
     <caption class="summary-matrix-caption">
@@ -475,7 +475,7 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
     : " summary-screen-ordinary";
   return `
     <section class="summary-matrix-screen summary-international-screen${densityClass}" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
-      ${kitchen ? `<h2 class="sr-only">${escapeHtml(`${t("kitchen.title")}: ${t(screen.labelKey)}`)}</h2>` : `<header class="summary-international-title"><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></header>`}
+      ${kitchen ? `<h2 class="sr-only">${escapeHtml(`${t("kitchen.view.title")}: ${t(screen.labelKey)}`)}</h2>` : `<header class="summary-international-title"><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></header>`}
       <div class="summary-international-grid">
         ${screen.columns.map((column) => renderInternationalCard(column, { kitchen, residentLabel })).join("")}
       </div>

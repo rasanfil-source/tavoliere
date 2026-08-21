@@ -25,7 +25,7 @@ import {
   waitForAuthReady,
   withResidentTechnicalSession,
   withAdministratorTechnicalSession
-} from './firebase-client.js?v=20260820t';
+} from './firebase-client.js?v=20260820u';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
@@ -654,6 +654,9 @@ export async function ensurePublicDemoSession() {
   if (authorizedAdministrator) {
     return authorizedAdministrator;
   }
+  if (getStrongAuthenticatedUser()) {
+    throw new Error('Account amministratore non autorizzato per questo centro');
+  }
 
   let user = getCurrentUser();
   if (!user) {
@@ -1012,7 +1015,7 @@ async function getMealTypes(forceRefresh = false) {
     .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
     .filter((meal) => meal.status === 'ACTIVE')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  mealTypesCache = { loadedAt: Date.now(), value };
+  mealTypesCache = { centerId: getActiveCenterId(), loadedAt: Date.now(), value };
   return value;
 }
 
@@ -1028,7 +1031,7 @@ async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = fals
     where('mealDate', '<=', endDateId)
   ));
   const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
-  mealWindowsCache.set(cacheKey, { loadedAt: Date.now(), value });
+  mealWindowsCache.set(cacheKey, { centerId: getActiveCenterId(), loadedAt: Date.now(), value });
   return value;
 }
 
@@ -1545,7 +1548,11 @@ async function getParticipantRules(participantId, forceRefresh = false) {
   const value = snapshot.exists()
     ? [{ ruleId: snapshot.id, ...snapshot.data() }]
     : [];
-  participantRulesCache.set(participantId, { loadedAt: Date.now(), value });
+  participantRulesCache.set(participantId, {
+    centerId: getActiveCenterId(),
+    loadedAt: Date.now(),
+    value
+  });
   return value;
 }
 
@@ -1600,7 +1607,11 @@ function toDate(value) {
 }
 
 function isFreshCacheEntry(entry) {
-  return Boolean(entry && Date.now() - entry.loadedAt < STATIC_QUERY_CACHE_MS);
+  return Boolean(
+    entry
+    && entry.centerId === getActiveCenterId()
+    && Date.now() - entry.loadedAt < STATIC_QUERY_CACHE_MS
+  );
 }
 
 function canUseVersionedCache(entry, options = {}) {
@@ -1613,6 +1624,7 @@ function canUseVersionedCache(entry, options = {}) {
 
 function createVersionedCacheEntry(value, staticVersion = '') {
   return {
+    centerId: getActiveCenterId(),
     loadedAt: Date.now(),
     staticVersion: String(staticVersion || ''),
     value

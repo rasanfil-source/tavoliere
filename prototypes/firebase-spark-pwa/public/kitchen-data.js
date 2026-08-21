@@ -8,7 +8,7 @@ import {
   setDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260820t';
+import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import {
   findApplicableRule,
@@ -25,10 +25,21 @@ const SESSION_LIFETIME_DAYS = 30;
 const SESSION_RECHECK_MS = 5 * 60 * 1000;
 const STATIC_DATA_CACHE_MS = 6 * 60 * 60 * 1000;
 const WINDOW_CACHE_MS = 10 * 60 * 1000;
+const OVERRIDE_CACHE_MS = 45 * 1000;
+const TEMPORAL_CACHE_MAX_ENTRIES = 30;
 let mealTypesCache = null;
 let rulesCache = null;
 let validatedKitchenSession = null;
 const windowsCache = new Map();
+const overridesCache = new Map();
+
+function writeBoundedCache(cache, key, entry) {
+  cache.delete(key);
+  cache.set(key, entry);
+  while (cache.size > TEMPORAL_CACHE_MAX_ENTRIES) {
+    cache.delete(cache.keys().next().value);
+  }
+}
 
 export async function loadKitchenCounts(date = new Date(), options = {}) {
   if (!db) {
@@ -152,52 +163,66 @@ function rememberKitchenSession(authUid, expiresAt) {
 }
 
 async function getActiveMealTypes(forceRefresh = false) {
-  if (!forceRefresh && mealTypesCache && Date.now() - mealTypesCache.loadedAt < STATIC_DATA_CACHE_MS) {
+  const centerId = getActiveCenterId();
+  if (!forceRefresh
+    && mealTypesCache?.centerId === centerId
+    && Date.now() - mealTypesCache.loadedAt < STATIC_DATA_CACHE_MS) {
     return mealTypesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'mealTypes'));
+  const snapshot = await getDocs(collection(db, 'centers', centerId, 'mealTypes'));
   const value = snapshot.docs
     .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
     .filter((meal) => meal.status === 'ACTIVE')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  mealTypesCache = { loadedAt: Date.now(), value };
+  mealTypesCache = { centerId, loadedAt: Date.now(), value };
   return value;
 }
 
 async function getMealWindows(mealDate, forceRefresh = false) {
-  const cached = windowsCache.get(mealDate);
+  const centerId = getActiveCenterId();
+  const cacheKey = `${centerId}:${mealDate}`;
+  const cached = windowsCache.get(cacheKey);
   if (!forceRefresh && cached && Date.now() - cached.loadedAt < WINDOW_CACHE_MS) {
     return cached.value;
   }
   const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'mealWindows'),
+    collection(db, 'centers', centerId, 'mealWindows'),
     where('mealDate', '==', mealDate)
   ));
   const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
-  windowsCache.set(mealDate, { loadedAt: Date.now(), value });
+  writeBoundedCache(windowsCache, cacheKey, { loadedAt: Date.now(), value });
   return value;
 }
 
 async function getOverrides(mealDate) {
+  const centerId = getActiveCenterId();
+  const cacheKey = `${centerId}:${mealDate}`;
+  const cached = overridesCache.get(cacheKey);
+  if (cached && Date.now() - cached.loadedAt < OVERRIDE_CACHE_MS) {
+    return cached.value;
+  }
   const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'reservationOverrides'),
+    collection(db, 'centers', centerId, 'reservationOverrides'),
     where('mealDate', '==', mealDate)
   ));
-  return snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }));
+  const value = snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }));
+  writeBoundedCache(overridesCache, cacheKey, { loadedAt: Date.now(), value });
+  return value;
 }
 
 async function getRules(forceRefresh = false, staticVersion = '0') {
+  const centerId = getActiveCenterId();
   if (
     !forceRefresh
-    && rulesCache
+    && rulesCache?.centerId === centerId
     && rulesCache.staticVersion === staticVersion
     && Date.now() - rulesCache.loadedAt < STATIC_DATA_CACHE_MS
   ) {
     return rulesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'reservationRules'));
+  const snapshot = await getDocs(collection(db, 'centers', centerId, 'reservationRules'));
   const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
-  rulesCache = { loadedAt: Date.now(), staticVersion, value };
+  rulesCache = { centerId, loadedAt: Date.now(), staticVersion, value };
   return value;
 }
 

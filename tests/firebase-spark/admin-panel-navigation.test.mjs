@@ -154,7 +154,10 @@ test('i collegamenti operativi usano copia diretta e condivisione nativa o assis
   assert.match(app, /btn\.addEventListener\('click', handleAccessLinkCopy\)/);
   assert.doesNotMatch(app, /handleAccessLinkOpen/);
   assert.match(app, /getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/);
-  assert.match(app, /const url = getCachedAccessLinkUrl\(scope\)/);
+  assert.match(
+    app,
+    /async function handleAccessLinkShare[\s\S]*getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/
+  );
   assert.match(app, /await navigator\.share\(shareData\)/);
   assert.match(app, /openAccessShareDialog\(label, url\)/);
   assert.match(app, /https:\/\/wa\.me\/\?text=/);

@@ -265,6 +265,7 @@ const ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX = 'amministratori+';
 const residentTechnicalEmailPattern = /^residenti\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
 const administratorTechnicalEmailPattern = /^amministratori\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
 let residentMaintenanceAuth = null;
+let residentMaintenanceAuthTail = Promise.resolve();
 
 export function getResidentTechnicalEmail(centerId) {
   const normalizedCenterId = String(centerId || '').trim().toLowerCase();
@@ -306,8 +307,30 @@ async function getResidentMaintenanceAuth() {
   return residentMaintenanceAuth;
 }
 
+async function acquireResidentMaintenanceAuth() {
+  const previous = residentMaintenanceAuthTail;
+  let releaseQueue;
+  residentMaintenanceAuthTail = new Promise((resolve) => {
+    releaseQueue = resolve;
+  });
+  await previous;
+  try {
+    const maintenanceAuth = await getResidentMaintenanceAuth();
+    return {
+      maintenanceAuth,
+      async release() {
+        await signOut(maintenanceAuth).catch(() => undefined);
+        releaseQueue();
+      }
+    };
+  } catch (error) {
+    releaseQueue();
+    throw error;
+  }
+}
+
 export async function withResidentTechnicalSession(centerId, password, operation) {
-  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = getResidentTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
   try {
@@ -322,7 +345,7 @@ export async function withResidentTechnicalSession(centerId, password, operation
       user: credential.user
     });
   } finally {
-    await signOut(maintenanceAuth).catch(() => undefined);
+    await release();
   }
 }
 
@@ -337,7 +360,7 @@ export async function withAdministratorTechnicalSession(
   operation,
   technicalEmailOverride = ''
 ) {
-  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = String(technicalEmailOverride || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId, passwordVersion);
   const technicalPassword = formatTechnicalAuthPassword(password);
@@ -354,7 +377,7 @@ export async function withAdministratorTechnicalSession(
       email
     });
   } finally {
-    await signOut(maintenanceAuth).catch(() => undefined);
+    await release();
   }
 }
 
@@ -377,7 +400,7 @@ export async function setResidentTechnicalPassword(centerId, previousPassword, n
   const formattedNext = formatTechnicalAuthPassword(next);
   const formattedPrevious = previous ? formatTechnicalAuthPassword(previous) : '';
 
-  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   try {
     let credential = null;
     if (formattedPrevious) {
@@ -420,7 +443,7 @@ export async function setResidentTechnicalPassword(centerId, previousPassword, n
     }
     return { email, created: false };
   } finally {
-    await signOut(maintenanceAuth).catch(() => undefined);
+    await release();
   }
 }
 
@@ -438,7 +461,7 @@ export async function setAdministratorTechnicalPassword(
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
 
-  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const formattedNext = formatTechnicalAuthPassword(next);
   const formattedPrevious = previous ? formatTechnicalAuthPassword(previous) : '';
   try {
@@ -497,7 +520,7 @@ export async function setAdministratorTechnicalPassword(
     }
     return { email, uid: credential.user.uid, created: false };
   } finally {
-    await signOut(maintenanceAuth).catch(() => undefined);
+    await release();
   }
 }
 
@@ -519,7 +542,7 @@ export async function authorizeResidentAdministratorSession({
     throw new Error('La password amministratori non è ancora impostata');
   }
 
-  const maintenanceAuth = await getResidentMaintenanceAuth();
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = String(technicalEmail || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
@@ -542,7 +565,7 @@ export async function authorizeResidentAdministratorSession({
     });
     return { expiresAt: expiresAt.toDate(), passwordVersion: normalizedVersion };
   } finally {
-    await signOut(maintenanceAuth).catch(() => undefined);
+    await release();
   }
 }
 

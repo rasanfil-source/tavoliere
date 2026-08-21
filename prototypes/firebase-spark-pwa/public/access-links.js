@@ -9,7 +9,7 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260820t';
+import { db, getCurrentUser } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 
@@ -34,16 +34,17 @@ const LINK_SCOPES = Object.freeze({
   }
 });
 
-let cachedLinks = null;
+const cachedLinksByCenter = new Map();
 
 export async function loadOperationalLinks({ forceRefresh = false } = {}) {
-  if (!forceRefresh && cachedLinks) {
-    return cachedLinks;
-  }
   const centerId = getActiveCenterId();
+  if (!forceRefresh && cachedLinksByCenter.has(centerId)) {
+    return cachedLinksByCenter.get(centerId);
+  }
   const snapshot = await getDoc(settingsRef(centerId));
-  cachedLinks = normalizeOperationalLinks(snapshot.exists() ? snapshot.data() : {});
-  return cachedLinks;
+  const links = normalizeOperationalLinks(snapshot.exists() ? snapshot.data() : {});
+  cachedLinksByCenter.set(centerId, links);
+  return links;
 }
 
 export async function ensureOperationalLinks(user = getCurrentUser()) {
@@ -126,7 +127,7 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
     };
   });
 
-  cachedLinks = result;
+  cachedLinksByCenter.set(centerId, result);
   return result;
 }
 
@@ -197,12 +198,12 @@ export async function rotateOperationalLink(scope, user = getCurrentUser()) {
 
   await deleteSessionsForToken(centerId, previousTokenId);
 
-  cachedLinks = result;
+  cachedLinksByCenter.set(centerId, result);
   return result;
 }
 
 export function invalidateOperationalLinksCache() {
-  cachedLinks = null;
+  cachedLinksByCenter.clear();
 }
 
 function settingsRef(centerId) {

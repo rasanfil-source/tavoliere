@@ -10,7 +10,7 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260820t';
+import { db } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import {
   buildMealWindowRecords,

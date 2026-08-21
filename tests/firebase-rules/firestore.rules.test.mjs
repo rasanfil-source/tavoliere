@@ -944,7 +944,10 @@ test('i collegamenti operativi sono privati e si rigenerano in modo coordinato',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
   await assertSucceeds(adminDb.doc(settingsPath).get());
-  await assertFails(viceDb.doc(settingsPath).get());
+  await assertSucceeds(viceDb.doc(settingsPath).get());
+  await assertFails(viceDb.doc(settingsPath).set({
+    publicTokenId: 'public_token_manomesso'
+  }, { merge: true }));
   await assertFails(publicDb.doc(settingsPath).get());
   await assertFails(ownerDb.doc(previousTokenPath).get());
 

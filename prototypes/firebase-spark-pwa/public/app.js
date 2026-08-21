@@ -28,7 +28,7 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260820t';
+} from './firebase-client.js?v=20260820u';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -80,7 +80,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260820d';
+} from './summary-matrix-view.js?v=20260820e';
 
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -98,14 +98,14 @@ const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDe
 const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPending.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260820u',
+  accessLinks: './access-links.js?v=20260816h',
+  admin: './admin-center.js?v=20260820v',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
-  daily: './daily-operations.js?v=20260817b',
-  kitchen: './kitchen-data.js?v=20260816g',
+  daily: './daily-operations.js?v=20260817c',
+  kitchen: './kitchen-data.js?v=20260816h',
   notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260820f'
+  participant: './participant-data.js?v=20260820g'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -407,10 +407,15 @@ function applyResidentPreferences(settings) {
 }
 
 function storeResidentPreferences(preferences) {
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
-    JSON.stringify(preferences)
-  );
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
+      JSON.stringify(preferences)
+    );
+  } catch {
+    // Le preferenze locali sono accessorie: un browser con storage negato non
+    // deve lasciare bloccato il salvataggio autorevole del centro.
+  }
 }
 
 function readDietCode(select, numberInput) {
@@ -1759,15 +1764,16 @@ function initializeOperationalLinks() {
     centerId,
     personalAccess
   );
-  const mealsAccessButton = document.querySelector('[data-access-link="pasti"]');
-  const kitchenAccessButton = document.querySelector('[data-access-link="cucina"]');
-  const mealsShareButton = document.querySelector('[data-share-access-link="pasti"]');
-  const kitchenShareButton = document.querySelector('[data-share-access-link="cucina"]');
-  if (mealsAccessButton) mealsAccessButton.disabled = !publicToken;
-  if (kitchenAccessButton) kitchenAccessButton.disabled = !kitchenToken;
-  if (mealsShareButton) mealsShareButton.disabled = !publicToken;
-  if (kitchenShareButton) kitchenShareButton.disabled = !kitchenToken;
+  syncOperationalLinkActionState();
   renderOperationalLinkMetadata();
+}
+
+function syncOperationalLinkActionState(
+  canView = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS)
+) {
+  document.querySelectorAll('[data-access-link], [data-share-access-link]').forEach((button) => {
+    button.disabled = !canView;
+  });
 }
 
 function buildOperationalLink(view, token, centerId, access = '') {
@@ -2073,7 +2079,7 @@ function initializeAuthPanel() {
       return;
     }
     void reconcileAdminAccessWithoutStrongUser();
-  }, 1800);
+  }, 8000);
 
   elements.authButton.disabled = false;
   watchAuth((user) => {
@@ -2090,6 +2096,18 @@ function initializeAuthPanel() {
       residentRestorePending: state.residentRestorePending,
       strongAuthUser: Boolean(strongAuthUser)
     })) {
+      // Al refresh del pannello una sessione residente/vice persistente parte
+      // con residentRestorePending=true. L'evento Auth anonimo iniziale non
+      // deve smontarla, ma deve avviarne subito il ripristino: attendere il
+      // timeout di sicurezza rendeva il pannello inutilizzabile per 8 secondi.
+      if (state.mode === 'admin'
+          && state.residentRestorePending
+          && !state.residentAuthTransition
+          && !strongAuthUser) {
+        authSettled = true;
+        window.clearTimeout(authFallback);
+        void reconcileAdminAccessWithoutStrongUser();
+      }
       return;
     }
     const revision = ++authRevision;
@@ -4143,7 +4161,7 @@ async function performOwnershipTransfer() {
     title: t('dialog.transferOwnership.title'),
     message: t('dialog.transferOwnership.finalMessage', { email: successor.email || successor.adminUid }),
     confirmLabel: t('dialog.transferOwnership.title'),
-    requiredText: 'TRASFERISCI',
+    requiredText: t('dialog.transferOwnership.requiredText'),
     destructive: true
   });
   if (!decision.confirmed) {
@@ -4321,6 +4339,9 @@ function renderAdminOverview() {
       </li>
     `).join('');
   }
+  // La scheda può essere ridisegnata dopo il caricamento asincrono dei token.
+  // Riallineiamo sempre i comandi allo stato autorevole e alla capability.
+  syncOperationalLinkActionState();
 }
 
 function renderAdminInvitationList() {
@@ -5867,6 +5888,7 @@ function applyAdminCapabilityVisibility() {
     if (elements.bootstrapButton) elements.bootstrapButton.hidden = true;
     elements.adminRoleOptions.forEach((option) => { option.hidden = true; });
     elements.rotateLinkButtons.forEach((button) => { button.hidden = true; });
+    syncOperationalLinkActionState(false);
     mountAdminSection('adaptations');
     renderAdminMobileSection();
     return;
@@ -5944,6 +5966,7 @@ function applyAdminCapabilityVisibility() {
   elements.rotateLinkButtons.forEach((button) => {
     button.hidden = !canManageOperationalLinks;
   });
+  syncOperationalLinkActionState(canViewOperationalLinks);
   renderAdminMobileSection();
 }
 
@@ -8580,7 +8603,15 @@ function registerServiceWorker() {
 async function handleAccessLinkCopy(event) {
   const button = event.currentTarget;
   const scope = button.getAttribute('data-access-link');
-  const url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  let url = '';
+  try {
+    url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  } catch (error) {
+    elements.operationalLinksStatus.textContent = friendlyErrorMessage(
+      error,
+      'Collegamento non disponibile'
+    );
+  }
   if (!url) return;
   const originalText = button.textContent;
   try {
@@ -8599,7 +8630,15 @@ async function handleAccessLinkCopy(event) {
 async function handleAccessLinkShare(event) {
   const button = event.currentTarget;
   const scope = button.getAttribute('data-share-access-link');
-  const url = getCachedAccessLinkUrl(scope);
+  let url = '';
+  try {
+    url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  } catch (error) {
+    elements.operationalLinksStatus.textContent = friendlyErrorMessage(
+      error,
+      'Collegamento non disponibile'
+    );
+  }
   if (!url) return;
 
   const label = scope === 'pasti' ? 'Prenotazione pasti' : 'Pannello cucina';

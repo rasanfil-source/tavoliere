@@ -175,7 +175,7 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
 
 test('il vice usa la configurazione ma non amministra il passaggio di consegne', () => {
   assert.match(rules, /function isCenterOwner\(centerId\)[\s\S]*adminRole\(centerId\) == 'OWNER'/);
-  assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN', 'MANAGER'\]/);
+  assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
   assert.match(rules, /function canManageAdministrativeRoles\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
   assert.match(rules, /function canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*resource\.data\.get\('role', ''\) != 'OWNER'/);
   assert.match(rules, /adminUid != request\.auth\.uid[\s\S]*resource\.data\.get\('role', ''\) == 'OWNER'[\s\S]*request\.resource\.data\.get\('status', ''\) == 'REVOKED'/);
@@ -309,7 +309,14 @@ test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () =
   assert.match(rules, /function viceParticipantWriteDoesNotAssignRoles[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
   assert.match(rules, /function viceParticipantUpdateDoesNotChangeRoles[\s\S]*hasAny\(\[[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
   assert.match(rules, /function viceMayCleanDisabledParticipant[\s\S]*status == 'DISABLED'/);
-  assert.match(rules, /settingsId == 'operationalLinks'/);
+  assert.match(
+    rules,
+    /match \/privateSettings\/\{settingsId\}[\s\S]*adminRole\(centerId\) == 'MANAGER'[\s\S]*settingsId == 'operationalLinks'/
+  );
+  assert.doesNotMatch(
+    rules,
+    /allow create, update: if isAdmin\(centerId\)[\s\S]*adminRole\(centerId\) == 'MANAGER'/
+  );
 });
 
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {

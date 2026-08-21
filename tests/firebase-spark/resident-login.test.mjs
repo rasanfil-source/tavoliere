@@ -225,7 +225,7 @@ test('i login aiutano la digitazione e le azioni sensibili hanno conferme propor
   assert.match(index, /chiedila al responsabile del centro/);
   assert.match(app, /elements\.residentPasswordInput\.focus\(\)/);
   assert.match(index, /data-action-dialog/);
-  assert.match(app, /requiredText: 'TRASFERISCI'/);
+  assert.match(app, /requiredText: t\('dialog\.transferOwnership\.requiredText'\)/);
   assert.match(app, /function showActionDialog/);
   const monthBulkHandler = app.match(/async function handleMonthBulkButton\(button\)[\s\S]*?\n}/)?.[0] || '';
   assert.doesNotMatch(monthBulkHandler, /showActionDialog|dialog\.clearSelection/);
@@ -491,8 +491,25 @@ test('il refresh del pannello completa il ripristino residente o vice pendente',
   assert.match(reconcile, /!isResidentEntryGateClosed\(\)/);
   assert.match(
     app,
+    /residentRestorePending[\s\S]*!state\.residentAuthTransition[\s\S]*!strongAuthUser[\s\S]*reconcileAdminAccessWithoutStrongUser\(\)/
+  );
+  assert.match(
+    app,
     /function renderResidentSettingsPanel\(\)[\s\S]*elements\.authStatus\.textContent = state\.selectedParticipant/
   );
+});
+
+test('i link operativi riallineano i pulsanti dopo ogni rendering del pannello', () => {
+  const syncActions = app.match(
+    /function syncOperationalLinkActionState\([\s\S]*?\n\}/
+  )?.[0] || '';
+  const overview = app.match(/function renderAdminOverview\(\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(syncActions, /CAPABILITIES\.VIEW_OPERATIONAL_LINKS/);
+  assert.match(syncActions, /\[data-access-link\], \[data-share-access-link\]/);
+  assert.match(syncActions, /button\.disabled = !canView/);
+  assert.match(overview, /syncOperationalLinkActionState\(\)/);
+  assert.match(app, /syncOperationalLinkActionState\(canViewOperationalLinks\)/);
+  assert.match(app, /getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/);
 });
 
 test('l uscita residente non impedisce il successivo accesso Google o email', () => {
@@ -970,7 +987,7 @@ test('il responsabile invita amministratori e trasferisce la responsabilita con 
   assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
   assert.match(app, /CAPABILITIES\.TRANSFER_OWNERSHIP/);
-  assert.match(app, /requiredText: 'TRASFERISCI'/);
+  assert.match(app, /requiredText: t\('dialog\.transferOwnership\.requiredText'\)/);
   assert.match(index, /data-admin-invitation-status/);
 });
 

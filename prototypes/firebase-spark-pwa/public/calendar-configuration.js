@@ -10,7 +10,7 @@ import {
   getCurrentUser,
   setAdministratorTechnicalPassword,
   setResidentTechnicalPassword
-} from './firebase-client.js?v=20260820t';
+} from './firebase-client.js?v=20260820u';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {

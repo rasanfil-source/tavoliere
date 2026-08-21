@@ -5,14 +5,28 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260820t';
+import { db } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { normalizeDietCode } from './diet-utils.mjs?v=20260818w';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
+const DAILY_CACHE_MAX_ENTRIES = 30;
 const dailyOperationCache = new Map();
 const dailyHealthCache = new Map();
+
+function readCenterCache(cache, dateId, centerId) {
+  const entry = cache.get(dateId);
+  return entry?.centerId === centerId ? entry : null;
+}
+
+function writeCenterCache(cache, dateId, centerId, value) {
+  cache.delete(dateId);
+  cache.set(dateId, { centerId, loadedAt: Date.now(), value });
+  while (cache.size > DAILY_CACHE_MAX_ENTRIES) {
+    cache.delete(cache.keys().next().value);
+  }
+}
 
 export async function loadDailyOperation(date = new Date(), options = {}) {
   if (!db) {
@@ -20,12 +34,13 @@ export async function loadDailyOperation(date = new Date(), options = {}) {
   }
 
   const dateId = formatDateId(date);
-  const cached = dailyOperationCache.get(dateId);
+  const centerId = getActiveCenterId();
+  const cached = readCenterCache(dailyOperationCache, dateId, centerId);
   if (!options.forceRefresh && cached && Date.now() - cached.loadedAt < DAILY_OPERATION_CACHE_MS) {
     return cached.value;
   }
 
-  const operationRef = doc(db, 'centers', getActiveCenterId(), 'dailyOperations', dateId);
+  const operationRef = doc(db, 'centers', centerId, 'dailyOperations', dateId);
   const operationSnapshot = await getDoc(operationRef);
   const data = operationSnapshot.exists() ? operationSnapshot.data() : {};
   const value = {
@@ -33,7 +48,7 @@ export async function loadDailyOperation(date = new Date(), options = {}) {
     massScheduled: data.massScheduled === true,
     updatedAt: data.updatedAt || null
   };
-  dailyOperationCache.set(dateId, { loadedAt: Date.now(), value });
+  writeCenterCache(dailyOperationCache, dateId, centerId, value);
   return value;
 }
 
@@ -72,7 +87,7 @@ export async function saveMassStatuses(dates, massScheduled) {
       massScheduled: massScheduled === true,
       updatedAt: new Date()
     };
-    dailyOperationCache.set(dateId, { loadedAt: Date.now(), value });
+    writeCenterCache(dailyOperationCache, dateId, centerId, value);
     return value;
   });
 }
@@ -82,11 +97,12 @@ export async function loadDailyHealth(date = new Date(), options = {}) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
-  const cached = dailyHealthCache.get(dateId);
+  const centerId = getActiveCenterId();
+  const cached = readCenterCache(dailyHealthCache, dateId, centerId);
   if (!options.forceRefresh && cached && Date.now() - cached.loadedAt < DAILY_OPERATION_CACHE_MS) {
     return cached.value;
   }
-  const snapshot = await getDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId));
+  const snapshot = await getDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId));
   const data = snapshot.exists() ? snapshot.data() : {};
   const value = {
     dateId,
@@ -95,7 +111,7 @@ export async function loadDailyHealth(date = new Date(), options = {}) {
     invitedMeals: normalizeInvitedMeals(data.invitedMeals),
     updatedAt: data.updatedAt || null
   };
-  dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
+  writeCenterCache(dailyHealthCache, dateId, centerId, value);
   return value;
 }
 
@@ -104,21 +120,23 @@ export async function saveSickPeople(date, sickPeople) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
+  const centerId = getActiveCenterId();
   const normalizedPeople = normalizeSickPeople(sickPeople);
-  await setDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId), {
-    centerId: getActiveCenterId(),
+  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
+    centerId,
     dateId,
     sickPeople: normalizedPeople,
     updatedAt: serverTimestamp()
   }, { merge: true });
+  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
   const value = {
     dateId,
     sickPeople: normalizedPeople,
-    dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
-    invitedMeals: dailyHealthCache.get(dateId)?.value?.invitedMeals || normalizeInvitedMeals(),
+    dietAssignments: cachedValue?.dietAssignments || [],
+    invitedMeals: cachedValue?.invitedMeals || normalizeInvitedMeals(),
     updatedAt: new Date()
   };
-  dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
+  writeCenterCache(dailyHealthCache, dateId, centerId, value);
   return value;
 }
 
@@ -127,13 +145,14 @@ export async function saveDietAssignments(date, dietAssignments) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
+  const centerId = getActiveCenterId();
   const normalizedAssignments = normalizeDietAssignments(dietAssignments);
-  const sickPeople = dailyHealthCache.get(dateId)?.value?.sickPeople || [];
-  const invitedMeals = dailyHealthCache.get(dateId)?.value?.invitedMeals || normalizeInvitedMeals();
-  await setDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId), {
-    centerId: getActiveCenterId(),
+  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
+  const sickPeople = cachedValue?.sickPeople || [];
+  const invitedMeals = cachedValue?.invitedMeals || normalizeInvitedMeals();
+  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
+    centerId,
     dateId,
-    sickPeople,
     dietAssignments: normalizedAssignments,
     updatedAt: serverTimestamp()
   }, { merge: true });
@@ -144,7 +163,7 @@ export async function saveDietAssignments(date, dietAssignments) {
     invitedMeals,
     updatedAt: new Date()
   };
-  dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
+  writeCenterCache(dailyHealthCache, dateId, centerId, value);
   return value;
 }
 
@@ -153,23 +172,23 @@ export async function saveInvitedMeals(date, invitedMeals) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
+  const centerId = getActiveCenterId();
   const normalizedInvitedMeals = normalizeInvitedMeals(invitedMeals);
-  await setDoc(doc(db, 'centers', getActiveCenterId(), 'dailyHealth', dateId), {
-    centerId: getActiveCenterId(),
+  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
+  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
+    centerId,
     dateId,
-    sickPeople: dailyHealthCache.get(dateId)?.value?.sickPeople || [],
-    dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
     invitedMeals: normalizedInvitedMeals,
     updatedAt: serverTimestamp()
   }, { merge: true });
   const value = {
     dateId,
-    sickPeople: dailyHealthCache.get(dateId)?.value?.sickPeople || [],
-    dietAssignments: dailyHealthCache.get(dateId)?.value?.dietAssignments || [],
+    sickPeople: cachedValue?.sickPeople || [],
+    dietAssignments: cachedValue?.dietAssignments || [],
     invitedMeals: normalizedInvitedMeals,
     updatedAt: new Date()
   };
-  dailyHealthCache.set(dateId, { loadedAt: Date.now(), value });
+  writeCenterCache(dailyHealthCache, dateId, centerId, value);
   return value;
 }
 
