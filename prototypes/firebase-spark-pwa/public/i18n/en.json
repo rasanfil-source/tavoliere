@@ -602,5 +602,18 @@
   "week.view.loading": "Loading week…",
   "week.view.noMeals": "No meals available",
   "week.view.title": "Week",
-  "week.view.short": "Week"
+  "week.view.short": "Week",
+  "mealReminder.title": "Booking reminders",
+  "mealReminder.label": "Notify me 10 minutes before the deadline",
+  "mealReminder.option.disabled": "Off",
+  "mealReminder.option.enabled": "On",
+  "mealReminder.help": "Local lunch and dinner reminders on this device. You can also turn them off from the notification.",
+  "mealReminder.status.disabled": "Reminders are off on this device.",
+  "mealReminder.status.enabled": "Reminders are on on this device.",
+  "mealReminder.status.requesting": "Waiting for notification permission…",
+  "mealReminder.status.denied": "Notifications are blocked in the device settings.",
+  "mealReminder.status.unsupported": "This browser does not support local reminders.",
+  "mealReminder.notification.title": "Time to book",
+  "mealReminder.notification.body": "10 minutes left: remember to book {meal}.",
+  "mealReminder.notification.disable": "Turn off"
 }

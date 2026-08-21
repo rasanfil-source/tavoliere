@@ -602,5 +602,18 @@
   "week.view.loading": "Chargement de la semaine...",
   "week.view.noMeals": "Aucun repas disponible",
   "week.view.title": "Semaine",
-  "week.view.short": "Semaine"
+  "week.view.short": "Semaine",
+  "mealReminder.title": "Rappels de réservation",
+  "mealReminder.label": "M’avertir 10 minutes avant la clôture",
+  "mealReminder.option.disabled": "Désactivés",
+  "mealReminder.option.enabled": "Activés",
+  "mealReminder.help": "Rappels locaux pour le déjeuner et le dîner sur cet appareil. Vous pouvez aussi les désactiver depuis la notification.",
+  "mealReminder.status.disabled": "Rappels désactivés sur cet appareil.",
+  "mealReminder.status.enabled": "Rappels activés sur cet appareil.",
+  "mealReminder.status.requesting": "En attente de l’autorisation des notifications…",
+  "mealReminder.status.denied": "Les notifications sont bloquées dans les réglages de l’appareil.",
+  "mealReminder.status.unsupported": "Ce navigateur ne prend pas en charge les rappels locaux.",
+  "mealReminder.notification.title": "Il est temps de réserver",
+  "mealReminder.notification.body": "Il reste 10 minutes : pensez à vous inscrire pour {meal}.",
+  "mealReminder.notification.disable": "Désactiver"
 }

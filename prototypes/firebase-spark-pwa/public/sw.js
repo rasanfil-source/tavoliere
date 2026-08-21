@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v368';
+const CACHE_NAME = CACHE_PREFIX + 'v369';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -17,6 +17,7 @@ const APP_SHELL = [
   '/diet-utils.mjs',
   '/role-policy.mjs',
   '/schedule-utils.mjs',
+  '/meal-reminders.mjs',
   '/core/connectivity.mjs',
   '/core/auth-session-policy.mjs',
   '/core/auth-state-machine.mjs',
@@ -87,6 +88,26 @@ self.addEventListener('message', (event) => {
   if (event.ports?.[0]) {
     purge.then(() => event.ports[0].postMessage({ ok: true }));
   }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || '/?view=participant', self.location.origin);
+  if (event.action === 'disable') {
+    targetUrl.searchParams.set('mealReminders', 'off');
+  }
+
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(async (windowClients) => {
+      const existingClient = windowClients.find((client) => (
+        new URL(client.url).origin === self.location.origin
+      ));
+      if (existingClient) {
+        await existingClient.navigate(targetUrl.toString());
+        return existingClient.focus();
+      }
+      return self.clients.openWindow(targetUrl.toString());
+    }));
 });
 
 self.addEventListener('fetch', (event) => {

@@ -602,5 +602,18 @@
   "week.view.loading": "Woche wird geladen...",
   "week.view.noMeals": "Keine Mahlzeiten verfugbar",
   "week.view.title": "Woche",
-  "week.view.short": "Woche"
+  "week.view.short": "Woche",
+  "mealReminder.title": "Buchungserinnerungen",
+  "mealReminder.label": "10 Minuten vor Buchungsschluss benachrichtigen",
+  "mealReminder.option.disabled": "Aus",
+  "mealReminder.option.enabled": "Ein",
+  "mealReminder.help": "Lokale Erinnerungen für Mittag- und Abendessen auf diesem Gerät. Sie können sie auch in der Benachrichtigung ausschalten.",
+  "mealReminder.status.disabled": "Erinnerungen sind auf diesem Gerät ausgeschaltet.",
+  "mealReminder.status.enabled": "Erinnerungen sind auf diesem Gerät eingeschaltet.",
+  "mealReminder.status.requesting": "Benachrichtigungsberechtigung wird angefordert…",
+  "mealReminder.status.denied": "Benachrichtigungen sind in den Geräteeinstellungen blockiert.",
+  "mealReminder.status.unsupported": "Dieser Browser unterstützt keine lokalen Erinnerungen.",
+  "mealReminder.notification.title": "Zeit zum Buchen",
+  "mealReminder.notification.body": "Noch 10 Minuten: Denken Sie an die Buchung für {meal}.",
+  "mealReminder.notification.disable": "Ausschalten"
 }

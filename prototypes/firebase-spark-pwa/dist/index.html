@@ -750,6 +750,19 @@
                     <small class="field-help" data-i18n="admin.adaptations.language.help">La lingua scelta viene usata per l'interfaccia di questo dispositivo.</small>
                   </label>
 
+                  <fieldset class="admin-layout-settings-card meal-reminder-settings">
+                    <legend data-i18n="mealReminder.title">Promemoria prenotazioni</legend>
+                    <label class="field-label">
+                      <span data-i18n="mealReminder.label">Avvisami 10 minuti prima della scadenza</span>
+                      <select data-meal-reminder-select>
+                        <option value="disabled" data-i18n="mealReminder.option.disabled">Disattivati</option>
+                        <option value="enabled" data-i18n="mealReminder.option.enabled">Attivati</option>
+                      </select>
+                    </label>
+                    <small class="field-help" data-i18n="mealReminder.help">Promemoria locali per pranzo e cena su questo dispositivo. Puoi disattivarli anche dalla notifica.</small>
+                    <p class="status-line" data-meal-reminder-status aria-live="polite"></p>
+                  </fieldset>
+
                   <div class="admin-section-actions">
                     <button type="button" class="save-button" data-admin-adaptations-save data-i18n="admin.adaptations.save">Salva impostazioni</button>
                     <button type="button" class="tertiary-action" data-admin-adaptations-cancel data-i18n="admin.adaptations.cancel">Annulla</button>
@@ -1044,6 +1057,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260821m"></script>
+  <script type="module" src="/app.js?v=20260821n"></script>
   </body>
 </html>

@@ -602,5 +602,18 @@
   "week.view.loading": "Caricamento settimana…",
   "week.view.noMeals": "Nessun pasto disponibile",
   "week.view.title": "Settimana",
-  "week.view.short": "Settimana"
+  "week.view.short": "Settimana",
+  "mealReminder.title": "Promemoria prenotazioni",
+  "mealReminder.label": "Avvisami 10 minuti prima della scadenza",
+  "mealReminder.option.disabled": "Disattivati",
+  "mealReminder.option.enabled": "Attivati",
+  "mealReminder.help": "Promemoria locali per pranzo e cena su questo dispositivo. Puoi disattivarli anche dalla notifica.",
+  "mealReminder.status.disabled": "Promemoria disattivati su questo dispositivo.",
+  "mealReminder.status.enabled": "Promemoria attivi su questo dispositivo.",
+  "mealReminder.status.requesting": "Attendo l’autorizzazione alle notifiche…",
+  "mealReminder.status.denied": "Le notifiche sono bloccate nelle impostazioni del dispositivo.",
+  "mealReminder.status.unsupported": "Questo browser non supporta i promemoria locali.",
+  "mealReminder.notification.title": "È ora di prenotare",
+  "mealReminder.notification.body": "Mancano 10 minuti: ricordati di segnarti per {meal}.",
+  "mealReminder.notification.disable": "Disattiva"
 }

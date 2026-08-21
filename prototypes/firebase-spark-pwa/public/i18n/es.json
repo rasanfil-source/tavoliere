@@ -602,5 +602,18 @@
   "week.view.loading": "Cargando semana...",
   "week.view.noMeals": "No hay comidas disponibles",
   "week.view.title": "Semana",
-  "week.view.short": "Semana"
+  "week.view.short": "Semana",
+  "mealReminder.title": "Recordatorios de reserva",
+  "mealReminder.label": "Avisarme 10 minutos antes del cierre",
+  "mealReminder.option.disabled": "Desactivados",
+  "mealReminder.option.enabled": "Activados",
+  "mealReminder.help": "Recordatorios locales para comida y cena en este dispositivo. También puedes desactivarlos desde la notificación.",
+  "mealReminder.status.disabled": "Recordatorios desactivados en este dispositivo.",
+  "mealReminder.status.enabled": "Recordatorios activados en este dispositivo.",
+  "mealReminder.status.requesting": "Esperando permiso para las notificaciones…",
+  "mealReminder.status.denied": "Las notificaciones están bloqueadas en los ajustes del dispositivo.",
+  "mealReminder.status.unsupported": "Este navegador no admite recordatorios locales.",
+  "mealReminder.notification.title": "Es hora de reservar",
+  "mealReminder.notification.body": "Quedan 10 minutos: recuerda apuntarte para {meal}.",
+  "mealReminder.notification.disable": "Desactivar"
 }

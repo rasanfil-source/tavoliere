@@ -53,6 +53,7 @@ import {
   normalizeDietCode
 } from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
+import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260819b';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
@@ -299,9 +300,13 @@ const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
+const MEAL_REMINDER_PREFERENCE_STORAGE_KEY = 'tavolaComune.mealRemindersEnabled';
+const MEAL_REMINDER_HISTORY_STORAGE_KEY = 'tavolaComune.mealReminderHistory';
 const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let mealViewSwipeStart = null;
 let mealViewSwipeTimer = 0;
+const mealReminderTimers = new Map();
+const mealReminderInFlight = new Set();
 
 function applyInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
@@ -782,6 +787,8 @@ const elements = {
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
+  mealReminderSelect: document.querySelector('[data-meal-reminder-select]'),
+  mealReminderStatus: document.querySelector('[data-meal-reminder-status]'),
   adminAdaptationsSave: document.querySelector('[data-admin-adaptations-save]'),
   adminAdaptationsCancel: document.querySelector('[data-admin-adaptations-cancel]'),
   adminAdaptationsReset: document.querySelector('[data-admin-adaptations-reset]'),
@@ -1213,6 +1220,9 @@ if (elements.adminLanguageSelect) {
     }
   });
 }
+if (elements.mealReminderSelect) {
+  elements.mealReminderSelect.addEventListener('change', handleMealReminderPreferenceChange);
+}
 if (elements.adminContactSharingSelect) {
   elements.adminContactSharingSelect.addEventListener('change', async (event) => {
     event.target.dataset.state = event.target.value;
@@ -1313,6 +1323,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
     scheduleBackgroundRefresh('ripresa');
   }
+  if (!document.hidden) scheduleMealRemindersFromCurrentCalendar();
 });
 window.addEventListener('online', handleConnectivityChange);
 window.addEventListener('offline', handleConnectivityChange);
@@ -1363,6 +1374,7 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
+  applyMealReminderUrlPreference();
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
@@ -2932,6 +2944,178 @@ async function handleCenterInvitationShare() {
   }
 }
 
+function mealRemindersAreSupported() {
+  return 'Notification' in window && 'serviceWorker' in navigator;
+}
+
+function loadMealReminderPreference() {
+  try {
+    return window.localStorage.getItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_PREFERENCE_STORAGE_KEY)
+    ) === 'enabled';
+  } catch {
+    return false;
+  }
+}
+
+function storeMealReminderPreference(enabled) {
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_PREFERENCE_STORAGE_KEY),
+      enabled ? 'enabled' : 'disabled'
+    );
+  } catch {
+    // Il promemoria resta facoltativo anche quando lo storage è indisponibile.
+  }
+}
+
+function loadSentMealReminderIds() {
+  try {
+    const history = JSON.parse(window.localStorage.getItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_HISTORY_STORAGE_KEY)
+    ) || '[]');
+    return Array.isArray(history) ? history.filter((item) => typeof item === 'string').slice(-20) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberSentMealReminder(reminderId) {
+  const history = loadSentMealReminderIds().filter((item) => item !== reminderId);
+  history.push(reminderId);
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_HISTORY_STORAGE_KEY),
+      JSON.stringify(history.slice(-20))
+    );
+  } catch {
+    // Una mancata scrittura non deve interferire con le prenotazioni.
+  }
+}
+
+function clearMealReminderTimers() {
+  mealReminderTimers.forEach((timerId) => window.clearTimeout(timerId));
+  mealReminderTimers.clear();
+}
+
+function getLoadedResidentCalendarDays() {
+  return [...state.participantWeek, ...state.participantMonth];
+}
+
+function syncMealReminderControl(statusKey = '') {
+  if (!elements.mealReminderSelect) return;
+  const supported = mealRemindersAreSupported();
+  const enabled = supported
+    && loadMealReminderPreference()
+    && Notification.permission === 'granted';
+  elements.mealReminderSelect.disabled = !supported;
+  elements.mealReminderSelect.value = enabled ? 'enabled' : 'disabled';
+  if (!elements.mealReminderStatus) return;
+  const key = statusKey || (!supported
+    ? 'mealReminder.status.unsupported'
+    : Notification.permission === 'denied'
+      ? 'mealReminder.status.denied'
+      : enabled
+        ? 'mealReminder.status.enabled'
+        : 'mealReminder.status.disabled');
+  elements.mealReminderStatus.textContent = t(key);
+}
+
+async function handleMealReminderPreferenceChange(event) {
+  const wantsReminder = event.target.value === 'enabled';
+  if (!wantsReminder) {
+    storeMealReminderPreference(false);
+    clearMealReminderTimers();
+    syncMealReminderControl('mealReminder.status.disabled');
+    return;
+  }
+  if (!mealRemindersAreSupported()) {
+    storeMealReminderPreference(false);
+    syncMealReminderControl('mealReminder.status.unsupported');
+    return;
+  }
+
+  event.target.disabled = true;
+  if (elements.mealReminderStatus) {
+    elements.mealReminderStatus.textContent = t('mealReminder.status.requesting');
+  }
+  try {
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    const enabled = permission === 'granted';
+    storeMealReminderPreference(enabled);
+    syncMealReminderControl(enabled ? 'mealReminder.status.enabled' : 'mealReminder.status.denied');
+    if (enabled) scheduleMealRemindersFromCurrentCalendar();
+  } finally {
+    event.target.disabled = !mealRemindersAreSupported();
+  }
+}
+
+function scheduleMealRemindersFromCurrentCalendar() {
+  if (!mealRemindersAreSupported()
+      || !loadMealReminderPreference()
+      || Notification.permission !== 'granted'
+      || !state.residentReady
+      || !state.selectedParticipant) {
+    clearMealReminderTimers();
+    return;
+  }
+
+  const days = getLoadedResidentCalendarDays();
+  if (!days.some((day) => day?.isToday === true)) return;
+  clearMealReminderTimers();
+  const plan = buildMealReminderPlan(days, {
+    sentReminderIds: loadSentMealReminderIds()
+  });
+  plan.filter((item) => !mealReminderInFlight.has(item.reminderId)).forEach((item) => {
+    const timerId = window.setTimeout(
+      () => showMealReminder(item).catch(() => undefined),
+      item.delayMs
+    );
+    mealReminderTimers.set(item.reminderId, timerId);
+  });
+}
+
+async function showMealReminder(item) {
+  if (mealReminderInFlight.has(item.reminderId)) return;
+  mealReminderInFlight.add(item.reminderId);
+  mealReminderTimers.delete(item.reminderId);
+  try {
+    if (!loadMealReminderPreference()
+        || Notification.permission !== 'granted'
+        || item.meal.effect === 'PRESENT'
+        || item.meal.isOpen !== true
+        || Date.now() >= item.closesAtMs) return;
+
+    const mealLabel = t(`meal.type.${item.meal.mealTypeId}`);
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(t('mealReminder.notification.title'), {
+      body: t('mealReminder.notification.body', { meal: mealLabel }),
+      icon: '/icons/launcher-192.png?v=20260821a',
+      badge: '/icons/icon-192.png?v=20260821b',
+      tag: `meal-reminder-${getActiveCenterId()}-${item.reminderId}`,
+      renotify: false,
+      data: {
+        url: `/?view=participant&c=${encodeURIComponent(getActiveCenterId())}`
+      },
+      actions: [{ action: 'disable', title: t('mealReminder.notification.disable') }]
+    });
+    rememberSentMealReminder(item.reminderId);
+  } finally {
+    mealReminderInFlight.delete(item.reminderId);
+  }
+}
+
+function applyMealReminderUrlPreference() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('mealReminders') !== 'off') return;
+  storeMealReminderPreference(false);
+  clearMealReminderTimers();
+  url.searchParams.delete('mealReminders');
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+}
+
 function buildOwnerInvitationShareText(expiryLabel) {
   const expiry = expiryLabel
     ? `Il collegamento scade il ${expiryLabel}`
@@ -3542,6 +3726,7 @@ async function refreshParticipant(source, options = {}) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
+    scheduleMealRemindersFromCurrentCalendar();
     state.lastSuccessfulRefreshAt = new Date();
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
   } catch (error) {
@@ -4797,6 +4982,7 @@ function syncAdminAdaptationsForm() {
   if (elements.adminLanguageSelect) {
     elements.adminLanguageSelect.value = state.centerContactSettings.language || 'it';
   }
+  syncMealReminderControl();
   if (elements.residentAdminUnlock) {
     // L'accesso del vice avviene ora direttamente dal modulo iniziale con
     // sigla + password amministratori. Non mostriamo al residente ordinario
@@ -8588,6 +8774,7 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
     },
     finish() {
       mealKeys.forEach((key) => state.pendingMealKeys.delete(key));
+      scheduleMealRemindersFromCurrentCalendar();
     }
   };
 }
@@ -8611,6 +8798,7 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
   } finally {
     state.pendingMealKeys.delete(pendingKey);
     sync();
+    scheduleMealRemindersFromCurrentCalendar();
   }
 }
 
