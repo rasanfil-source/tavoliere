@@ -17,6 +17,16 @@ const index = readFileSync(
   'utf8'
 );
 
+const appManifest = JSON.parse(readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/manifest.webmanifest', import.meta.url),
+  'utf8'
+));
+
+const kitchenManifest = JSON.parse(readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest', import.meta.url),
+  'utf8'
+));
+
 test('il service worker separa il nucleo iniziale dai moduli caricati per vista', () => {
   assert.match(serviceWorker, /'\/firebase-client\.js'/);
   assert.match(serviceWorker, /'\/center-settings\.js'/);
@@ -45,6 +55,14 @@ test('la vista cucina usa un manifest installabile distinto', () => {
   assert.match(index, /manifest-kitchen\.webmanifest/);
 });
 
+test('Android riceve icone maskable a fondo pieno senza cornice bianca automatica', () => {
+  for (const manifest of [appManifest, kitchenManifest]) {
+    const maskableIcons = manifest.icons.filter((icon) => icon.purpose === 'maskable');
+    assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
+    assert.ok(maskableIcons.every((icon) => /\/icons\/icon-(192|512)\.png\?v=20260821b/.test(icon.src)));
+  }
+});
+
 test('service worker handles only navigation, app resources, and Firebase SDK requests', () => {
   assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin && isAppResourcePath\(url\.pathname\)/);
@@ -71,10 +89,10 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /styles\.css\?v=20260821b/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260821g/);
   assert.match(index, /app\.js\?v=20260821l/);
-  assert.match(index, /manifest\.webmanifest\?v=20260821b/);
+  assert.match(index, /manifest\.webmanifest\?v=20260821c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260821c/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v366'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v367'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
   assert.match(serviceWorker, /launcher-512\.png\?v=20260821a/);
 });
