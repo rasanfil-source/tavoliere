@@ -756,6 +756,18 @@ test('ogni nuovo ingresso nel riepilogo riparte da Oggi', () => {
   assert.match(app, /if \(nextMode === 'summary'\) \{[\s\S]*state\.summaryDayOffset = 0/);
 });
 
+test('il riepilogo non interpreta il caricamento incompleto come Messa No', () => {
+  assert.match(
+    app,
+    /const hasLegacySummaryData = state\.todayOverview\.length > 0[\s\S]*state\.summaryDailyOperation !== null[\s\S]*state\.summaryDailyHealth !== null/
+  );
+  assert.match(
+    app,
+    /if \(!hasLegacySummaryData\) \{[\s\S]*elements\.todayOverview\.replaceChildren\(\);[\s\S]*delete elements\.todayOverview\.dataset\.renderKey;[\s\S]*return;/
+  );
+  assert.match(app, /function renderMassCard\(dailyOperation\) \{\s*if \(!dailyOperation\) return '';/);
+});
+
 test('il pannello amministratore mantiene una gerarchia responsive senza duplicare i comandi', () => {
   assert.match(index, /class="admin-dashboard-grid"/);
   assert.match(index, /class="admin-control-section admin-center-settings"/);

@@ -6336,6 +6336,15 @@ function renderTodayOverview() {
     return;
   }
 
+  const hasLegacySummaryData = state.todayOverview.length > 0
+    || state.summaryDailyOperation !== null
+    || state.summaryDailyHealth !== null;
+  if (!hasLegacySummaryData) {
+    elements.todayOverview.replaceChildren();
+    delete elements.todayOverview.dataset.renderKey;
+    return;
+  }
+
   elements.todayOverview.innerHTML = `
     <section class="today-panel">
       <p class="today-date">${formatSummaryDate(getSummaryDate())}</p>
@@ -6356,6 +6365,7 @@ function renderTodayOverview() {
 }
 
 function renderMassCard(dailyOperation) {
+  if (!dailyOperation) return '';
   const massScheduled = dailyOperation?.massScheduled === true;
   const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
   return `
