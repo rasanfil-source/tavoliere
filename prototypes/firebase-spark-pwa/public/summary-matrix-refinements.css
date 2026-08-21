@@ -2169,10 +2169,10 @@ html[data-interface-style="urban"] .week-matrix-row-today > button {
 
   html[data-interface-style="cool"] .month-week-mobile-header
     .month-day-number-today .month-day-number-value {
-    width: 23px;
-    height: 23px;
-    min-width: 23px;
-    min-height: 23px;
+    width: 21px;
+    height: 21px;
+    min-width: 21px;
+    min-height: 21px;
   }
 
   html[data-interface-style="cool"] .month-week-mobile-header
