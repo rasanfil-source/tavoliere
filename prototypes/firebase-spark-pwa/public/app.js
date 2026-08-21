@@ -8360,8 +8360,8 @@ function kitchenNoteTimestampDateId(value) {
   const date = toJavaScriptDate(value);
   if (!date || Number.isNaN(date.getTime())) return '';
   return formatDateId(getDateInTimeZone(
-    date,
-    state.centerContactSettings.timezone || 'Europe/Rome'
+    state.centerContactSettings.timezone || 'Europe/Rome',
+    date
   ));
 }
 
