@@ -1367,7 +1367,7 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
     centerId: CENTER_ID,
     participantContactSharingEnabled: true,
     themePalette: 'terracotta',
-    interfaceStyle: 'cool',
+    interfaceStyle: 'urban-plus',
     defaultView: 'week',
     summaryLayout: 'international',
     kitchenLayout: 'classic',

@@ -319,6 +319,13 @@ test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () =
   );
 });
 
+test('le regole accettano Essenziale più tramite il valore ASCII urban-plus', () => {
+  assert.equal(
+    (rules.match(/interfaceStyle in \['original', 'cool', 'urban', 'urban-plus', 'future'\]/g) || []).length,
+    2
+  );
+});
+
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /function adminCanManageDailyOperations\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN', 'MANAGER'\]/);
   assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*hasAuthorizedResidentAdministratorSession\(centerId\)/);

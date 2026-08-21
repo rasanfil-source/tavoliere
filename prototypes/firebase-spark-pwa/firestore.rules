@@ -434,7 +434,7 @@ service cloud.firestore {
         ])
         && request.resource.data.participantContactSharingEnabled is bool
         && request.resource.data.themePalette is string
-        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'future']
+        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'urban-plus', 'future']
         && request.resource.data.defaultView in ['month', 'week']
         && request.resource.data.summaryLayout in ['classic', 'international', 'future']
         && request.resource.data.kitchenLayout in ['classic', 'international']
@@ -459,7 +459,7 @@ service cloud.firestore {
         && request.resource.data.centerId == centerId
         && request.resource.data.participantContactSharingEnabled is bool
         && request.resource.data.themePalette is string
-        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'future']
+        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'urban-plus', 'future']
         && request.resource.data.defaultView in ['month', 'week']
         && request.resource.data.summaryLayout in ['classic', 'international', 'future']
         && request.resource.data.kitchenLayout in ['classic', 'international']

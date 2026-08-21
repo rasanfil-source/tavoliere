@@ -1525,6 +1525,12 @@ body[data-center-activation="true"] .admin-shell-body {
   justify-self: start;
 }
 
+.owner-invitation-panel > .platform-owner-panel-exit {
+  width: 100%;
+  justify-self: stretch;
+  margin-top: 4px;
+}
+
 .owner-invitation-panel .section-title {
   align-items: flex-start;
   flex-direction: column;

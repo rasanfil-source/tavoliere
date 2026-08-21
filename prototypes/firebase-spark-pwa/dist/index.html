@@ -33,8 +33,8 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260821a">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821e">
+    <link rel="stylesheet" href="/styles.css?v=20260821b">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821f">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
@@ -317,7 +317,7 @@
           <p data-kitchen-note-text></p>
         </aside>
         <div class="meal-grid" data-meal-cards></div>
-        <article class="mass-card kitchen-mass-card mass-card-no" data-kitchen-mass aria-label="Messa: No">
+        <article class="mass-card kitchen-mass-card mass-card-no" data-kitchen-mass aria-label="Messa: No" hidden>
           <div class="mass-card-content">
             <strong data-i18n="summary.mass">Messa</strong>
             <span data-kitchen-mass-value>No</span>
@@ -449,12 +449,16 @@
               <div class="platform-center-list" data-platform-center-list>
                 <p class="empty-state">Centri in caricamento...</p>
               </div>
+              <button type="button" class="primary-action owner-panel-exit platform-owner-panel-exit" data-platform-owner-exit aria-label="Esci" data-i18n-aria-label="common.actions.exit" title="Esci">
+                <svg class="exit-icon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span class="btn-label" data-i18n="common.actions.exit">Esci</span>
+              </button>
             </section>
             <nav class="admin-section-nav" data-admin-section-nav aria-label="Sezioni amministrazione" role="tablist">
               <a data-admin-nav-configuration data-admin-section-id="configuration" href="#admin-configuration-section" role="tab" aria-controls="admin-configuration-section" data-i18n="admin.configuration.title">Configurazione</a>
               <a data-admin-nav-people data-admin-section-id="people" href="#admin-person-editor" role="tab" aria-controls="admin-person-editor" data-i18n="admin.people.title">Persone</a>
               <a data-admin-nav-overview data-admin-section-id="overview" href="#admin-overview-section" role="tab" aria-controls="admin-overview-section" data-i18n="admin.overview.links">Link per accedere</a>
-              <a data-admin-nav-adaptations data-admin-section-id="adaptations" href="#admin-adaptations-section" role="tab" aria-controls="admin-adaptations-section" data-i18n="admin.adaptations.title">Impostazioni</a>
+              <a data-admin-nav-adaptations data-admin-section-id="adaptations" href="#admin-adaptations-section" role="tab" aria-controls="admin-adaptations-section" data-i18n="admin.adaptations.title">Aspetto</a>
               <a data-admin-nav-access data-admin-section-id="access" href="#admin-access-section" role="tab" aria-controls="admin-access-section" data-i18n="admin.access.title">Amministratore</a>
               <a data-admin-nav-activity data-admin-section-id="activity" href="#admin-activity-section" role="tab" aria-controls="admin-activity-section" data-i18n="admin.activity.title">Manutenzione</a>
             </nav>
@@ -630,7 +634,7 @@
               <div class="admin-role-stack" id="admin-adaptations-section" data-admin-mobile-section="adaptations" tabindex="-1">
                 <section class="admin-control-section" data-admin-adaptations>
                   <div class="section-title">
-                    <h2 data-i18n="admin.adaptations.title">Impostazioni</h2>
+                    <h2 data-i18n="admin.adaptations.title">Aspetto</h2>
                     <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app.</p>
                   </div>
                   <aside class="admin-password-rotation-warning" data-admin-password-rotation-warning hidden role="status">
@@ -1035,6 +1039,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260821i"></script>
+  <script type="module" src="/app.js?v=20260821k"></script>
   </body>
 </html>

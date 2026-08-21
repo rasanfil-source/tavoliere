@@ -2074,6 +2074,18 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   background: var(--danger);
 }
 
+/* Originale: il tono di stato riempie l'intera cella; il disco centrale
+   conserva il contrasto forte e la scritta bianca. */
+.summary-layout-diners.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-yes,
+.summary-layout-kitchen.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-yes {
+  background: var(--mass-yes-bg);
+}
+
+.summary-layout-diners.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-no,
+.summary-layout-kitchen.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-no {
+  background: var(--mass-no-bg);
+}
+
 /* Internazionale: il quadratino di stato cresce senza allargare la fascia. */
 .summary-layout-international .summary-mass-control .summary-matrix-mass-yes,
 .summary-layout-international .summary-mass-control .summary-matrix-mass-no {

@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260818aa';
+const CATALOG_RELEASE = '20260821ab';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -85,7 +85,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'kitchen.notes.title': 'Note per la cucina',
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
-    'admin.adaptations.title': 'Impostazioni',
+    'admin.adaptations.title': 'Aspetto',
     'admin.access.title': 'Amministratore',
     'admin.activity.title': 'Manutenzione',
     'admin.people.title': 'Persone',
@@ -118,7 +118,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.pasti': 'Meals',
     'auth.resident.title': 'Resident access',
     'admin.overview.title': 'Administration area',
-    'admin.adaptations.title': 'Settings',
+    'admin.adaptations.title': 'Appearance',
     'admin.access.title': 'Administrator',
     'admin.activity.title': 'Maintenance',
     'admin.people.title': 'People',
@@ -151,7 +151,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.pasti': 'Repas',
     'auth.resident.title': 'Accès résidents',
     'admin.overview.title': 'Espace administration',
-    'admin.adaptations.title': 'Paramètres',
+    'admin.adaptations.title': 'Apparence',
     'admin.access.title': 'Administrateur',
     'admin.activity.title': 'Maintenance',
     'admin.people.title': 'Personnes',
@@ -184,7 +184,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.pasti': 'Comidas',
     'auth.resident.title': 'Acceso residentes',
     'admin.overview.title': 'Área de administración',
-    'admin.adaptations.title': 'Ajustes',
+    'admin.adaptations.title': 'Apariencia',
     'admin.access.title': 'Administrador',
     'admin.activity.title': 'Mantenimiento',
     'admin.people.title': 'Personas',
@@ -217,7 +217,7 @@ export const CORE_FALLBACKS = Object.freeze({
     'app.header.pasti': 'Mahlzeiten',
     'auth.resident.title': 'Bewohner-Zugang',
     'admin.overview.title': 'Verwaltungsbereich',
-    'admin.adaptations.title': 'Einstellungen',
+    'admin.adaptations.title': 'Erscheinungsbild',
     'admin.access.title': 'Administrator',
     'admin.activity.title': 'Wartung',
     'admin.people.title': 'Personen',

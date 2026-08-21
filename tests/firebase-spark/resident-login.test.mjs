@@ -771,6 +771,12 @@ test('il riepilogo non interpreta il caricamento incompleto come Messa No', () =
   assert.match(app, /function renderMassCard\(dailyOperation\) \{\s*if \(!dailyOperation\) return '';/);
 });
 
+test('la cucina non mostra Messa No prima che il dato operativo sia disponibile', () => {
+  assert.match(index, /data-kitchen-mass[^>]*aria-label="Messa: No"[^>]*hidden/);
+  assert.match(app, /massCard\.hidden = state\.kitchenDailyOperation === null/);
+  assert.match(app, /function renderKitchenMass\(\) \{[\s\S]*state\.kitchenDailyOperation === null[\s\S]*card\.hidden = true[\s\S]*return;/);
+});
+
 test('il pannello amministratore mantiene una gerarchia responsive senza duplicare i comandi', () => {
   assert.match(index, /class="admin-dashboard-grid"/);
   assert.match(index, /class="admin-control-section admin-center-settings"/);
@@ -794,7 +800,7 @@ test('il pannello desktop usa soltanto la larghezza necessaria ed è centrato', 
   assert.match(styles, /\.topbar-meals-return small \{[\s\S]*?color: var\(--muted\);[\s\S]*?font-weight: 400;/);
 });
 
-test('il residente trova sempre il ritorno alle prenotazioni nel pannello Impostazioni', () => {
+test('il residente trova sempre il ritorno alle prenotazioni nel pannello Aspetto', () => {
   assert.match(
     app,
     /elements\.mealsReturnEntry\.hidden = !isAdminView[\s\S]*?\|\| \(state\.platformOwner && !state\.residentSettingsMode\)/
@@ -805,7 +811,7 @@ test('il residente trova sempre il ritorno alle prenotazioni nel pannello Impost
   );
 });
 
-test('la scheda Impostazioni usa tutta la larghezza disponibile sul tablet', () => {
+test('la scheda Aspetto usa tutta la larghezza disponibile sul tablet', () => {
   assert.match(styles, /@media \(max-width: 899px\)[\s\S]*?#admin-adaptations-section \{[\s\S]*?display: block;[\s\S]*?width: 100%;/);
   assert.match(styles, /#admin-adaptations-section > \.admin-control-section \{[\s\S]*?width: 100%;[\s\S]*?max-width: none;/);
 });
@@ -948,6 +954,7 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(kitchenNotes, /export async function removeKitchenNoteMessage/);
   assert.match(kitchenNotes, /nextMessages = \[\.\.\.messages/);
   assert.match(kitchenNotes, /runTransaction/);
+  assert.match(kitchenNotes, /const cacheKey = `\$\{getActiveCenterId\(\)\}:\$\{mealDate\}`/);
   assert.match(app, /saveDietAssignments/);
   assert.match(app, /function applyDailyDietsToSummary/);
   assert.match(app, /function applyDailyDietsToKitchenMeals/);

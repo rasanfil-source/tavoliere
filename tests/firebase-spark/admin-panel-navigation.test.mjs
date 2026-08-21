@@ -122,7 +122,7 @@ test('swipe mese e settimana cambia il periodo e applica uno snap leggero', () =
   assert.match(refinements, /prefers-reduced-motion:\s*reduce/);
 });
 
-test('Impostazioni presenta testi compatti e Aspetto subito dopo la vista preferita', () => {
+test('Aspetto presenta testi compatti e la scelta del tema subito dopo la vista preferita', () => {
   assert.match(html, /admin\.adaptations\.description">Personalizzazioni dell'aspetto e del comportamento dell'app\./);
   assert.match(html, /viewPreference\.help">La vista con cui si apre l'app per tutte le persone\./);
   assert.match(html, /admin\.adaptations\.theme\.help">Scegli la combinazione di colori dell'app\. L'anteprima si applica subito\./);
@@ -214,7 +214,7 @@ test('il vice non può aprire la scheda Amministratore neppure con un deep-link'
   assert.match(app, /elements\.adminNavAccess\.hidden = !canManageAccess/);
 });
 
-test('il residente semplice vede e monta soltanto la scheda Impostazioni', () => {
+test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
   assert.match(app, /function selectedResidentCanUseFullControlPanel\(\)/);
   assert.match(app, /const RESIDENT_SETTINGS_ACCESS = 'resident-settings'/);
   assert.match(app, /function shouldOpenResidentSettingsPanel\(\)[\s\S]*?!state\.residentAdministratorAuthorized[\s\S]*?!state\.adminRole/);
@@ -257,9 +257,16 @@ test('la manutenzione mobile non schiaccia il testo dell archivio', () => {
 
 test('il proprietario esce con un azione primaria e l amministrazione non usa sigle residenti', () => {
   assert.match(html, /class="primary-action owner-panel-exit"[^>]*data-owner-exit/);
+  assert.match(html, /class="primary-action owner-panel-exit platform-owner-panel-exit"[^>]*data-platform-owner-exit/);
   const ownerPanelEnd = html.indexOf('</section>', html.indexOf('data-owner-invitation-panel'));
+  const platformExitPosition = html.indexOf('data-platform-owner-exit');
   const exitPosition = html.indexOf('data-owner-exit');
+  assert.ok(platformExitPosition > html.indexOf('data-owner-invitation-panel'));
+  assert.ok(platformExitPosition < ownerPanelEnd);
   assert.ok(exitPosition > ownerPanelEnd);
+  assert.match(css, /\.owner-invitation-panel > \.platform-owner-panel-exit \{[\s\S]*width: 100%/);
+  assert.match(app, /platformOwnerExitButton\?\.addEventListener\('click', handleOwnerExit\)/);
+  assert.match(app, /platformOwnerExitButton\.hidden = !isAdminView \|\| !state\.platformOwner/);
   assert.match(css, /\.auth-actions-signed-in \{[\s\S]*?display: none/);
   assert.match(html, /data-owner-exit[\s\S]*class="exit-icon"[\s\S]*data-i18n="common.actions.exit">Esci/);
   assert.doesNotMatch(html, /data-change-signature|Cambia sigla/);

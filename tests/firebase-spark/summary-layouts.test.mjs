@@ -158,6 +158,8 @@ test('Classic resta un valore interno ma viene presentato come Originale in ogni
 test('Originale e Internazionale usano indicatori Messa distinti e proporzionati', () => {
   assert.match(styles, /summary-layout-diners\.summary-layout-classic[\s\S]*\.summary-matrix-mass-yes[\s\S]*width: 28px;[\s\S]*height: 28px;[\s\S]*border-radius: 50%;[\s\S]*color: #fff/);
   assert.match(styles, /summary-layout-kitchen\.summary-layout-classic[\s\S]*\.summary-matrix-mass-no[\s\S]*background: var\(--danger\)/);
+  assert.match(styles, /summary-layout-diners\.summary-layout-classic td\.summary-matrix-mass-band\.summary-mass-state-yes,[\s\S]*background: var\(--mass-yes-bg\)/);
+  assert.match(styles, /summary-layout-kitchen\.summary-layout-classic td\.summary-matrix-mass-band\.summary-mass-state-no[\s\S]*background: var\(--mass-no-bg\)/);
   assert.match(styles, /summary-layout-international \.summary-mass-control \.summary-matrix-mass-yes,[\s\S]*width: 34px;[\s\S]*height: 34px;[\s\S]*border-radius: 7px/);
 });
 
@@ -176,6 +178,7 @@ test('la manutenzione incolonna la scadenza e centra registro e archivio', () =>
 
 test('le note non sopravvivono al cambio di giorno e quelle passate non vengono mostrate', () => {
   assert.match(app, /const selectedNote = state\.kitchenNotes\[state\.kitchenDayOffset\];[\s\S]*selectedNote\?\.dateId === formatDateId\(getKitchenDate\(\)\)[\s\S]*: null/);
-  assert.match(app, /const isPastDay = state\.weekOperationalDateId[\s\S]*state\.weekOperationalDateId < formatDateId\(getCenterToday\(\)\);[\s\S]*const visibleNote = isPastDay \? null : state\.weekOperationalNote/);
-  assert.match(app, /const visibleKitchenOperations = state\.kitchenOperations\.map[\s\S]*operation\.dateId < todayId \? \{ \.\.\.operation, notes: \[\] \} : operation[\s\S]*operationDays: visibleKitchenOperations/);
+  assert.match(app, /function filterKitchenNoteForToday\(note\)[\s\S]*writtenDateId === todayId/);
+  assert.match(app, /const visibleNote = filterKitchenNoteForToday\(state\.weekOperationalNote\)/);
+  assert.match(app, /const visibleKitchenOperations = state\.kitchenOperations\.map[\s\S]*filterKitchenNoteForToday\([\s\S]*operationDays: visibleKitchenOperations/);
 });

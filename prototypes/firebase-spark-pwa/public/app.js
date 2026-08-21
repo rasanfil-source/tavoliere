@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260818aa';
+} from './i18n/i18n.mjs?v=20260821ab';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -104,7 +104,7 @@ const domainModulePaths = {
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260816h',
-  notes: './kitchen-notes.js?v=20260816h',
+  notes: './kitchen-notes.js?v=20260821a',
   participant: './participant-data.js?v=20260821b'
 };
 const domainModuleLoads = new Map();
@@ -894,6 +894,7 @@ const elements = {
   adminPasswordToggle: document.querySelector('[data-password-toggle="admin"]'),
   participantRefreshButton: document.querySelector('[data-participant-refresh]'),
   ownerExitButton: document.querySelector('[data-owner-exit]'),
+  platformOwnerExitButton: document.querySelector('[data-platform-owner-exit]'),
   forgetDeviceButton: document.querySelector('[data-forget-device]'),
   adminExportButton: document.querySelector('[data-admin-export-button]'),
   adminTools: document.querySelector('[data-admin-tools]'),
@@ -1098,6 +1099,7 @@ elements.weekPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passiv
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
 elements.ownerExitButton.addEventListener('click', handleOwnerExit);
+elements.platformOwnerExitButton?.addEventListener('click', handleOwnerExit);
 elements.adminEmailChoice.addEventListener('click', handleAdministratorEmailChoice);
 elements.adminEmailSignIn.addEventListener('click', handleAdministratorEmailSignIn);
 elements.adminEmailCreate.addEventListener('click', handleAdministratorEmailCreation);
@@ -5267,6 +5269,12 @@ function renderMode() {
   // Anche nel pannello ristretto del residente resta dentro il box bianco:
   // handleOwnerExit conserva comunque il logout residente, non quello Firebase.
   elements.ownerExitButton.hidden = !isAdminView;
+  if (elements.platformOwnerExitButton) {
+    elements.platformOwnerExitButton.hidden = !isAdminView || !state.platformOwner;
+  }
+  if (state.platformOwner) {
+    elements.ownerExitButton.hidden = true;
+  }
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
     elements.authActions.hidden = true;
@@ -7632,9 +7640,7 @@ async function handleWeekInvitedSave() {
 }
 
 function renderWeekKitchenNotes() {
-  const isPastDay = state.weekOperationalDateId
-    && state.weekOperationalDateId < formatDateId(getCenterToday());
-  const visibleNote = isPastDay ? null : state.weekOperationalNote;
+  const visibleNote = filterKitchenNoteForToday(state.weekOperationalNote);
   const messages = Array.isArray(visibleNote?.messages)
     ? visibleNote.messages
     : visibleNote?.text
@@ -7962,9 +7968,14 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   renderKitchenHeading();
   if (state.kitchenDays.length > 0) {
     const todayId = formatDateId(getCenterToday());
-    const visibleKitchenOperations = state.kitchenOperations.map((operation) => (
-      operation.dateId < todayId ? { ...operation, notes: [] } : operation
-    ));
+    const visibleKitchenOperations = state.kitchenOperations.map((operation) => {
+      if (operation.dateId < todayId) return { ...operation, notes: [] };
+      const visibleNote = filterKitchenNoteForToday({
+        mealDate: operation.dateId,
+        messages: operation.notes
+      });
+      return { ...operation, notes: visibleNote?.messages || [] };
+    });
     elements.kitchenNote.hidden = true;
     elements.kitchenSick.hidden = true;
     const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
@@ -7987,10 +7998,12 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   }
   const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
   if (massCard) {
-    massCard.hidden = false;
+    massCard.hidden = state.kitchenDailyOperation === null;
   }
   renderKitchenNote();
-  renderKitchenMass();
+  if (state.kitchenDailyOperation !== null) {
+    renderKitchenMass();
+  }
   renderKitchenSickPeople();
   if (state.meals.length === 0) {
     elements.cards.innerHTML = '<p class="empty-state">' + escapeHtml(emptyMessage) + '</p>';
@@ -8023,9 +8036,14 @@ function renderKitchenSickPeople() {
 }
 
 function renderKitchenMass() {
+  const card = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+  if (!card || state.kitchenDailyOperation === null) {
+    if (card) card.hidden = true;
+    return;
+  }
   const massScheduled = state.kitchenDailyOperation?.massScheduled === true;
   const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
-  const card = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+  card.hidden = false;
   card.classList.toggle('mass-card-yes', massScheduled);
   card.classList.toggle('mass-card-no', !massScheduled);
   card.setAttribute('aria-label', `Messa: ${statusLabel}`);
@@ -8033,11 +8051,45 @@ function renderKitchenMass() {
 }
 
 function renderKitchenNote() {
-  const text = Array.isArray(state.kitchenNote?.messages)
-    ? state.kitchenNote.messages.map((message) => message.text).filter(Boolean).join('\n')
-    : state.kitchenNote?.text?.trim() || '';
+  const visibleNote = filterKitchenNoteForToday(state.kitchenNote);
+  const text = Array.isArray(visibleNote?.messages)
+    ? visibleNote.messages.map((message) => message.text).filter(Boolean).join('\n')
+    : visibleNote?.text?.trim() || '';
   elements.kitchenNote.hidden = !text;
   elements.kitchenNoteText.textContent = text;
+}
+
+function filterKitchenNoteForToday(note) {
+  if (!note) return null;
+  const todayId = formatDateId(getCenterToday());
+  const fallbackDateId = kitchenNoteTimestampDateId(note.updatedAt)
+    || String(note.mealDate || '');
+  const sourceMessages = Array.isArray(note.messages)
+    ? note.messages
+    : note.text?.trim()
+      ? [{ text: note.text.trim(), createdAt: '', updatedAt: note.updatedAt }]
+      : [];
+  const messages = sourceMessages.filter((message) => {
+    const writtenDateId = kitchenNoteTimestampDateId(message?.createdAt)
+      || kitchenNoteTimestampDateId(message?.updatedAt)
+      || fallbackDateId;
+    return !writtenDateId || writtenDateId === todayId;
+  });
+  if (messages.length === 0) return null;
+  return {
+    ...note,
+    messages,
+    text: messages.map((message) => message.text).filter(Boolean).join('\n')
+  };
+}
+
+function kitchenNoteTimestampDateId(value) {
+  const date = toJavaScriptDate(value);
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return formatDateId(getDateInTimeZone(
+    date,
+    state.centerContactSettings.timezone || 'Europe/Rome'
+  ));
 }
 
 function formatKitchenWindowLabel(meal) {
