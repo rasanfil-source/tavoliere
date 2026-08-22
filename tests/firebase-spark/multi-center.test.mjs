@@ -108,8 +108,10 @@ test('ogni centro genera collegamenti distinti per residenti riepilogo e cucina'
   assert.match(app, /buildOperationalLink\('participant', publicToken, centerId/);
   assert.match(app, /buildOperationalLink\('summary', publicToken, centerId/);
   assert.match(app, /buildOperationalLink\('kitchen', links\.kitchenTokenId, centerId\)/);
-  assert.match(index, /data-access-link="pasti"/);
-  assert.match(index, /data-access-link="cucina"/);
+  assert.match(index, /data-operational-link-url="pasti"/);
+  assert.match(index, /data-operational-link-url="cucina"/);
+  assert.match(index, /data-copy-access-link="pasti"/);
+  assert.match(index, /data-open-access-link="cucina"/);
   assert.match(index, /data-share-access-link="pasti"/);
   assert.match(index, /data-share-access-link="cucina"/);
   assert.match(index, /data-owner-invitation-generate/);

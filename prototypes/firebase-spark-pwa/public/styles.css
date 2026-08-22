@@ -5852,46 +5852,83 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 
 .access-links-explanation {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
   margin: 1rem 0 1.25rem;
   font-size: 0.95rem;
   line-height: 1.5;
   color: #444;
 }
 
-.access-links-explanation p {
-  margin: 0;
+.access-link-card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface, #fff);
 }
 
-.access-link-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
-  align-items: center;
-  gap: 12px;
+.access-link-card > label {
+  color: var(--ink);
+  font-weight: 700;
 }
 
-.access-link-controls {
+.access-link-url {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--soft-surface, #f7f8f8);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.access-link-actions {
   display: grid;
-  grid-template-columns: minmax(124px, 180px) 44px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 44px;
   align-items: stretch;
   gap: 8px;
 }
 
-.access-link-btn {
+.access-link-copy {
   width: 100%;
   min-height: 44px;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #f5f5f5;
-  color: #666;
+  padding: 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: 7px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
   font-weight: 600;
-  cursor: not-allowed;
+  cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.access-link-btn:disabled {
-  opacity: 0.7;
+.access-link-copy:not(:disabled):hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.access-link-copy:disabled,
+.access-link-open[aria-disabled="true"],
+.share-access-link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.access-link-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  text-decoration: none;
 }
 
 .share-access-link {
@@ -5913,13 +5950,12 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   stroke-linejoin: round;
 }
 
-.share-access-link.is-copied svg {
-  display: none;
-}
-
-.share-access-link.is-copied::before {
-  content: "✓";
-  font-weight: 700;
+.access-link-feedback {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--primary);
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .access-share-dialog {
@@ -6098,22 +6134,6 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   font-weight: 700;
 }
 
-.share-access-link:disabled {
-  opacity: 0.45;
-}
-
-.access-link-btn:not(:disabled) {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  cursor: pointer;
-}
-
-.access-link-btn:not(:disabled):hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
-
 .generate-links-button {
   width: 100%;
   padding: 0.875rem 1rem;
@@ -6123,9 +6143,12 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 }
 
 @media (max-width: 620px) {
-  .access-link-row {
+  .access-links-explanation {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+  }
+
+  .access-link-card {
+    padding: 12px;
   }
 }
 
@@ -6660,12 +6683,4 @@ body[data-mode="admin"] .admin-shell-body {
     width: 100%;
   }
 
-  .access-link-controls {
-    grid-template-columns: minmax(0, 1fr) 46px;
-    width: 100%;
-  }
-
-  .access-link-btn {
-    width: 100%;
-  }
 }

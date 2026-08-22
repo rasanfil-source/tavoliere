@@ -1239,8 +1239,8 @@ if (elements.adminPasswordSetupDialog) {
 elements.residentLoginForm.addEventListener('submit', handleResidentLogin);
 elements.forgetDeviceButton.addEventListener('click', handleForgetDevice);
 elements.summaryPanel.addEventListener('click', handleSummaryPanelClick);
-document.querySelectorAll('[data-access-link]').forEach((btn) => {
-  btn.addEventListener('click', handleAccessLinkCopy);
+document.querySelectorAll('[data-copy-access-link]').forEach((button) => {
+  button.addEventListener('click', handleAccessLinkCopy);
 });
 document.querySelectorAll('[data-share-access-link]').forEach((button) => {
   button.addEventListener('click', handleAccessLinkShare);
@@ -1780,12 +1780,34 @@ function normalizeOperationalLinksFromAuthorizedLogin(data) {
 function syncOperationalLinkActionState(
   canView = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS)
 ) {
-  document.querySelectorAll('[data-access-link], [data-share-access-link]').forEach((button) => {
-    const kind = button.dataset.accessLink || button.dataset.shareAccessLink;
+  document.querySelectorAll('[data-copy-access-link], [data-open-access-link], [data-share-access-link]').forEach((control) => {
+    const kind = control.dataset.copyAccessLink
+      || control.dataset.openAccessLink
+      || control.dataset.shareAccessLink;
     const tokenReady = kind === 'cucina'
       ? Boolean(state.operationalLinks.kitchenTokenId)
       : Boolean(state.operationalLinks.publicTokenId);
-    button.disabled = !canView || !tokenReady;
+    const enabled = canView && tokenReady;
+    if (control.matches('[data-open-access-link]')) {
+      if (enabled) {
+        control.href = getCachedAccessLinkUrl(kind);
+        control.tabIndex = 0;
+      } else {
+        control.removeAttribute('href');
+        control.tabIndex = -1;
+      }
+      control.setAttribute('aria-disabled', String(!enabled));
+      return;
+    }
+    control.disabled = !enabled;
+  });
+  document.querySelectorAll('[data-operational-link-url]').forEach((input) => {
+    const kind = input.dataset.operationalLinkUrl;
+    const tokenReady = kind === 'cucina'
+      ? Boolean(state.operationalLinks.kitchenTokenId)
+      : Boolean(state.operationalLinks.publicTokenId);
+    input.value = canView && tokenReady ? getCachedAccessLinkUrl(kind) : '';
+    input.setAttribute('aria-disabled', String(!canView || !tokenReady));
   });
 }
 
@@ -8720,7 +8742,7 @@ function registerServiceWorker() {
 
 async function handleAccessLinkCopy(event) {
   const button = event.currentTarget;
-  const scope = button.getAttribute('data-access-link');
+  const scope = button.getAttribute('data-copy-access-link');
   let url = '';
   try {
     url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
@@ -8731,18 +8753,24 @@ async function handleAccessLinkCopy(event) {
     );
   }
   if (!url) return;
-  const originalText = button.textContent;
   try {
     await navigator.clipboard.writeText(url);
-    button.textContent = t('status.copied');
-    button.setAttribute('aria-label', t('status.linkCopied'));
-    window.setTimeout(() => {
-      button.textContent = originalText;
-      button.setAttribute('aria-label', scope === 'pasti' ? 'Copia link Pasti' : 'Copia link Cucina');
-    }, 1400);
+    showOperationalLinkFeedback(scope, t('status.linkCopied'));
   } catch {
     openAccessShareDialog(scope === 'pasti' ? 'Prenotazione pasti' : 'Pannello cucina', url);
   }
+}
+
+function showOperationalLinkFeedback(scope, message) {
+  const feedback = document.querySelector(`[data-access-link-feedback="${scope}"]`);
+  if (!feedback) return;
+  window.clearTimeout(Number(feedback.dataset.clearTimer || 0));
+  feedback.textContent = message;
+  const timer = window.setTimeout(() => {
+    feedback.textContent = '';
+    delete feedback.dataset.clearTimer;
+  }, 2000);
+  feedback.dataset.clearTimer = String(timer);
 }
 
 async function handleAccessLinkShare(event) {

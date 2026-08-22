@@ -518,8 +518,10 @@ test('i link operativi riallineano i pulsanti dopo ogni rendering del pannello',
   )?.[0] || '';
   const overview = app.match(/function renderAdminOverview\(\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(syncActions, /CAPABILITIES\.VIEW_OPERATIONAL_LINKS/);
-  assert.match(syncActions, /\[data-access-link\], \[data-share-access-link\]/);
-  assert.match(syncActions, /button\.disabled = !canView/);
+  assert.match(syncActions, /\[data-copy-access-link\], \[data-open-access-link\], \[data-share-access-link\]/);
+  assert.match(syncActions, /control\.disabled = !enabled/);
+  assert.match(syncActions, /control\.setAttribute\('aria-disabled', String\(!enabled\)\)/);
+  assert.match(syncActions, /data-operational-link-url/);
   assert.match(overview, /syncOperationalLinkActionState\(\)/);
   assert.match(app, /syncOperationalLinkActionState\(canViewOperationalLinks\)/);
   assert.match(app, /getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/);

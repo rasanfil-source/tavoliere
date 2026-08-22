@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822d">
+    <link rel="stylesheet" href="/styles.css?v=20260822h">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -474,20 +474,26 @@
                 </div>
 
                 <div class="access-links-explanation">
-                  <p class="access-link-row">
-                    <span data-i18n="admin.overview.residentLinkHelp">Link prenotazioni residenti</span>
-                    <span class="access-link-controls">
-                      <button type="button" class="access-link-btn" data-access-link="pasti" disabled data-i18n="app.header.pasti">Pasti</button>
-                      <button type="button" class="share-access-link icon-button" data-share-access-link="pasti" disabled aria-label="Condividi link Pasti" title="Condividi link Pasti" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
-                    </span>
-                  </p>
-                  <p class="access-link-row">
-                    <span data-i18n="admin.overview.kitchenLinkHelp">Link per la Cucina</span>
-                    <span class="access-link-controls">
-                      <button type="button" class="access-link-btn" data-access-link="cucina" disabled data-i18n="role.kitchen">Cucina</button>
-                      <button type="button" class="share-access-link icon-button" data-share-access-link="cucina" disabled aria-label="Condividi link Cucina" title="Condividi link Cucina" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
-                    </span>
-                  </p>
+                  <section class="access-link-card" aria-labelledby="resident-operational-link-label">
+                    <label id="resident-operational-link-label" for="resident-operational-link" data-i18n="admin.overview.residentLinkHelp">Link prenotazioni residenti</label>
+                    <input id="resident-operational-link" class="access-link-url" type="url" data-operational-link-url="pasti" readonly autocomplete="off" spellcheck="false">
+                    <div class="access-link-actions">
+                      <button type="button" class="access-link-copy" data-copy-access-link="pasti" disabled aria-label="Copia il link per le prenotazioni residenti" data-i18n-aria-label="admin.overview.copyResidentAria" data-i18n="common.actions.copy">Copia</button>
+                      <a class="secondary-action access-link-open" data-open-access-link="pasti" target="_blank" rel="noopener noreferrer" aria-disabled="true" tabindex="-1" aria-label="Apri il link per le prenotazioni residenti" data-i18n-aria-label="admin.overview.openResidentAria" data-i18n="common.actions.open">Apri</a>
+                      <button type="button" class="share-access-link icon-button" data-share-access-link="pasti" disabled aria-label="Condividi il link per le prenotazioni residenti" data-i18n-aria-label="admin.overview.shareResidentAria" title="Condividi" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
+                    </div>
+                    <p class="access-link-feedback" data-access-link-feedback="pasti" aria-live="polite"></p>
+                  </section>
+                  <section class="access-link-card" aria-labelledby="kitchen-operational-link-label">
+                    <label id="kitchen-operational-link-label" for="kitchen-operational-link" data-i18n="admin.overview.kitchenLinkHelp">Link per la Cucina</label>
+                    <input id="kitchen-operational-link" class="access-link-url" type="url" data-operational-link-url="cucina" readonly autocomplete="off" spellcheck="false">
+                    <div class="access-link-actions">
+                      <button type="button" class="access-link-copy" data-copy-access-link="cucina" disabled aria-label="Copia il link per la cucina" data-i18n-aria-label="admin.overview.copyKitchenAria" data-i18n="common.actions.copy">Copia</button>
+                      <a class="secondary-action access-link-open" data-open-access-link="cucina" target="_blank" rel="noopener noreferrer" aria-disabled="true" tabindex="-1" aria-label="Apri il link per la cucina" data-i18n-aria-label="admin.overview.openKitchenAria" data-i18n="common.actions.open">Apri</a>
+                      <button type="button" class="share-access-link icon-button" data-share-access-link="cucina" disabled aria-label="Condividi il link per la cucina" data-i18n-aria-label="admin.overview.shareKitchenAria" title="Condividi" data-i18n-title="common.actions.share"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg></button>
+                    </div>
+                    <p class="access-link-feedback" data-access-link-feedback="cucina" aria-live="polite"></p>
+                  </section>
                 </div>
                 <p class="operational-links-status" data-operational-links-status aria-live="polite"></p>
               </section>
@@ -1047,6 +1053,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822e"></script>
+  <script type="module" src="/app.js?v=20260822h"></script>
   </body>
 </html>

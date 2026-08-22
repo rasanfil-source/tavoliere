@@ -136,8 +136,10 @@ test('i link operativi non sono utilizzabili senza token e viaggiano con il logi
   assert.match(participantData, /privateSettings'[\s\S]*'operationalLinks'/);
   assert.match(participantData, /administratorAuthorized: true,[\s\S]*operationalLinks/);
   assert.match(app, /normalizeOperationalLinksFromAuthorizedLogin\(result\.operationalLinks\)/);
-  assert.match(app, /button\.disabled = !canView \|\| !tokenReady/);
-  assert.match(app, /document\.querySelectorAll\('\[data-access-link\], \[data-share-access-link\]'\)/);
+  assert.match(app, /control\.disabled = !enabled/);
+  assert.match(app, /control\.removeAttribute\('href'\)/);
+  assert.match(app, /\[data-copy-access-link\], \[data-open-access-link\], \[data-share-access-link\]/);
+  assert.match(app, /input\.value = canView && tokenReady \? getCachedAccessLinkUrl\(kind\) : ''/);
 });
 
 test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
@@ -216,15 +218,22 @@ test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
   assert.match(accounts, /adminAccountStatus\.textContent/);
 });
 
-test('i collegamenti operativi usano copia diretta e condivisione nativa o assistita', () => {
-  assert.match(html, /data-access-link="pasti"/);
-  assert.match(html, /data-access-link="cucina"/);
-  assert.doesNotMatch(html, /data-copy-access-link/);
+test('i collegamenti operativi mostrano URL e azioni esplicite di copia apertura e condivisione', () => {
+  assert.match(html, /data-operational-link-url="pasti"[^>]*readonly/);
+  assert.match(html, /data-operational-link-url="cucina"[^>]*readonly/);
+  assert.match(html, /data-copy-access-link="pasti"/);
+  assert.match(html, /data-copy-access-link="cucina"[^>]*aria-label="Copia il link per la cucina"/);
+  assert.match(html, /data-open-access-link="pasti"/);
+  assert.match(html, /data-open-access-link="cucina"/);
   assert.match(html, /data-share-access-link="pasti"/);
   assert.match(html, /data-share-access-link="cucina"/);
-  assert.match(app, /btn\.addEventListener\('click', handleAccessLinkCopy\)/);
-  assert.doesNotMatch(app, /handleAccessLinkOpen/);
+  assert.match(app, /button\.addEventListener\('click', handleAccessLinkCopy\)/);
+  assert.match(html, /data-open-access-link="cucina"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
   assert.match(app, /getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/);
+  assert.match(app, /await navigator\.clipboard\.writeText\(url\)/);
+  assert.match(app, /control\.href = getCachedAccessLinkUrl\(kind\)/);
+  assert.match(app, /showOperationalLinkFeedback\(scope, t\('status\.linkCopied'\)\)/);
+  assert.match(app, /data-access-link-feedback[\s\S]*2000/);
   assert.match(
     app,
     /async function handleAccessLinkShare[\s\S]*getCachedAccessLinkUrl\(scope\) \|\| await resolveAccessLinkUrl\(scope\)/
@@ -245,10 +254,10 @@ test('i collegamenti operativi usano copia diretta e condivisione nativa o assis
   assert.match(app, /buildOperationalLink\('kitchen', links\.kitchenTokenId, centerId\)/);
 });
 
-test('Pasti Cucina ed Esci condividono il verde principale', () => {
-  assert.match(css, /\.access-link-btn:not\(:disabled\)\s*\{[\s\S]*?background: var\(--primary\);[\s\S]*?border-color: var\(--primary\);/);
+test('Copia conserva la gerarchia primaria senza modificare il tasto Esci', () => {
+  assert.match(css, /\.access-link-copy\s*\{[\s\S]*?border: 1px solid var\(--primary\);[\s\S]*?background: var\(--primary\);/);
   assert.match(css, /\.primary-action\s*\{[\s\S]*?background: var\(--primary\) !important;/);
-  assert.doesNotMatch(css, /\.access-link-btn:not\(:disabled\)\s*\{[\s\S]*?#2e7d32/);
+  assert.doesNotMatch(css, /\.access-link-copy\s*\{[\s\S]*?#2e7d32/);
 });
 
 test('la navigazione precede il contenuto completo della panoramica', () => {
