@@ -994,10 +994,10 @@ test('il refresh diretto della settimana ripristina le capability operative dell
 test('la spunta vice usa direttamente sigla e password amministratori nel login residente', () => {
   assert.match(index, /data-admin-participant-vice/);
   assert.doesNotMatch(index, /data-admin-vice-flow/);
-  assert.match(index, /data-admin-vice-invitation-generate/);
-  assert.match(app, /const createViceInvitation = callDomain\('admin', 'createViceInvitation'\);/);
-  assert.match(app, /handleViceInvitationGeneration/);
-  assert.match(adminCenter, /export async function createViceInvitation/);
+  assert.doesNotMatch(index, /data-admin-vice-invitation-generate/);
+  assert.doesNotMatch(app, /createViceInvitation/);
+  assert.doesNotMatch(app, /handleViceInvitationGeneration/);
+  assert.doesNotMatch(adminCenter, /export async function createViceInvitation/);
   assert.match(app, /revokeViceAdministratorAccess/);
   assert.doesNotMatch(index, /data-vice-auth-google/);
   assert.doesNotMatch(index, /data-vice-auth-email-form/);
@@ -1025,15 +1025,16 @@ test('la spunta vice usa direttamente sigla e password amministratori nel login 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {
   assert.match(index, /data-admin-leadership/);
   assert.match(index, /data-admin-invitation-generate/);
-  assert.match(index, /data-admin-vice-invitation-generate/);
+  assert.doesNotMatch(index, /data-admin-vice-invitation-generate/);
   assert.match(index, /data-admin-successor-select/);
   assert.match(index, /data-admin-transfer-ownership/);
   assert.match(adminCenter, /export async function createAdministratorInvitation/);
-  assert.match(adminCenter, /export async function createViceInvitation/);
+  assert.doesNotMatch(adminCenter, /export async function createViceInvitation/);
   assert.match(adminCenter, /export async function transferCenterOwnership/);
   assert.match(adminCenter, /role: 'ADMIN'/);
-  assert.match(adminCenter, /const role = invitation\.role === 'MANAGER' \? 'MANAGER' : 'ADMIN';/);
-  assert.match(adminCenter, /const massPermission = role === 'ADMIN';/);
+  assert.match(adminCenter, /if \(invitation\.role !== 'ADMIN'\)/);
+  assert.match(adminCenter, /const role = 'ADMIN';/);
+  assert.match(adminCenter, /const massPermission = true;/);
   assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(adminCenter, /batch\.delete\(currentMembershipRef\)/);
   assert.match(app, /CAPABILITIES\.TRANSFER_OWNERSHIP/);

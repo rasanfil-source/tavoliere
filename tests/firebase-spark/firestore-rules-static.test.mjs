@@ -64,14 +64,18 @@ test('the common password can mint only bounded personal tokens', () => {
   assert.match(participantData, /PERSONAL_TOKEN_LIFETIME_DAYS = 9000/);
 });
 
-test('l invito personale del vice usa uno schema chiuso e una membership revocabile', () => {
+test('gli inviti Firebase creano soltanto amministratori mentre il vice usa viceSessions', () => {
   const adminCreate = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
   const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
+  const invitationRules = rules.match(/match \/adminInvitations\/\{invitationId\}[\s\S]*?match \/centers/)?.[0] || '';
   assert.match(adminCreate, /keys\(\)\.hasOnly\(\[/);
   assert.match(adminCreate, /invitationMembershipClaimIsValid\(centerId, adminUid\)/);
   assert.match(invitationClaim, /request\.resource\.data\.centerId == centerId/);
-  assert.match(invitationClaim, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
-  assert.match(invitationClaim, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
+  assert.match(invitationClaim, /request\.resource\.data\.role == 'ADMIN'/);
+  assert.match(invitationClaim, /request\.resource\.data\.massPermission == true/);
+  assert.doesNotMatch(invitationClaim, /request\.resource\.data\.role == 'MANAGER'/);
+  assert.match(invitationRules, /allow create: if request\.resource\.data\.role == 'ADMIN'/);
+  assert.doesNotMatch(invitationRules, /request\.resource\.data\.role == 'MANAGER'/);
   assert.match(rules, /function activeViceParticipant\(centerId, participantId\)[\s\S]*viceAdminRole/);
   assert.match(rules, /function administratorAuthenticationMatches\(centerId\)[\s\S]*sign_in_provider/);
   assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorPasswordRequired[\s\S]*activeViceParticipant\(centerId, participantId\)/);

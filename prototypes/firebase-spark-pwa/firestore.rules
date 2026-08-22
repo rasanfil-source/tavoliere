@@ -168,13 +168,6 @@ service cloud.firestore {
         && participantIsActive(centerId, participantId);
     }
 
-    function canManageRoleInvitation(centerId, role) {
-      return isCenterOwner(centerId)
-        || isAdmin(centerId)
-          && adminRole(centerId) in ['ADMIN', 'MANAGER']
-          && role == 'MANAGER';
-    }
-
     function centerTimezoneIsValid(value) {
       return value in ['Europe/Rome', 'Europe/Madrid', 'Europe/Paris', 'Europe/London'];
     }
@@ -245,10 +238,7 @@ service cloud.firestore {
     }
 
     function canCreateCenterAdministrator(centerId, role) {
-      return isCenterOwner(centerId) && role in ['ADMIN', 'MANAGER']
-        || isAdmin(centerId)
-          && adminRole(centerId) == 'ADMIN'
-          && role == 'MANAGER';
+      return isCenterOwner(centerId) && role == 'ADMIN';
     }
 
     function canUpdateCenterAdministrator(centerId, adminUid) {
@@ -723,28 +713,19 @@ service cloud.firestore {
       return hasVerifiedAdministratorIdentity()
         && adminUid == request.auth.uid
         && request.resource.data.centerId == centerId
-        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.role == 'ADMIN'
         && request.resource.data.status == 'ACTIVE'
-        && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
+        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == true
-        && (
-          request.resource.data.role != 'ADMIN'
-          || request.resource.data.get('administratorPasswordRequired', false)
-            == (request.auth.token.firebase.sign_in_provider == 'password')
-          && request.resource.data.get('passwordSetupRequired', false)
-            == (request.auth.token.firebase.sign_in_provider == 'password')
-        )
+        && request.resource.data.get('administratorPasswordRequired', false)
+          == (request.auth.token.firebase.sign_in_provider == 'password')
+        && request.resource.data.get('passwordSetupRequired', false)
+          == (request.auth.token.firebase.sign_in_provider == 'password')
         && request.resource.data.participantId is string
         && (
-          request.resource.data.role == 'ADMIN'
-            && (
-              request.resource.data.participantId == ''
-              || participantExists(centerId, request.resource.data.participantId)
-                && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            )
-          || request.resource.data.role == 'MANAGER'
-            && participantExists(centerId, request.resource.data.participantId)
-            && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.get('viceAdminRole', false) == true
+          request.resource.data.participantId == ''
+          || participantExists(centerId, request.resource.data.participantId)
+            && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
         )
         && adminInvitationClaimsRole(
           request.resource.data.invitationId,
@@ -831,14 +812,11 @@ service cloud.firestore {
       allow read: if isBootstrapOwner()
         || canManageAdministrativeRoles(resource.data.centerId)
         || hasVerifiedAdministratorIdentity()
+          && resource.data.role == 'ADMIN'
           && resource.data.status == 'ACTIVE'
           && request.time < resource.data.expiresAt;
-      allow create: if (
-          request.resource.data.role == 'MANAGER'
-            && canManageRoleInvitation(request.resource.data.centerId, 'MANAGER')
-          || request.resource.data.role == 'ADMIN'
-            && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
-        )
+      allow create: if request.resource.data.role == 'ADMIN'
+        && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
         && request.resource.data.keys().hasAll([
           'centerId', 'participantId', 'role', 'status', 'createdBy',
           'expiresAt', 'createdAt', 'updatedAt'
@@ -847,21 +825,15 @@ service cloud.firestore {
           'centerId', 'participantId', 'role', 'status', 'createdBy',
           'expiresAt', 'createdAt', 'updatedAt'
         ])
-        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.role == 'ADMIN'
         && request.resource.data.status == 'ACTIVE'
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.expiresAt > request.time
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && (
-          request.resource.data.role == 'ADMIN'
-            && (
-              request.resource.data.participantId == ''
-              || get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            )
-          || request.resource.data.role == 'MANAGER'
-            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.viceAdminRole == true
+          request.resource.data.participantId == ''
+          || get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
         );
       allow update: if hasVerifiedAdministratorIdentity()
           && resource.data.status == 'ACTIVE'
@@ -881,7 +853,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status', 'consumedBy', 'consumedAt', 'updatedAt'
           ])
-        || canManageRoleInvitation(resource.data.centerId, resource.data.role)
+        || canManageAdministrativeRoles(resource.data.centerId)
           && resource.data.status == 'ACTIVE'
           && request.resource.data.status == 'REVOKED'
           && request.resource.data.revokedBy == request.auth.uid
@@ -901,7 +873,7 @@ service cloud.firestore {
             'status', 'rejectedBy', 'rejectedAt', 'updatedAt'
           ])
         ;
-      allow delete: if canManageRoleInvitation(resource.data.centerId, resource.data.role) || isBootstrapOwner();
+      allow delete: if canManageAdministrativeRoles(resource.data.centerId) || isBootstrapOwner();
     }
 
     match /centers/{centerId} {

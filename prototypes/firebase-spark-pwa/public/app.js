@@ -145,7 +145,6 @@ const createCenterInvitation = callDomain('admin', 'createCenterInvitation');
 const createPlatformAdministratorInvitation = callDomain('admin', 'createPlatformAdministratorInvitation');
 const deactivatePlatformCenter = callDomain('admin', 'deactivatePlatformCenter');
 const createAdministratorInvitation = callDomain('admin', 'createAdministratorInvitation');
-const createViceInvitation = callDomain('admin', 'createViceInvitation');
 const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministratorAccess');
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
@@ -828,7 +827,6 @@ const elements = {
   inviteReject: document.querySelector('[data-invite-reject]'),
   inviteAcceptActions: document.querySelector('[data-admin-invite-accept-actions]'),
   adminInvitationGenerate: document.querySelector('[data-admin-invitation-generate]'),
-  adminViceInvitationGenerate: document.querySelector('[data-admin-vice-invitation-generate]'),
   adminInvitationStatus: document.querySelector('[data-admin-invitation-status]'),
   adminInvitationResult: document.querySelector('[data-admin-invitation-result]'),
   adminInvitationLink: document.querySelector('[data-admin-invitation-link]'),
@@ -1154,9 +1152,6 @@ elements.adminCenterSettingsSave.addEventListener('click', handleAdminCenterSett
 elements.adminCenterSettingsSection.addEventListener('input', markAdminCenterDirty);
 elements.adminCenterSettingsSection.addEventListener('change', markAdminCenterDirty);
 elements.adminInvitationGenerate.addEventListener('click', handleAdministratorInvitationGeneration);
-if (elements.adminViceInvitationGenerate) {
-  elements.adminViceInvitationGenerate.addEventListener('click', handleViceInvitationGeneration);
-}
 if (elements.adminCandidateNewPerson) {
   elements.adminCandidateNewPerson.addEventListener('click', handleAdminCandidateNewPersonClick);
 }
@@ -4236,10 +4231,6 @@ function handleAdministratorInvitationGeneration() {
   return operationGuard.run('admin:administrator-invitation', performAdministratorInvitationGeneration);
 }
 
-function handleViceInvitationGeneration() {
-  return operationGuard.run('admin:vice-invitation', performViceInvitationGeneration);
-}
-
 function handleAdminCandidateNewPersonClick() {
   selectAdminSection('people', { focus: true });
   handleAdminNewParticipant();
@@ -5034,54 +5025,8 @@ function syncAdminAdaptationsForm() {
   }
 }
 
-async function performViceInvitationGeneration() {
-  if (!hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) return;
-  if (!elements.adminViceInvitationGenerate) return;
-  elements.adminViceInvitationGenerate.disabled = true;
-  elements.adminLeadershipStatus.textContent = 'Genero l\u2019invito...';
-  try {
-    const participantId = elements.adminCandidateSelect
-      ? elements.adminCandidateSelect.value
-      : '';
-    const invitation = await createViceInvitation(participantId);
-    const invitationUrl = new URL('/', window.location.origin);
-    invitationUrl.searchParams.set('view', 'admin');
-    invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
-    invitationUrl.searchParams.set('adminRole', 'MANAGER');
-    invitationUrl.searchParams.set('c', getActiveCenterId());
-
-    const participant = (state.adminParticipants || []).find(
-      (item) => item.participantId === participantId
-    );
-    const displayName = participant?.displayName || participant?.signature || 'La persona';
-
-    if (elements.adminInvitationStatus) {
-      elements.adminInvitationStatus.hidden = false;
-      elements.adminInvitationStatus.textContent =
-        `Invito da vice amministratore preparato per ${displayName}. Invia il collegamento e attendi la conferma.`;
-    }
-    elements.adminInvitationLink.value = invitationUrl.toString();
-    elements.adminInvitationResult.hidden = false;
-
-    elements.adminLeadershipStatus.textContent = 'Invito vice amministratore generato.';
-  } catch (error) {
-    elements.adminLeadershipStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
-    if (elements.adminInvitationStatus) {
-      elements.adminInvitationStatus.hidden = true;
-      elements.adminInvitationStatus.textContent = '';
-    }
-    elements.adminInvitationResult.hidden = true;
-    elements.adminInvitationLink.value = '';
-  } finally {
-    elements.adminViceInvitationGenerate.disabled = false;
-  }
-}
-
-function invitationPrompt(role = '') {
-  const hintedRole = role || new URLSearchParams(window.location.search).get('adminRole');
-  return hintedRole === 'MANAGER'
-    ? t('admin.invitations.viceAcceptPrompt')
-    : t('admin.invitations.acceptPrompt');
+function invitationPrompt() {
+  return t('admin.invitations.acceptPrompt');
 }
 
 function showRoleInvitationAccepted(role) {
@@ -5094,12 +5039,8 @@ function showRoleInvitationAccepted(role) {
     });
   }
   return showActionDialog({
-    title: role === 'MANAGER'
-      ? t('admin.invitations.viceActivatedTitle')
-      : t('admin.invitations.acceptedWaitTitle'),
-    message: role === 'MANAGER'
-      ? t('admin.invitations.viceActivatedMessage')
-      : t('admin.invitations.acceptedWaitMessage'),
+    title: t('admin.invitations.acceptedWaitTitle'),
+    message: t('admin.invitations.acceptedWaitMessage'),
     confirmLabel: t('common.actions.confirm'),
     hideCancel: true
   });

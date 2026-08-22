@@ -11,7 +11,6 @@ export const NETWORK_ACTION_SELECTOR = [
   '[data-admin-center-avatar-save]',
   '[data-admin-center-avatar-remove]',
   '[data-admin-vice-save]',
-  '[data-admin-vice-invitation-generate]',
   '[data-admin-invitation-generate]',
   '[data-admin-transfer-ownership]',
   '[data-revoke-admin-invitation]',

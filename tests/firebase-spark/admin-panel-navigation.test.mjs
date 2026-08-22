@@ -403,13 +403,13 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.doesNotMatch(app, /adminRoleBadge/);
   assert.match(html, /Scegli la Persona[\s\S]*completa qui il passaggio[\s\S]*il tuo incarico terminerà/);
   assert.match(html, /data-admin-invitation-result/);
-  assert.match(html, /data-admin-vice-invitation-generate/);
+  assert.doesNotMatch(html, /data-admin-vice-invitation-generate/);
   assert.match(html, /data-admin-invitation-link/);
   assert.match(html, /data-admin-invitation-copy/);
   assert.match(html, /data-admin-invitation-share/);
   assert.match(app, /handleAdministratorInvitationShare/);
-  assert.match(app, /handleViceInvitationGeneration/);
-  assert.match(app, /Invito vice amministratore generato\./);
+  assert.doesNotMatch(app, /handleViceInvitationGeneration/);
+  assert.doesNotMatch(app, /Invito vice amministratore generato\./);
   assert.match(app, /invitationUrl\.searchParams\.set\('adminInvite', invitation\.invitationId\)/);
   assert.match(app, /elements\.adminInvitationLink\.value = invitationUrl\.toString\(\)/);
   assert.match(app, /admin\.participantId[\s\S]*activeParticipantIds\.has\(admin\.participantId\)/);
@@ -470,7 +470,7 @@ test('l autenticazione del candidato non accetta automaticamente l invito', () =
   assert.match(app, /await acceptAdministratorInvitation\(\)/);
   assert.match(app, /showRoleInvitationAccepted/);
   assert.match(app, /acceptedWaitMessage/);
-  assert.match(app, /viceActivatedMessage/);
+  assert.doesNotMatch(app, /viceActivatedMessage/);
   assert.match(app, /hideCancel: true/);
   assert.match(app, /Invito in attesa della tua risposta/);
   assert.match(app, /t\('admin\.invitations\.accepted'\)/);
