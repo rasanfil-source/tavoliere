@@ -44,10 +44,9 @@ import {
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
-  updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260822a';
+} from './center-settings.js?v=20260822d';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -848,7 +847,6 @@ const elements = {
   adminCalendarExtension: document.querySelector('[data-admin-calendar-extension]'),
   adminCalendarExtensionStatus: document.querySelector('[data-admin-calendar-extension-status]'),
   adminPersonEditor: document.querySelector('#admin-person-editor'),
-  adminParticipantSelect: document.querySelector('[data-admin-participant-select]'),
   adminNewParticipant: document.querySelector('[data-admin-new-participant]'),
   adminParticipantName: document.querySelector('[data-admin-participant-name]'),
   adminParticipantSignature: document.querySelector('[data-admin-participant-signature]'),
@@ -857,10 +855,8 @@ const elements = {
   adminParticipantDiets: document.querySelector('[data-admin-participant-diets]'),
   adminParticipantDietNumber: document.querySelector('[data-admin-participant-diet-number]'),
   adminParticipantLiturgy: document.querySelector('[data-admin-participant-liturgy]'),
-  adminParticipantVice: document.querySelector('[data-admin-participant-vice]'),
-  adminParticipantAdministrator: document.querySelector('[data-admin-participant-administrator]'),
-  adminAdministratorOption: document.querySelector('[data-admin-administrator-option]'),
-  adminRoleOptions: document.querySelectorAll('[data-admin-role-option]'),
+  adminParticipantAdministrativeRole: document.querySelector('[data-admin-participant-administrative-role]'),
+  adminPermissionsGroup: document.querySelector('[data-admin-permissions-group]'),
   adminPhoneInput: document.querySelector('[data-admin-phone-input]'),
   adminPhoneConsent: document.querySelector('[data-admin-phone-consent]'),
   adminWhatsappEnabled: document.querySelector('[data-admin-whatsapp-enabled]'),
@@ -869,11 +865,6 @@ const elements = {
   adminCancelParticipant: document.querySelector('[data-admin-cancel-participant]'),
   adminDeleteParticipant: document.querySelector('[data-admin-delete-participant]'),
   adminPeopleList: document.querySelector('[data-admin-people-list]'),
-  adminGuestPreset: document.querySelector('[data-admin-guest-preset]'),
-  adminGuestCustomWrap: document.querySelector('[data-admin-guest-custom-wrap]'),
-  adminGuestCustom: document.querySelector('[data-admin-guest-custom]'),
-  adminAddGuest: document.querySelector('[data-admin-add-guest]'),
-  adminGuestStatus: document.querySelector('[data-admin-guest-status]'),
   weekOperations: document.querySelector('[data-week-operations]'),
   weekOperationsStatus: document.querySelector('[data-week-operations-status]'),
   weekOperationsDay: document.querySelector('[data-week-operations-day]'),
@@ -1128,7 +1119,6 @@ elements.monthGrid.addEventListener('click', handleMonthGridClick);
 elements.participantMeals.addEventListener('click', handleParticipantMealsClick);
 elements.weekPrev.addEventListener('click', () => shiftWeek(-7));
 elements.weekNext.addEventListener('click', () => shiftWeek(7));
-elements.adminParticipantSelect.addEventListener('change', handleAdminParticipantChange);
 elements.adminNewParticipant.addEventListener('click', handleAdminNewParticipant);
 elements.adminSaveButton.addEventListener('click', handleAdminSaveContact);
 elements.adminCancelParticipant.addEventListener('click', handleAdminCancelParticipant);
@@ -1140,8 +1130,6 @@ elements.adminPeopleList.addEventListener('change', handleAdminPeopleListChange)
 elements.adminParticipantDiets.addEventListener('change', () => {
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
 });
-elements.adminGuestPreset.addEventListener('change', syncAdminGuestControls);
-elements.adminAddGuest.addEventListener('click', handleAdminAddGuest);
 elements.adminCenterSettingsSave.addEventListener('click', handleAdminCenterSettingsSave);
 elements.adminCenterSettingsSection.addEventListener('input', markAdminCenterDirty);
 elements.adminCenterSettingsSection.addEventListener('change', markAdminCenterDirty);
@@ -1212,23 +1200,8 @@ if (elements.mealReminderSelect) {
   elements.mealReminderSelect.addEventListener('change', handleMealReminderPreferenceChange);
 }
 if (elements.adminContactSharingSelect) {
-  elements.adminContactSharingSelect.addEventListener('change', async (event) => {
+  elements.adminContactSharingSelect.addEventListener('change', (event) => {
     event.target.dataset.state = event.target.value;
-    if (!state.residentSettingsMode && hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS)) {
-      const enabled = event.target.value === 'enabled';
-      event.target.disabled = true;
-      try {
-        await updateParticipantContactSharing(enabled);
-        state.centerContactSettings.participantContactSharingEnabled = enabled;
-      } catch (error) {
-        event.target.value = state.centerContactSettings.participantContactSharingEnabled
-          ? 'enabled'
-          : 'disabled';
-        elements.adminStatus.textContent = friendlyErrorMessage(error, 'Impostazione non salvata');
-      } finally {
-        event.target.disabled = false;
-      }
-    }
   });
 }
 elements.residentPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.residentPasswordInput, elements.residentPasswordToggle));
@@ -1996,7 +1969,6 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
   if (section === 'people') {
     state.adminParticipantId = '';
     state.adminPersonDirty = false;
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
   }
@@ -4028,7 +4000,6 @@ async function refreshAdminParticipants() {
       elements.adminCenterAvatarInput.value = '';
     }
     renderAdminCenterAvatarEditor();
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     const profileComplete = isAdministratorProfileComplete();
     state.adminActiveSection = profileComplete
@@ -5517,16 +5488,6 @@ function getSummaryTitle() {
   return t(state.summaryDayOffset === 1 ? 'summary.view.tomorrowTitle' : 'summary.view.todayTitle');
 }
 
-function renderAdminParticipantOptions() {
-  elements.adminParticipantSelect.innerHTML = `<option value="">${escapeHtml(t('admin.people.selectPerson'))}</option>`
-    + getAdminParticipantsSortedBySignature().map((participant) => {
-    const selected = participant.participantId === state.adminParticipantId ? ' selected' : '';
-    const statusLabel = participant.status === 'ACTIVE' ? '' : ' (disattivato)';
-    return '<option value="' + escapeHtml(participant.participantId) + '"' + selected + '>'
-      + escapeHtml(participant.displayName + statusLabel) + '</option>';
-  }).join('');
-}
-
 async function clearApplicationCache() {
   // Purge only the PWA Cache Storage. Firebase Auth persistence, local
   // preferences, tokens and IndexedDB are deliberately left untouched.
@@ -5662,7 +5623,7 @@ function renderAdminPeopleList() {
           <strong>
             <span class="admin-person-signature" title="${escapeHtml(t('admin.people.signatureTitle'))}">${signature}</span>
             <span class="admin-person-display">${displayName}</span>
-            <span class="admin-person-initials" title="${escapeHtml(t('admin.people.initials'))}">${initials}</span>
+            <span class="admin-person-initials" title="${escapeHtml(t('admin.people.initialsTitle', { initials: participant.initials || deriveInitials(participant.displayName) }))}" aria-label="${escapeHtml(t('admin.people.initialsTitle', { initials: participant.initials || deriveInitials(participant.displayName) }))}">${initials}</span>
           </strong>
           <span class="admin-person-details">${details}${phoneIcon}</span>
         </button>
@@ -5723,8 +5684,7 @@ function getConfiguredAdministratorParticipantId() {
 }
 
 function canDesignateCenterAdministrator() {
-  return state.adminRole === 'OWNER'
-    || state.residentAdministratorAuthorized === true;
+  return state.adminRole === 'OWNER';
 }
 
 async function handleAdminPeopleListChange(event) {
@@ -5746,7 +5706,6 @@ async function handleAdminPeopleListChange(event) {
     nextActive ? 'admin.people.reactivating' : 'admin.people.suspending',
     { name: participant.displayName }
   );
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
 
   try {
@@ -5767,7 +5726,6 @@ async function handleAdminPeopleListChange(event) {
     elements.adminStatus.textContent = friendlyErrorMessage(error, t('errors.statusUpdateFailed'));
   } finally {
     state.pendingAdminParticipantStatusIds.delete(participantId);
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
   }
 }
@@ -5787,88 +5745,16 @@ async function handleAdminPeopleListClick(event) {
   if (!await confirmAdminPersonTransition()) return;
   state.adminParticipantId = openButton.dataset.adminPersonOpen;
   state.adminPersonDirty = false;
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminParticipantName.focus();
-}
-
-function syncAdminGuestControls() {
-  const customGuest = elements.adminGuestPreset.value === 'other';
-  elements.adminGuestCustomWrap.hidden = !customGuest;
-  if (customGuest) {
-    elements.adminGuestCustom.focus();
-  }
-}
-
-async function handleAdminAddGuest() {
-  const rawNumber = elements.adminGuestPreset.value === 'other'
-    ? elements.adminGuestCustom.value
-    : elements.adminGuestPreset.value;
-  const guestNumber = Number.parseInt(rawNumber, 10);
-  if (!Number.isInteger(guestNumber) || guestNumber < 1 || guestNumber > 999) {
-    elements.adminGuestStatus.textContent = t('admin.people.guestInvalidNumber');
-    return;
-  }
-
-  const signature = `OSP${guestNumber}`;
-  const existing = state.adminParticipants.find((participant) => (
-    participant.signature === signature
-    || (participant.groupId === 'group_ospiti'
-      && participant.displayName?.trim().toLowerCase() === `ospite ${guestNumber}`)
-  ));
-  if (existing) {
-    state.adminParticipantId = existing.participantId;
-    renderAdminParticipantOptions();
-    syncAdminContactForm();
-    elements.adminGuestStatus.textContent = t('admin.people.guestExists', { name: existing.displayName });
-    return;
-  }
-
-  elements.adminAddGuest.disabled = true;
-  elements.adminGuestStatus.textContent = t('admin.people.guestAdding');
-  try {
-    const sortOrder = Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
-    const participantId = await saveAdminParticipant('', {
-      displayName: `Ospite ${guestNumber}`,
-      signature,
-      groupId: 'group_ospiti',
-      dietTags: ['STANDARD'],
-      liturgicalRole: false,
-      viceAdminRole: false,
-      sortOrder,
-      active: true,
-      phone: '',
-      phoneConsent: false,
-      whatsappEnabled: false
-    });
-    state.adminParticipantId = participantId;
-    elements.adminGuestCustom.value = '';
-    await refreshAdminParticipants();
-    elements.adminGuestStatus.textContent = t('admin.people.guestAdded', { number: guestNumber });
-  } catch (error) {
-    elements.adminGuestStatus.textContent = friendlyErrorMessage(error, 'Ospite non aggiunto');
-  } finally {
-    elements.adminAddGuest.disabled = false;
-  }
-}
-
-async function handleAdminParticipantChange() {
-  const nextParticipantId = elements.adminParticipantSelect.value;
-  if (!await confirmAdminPersonTransition()) {
-    renderAdminParticipantOptions();
-    return;
-  }
-  state.adminParticipantId = nextParticipantId;
-  state.adminPersonDirty = false;
-  syncAdminContactForm();
 }
 
 async function handleAdminNewParticipant() {
   if (!await confirmAdminPersonTransition()) return;
   state.adminParticipantId = '';
   state.adminPersonDirty = false;
-  elements.adminParticipantSelect.selectedIndex = -1;
+  renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminParticipantName.focus();
   elements.adminStatus.textContent = t('admin.people.newPerson');
@@ -5893,10 +5779,6 @@ async function confirmAdminPersonTransition() {
 
 function handleAdminCancelParticipant() {
   state.adminPersonDirty = false;
-  if (!state.adminParticipantId && state.adminParticipants[0]) {
-    state.adminParticipantId = state.adminParticipants[0].participantId;
-  }
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.changesCancelled');
@@ -5920,10 +5802,7 @@ function syncAdminContactForm() {
     elements.adminPhoneInput.value = '';
     elements.adminParticipantLiturgy.checked = false;
     elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
-    elements.adminParticipantVice.checked = false;
-    elements.adminParticipantVice.disabled = !canAssignOperationalRoles();
-    elements.adminParticipantAdministrator.checked = false;
-    elements.adminParticipantAdministrator.disabled = !canDesignateCenterAdministrator();
+    syncAdminAdministrativeRoleControl(null);
     elements.adminPhoneConsent.checked = false;
     elements.adminWhatsappEnabled.checked = false;
     syncAdminCheckboxes();
@@ -5944,13 +5823,28 @@ function syncAdminContactForm() {
   elements.adminPhoneInput.value = participant.phone || '';
   elements.adminParticipantLiturgy.checked = participant.liturgicalRole === true;
   elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
-  elements.adminParticipantVice.checked = participant.viceAdminRole === true;
-  elements.adminParticipantVice.disabled = !canAssignOperationalRoles();
-  elements.adminParticipantAdministrator.checked = participantHasAdministratorRole(participant);
-  elements.adminParticipantAdministrator.disabled = !canDesignateCenterAdministrator();
+  syncAdminAdministrativeRoleControl(participant);
   elements.adminPhoneConsent.checked = Boolean(participant.phoneConsent);
   elements.adminWhatsappEnabled.checked = Boolean(participant.whatsappEnabled);
   syncAdminCheckboxes();
+}
+
+function syncAdminAdministrativeRoleControl(participant) {
+  const select = elements.adminParticipantAdministrativeRole;
+  if (!select) return;
+  const canAssignVice = canAssignOperationalRoles();
+  const canAssignAdministrator = canDesignateCenterAdministrator();
+  const isConfiguredAdministrator = participantHasAdministratorRole(participant);
+  const selectedRole = isConfiguredAdministrator
+    ? 'administrator'
+    : participant?.viceAdminRole === true ? 'vice' : 'none';
+  const viceOption = select.querySelector('option[value="vice"]');
+  const administratorOption = select.querySelector('option[value="administrator"]');
+  select.value = selectedRole;
+  if (viceOption) viceOption.disabled = !canAssignVice;
+  if (administratorOption) administratorOption.disabled = !canAssignAdministrator;
+  select.disabled = isConfiguredAdministrator
+    || (!canAssignVice && !canAssignAdministrator);
 }
 
 function canAssignOperationalRoles() {
@@ -6001,7 +5895,7 @@ function applyAdminCapabilityVisibility() {
     if (elements.adminCommonPasswordRow) elements.adminCommonPasswordRow.hidden = true;
     if (elements.adminAdministratorPasswordRow) elements.adminAdministratorPasswordRow.hidden = true;
     if (elements.bootstrapButton) elements.bootstrapButton.hidden = true;
-    elements.adminRoleOptions.forEach((option) => { option.hidden = true; });
+    if (elements.adminPermissionsGroup) elements.adminPermissionsGroup.hidden = true;
     syncOperationalLinkActionState(false);
     mountAdminSection('adaptations');
     renderAdminMobileSection();
@@ -6032,9 +5926,10 @@ function applyAdminCapabilityVisibility() {
   if (elements.adminAdaptationsSection) {
     elements.adminAdaptationsSection.hidden = !canManageAdaptations;
   }
-  elements.adminRoleOptions.forEach((option) => {
-    option.hidden = !canManageAccess;
-  });
+  if (elements.adminPermissionsGroup) {
+    elements.adminPermissionsGroup.hidden = !canAssignOperationalRoles()
+      && !canDesignateCenterAdministrator();
+  }
   if (elements.adminAuditSection) {
     elements.adminAuditSection.hidden = !canViewActivity;
   }
@@ -7168,7 +7063,8 @@ function handleAdminSaveContact() {
 async function performAdminSaveContact() {
   const participant = state.adminParticipants.find((item) => item.participantId === state.adminParticipantId);
   const configuredAdministratorId = getConfiguredAdministratorParticipantId();
-  const administratorChecked = elements.adminParticipantAdministrator?.checked === true;
+  const selectedAdministrativeRole = elements.adminParticipantAdministrativeRole?.value || 'none';
+  const administratorChecked = selectedAdministrativeRole === 'administrator';
   const assigningAdministrator = canDesignateCenterAdministrator()
     && administratorChecked
     && (!participant || participant.participantId !== configuredAdministratorId);
@@ -7194,7 +7090,7 @@ async function performAdminSaveContact() {
     const sortOrder = participant?.sortOrder
       || Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
     const viceAdminRole = canAssignOperationalRoles()
-      ? elements.adminParticipantVice.checked
+      ? selectedAdministrativeRole === 'vice'
       : participant?.viceAdminRole === true;
     assertViceSelectionLimit(participant?.participantId || '', viceAdminRole);
     clearAdminParticipantFieldErrors();
@@ -7332,7 +7228,6 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   }
   elements.adminSaveButton.disabled = true;
   elements.adminDeleteParticipant.disabled = true;
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.deleting');
@@ -7344,7 +7239,6 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     state.participants = previousParticipants;
     state.adminParticipantId = previousSelectedParticipantId;
     state.adminPersonDirty = previousPersonDirty;
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');

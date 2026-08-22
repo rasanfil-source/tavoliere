@@ -14,7 +14,6 @@ export const NETWORK_ACTION_SELECTOR = [
   '[data-revoke-admin-invitation]',
   '[data-admin-save-button]',
   '[data-admin-delete-participant]',
-  '[data-admin-add-guest]',
   '[data-week-health-save]',
   '[data-week-diet-save]',
   '[data-week-diet-remove]',

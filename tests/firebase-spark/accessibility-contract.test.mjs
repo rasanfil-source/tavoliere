@@ -42,7 +42,7 @@ test('la directory persone comunica selezione e stato anche senza colore', () =>
 test('il pannello amministrativo ha un layout dedicato a 320 pixel', () => {
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.admin-overview-grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.admin-dashboard-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.admin-guest-adder[\s\S]*grid-template-columns: 1fr/);
+  assert.match(styles, /@media \(max-width: 899px\)[\s\S]*\.admin-person-options-grid[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('il pannello amministrativo espone percorsi rapidi alle aree di lavoro', () => {
@@ -72,8 +72,16 @@ test('la navigazione amministrativa mostra soltanto le sezioni consentite', () =
   assert.match(app, /elements\.adminNavConfiguration\.hidden = !canConfigureCenter/);
   assert.match(app, /elements\.adminNavActivity\.hidden = !canViewActivity/);
   assert.match(app, /elements\.adminAccessSection\.hidden = !canManageAccess/);
-  assert.match(index, /data-admin-role-option/);
-  assert.match(app, /elements\.adminRoleOptions\.forEach[\s\S]*option\.hidden = !canManageAccess/);
+  assert.match(index, /data-admin-permissions-group/);
+  assert.match(app, /elements\.adminPermissionsGroup\.hidden = !canAssignOperationalRoles\(\)[\s\S]*!canDesignateCenterAdministrator\(\)/);
+});
+
+test('ruoli, contatti e indicatori della directory hanno etichette accessibili', () => {
+  assert.match(index, /admin-person-options[\s\S]*admin\.people\.permissions\.title/);
+  assert.match(index, /admin-contact-options[\s\S]*admin\.people\.contactOptions\.title/);
+  assert.match(index, /data-admin-participant-administrative-role/);
+  assert.match(app, /admin\.people\.initialsTitle[\s\S]*aria-label=/);
+  assert.match(app, /admin\.people\.phonePresent[\s\S]*aria-label=/);
 });
 
 test('la scheda persona conserva le modifiche e offre annullamento esplicito', () => {

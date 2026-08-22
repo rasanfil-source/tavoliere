@@ -97,17 +97,17 @@ test('admin can create and fully edit participant profiles', () => {
   assert.match(agendaDietAssignments, /\^\\d\+\$/);
   assert.match(agendaDietAssignments, /Number\(assignment\.dietTag\) >= 1/);
   assert.match(agendaDietAssignments, /Number\(assignment\.dietTag\) <= 999/);
-  assert.match(index, /data-admin-participant-vice/);
+  assert.match(index, /data-admin-participant-administrative-role[\s\S]*option value="vice"/);
   assert.match(app, /if \(otherViceCount >= 4\)/);
   assert.match(app, /admin\.people\.viceLimit/);
   assert.match(index, /data-admin-people-list/);
-  assert.match(index, /data-admin-guest-preset[\s\S]*Ospite 1[\s\S]*Altro numero/);
+  assert.match(index, /data-admin-participant-group[\s\S]*value="group_ospiti"/);
+  assert.doesNotMatch(index, /data-admin-guest-preset|data-admin-add-guest/);
   assert.match(app, /function renderAdminPeopleList/);
   assert.match(app, /signature: participant\.signature/);
   assert.match(app, /admin-person-signature[\s\S]*?signatureTitle/);
   assert.match(app, /data-admin-person-open/);
-  assert.match(app, /function handleAdminAddGuest/);
-  assert.match(app, /const signature = `OSP\$\{guestNumber\}`/);
+  assert.doesNotMatch(app, /function handleAdminAddGuest|adminGuestPreset/);
   assert.match(participantData, /validateParticipantProfile\(profile\)/);
   assert.match(participantProfile, /viceAdminRole: profile\.viceAdminRole === true/);
 });
@@ -862,7 +862,7 @@ test('la Persona designata come amministratore riceve una membership persistente
   assert.match(app, /await linkCurrentAdministratorParticipant\(administratorParticipantId\)/);
   assert.match(adminCenter, /export async function linkCurrentAdministratorParticipant/);
   assert.match(adminCenter, /batch\.update\(doc\(db, 'centers', centerId, 'admins', user\.uid\)/);
-  assert.match(index, /data-admin-participant-administrator/);
+  assert.match(index, /data-admin-participant-administrative-role[\s\S]*option value="administrator"/);
   assert.match(app, /assignCenterAdministratorParticipant/);
   assert.match(participantData, /administratorParticipantId:\s*normalizedParticipantId/);
 });
@@ -882,17 +882,18 @@ test('il pannello amministratore distingue sospensione ed eliminazione definitiv
   assert.match(deleteHandler, /catch \(error\)[\s\S]*state\.adminParticipants = previousAdminParticipants/);
 });
 
-test('la condivisione contatti appartiene alla scheda Persone', () => {
+test('la condivisione contatti appartiene alla Configurazione e usa il salvataggio globale', () => {
   const settingsStart = index.indexOf('id="admin-configuration-section"');
   const settingsEnd = index.indexOf('id="admin-access-section"', settingsStart);
   const personStart = index.indexOf('id="admin-person-editor"');
   const personEnd = index.indexOf('class="admin-people-overview', personStart);
   const settingsSection = index.slice(settingsStart, settingsEnd);
   const personSection = index.slice(personStart, personEnd);
-  assert.doesNotMatch(settingsSection, /data-admin-contact-sharing-select/);
-  assert.match(personSection, /data-admin-contact-sharing-select/);
-  assert.match(app, /await updateParticipantContactSharing\(enabled\)/);
+  assert.match(settingsSection, /data-admin-contact-sharing-select/);
+  assert.doesNotMatch(personSection, /data-admin-contact-sharing-select/);
+  assert.doesNotMatch(app, /updateParticipantContactSharing/);
   assert.match(app, /participantContactSharingEnabled: elements\.adminContactSharingSelect/);
+  assert.match(app, /adminCenterSettingsSection\.addEventListener\('change', markAdminCenterDirty\)/);
   assert.match(app, /administratorName: state\.centerContactSettings\.administratorName/);
   assert.match(centerSettings, /participantContactSharingEnabled: Boolean\(participantContactSharingEnabled\)/);
   assert.match(calendarConfiguration, /participantContactSharingEnabled: target\.participantContactSharingEnabled/);
@@ -905,6 +906,24 @@ test('la scheda persona modifica i dati e l’elenco consente la cancellazione r
   assert.match(app, /data-admin-person-delete="\$\{participantId\}"/);
   assert.match(app, /deleteParticipantFromAdminPanel\(participant, deleteButton\)/);
   assert.match(index, /Scegli una persona per modificarne la scheda/);
+  assert.match(index, /data-admin-new-participant[^>]*admin\.people\.newPerson/);
+  assert.doesNotMatch(index, /data-admin-participant-select/);
+  assert.match(app, /data-admin-person-open/);
+  assert.doesNotMatch(app, /renderAdminParticipantOptions|handleAdminParticipantChange/);
+});
+
+test('amministratore e vice sono ruoli mutuamente esclusivi nel modulo persona', () => {
+  const roleSelect = index.match(/<select data-admin-participant-administrative-role>[\s\S]*?<\/select>/)?.[0] || '';
+  assert.match(roleSelect, /option value="none"/);
+  assert.match(roleSelect, /option value="vice"/);
+  assert.match(roleSelect, /option value="administrator"/);
+  assert.doesNotMatch(index, /data-admin-participant-vice|data-admin-participant-administrator/);
+  assert.match(app, /const selectedAdministrativeRole = elements\.adminParticipantAdministrativeRole\?\.value \|\| 'none'/);
+  assert.match(app, /const administratorChecked = selectedAdministrativeRole === 'administrator'/);
+  assert.match(app, /selectedAdministrativeRole === 'vice'/);
+  assert.match(app, /function syncAdminAdministrativeRoleControl\(participant\)/);
+  assert.match(app, /function canDesignateCenterAdministrator\(\) \{\s*return state\.adminRole === 'OWNER';\s*\}/);
+  assert.doesNotMatch(app.match(/function canDesignateCenterAdministrator\(\)[\s\S]*?\n\}/)?.[0] || '', /residentAdministratorAuthorized/);
 });
 
 test('la messa si programma nella vista settimana per i ruoli autorizzati', () => {
@@ -993,8 +1012,8 @@ test('il refresh diretto della settimana ripristina le capability operative dell
   assert.doesNotMatch(strongAuthorization, /state\.residentEntryKind === 'common'/);
 });
 
-test('la spunta vice usa direttamente sigla e password amministratori nel login residente', () => {
-  assert.match(index, /data-admin-participant-vice/);
+test('il ruolo vice usa direttamente sigla e password amministratori nel login residente', () => {
+  assert.match(index, /data-admin-participant-administrative-role[\s\S]*option value="vice"/);
   assert.doesNotMatch(index, /data-admin-vice-flow/);
   assert.doesNotMatch(index, /data-admin-vice-invitation-generate/);
   assert.doesNotMatch(app, /createViceInvitation/);

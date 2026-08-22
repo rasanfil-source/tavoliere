@@ -264,17 +264,6 @@ export async function updateCenterSettings({
   return settings;
 }
 
-export async function updateParticipantContactSharing(enabled) {
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'centers', getActiveCenterId()), {
-    participantContactSharingEnabled: enabled === true,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  await commitWithRetry(() => batch.commit());
-  invalidateCenterContactSettingsCache();
-  return enabled === true;
-}
-
 export async function saveCenterAvatar(dataUrl) {
   if (!isValidCenterAvatarDataUrl(dataUrl)) {
     throw new Error('L\'immagine scelta non è valida o è troppo grande');

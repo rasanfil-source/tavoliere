@@ -2264,7 +2264,6 @@ html[data-theme="neutro"] {
 }
 
 .admin-form-grid > .field-label,
-.admin-person-selector-row > .field-label,
 .admin-control-section > .field-label {
   margin-top: 12px;
 }
@@ -2283,15 +2282,44 @@ html[data-theme="neutro"] {
   grid-column: 1 / -1;
 }
 
-.admin-person-selector-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: end;
+.admin-new-person-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
-.admin-person-selector-row > .secondary-action {
+.admin-new-person-action > .secondary-action {
   min-height: 48px;
+}
+
+.admin-person-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-person-options {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.admin-person-options legend {
+  padding: 0 6px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.admin-person-options > .field-label {
+  margin-top: 0;
+}
+
+.admin-contact-options .admin-option-grid {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 0;
 }
 
 .admin-option-grid {
@@ -2686,26 +2714,6 @@ body[data-resident-login-visible="true"] .account-footer {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.admin-guest-adder {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: end;
-}
-
-.admin-guest-adder .field-label {
-  margin-top: 0;
-}
-
-.admin-guest-adder .secondary-action {
-  min-height: 48px;
-}
-
-.admin-guest-adder p {
-  grid-column: 1 / -1;
-  margin: 0;
-}
-
 @media (max-width: 899px) {
   .admin-overview-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2922,14 +2930,6 @@ body[data-resident-login-visible="true"] .account-footer {
     grid-column: auto;
   }
 
-  .admin-person-selector-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .admin-person-selector-row > .secondary-action {
-    padding-inline: 10px;
-  }
-
   .admin-center-avatar {
     grid-template-columns: 60px minmax(0, 1fr);
     padding: 10px 0;
@@ -2983,12 +2983,8 @@ body[data-resident-login-visible="true"] .account-footer {
     justify-self: end;
   }
 
-  .admin-guest-adder {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-guest-adder p {
-    grid-column: auto;
+  .admin-person-options-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -6649,12 +6645,7 @@ body[data-mode="admin"] .admin-shell-body {
 }
 
 @media (max-width: 620px) {
-  .admin-person-selector-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  .admin-person-selector-row > .secondary-action {
+  .admin-new-person-action > .secondary-action {
     width: 100%;
     min-height: 46px;
   }

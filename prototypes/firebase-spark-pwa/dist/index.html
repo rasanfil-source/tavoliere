@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822c">
+    <link rel="stylesheet" href="/styles.css?v=20260822d">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -565,6 +565,17 @@
                   </div>
                   <p class="field-help admin-cutoffs-help" data-i18n="admin.centerSettings.cutoffsHelp">Gli orari si applicano alle prenotazioni future.</p>
                 </fieldset>
+                <fieldset class="admin-configuration-group admin-contact-sharing-group" data-admin-contact-sharing-row>
+                  <legend data-i18n="admin.configuration.contactSharing.title">Contatti nel riepilogo</legend>
+                  <label class="field-label admin-contact-sharing-picker">
+                    <span data-i18n="admin.adaptations.contactSharing.label">Chiamata ai commensali</span>
+                    <select data-admin-contact-sharing-select>
+                      <option value="enabled" data-i18n="admin.adaptations.contactSharing.enabled">📞 Chiamata ai commensali attivata</option>
+                      <option value="disabled" data-i18n="admin.adaptations.contactSharing.disabled">📵 Chiamata ai commensali disattivata</option>
+                    </select>
+                    <small class="field-help" data-i18n="admin.configuration.contactSharing.help">Decide se nel riepilogo sono visibili i numeri per i quali è stata concessa l'autorizzazione.</small>
+                  </label>
+                </fieldset>
                 <fieldset class="admin-administrator-profile" data-admin-administrator-profile>
                   <legend data-i18n="role.owner">Responsabile del centro</legend>
                   <p class="field-help" data-i18n="admin.administrator.help">Nome, sigla ed email sono obbligatori.</p>
@@ -833,19 +844,8 @@
                   <p data-admin-status>-</p>
                 </div>
                 <p class="admin-people-intro" data-i18n="admin.people.intro">Inserisci i commensali del centro e condividi il collegamento per accedere al calendario.</p>
-                <label class="field-label admin-contact-sharing-picker" data-admin-contact-sharing-row>
-                  <span data-i18n="admin.adaptations.contactSharing.label">Chiamata ai commensali</span>
-                  <select data-admin-contact-sharing-select>
-                    <option value="enabled" data-i18n="admin.adaptations.contactSharing.enabled">📞 Chiamata ai commensali attivata</option>
-                    <option value="disabled" data-i18n="admin.adaptations.contactSharing.disabled">📵 Chiamata ai commensali disattivata</option>
-                  </select>
-                </label>
-                <div class="admin-person-selector-row">
-                  <label class="field-label">
-                    <span data-i18n="week.operations.person">Persona</span>
-                    <select data-admin-participant-select></select>
-                  </label>
-                  <button type="button" class="secondary-action" data-admin-new-participant data-i18n="admin.people.add">Nuova persona</button>
+                <div class="admin-new-person-action">
+                  <button type="button" class="secondary-action" data-admin-new-participant data-i18n="admin.people.newPerson">Nuova persona</button>
                 </div>
                 <div class="admin-form-grid admin-person-fields">
                   <label class="field-label admin-field-wide">
@@ -866,6 +866,7 @@
                       <option value="group_residenti" data-i18n="role.residentPlural">Residenti</option>
                       <option value="group_ospiti" data-i18n="role.guestPlural">Ospiti</option>
                     </select>
+                    <small class="field-help" data-i18n="admin.people.groupHelp">Scegli Ospiti per gestire l'ospite nello stesso elenco.</small>
                   </label>
                   <label class="field-label admin-person-field-diet">
                     <span data-i18n="diet.option.label">Dieta</span>
@@ -881,27 +882,35 @@
                     <input type="tel" data-admin-phone-input placeholder="+39..." inputmode="tel">
                   </label>
                 </div>
-                <div class="admin-option-grid">
-                  <label class="checkbox-row" data-admin-role-option>
-                    <input type="checkbox" data-admin-participant-liturgy>
-                    <span data-i18n="admin.people.liturgicalRole">Celebrazioni liturgiche</span>
-                  </label>
-                  <label class="checkbox-row" data-admin-role-option>
-                    <input type="checkbox" data-admin-participant-vice>
-                    <span data-i18n="role.vice">Vice amministratore</span>
-                  </label>
-                  <label class="checkbox-row" data-admin-administrator-option>
-                    <input type="checkbox" data-admin-participant-administrator>
-                    <span data-i18n="role.admin">Amministratore</span>
-                  </label>
-                  <label class="checkbox-row">
-                    <input type="checkbox" data-admin-phone-consent>
-                    <span data-i18n="admin.people.phoneConsent">Puoi chiamare questa persona</span>
-                  </label>
-                  <label class="checkbox-row">
-                    <input type="checkbox" data-admin-whatsapp-enabled>
-                    <span data-i18n="admin.people.whatsappEnabled">Raggiungibile anche su WhatsApp</span>
-                  </label>
+                <div class="admin-person-options-grid">
+                  <fieldset class="admin-person-options" data-admin-permissions-group>
+                    <legend data-i18n="admin.people.permissions.title">Permessi</legend>
+                    <label class="field-label">
+                      <span data-i18n="admin.people.administrativeRole.label">Ruolo amministrativo</span>
+                      <select data-admin-participant-administrative-role>
+                        <option value="none" data-i18n="admin.people.administrativeRole.none">Nessun ruolo amministrativo</option>
+                        <option value="vice" data-i18n="admin.people.administrativeRole.vice">Vice amministratore</option>
+                        <option value="administrator" data-i18n="admin.people.administrativeRole.administrator">Amministratore</option>
+                      </select>
+                    </label>
+                    <label class="checkbox-row">
+                      <input type="checkbox" data-admin-participant-liturgy>
+                      <span data-i18n="admin.people.liturgicalRole">Celebrazioni liturgiche</span>
+                    </label>
+                  </fieldset>
+                  <fieldset class="admin-person-options admin-contact-options">
+                    <legend data-i18n="admin.people.contactOptions.title">Opzioni di contatto</legend>
+                    <div class="admin-option-grid">
+                      <label class="checkbox-row">
+                        <input type="checkbox" data-admin-phone-consent>
+                        <span data-i18n="admin.people.phoneConsent">Disponibile per le chiamate</span>
+                      </label>
+                      <label class="checkbox-row">
+                        <input type="checkbox" data-admin-whatsapp-enabled>
+                        <span data-i18n="admin.people.whatsappEnabled">Disponibile anche su WhatsApp</span>
+                      </label>
+                    </div>
+                  </fieldset>
                 </div>
                 <div class="admin-participant-actions">
                   <button type="button" class="save-button" data-i18n="admin.people.save" data-admin-save-button>Salva persona</button>
@@ -916,24 +925,6 @@
                   <p data-i18n="admin.people.overview.subtitle">Scegli una persona per modificarne la scheda</p>
                 </div>
                 <div class="admin-people-list" data-admin-people-list></div>
-                <div class="admin-guest-adder">
-                  <label class="field-label">
-                    <span data-i18n="admin.guest.label">Ospite</span>
-                    <select data-admin-guest-preset>
-                      <option value="1">Ospite 1</option>
-                      <option value="2">Ospite 2</option>
-                      <option value="3">Ospite 3</option>
-                      <option value="4">Ospite 4</option>
-                      <option value="other">Altro numero...</option>
-                    </select>
-                  </label>
-                  <label class="field-label" data-admin-guest-custom-wrap hidden>
-                    <span data-i18n="admin.guest.customNumber">Numero ospite</span>
-                    <input type="number" data-admin-guest-custom min="1" max="999" inputmode="numeric">
-                  </label>
-                  <button type="button" class="secondary-action" data-admin-add-guest data-i18n="admin.guest.add">Aggiungi ospite</button>
-                  <p data-admin-guest-status aria-live="polite">-</p>
-                </div>
               </section>
 
               <section class="admin-control-section admin-calendar-extension" id="admin-activity-section" data-admin-mobile-section="activity" tabindex="-1" data-admin-calendar-extension hidden aria-labelledby="admin-calendar-extension-title">
@@ -1056,6 +1047,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822c"></script>
+  <script type="module" src="/app.js?v=20260822e"></script>
   </body>
 </html>
