@@ -37,6 +37,7 @@ const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus'
 export async function saveCenterConfiguration({
   name,
   appDisplayName,
+  appDisplaySubtitle,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
@@ -79,6 +80,7 @@ export async function saveCenterConfiguration({
   const target = {
     name,
     ...(typeof appDisplayName === 'string' ? { appDisplayName } : {}),
+    ...(typeof appDisplaySubtitle === 'string' ? { appDisplaySubtitle } : {}),
     timezone,
     reservationCutoffs: normalizeReservationCutoffs(reservationCutoffs),
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
@@ -386,6 +388,9 @@ function presentationData(centerId, target) {
     centerId,
     ...(typeof target.appDisplayName === 'string'
       ? { appDisplayName: target.appDisplayName }
+      : {}),
+    ...(typeof target.appDisplaySubtitle === 'string'
+      ? { appDisplaySubtitle: target.appDisplaySubtitle }
       : {}),
     participantContactSharingEnabled: target.participantContactSharingEnabled,
     themePalette: target.themePalette,

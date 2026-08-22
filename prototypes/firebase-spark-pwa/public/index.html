@@ -33,15 +33,15 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260821c">
+    <link rel="stylesheet" href="/styles.css?v=20260822a">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
       <img src="/icons/splash-512.png?v=20260807a" alt="">
       <p class="startup-splash-title">
-        <strong>Oggi a Tavola</strong>
-        <span>Per prenotarsi sempre in tempo!</span>
+        <strong data-startup-splash-title>Oggi a Tavola</strong>
+        <span data-startup-splash-subtitle>Per prenotarsi sempre in tempo!</span>
       </p>
     </div>
     <main class="app-shell">
@@ -612,11 +612,18 @@
                     <p data-admin-center-avatar-status aria-live="polite" data-i18n="admin.avatar.none">Nessuna icona inserita.</p>
                   </div>
                 </section>
-                <label class="field-label admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
-                  <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
-                  <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
-                  <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Nome mostrato nella schermata del primo accesso. Può modificarlo soltanto il responsabile del centro.</small>
-                </label>
+                <div class="admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
+                  <label class="field-label">
+                    <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
+                    <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
+                    <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Prima riga mostrata nella schermata iniziale. Può modificarla soltanto il responsabile del centro.</small>
+                  </label>
+                  <label class="field-label">
+                    <span data-i18n="admin.adaptations.appDisplaySubtitle.label">Seconda riga</span>
+                    <input type="text" data-admin-app-display-subtitle maxlength="100" autocomplete="off" value="Per prenotarsi sempre in tempo!">
+                    <small class="field-help" data-i18n="admin.adaptations.appDisplaySubtitle.help">Frase mostrata sotto il nome nella schermata iniziale.</small>
+                  </label>
+                </div>
               </section>
 
               <div class="admin-role-stack" id="admin-adaptations-section" data-admin-mobile-section="adaptations" tabindex="-1">
@@ -1040,6 +1047,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260821r"></script>
+  <script type="module" src="/app.js?v=20260822a"></script>
   </body>
 </html>

@@ -188,13 +188,15 @@ test('il vice usa la configurazione ma non amministra il passaggio di consegne',
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);
 });
 
-test('solo il responsabile unico cambia il nome di presentazione', () => {
-  assert.match(rules, /'appDisplayName', 'updatedAt'/);
+test('solo il responsabile unico cambia titolo e seconda riga iniziali', () => {
+  assert.match(rules, /'appDisplayName', 'appDisplaySubtitle', 'updatedAt'/);
   assert.match(rules, /appDisplayName\.size\(\) > 0/);
   assert.match(rules, /appDisplayName\.size\(\) <= 60/);
+  assert.match(rules, /appDisplaySubtitle\.size\(\) > 0/);
+  assert.match(rules, /appDisplaySubtitle\.size\(\) <= 100/);
   assert.match(
     rules,
-    /allow update: if settingsId == 'current'[\s\S]*affectedKeys\(\)\.hasAny\(\['appDisplayName'\]\)[\s\S]*isCenterOwner\(centerId\)/
+    /allow update: if settingsId == 'current'[\s\S]*affectedKeys\(\)[\s\S]*hasAny\(\['appDisplayName', 'appDisplaySubtitle'\]\)[\s\S]*isCenterOwner\(centerId\)/
   );
 });
 

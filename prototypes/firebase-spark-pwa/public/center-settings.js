@@ -12,6 +12,7 @@ export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 export const DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola';
+export const DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
 const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
@@ -43,6 +44,7 @@ export function loadCachedCenterContactSettings() {
     return {
       name: normalizeCenterName(cached.name),
       appDisplayName: normalizeAppDisplayName(cached.appDisplayName),
+      appDisplaySubtitle: normalizeAppDisplaySubtitle(cached.appDisplaySubtitle),
       timezone: typeof cached.timezone === 'string' ? cached.timezone : 'Europe/Rome',
       reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
       participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
@@ -161,6 +163,7 @@ export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
 export async function updateCenterSettings({
   name,
   appDisplayName,
+  appDisplaySubtitle,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
@@ -220,12 +223,15 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260821e');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260822a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
       ? {}
       : { appDisplayName: normalizeAppDisplayName(appDisplayName) }),
+    ...(appDisplaySubtitle === undefined
+      ? {}
+      : { appDisplaySubtitle: normalizeAppDisplaySubtitle(appDisplaySubtitle) }),
     timezone,
     reservationCutoffs: normalizedCutoffs,
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
@@ -344,6 +350,7 @@ function refreshCenterContactSettings() {
       const value = {
         name: normalizeCenterName(data.name),
         appDisplayName: normalizeAppDisplayName(data.appDisplayName),
+        appDisplaySubtitle: normalizeAppDisplaySubtitle(data.appDisplaySubtitle),
         timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
         reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
@@ -405,6 +412,15 @@ function normalizeAppDisplayName(value) {
   return normalized && normalized.length <= 60
     ? normalized
     : DEFAULT_APP_DISPLAY_NAME;
+}
+
+function normalizeAppDisplaySubtitle(value) {
+  const normalized = typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ')
+    : '';
+  return normalized && normalized.length <= 100
+    ? normalized
+    : DEFAULT_APP_DISPLAY_SUBTITLE;
 }
 
 function normalizeInterfaceStyle(value) {

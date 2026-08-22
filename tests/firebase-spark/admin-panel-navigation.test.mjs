@@ -126,21 +126,27 @@ test('i link operativi non sono utilizzabili senza token e viaggiano con il logi
   assert.match(app, /document\.querySelectorAll\('\[data-access-link\], \[data-share-access-link\]'\)/);
 });
 
-test('il nome di presentazione appartiene al solo responsabile e non modifica lo splash successivo', () => {
+test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   const configuration = html.match(/id="admin-configuration-section"[\s\S]*?<div class="admin-role-stack"/)?.[0] || '';
   const adaptations = html.match(/id="admin-adaptations-section"[\s\S]*?id="admin-access-section"/)?.[0] || '';
   assert.match(html, /<h1 data-title>Oggi a tavola<\/h1>/);
   assert.match(configuration, /data-admin-app-display-name-picker hidden/);
   assert.match(configuration, /data-admin-app-display-name[^>]*maxlength="60"/);
+  assert.match(configuration, /data-admin-app-display-subtitle[^>]*maxlength="100"/);
   assert.doesNotMatch(adaptations, /data-admin-app-display-name/);
+  assert.doesNotMatch(adaptations, /data-admin-app-display-subtitle/);
   assert.match(app, /const canEditAppDisplayName = state\.adminRole === 'OWNER' && !state\.residentSettingsMode/);
   assert.match(app, /state\.adminRole === 'OWNER'[\s\S]*?appDisplayName: elements\.adminAppDisplayName\?\.value/);
+  assert.match(app, /appDisplaySubtitle: elements\.adminAppDisplaySubtitle\?\.value/);
   assert.doesNotMatch(app, /appDisplayNameToSave/);
   assert.match(app, /showResidentLogin[\s\S]*?\? appDisplayName/);
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
+  assert.match(centerSettings, /DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!'/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
   assert.match(splash, /<img src="\/icons\/splash-512\.png/);
-  assert.match(splash, /startup-splash-title[\s\S]*Oggi a Tavola[\s\S]*Per prenotarsi sempre in tempo!/);
+  assert.match(splash, /data-startup-splash-title[\s\S]*Oggi a Tavola/);
+  assert.match(splash, /data-startup-splash-subtitle[\s\S]*Per prenotarsi sempre in tempo!/);
+  assert.match(app, /function syncStartupSplashPresentation\(\)[\s\S]*appDisplaySubtitle/);
   assert.doesNotMatch(splash, /data-title/);
 });
 

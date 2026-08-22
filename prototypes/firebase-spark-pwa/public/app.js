@@ -36,6 +36,7 @@ import {
 } from './center-context.js?v=20260816h';
 import {
   DEFAULT_APP_DISPLAY_NAME,
+  DEFAULT_APP_DISPLAY_SUBTITLE,
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
   loadCenterContactSettings,
@@ -46,7 +47,7 @@ import {
   updateParticipantContactSharing,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260821e';
+} from './center-settings.js?v=20260822a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -626,6 +627,7 @@ const state = {
   centerContactSettings: {
     name: '',
     appDisplayName: DEFAULT_APP_DISPLAY_NAME,
+    appDisplaySubtitle: DEFAULT_APP_DISPLAY_SUBTITLE,
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
     themePalette: 'inchiostro',
@@ -782,6 +784,7 @@ const elements = {
   adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
   adminAppDisplayNamePicker: document.querySelector('[data-admin-app-display-name-picker]'),
   adminAppDisplayName: document.querySelector('[data-admin-app-display-name]'),
+  adminAppDisplaySubtitle: document.querySelector('[data-admin-app-display-subtitle]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
@@ -931,6 +934,8 @@ const elements = {
   adminAdministratorPasswordRow: document.querySelector('[data-admin-administrator-password-row]'),
   adminAdministratorPassword: document.querySelector('[data-admin-administrator-password]'),
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
+  startupSplashTitle: document.querySelector('[data-startup-splash-title]'),
+  startupSplashSubtitle: document.querySelector('[data-startup-splash-subtitle]'),
   title: document.querySelector('[data-title]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
@@ -1358,6 +1363,7 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
+  syncStartupSplashPresentation();
   applyMealReminderUrlPreference();
   registerServiceWorker();
   updateConnectivityState();
@@ -1380,6 +1386,7 @@ async function bootstrapApp() {
   const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
   if (centerSettings) {
     state.centerContactSettings = applyResidentPreferences(centerSettings);
+    syncStartupSplashPresentation();
     await applyCenterDefaultLanguage(centerSettings);
   }
   renderAllViews();
@@ -1399,6 +1406,17 @@ async function bootstrapApp() {
 }
 
 bootstrapApp().catch(console.error);
+
+function syncStartupSplashPresentation() {
+  if (elements.startupSplashTitle) {
+    elements.startupSplashTitle.textContent = state.centerContactSettings.appDisplayName
+      || DEFAULT_APP_DISPLAY_NAME;
+  }
+  if (elements.startupSplashSubtitle) {
+    elements.startupSplashSubtitle.textContent = state.centerContactSettings.appDisplaySubtitle
+      || DEFAULT_APP_DISPLAY_SUBTITLE;
+  }
+}
 
 function hideStartupSplash() {
   const splash = document.querySelector('[data-startup-splash]');
@@ -4673,7 +4691,10 @@ async function performAdminCenterSettingsSave() {
     const settings = await updateCenterSettings({
       name: elements.adminCenterName.value,
       ...(state.adminRole === 'OWNER'
-        ? { appDisplayName: elements.adminAppDisplayName?.value }
+        ? {
+            appDisplayName: elements.adminAppDisplayName?.value,
+            appDisplaySubtitle: elements.adminAppDisplaySubtitle?.value
+          }
         : {}),
       timezone: elements.adminCenterTimezone.value,
       participantContactSharingEnabled: elements.adminContactSharingSelect
@@ -4823,6 +4844,11 @@ function syncAdminCenterSettingsForm() {
     elements.adminAppDisplayName.disabled = !canEditAppDisplayName;
     elements.adminAppDisplayName.value = state.centerContactSettings.appDisplayName
       || DEFAULT_APP_DISPLAY_NAME;
+  }
+  if (elements.adminAppDisplaySubtitle) {
+    elements.adminAppDisplaySubtitle.disabled = !canEditAppDisplayName;
+    elements.adminAppDisplaySubtitle.value = state.centerContactSettings.appDisplaySubtitle
+      || DEFAULT_APP_DISPLAY_SUBTITLE;
   }
   elements.adminCenterTimezone.value = state.centerContactSettings.timezone || 'Europe/Rome';
   elements.adminCutoffLunch.value = state.centerContactSettings.reservationCutoffs?.lunch || '09:30';

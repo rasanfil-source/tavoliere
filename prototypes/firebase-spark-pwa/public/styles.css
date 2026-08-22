@@ -2244,6 +2244,16 @@ html[data-theme="neutro"] {
   margin-top: 12px;
 }
 
+.admin-app-display-name-picker {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.admin-app-display-name-picker .field-label {
+  margin-top: 0;
+}
+
 .admin-field-wide {
   grid-column: 1 / -1;
 }
