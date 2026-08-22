@@ -807,6 +807,31 @@ html[data-interface-family="cool"] .topbar-context-action small {
   color: color-mix(in srgb, var(--surface) 78%, transparent);
 }
 
+/* Originale usa la stessa testata istituzionale delle altre viste. La banda
+   appartiene alla navigazione comune e non deve dipendere dalla matrice scelta. */
+html[data-interface-family="original"] .topbar {
+  padding: 12px 16px;
+  border-radius: 0 0 18px 18px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-family="original"] .topbar h1,
+html[data-interface-family="original"] .topbar [data-title-center],
+html[data-interface-family="original"] .topbar [data-session-role] {
+  color: inherit;
+}
+
+html[data-interface-family="original"] .topbar-context-action {
+  border-color: color-mix(in srgb, var(--surface) 42%, transparent);
+  background: color-mix(in srgb, var(--surface) 13%, transparent);
+  color: var(--surface);
+}
+
+html[data-interface-family="original"] .topbar-context-action small {
+  color: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
 html[data-interface-family="cool"] h1,
 html[data-interface-family="cool"] h2,
 html[data-interface-family="cool"] h3,
@@ -1081,7 +1106,8 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 }
 
 @media (max-width: 620px) {
-  html[data-interface-family="cool"] .topbar {
+  html[data-interface-family="cool"] .topbar,
+  html[data-interface-family="original"] .topbar {
     margin-inline: -1px;
     border-radius: 0 0 16px 16px;
   }

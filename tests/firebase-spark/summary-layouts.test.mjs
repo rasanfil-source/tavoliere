@@ -61,6 +61,12 @@ test('il mobile usa la stessa struttura per le due schermate anche senza situazi
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-row-meals td \{\s*height: 62px/);
 });
 
+test('Originale conserva la banda colorata comune in prenotazioni riepilogo e pannello', () => {
+  assert.match(styles, /html\[data-interface-family="original"\] \.topbar \{[\s\S]*background: var\(--primary\)[\s\S]*color: var\(--surface\)/);
+  assert.match(styles, /html\[data-interface-family="original"\] \.topbar h1,[\s\S]*\[data-title-center\][\s\S]*color: inherit/);
+  assert.match(styles, /html\[data-interface-family="original"\] \.topbar-context-action \{[\s\S]*color: var\(--surface\)/);
+});
+
 test('gli invitati restano visibili nel riepilogo internazionale mobile', () => {
   assert.match(view, /summary-international-mobile-guests/);
   assert.match(view, /summary-international-guest-row/);
