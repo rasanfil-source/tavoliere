@@ -36,7 +36,7 @@ import {
 } from './domain/participant-profile.mjs?v=20260816g';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
 import { isRecoverableSessionError } from './core/user-error.mjs?v=20260822a';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {

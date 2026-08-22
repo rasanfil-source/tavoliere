@@ -36,7 +36,6 @@ const OWNER_CAPABILITIES = [
   CAPABILITIES.MANAGE_PARTICIPANTS,
   CAPABILITIES.DELETE_PARTICIPANTS,
   CAPABILITIES.MANAGE_DAILY_OPERATIONS,
-  CAPABILITIES.MANAGE_MASS,
   CAPABILITIES.ASSIGN_VICE,
   CAPABILITIES.ASSIGN_LITURGY,
   CAPABILITIES.MANAGE_ADMINS,
@@ -62,7 +61,6 @@ const MANAGER_CAPABILITIES = [
   CAPABILITIES.MANAGE_PARTICIPANTS,
   CAPABILITIES.DELETE_PARTICIPANTS,
   CAPABILITIES.MANAGE_DAILY_OPERATIONS,
-  CAPABILITIES.MANAGE_MASS,
   CAPABILITIES.VIEW_OPERATIONAL_LINKS
 ];
 
@@ -89,9 +87,6 @@ export function getRoleCapabilities(role, options = {}) {
   const normalizedRole = normalizeCenterRole(role);
   const capabilities = new Set(ROLE_CAPABILITIES[normalizedRole] || []);
 
-  if (normalizedRole === CENTER_ROLES.MANAGER && options.massPermission === true) {
-    capabilities.add(CAPABILITIES.MANAGE_MASS);
-  }
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }

@@ -22,7 +22,7 @@ import {
   normalizeReservationCutoffs
 } from './schedule-utils.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260819b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
 
 export const BOOTSTRAP_ADMIN_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 

@@ -166,11 +166,15 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
   assert.match(
     rules,
-    /function canManageMass\(centerId\)[\s\S]*adminCanManageMass\(centerId\)[\s\S]*residentIsCenterAdministrator\(centerId\)[\s\S]*get\('liturgicalRole', false\) == true/
+    /function canManageMass\(centerId\)[\s\S]*adminCanManageMass\(centerId\)[\s\S]*publicParticipants[\s\S]*get\('liturgicalRole', false\) == true/
   );
   assert.match(
     rules,
-    /function adminCanManageMass\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN'\][\s\S]*massPermission/
+    /function adminHasLiturgicalRole\(centerId\)[\s\S]*participantId[\s\S]*publicParticipants[\s\S]*get\('liturgicalRole', false\) == true[\s\S]*function adminCanManageMass\(centerId\)[\s\S]*adminHasLiturgicalRole\(centerId\)/
+  );
+  assert.match(
+    rules,
+    /function viceParticipantUpdateDoesNotChangeRoles\(centerId, participantId\)[\s\S]*participantId == sessionParticipantId\(centerId\)[\s\S]*liturgicalRole/
   );
   assert.match(
     rules,

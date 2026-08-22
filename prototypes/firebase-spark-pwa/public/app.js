@@ -54,7 +54,7 @@ import {
 } from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260819b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import {
@@ -101,7 +101,7 @@ const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPen
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260822a',
+  admin: './admin-center.js?v=20260822b',
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
@@ -2346,7 +2346,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   state.adminRole = isAdmin ? access.role : '';
   state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
   state.adminMassPermission = isAdmin && access.massPermission === true;
-  state.adminCanManageMass = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_MASS);
+  state.adminCanManageMass = isAdmin && access.canManageMass === true;
   state.adminCanManageDailyOperations = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
   renderAdminCenterSwitcher(access.availableCenters, access.centerId, isPlatformOwner);
   showRequiredAdminPasswordSetup(user, access.passwordSetupRequired === true);
@@ -5969,7 +5969,7 @@ function syncAdminContactForm() {
     syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
     elements.adminPhoneInput.value = '';
     elements.adminParticipantLiturgy.checked = false;
-    elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
+    elements.adminParticipantLiturgy.disabled = true;
     syncAdminAdministrativeRoleControl(null);
     elements.adminPhoneConsent.checked = false;
     elements.adminWhatsappEnabled.checked = false;
@@ -5990,7 +5990,7 @@ function syncAdminContactForm() {
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
   elements.adminPhoneInput.value = participant.phone || '';
   elements.adminParticipantLiturgy.checked = participant.liturgicalRole === true;
-  elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
+  elements.adminParticipantLiturgy.disabled = !canEditParticipantLiturgy(participant);
   syncAdminAdministrativeRoleControl(participant);
   elements.adminPhoneConsent.checked = Boolean(participant.phoneConsent);
   elements.adminWhatsappEnabled.checked = Boolean(participant.whatsappEnabled);
@@ -6018,6 +6018,13 @@ function syncAdminAdministrativeRoleControl(participant) {
 function canAssignOperationalRoles() {
   return hasCurrentCapability(CAPABILITIES.ASSIGN_VICE)
     && hasCurrentCapability(CAPABILITIES.ASSIGN_LITURGY);
+}
+
+function canEditParticipantLiturgy(participant) {
+  if (canAssignOperationalRoles()) return true;
+  return state.residentAdministratorAuthorized === true
+    && Boolean(participant?.participantId)
+    && participant.participantId === state.selectedParticipant?.participantId;
 }
 
 function hasCurrentCapability(capability, options = {}) {
@@ -6097,7 +6104,8 @@ function applyAdminCapabilityVisibility() {
   }
   if (elements.adminPermissionsGroup) {
     elements.adminPermissionsGroup.hidden = !canAssignOperationalRoles()
-      && !canDesignateCenterAdministrator();
+      && !canDesignateCenterAdministrator()
+      && !state.residentAdministratorAuthorized;
   }
   if (elements.adminAuditSection) {
     elements.adminAuditSection.hidden = !canViewActivity;
@@ -6351,7 +6359,6 @@ function handleParticipantMealsClick(event) {
 
 function canManageMass() {
   return state.adminCanManageMass
-    || selectedParticipantIsCenterAdministrator()
     || hasCurrentCapability(CAPABILITIES.MANAGE_MASS, {
       liturgicalRole: state.selectedParticipant?.liturgicalRole === true
     });
@@ -7269,7 +7276,7 @@ async function performAdminSaveContact() {
       initials: elements.adminParticipantInitials.value,
       groupId: elements.adminParticipantGroup.value,
       dietTags,
-      liturgicalRole: canAssignOperationalRoles()
+      liturgicalRole: canEditParticipantLiturgy(participant)
         ? elements.adminParticipantLiturgy.checked
         : participant?.liturgicalRole === true,
       viceAdminRole,
@@ -7761,8 +7768,8 @@ async function activateResidentAdministratorPanel() {
   if (!role || !state.residentAdministratorAuthorized) return false;
   state.adminRole = role;
   state.adminAuthUid = getCurrentUser()?.uid || '';
-  state.adminMassPermission = true;
-  state.adminCanManageMass = true;
+  state.adminMassPermission = false;
+  state.adminCanManageMass = state.selectedParticipant?.liturgicalRole === true;
   state.adminCanManageDailyOperations = true;
   state.residentSettingsMode = false;
   state.adminActiveSection = 'people';

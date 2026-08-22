@@ -32,7 +32,7 @@ test('l amministratore gestisce il centro ma non puo sostituire il responsabile'
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
   assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_DAILY_OPERATIONS), true);
-  assert.equal(capabilities.has(CAPABILITIES.MANAGE_MASS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_MASS), false);
   assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
   assert.equal(capabilities.has(CAPABILITIES.ASSIGN_LITURGY), true);
 });
@@ -50,9 +50,13 @@ test('il vice usa Persone Link e Aspetto ma non le schede riservate', () => {
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
 });
 
-test('il vice gestisce la Messa mentre l incaricato liturgico conserva il solo permesso specifico', () => {
-  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS), true);
-  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { massPermission: true }), true);
+test('la Liturgia e personale e non viene ereditata dai ruoli amministrativi', () => {
+  assert.equal(hasCapability(CENTER_ROLES.OWNER, CAPABILITIES.MANAGE_MASS), false);
+  assert.equal(hasCapability(CENTER_ROLES.ADMIN, CAPABILITIES.MANAGE_MASS), false);
+  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS), false);
+  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { massPermission: true }), false);
+  assert.equal(hasCapability(CENTER_ROLES.OWNER, CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
+  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
   assert.equal(hasCapability('', CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
   assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { liturgicalRole: true }), false);
 });

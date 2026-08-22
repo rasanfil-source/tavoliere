@@ -948,20 +948,25 @@ test('la messa si programma nella vista settimana per i ruoli autorizzati', () =
   assert.match(app, /getMealCutoffDate\([\s\S]*'dinner'/);
   assert.match(app, /week-mass-button-locked/);
   assert.doesNotMatch(styles, /\.week-mass-mobile-icon\s*\{[\s\S]*?display:\s*none/);
-  assert.match(app, /state\.adminCanManageMass[\s\S]*hasCurrentCapability\(CAPABILITIES\.MANAGE_MASS/);
-  assert.match(app, /state\.adminCanManageMass = isAdmin && hasCurrentCapability\(CAPABILITIES\.MANAGE_MASS\)/);
+  assert.match(app, /state\.adminCanManageMass = isAdmin && access\.canManageMass === true/);
+  assert.match(app, /liturgicalRole: state\.selectedParticipant\?\.liturgicalRole === true/);
   assert.match(app, /restoreResidentIdentityForAuthorizedAdministrator/);
   assert.match(app, /state\.weekDailyOperations\.push\(\{ dateId, massScheduled \}\)/);
   assert.match(app, /state\.weekDailyOperations = state\.weekDailyOperations\.filter/);
   assert.doesNotMatch(app, /data-week-mass-(?:row|effect)/);
   assert.match(participantProfile, /liturgicalRole: profile\.liturgicalRole === true/);
   assert.match(adminCenter, /canManageMass: hasCapability\(role, CAPABILITIES\.MANAGE_MASS/);
+  assert.match(adminCenter, /publicParticipants[\s\S]*liturgicalRole/);
   assert.match(adminCenter, /canManageDailyOperations: hasCapability\(role, CAPABILITIES\.MANAGE_DAILY_OPERATIONS\)/);
   assert.match(participantProfile, /viceAdminRole: profile\.viceAdminRole === true/);
   assert.match(participantData, /export async function listCenterAdministrators/);
   assert.match(app, /selectedParticipantIsCenterAdministrator\(\)/);
   assert.match(app, /listPublicParticipants\(\{/);
   assert.match(app, /viceAdminRole: options\.viceAdminRole === true/);
+  assert.match(app, /function canEditParticipantLiturgy\(participant\)/);
+  assert.match(app, /participant\.participantId === state\.selectedParticipant\?\.participantId/);
+  assert.match(app, /elements\.adminParticipantLiturgy\.disabled = !canEditParticipantLiturgy\(participant\)/);
+  assert.match(app, /liturgicalRole: canEditParticipantLiturgy\(participant\)/);
 });
 
 test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e cucina', () => {

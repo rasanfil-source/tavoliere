@@ -1219,13 +1219,29 @@ test('il vice autenticato come residente gestisce Agenda ma non le Messe', async
   }));
 });
 
-test('il responsabile autenticato come residente gestisce Agenda e Messe', async () => {
+test('il vice puo assegnare Liturgia soltanto alla propria Persona', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await createAuthorizedViceSession(context.firestore(), PERSONAL_UID, MARIO_ID);
+  });
+  const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertSucceeds(personalDb.doc(publicParticipantPath(MARIO_ID)).set({
+    liturgicalRole: true
+  }, { merge: true }));
+  await assertFails(personalDb.doc(publicParticipantPath(LUCA_ID)).set({
+    liturgicalRole: true
+  }, { merge: true }));
+});
+
+test('il responsabile autenticato come residente gestisce Agenda e la Messa solo con ruolo liturgico', async () => {
   const dateId = '2026-08-10';
   const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await db.doc(centerPath()).set({ administratorSignature: 'MR' }, { merge: true });
-    await db.doc(publicParticipantPath(MARIO_ID)).set({ signature: 'MR' }, { merge: true });
+    await db.doc(publicParticipantPath(MARIO_ID)).set({
+      signature: 'MR',
+      liturgicalRole: false
+    }, { merge: true });
     await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
   });
 
@@ -1243,6 +1259,17 @@ test('il responsabile autenticato come residente gestisce Agenda e Messe', async
     text: 'Nota del responsabile dalla vista settimana',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
+  await assertFails(personalDb.doc(dailyOperationPath(dateId)).set({
+    centerId: CENTER_ID,
+    dateId,
+    massScheduled: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({
+      liturgicalRole: true
+    }, { merge: true });
+  });
   await assertSucceeds(personalDb.doc(dailyOperationPath(dateId)).set({
     centerId: CENTER_ID,
     dateId,
@@ -1783,6 +1810,12 @@ test('admin sets the daily mass status and summary and kitchen sessions can read
   const publicDb = testEnv.authenticatedContext(PUBLIC_UID, anonymousToken()).firestore();
   const operationPath = dailyOperationPath('2026-08-06');
 
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(adminPath(ADMIN_UID)).set({ participantId: MARIO_ID }, { merge: true });
+    await db.doc(publicParticipantPath(MARIO_ID)).set({ liturgicalRole: true }, { merge: true });
+  });
+
   await assertSucceeds(adminDb.doc(operationPath).set({
     centerId: CENTER_ID,
     dateId: '2026-08-06',
@@ -1816,6 +1849,12 @@ test('l amministratore salva atomicamente le Messe di una settimana aperta', asy
   const batch = adminDb.batch();
   const dateIds = ['2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12'];
 
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(adminPath(ADMIN_UID)).set({ participantId: MARIO_ID }, { merge: true });
+    await db.doc(publicParticipantPath(MARIO_ID)).set({ liturgicalRole: true }, { merge: true });
+  });
+
   dateIds.forEach((dateId) => {
     batch.set(adminDb.doc(dailyOperationPath(dateId)), {
       centerId: CENTER_ID,
@@ -1827,7 +1866,7 @@ test('l amministratore salva atomicamente le Messe di una settimana aperta', asy
   await assertSucceeds(batch.commit());
 });
 
-test('il vice amministratore gestisce la messa soltanto con autorizzazione esplicita', async () => {
+test('il vice amministratore gestisce la messa soltanto con ruolo liturgico personale', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const viceDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
   const operationPath = dailyOperationPath('2026-08-08');
@@ -1846,6 +1885,15 @@ test('il vice amministratore gestisce la messa soltanto con autorizzazione espli
   await assertSucceeds(ownerDb.doc(adminPath(VICE_ADMIN_UID)).set({
     massPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(viceDb.doc(operationPath).set({
+    centerId: CENTER_ID,
+    dateId: '2026-08-08',
+    massScheduled: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await assertSucceeds(ownerDb.doc(publicParticipantPath(MARIO_ID)).set({
+    liturgicalRole: true
   }, { merge: true }));
   await assertSucceeds(viceDb.doc(operationPath).set({
     centerId: CENTER_ID,

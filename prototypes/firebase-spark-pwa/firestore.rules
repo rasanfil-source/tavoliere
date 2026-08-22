@@ -324,7 +324,7 @@ service cloud.firestore {
         && resource.data.role == 'OWNER'
         && request.resource.data.status == 'REVOKED'
         && request.resource.data.role == 'ADMIN'
-        && request.resource.data.massPermission == false
+        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == false
         && request.resource.data.revokedBy == request.auth.uid
         && request.resource.data.revokedAt == request.time
@@ -335,13 +335,21 @@ service cloud.firestore {
         ]);
     }
 
+    function adminHasLiturgicalRole(centerId) {
+      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
+      let participantId = membership.get('participantId', '');
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      return participantId is string
+        && participantId.size() > 0
+        && exists(participantPath)
+        && get(participantPath).data.status == 'ACTIVE'
+        && get(participantPath).data.get('liturgicalRole', false) == true;
+    }
+
     function adminCanManageMass(centerId) {
       return isInteractiveAdminUser()
         && isAdmin(centerId)
-        && (
-          adminRole(centerId) in ['OWNER', 'ADMIN']
-          || get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('massPermission', false) == true
-        );
+        && adminHasLiturgicalRole(centerId);
     }
 
     function adminCanManageDailyOperations(centerId) {
@@ -353,10 +361,7 @@ service cloud.firestore {
     function canManageMass(centerId) {
       return adminCanManageMass(centerId)
         || residentHasOperationalIdentity(centerId)
-          && (
-            residentIsCenterAdministrator(centerId)
-            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('liturgicalRole', false) == true
-          );
+          && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('liturgicalRole', false) == true;
     }
 
     function canManageDailyOperations(centerId) {
@@ -477,11 +482,13 @@ service cloud.firestore {
         && request.resource.data.get('liturgicalRole', false) == false;
     }
 
-    function viceParticipantUpdateDoesNotChangeRoles(centerId) {
+    function viceParticipantUpdateDoesNotChangeRoles(centerId, participantId) {
       return canUseViceAdministratorTools(centerId)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'viceAdminRole', 'liturgicalRole'
-        ]);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole'])
+        && (
+          participantId == sessionParticipantId(centerId)
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['liturgicalRole'])
+        );
     }
 
     function viceMayDeleteParticipant(centerId) {
@@ -1212,7 +1219,7 @@ service cloud.firestore {
             || canAssignOperationalRoles(centerId)
           );
         allow update: if !isAdmin(centerId)
-          && viceParticipantUpdateDoesNotChangeRoles(centerId);
+          && viceParticipantUpdateDoesNotChangeRoles(centerId, participantId);
         allow delete: if canManagePeople(centerId);
         allow delete: if !isAdmin(centerId)
           && viceMayDeleteParticipant(centerId);
@@ -1240,7 +1247,7 @@ service cloud.firestore {
             || canAssignOperationalRoles(centerId)
           );
         allow update: if !isAdmin(centerId)
-          && viceParticipantUpdateDoesNotChangeRoles(centerId);
+          && viceParticipantUpdateDoesNotChangeRoles(centerId, participantId);
         allow delete: if canManagePeople(centerId);
         allow delete: if !isAdmin(centerId)
           && viceMayDeleteParticipant(centerId);

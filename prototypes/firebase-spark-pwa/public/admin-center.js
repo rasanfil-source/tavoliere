@@ -20,7 +20,7 @@ import {
   setActiveCenterId
 } from './center-context.js?v=20260816h';
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
@@ -395,7 +395,7 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
     if (membership.role !== 'MANAGER' || membership.status !== 'ACTIVE') return;
     batch.set(item.ref, {
       status: 'REVOKED',
-      massPermission: false,
+      massPermission: true,
       dailyOperationsPermission: false,
       revokedBy: user.uid,
       revokedAt: now,
@@ -657,7 +657,7 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   } else {
     batch.set(currentMembershipRef, {
       role: 'ADMIN',
-      massPermission: true,
+      massPermission: false,
       dailyOperationsPermission: true,
       updatedAt: now
     }, { merge: true });
@@ -713,12 +713,19 @@ async function readCenterAdmin(user, centerId) {
     const snapshot = await getDoc(doc(db, 'centers', centerId, 'admins', user.uid));
     const data = snapshot.exists() ? snapshot.data() : {};
     const role = normalizeCenterRole(data.role);
+    const participantId = String(data.participantId || '').trim();
+    const participantSnapshot = participantId
+      ? await getDoc(doc(db, 'centers', centerId, 'publicParticipants', participantId))
+      : null;
+    const liturgicalRole = participantSnapshot?.exists()
+      && participantSnapshot.data().status === 'ACTIVE'
+      && participantSnapshot.data().liturgicalRole === true;
     return {
       active: data.status === 'ACTIVE',
       role,
       massPermission: data.massPermission === true,
       canManageMass: hasCapability(role, CAPABILITIES.MANAGE_MASS, {
-        massPermission: data.massPermission === true
+        liturgicalRole
       }),
       canManageDailyOperations: hasCapability(role, CAPABILITIES.MANAGE_DAILY_OPERATIONS),
       passwordSetupRequired: data.passwordSetupRequired === true,
