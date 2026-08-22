@@ -549,6 +549,21 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
     passwordVersion,
     technicalEmail: technicalEmail || settings.adminTechnicalEmail
   });
+  // La lettura effettuata con l'account tecnico può essere rifiutata quando
+  // l'identità tecnica del centro è in fase di rotazione. A questo punto,
+  // invece, la vice-sessione anonima è già stata creata e attesa: rileggere i
+  // link con l'identità definitiva elimina la finestra in cui il pannello del
+  // vice resta con i pulsanti Copia/Apri/Condividi disabilitati.
+  const authorizedLinksSnapshot = await getDoc(doc(
+    db,
+    'centers',
+    centerId,
+    'privateSettings',
+    'operationalLinks'
+  )).catch(() => null);
+  if (authorizedLinksSnapshot?.exists()) {
+    operationalLinks = authorizedLinksSnapshot.data();
+  }
   return {
     participant,
     participants: [participant],

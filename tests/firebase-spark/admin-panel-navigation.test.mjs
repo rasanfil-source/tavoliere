@@ -135,6 +135,10 @@ test('il nuovo amministratore richiede una persona diversa da quello attuale', (
 test('i link operativi non sono utilizzabili senza token e viaggiano con il login vice', () => {
   assert.match(participantData, /privateSettings'[\s\S]*'operationalLinks'/);
   assert.match(participantData, /administratorAuthorized: true,[\s\S]*operationalLinks/);
+  assert.match(
+    participantData,
+    /await authorizeResidentAdministratorSession\([\s\S]*authorizedLinksSnapshot[\s\S]*privateSettings'[\s\S]*'operationalLinks'/
+  );
   assert.match(app, /normalizeOperationalLinksFromAuthorizedLogin\(result\.operationalLinks\)/);
   assert.match(app, /control\.disabled = !enabled/);
   assert.match(app, /control\.removeAttribute\('href'\)/);
