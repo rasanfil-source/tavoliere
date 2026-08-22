@@ -82,7 +82,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260820e';
+} from './summary-matrix-view.js?v=20260822a';
 
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });

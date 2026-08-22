@@ -147,6 +147,19 @@ test('impostazioni e manutenzione presentano controlli graficamente raggruppati'
   assert.doesNotMatch(index, /Caricate solo quando servono\./);
 });
 
+test('il riepilogo rende evidente il contatto solo per commensali contattabili', () => {
+  assert.match(view, /function hasContactablePerson\(column\)/);
+  assert.match(view, /person\?\.phoneConsent && normalizePhone\(person\.phone\)/);
+  assert.match(view, /summary\.contactHint/);
+  assert.match(styles, /\.summary-contact-hint \{[\s\S]*color: var\(--muted\)/);
+  assert.match(view, /contactHint: !kitchen/);
+});
+
+test('Internazionale e Futura precisano che la colazione e di domani', () => {
+  assert.match(view, /localizedMealLabel\(column, \{ breakfastTomorrow: true \}\)/);
+  assert.match(view, /return t\("summary\.breakfastTomorrow"\)/);
+});
+
 test('Classic resta un valore interno ma viene presentato come Originale in ogni lingua', () => {
   const expected = {
     it: 'Originale',

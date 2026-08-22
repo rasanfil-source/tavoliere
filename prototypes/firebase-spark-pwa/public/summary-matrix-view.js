@@ -107,9 +107,10 @@ function renderFutureMeal(column, residentLabel) {
     <section class="summary-future-meal">
       <div class="summary-future-meal-main">
         <span class="summary-future-meal-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
-        <span class="summary-future-meal-name">${escapeHtml(localizedMealLabel(column))}</span>
+        <span class="summary-future-meal-name">${escapeHtml(localizedMealLabel(column, { breakfastTomorrow: true }))}</span>
         <strong class="summary-future-meal-total">${escapeHtml(String(column.total || 0))}</strong>
       </div>
+      ${renderContactHint(column)}
       ${guestCount > 0 ? renderFutureMetric("summary.guests", guestCount, "guests") : ""}
       ${dietCount ? `<p class="summary-future-diets">${escapeHtml(t("week.operations.diet.count", { count: dietCount }))}</p>` : ""}
       ${sickCount > 0 ? renderFutureMetric("summary.sickMeals", sickCount, "sick") : ""}
@@ -242,7 +243,9 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name" }) 
         </thead>
         <tbody>
           ${screen.hasGuestGroup ? renderRow(t("summary.guests"), "summary-matrix-row-guests", screen, (column) => String(column.guestCount)) : ""}
-          ${renderRow(t("summary.diningMeals"), "summary-matrix-row-meals", screen, renderDiningTotal)}
+          ${renderRow(t("summary.diningMeals"), "summary-matrix-row-meals", screen, kitchen
+            ? renderDiningTotal
+            : (column) => renderDiningTotal(column, { contactHint: true }))}
           ${screen.hasSpecialDiets ? renderRow(t("summary.includedDiets"), "summary-matrix-row-diets", screen, kitchen ? renderKitchenDietCell : renderDietCell) : ""}
           ${screen.hasSickMeals ? renderRow(t("summary.sickMeals"), "summary-matrix-row-sick", screen, renderSickMealCell) : ""}
           ${screen.hasSickDiets ? renderRow(t("summary.sickDiets"), "summary-matrix-row-sick-diets", screen, renderSickDietCell) : ""}
@@ -288,8 +291,11 @@ function interfaceIcon(kind, fallback = "•") {
   return `<svg class="meal-line-icon meal-line-icon-${kind}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${path}</svg>`;
 }
 
-function localizedMealLabel(column) {
+function localizedMealLabel(column, { breakfastTomorrow = false } = {}) {
   const mealTypeId = String(column?.mealTypeId || "").trim().toLowerCase();
+  if (breakfastTomorrow && mealTypeId === "breakfast") {
+    return t("summary.breakfastTomorrow");
+  }
   const translated = mealTypeId ? t(`meal.type.${mealTypeId}`) : "";
   const raw = String(column?.label || "").trim();
   return translated && translated !== `meal.type.${mealTypeId}` ? translated : raw;
@@ -304,10 +310,21 @@ function renderRow(label, className, screen, renderCell) {
   `;
 }
 
-function renderDiningTotal(column) {
+function renderDiningTotal(column, { contactHint = false } = {}) {
   const unitKey =
     column.total === 1 ? "summary.cover.one" : "summary.cover.other";
-  return `<span class="summary-matrix-total">${column.total}</span><span class="summary-matrix-unit">${escapeHtml(t(unitKey))}</span>`;
+  return `<span class="summary-matrix-total">${column.total}</span><span class="summary-matrix-unit">${escapeHtml(t(unitKey))}</span>${contactHint ? renderContactHint(column) : ""}`;
+}
+
+function hasContactablePerson(column) {
+  return Array.isArray(column?.names) && column.names.some((person) =>
+    person?.phoneConsent && normalizePhone(person.phone),
+  );
+}
+
+function renderContactHint(column) {
+  if (!hasContactablePerson(column)) return "";
+  return `<small class="summary-contact-hint">${escapeHtml(t("summary.contactHint"))}</small>`;
 }
 
 function renderSickMealCell(column) {
@@ -500,12 +517,12 @@ function renderInternationalCard(column, { kitchen, residentLabel = "name" }) {
     <article class="summary-international-card summary-day-tone-${normalizeDayTone(column.dayIndex)}${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
-        <div><strong>${escapeHtml(localizedMealLabel(column))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
+        <div><strong>${escapeHtml(localizedMealLabel(column, { breakfastTomorrow: true }))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
         ${column.guestCount > 0 ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>` : ""}
       </header>
       <dl>
         ${column.guestCount > 0 ? `<div class="summary-international-guest-row"><dt>${escapeHtml(t("summary.guests"))}</dt><dd>${column.guestCount}</dd></div>` : ""}
-        <div><dt>${escapeHtml(t("summary.diningMeals"))}</dt><dd>${renderDiningTotal(column)}</dd></div>
+        <div><dt>${escapeHtml(t("summary.diningMeals"))}</dt><dd>${renderDiningTotal(column, { contactHint: !kitchen })}</dd></div>
         ${column.specialDiets.participantCount > 0 ? `<div><dt>${escapeHtml(t("summary.includedDiets"))}</dt><dd>${diets}</dd></div>` : ""}
         ${column.sickCount > 0 ? `<div><dt>${escapeHtml(t("summary.sickMeals"))}</dt><dd>${renderSickMealCell(column)}</dd></div>` : ""}
         ${column.sickDiets.length > 0 ? `<div><dt>${escapeHtml(t("summary.sickDiets"))}</dt><dd>${renderSickDietCell(column)}</dd></div>` : ""}

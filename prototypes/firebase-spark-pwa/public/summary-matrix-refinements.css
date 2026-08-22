@@ -1540,6 +1540,20 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   font-size: 2.25rem;
 }
 
+.summary-contact-hint {
+  display: block;
+  max-width: 19ch;
+  margin: 4px auto 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 450;
+  line-height: 1.25;
+}
+
+.summary-future-meal > .summary-contact-hint {
+  margin-inline-start: 32px;
+}
+
 .summary-international-names {
   padding: 12px 14px 14px;
   border-top: 1px solid var(--view-border);
