@@ -815,7 +815,6 @@ const elements = {
   adminCenterAvatarPlaceholder: document.querySelector('[data-admin-center-avatar-placeholder]'),
   adminCenterAvatarInput: document.querySelector('[data-admin-center-avatar-input]'),
   adminAvatarFilename: document.querySelector('[data-admin-avatar-filename]'),
-  adminCenterAvatarSave: document.querySelector('[data-admin-center-avatar-save]'),
   adminCenterAvatarRemove: document.querySelector('[data-admin-center-avatar-remove]'),
   adminCenterAvatarStatus: document.querySelector('[data-admin-center-avatar-status]'),
   adminAccessSection: document.querySelector('#admin-access-section'),
@@ -1183,7 +1182,6 @@ elements.adminAuditLoad.addEventListener('toggle', () => {
   }
 });
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
-elements.adminCenterAvatarSave.addEventListener('click', handleAdminCenterAvatarSave);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
 elements.adminExportButton.addEventListener('click', handleAdminExport);
 if (elements.adminAdaptationsSave) {
@@ -5131,6 +5129,8 @@ async function handleAdminCenterAvatarSelection(event) {
   elements.adminCenterAvatarStatus.textContent = t('common.status.loading');
   try {
     state.pendingCenterAvatarDataUrl = await prepareCenterAvatar(file);
+    state.adminCenterDirty = true;
+    elements.adminCenterSettingsStatus.textContent = 'Modifiche non salvate';
     renderAdminCenterAvatarEditor();
   } catch (error) {
     event.currentTarget.value = '';
@@ -5138,35 +5138,6 @@ async function handleAdminCenterAvatarSelection(event) {
       elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
     }
     elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, t('admin.avatar.notUsable'));
-  }
-}
-
-async function handleAdminCenterAvatarSave() {
-  if (!hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_AVATAR)) return;
-  if (!state.pendingCenterAvatarDataUrl) {
-    return;
-  }
-  if (!state.centerContactSettings.commonPasswordSet) {
-    elements.adminCenterAvatarStatus.textContent = t('admin.avatar.needsCommonPassword');
-    return;
-  }
-  elements.adminCenterAvatarSave.disabled = true;
-  elements.adminCenterAvatarStatus.textContent = t('admin.avatar.saving');
-  try {
-    const avatar = await saveCenterAvatar(state.pendingCenterAvatarDataUrl);
-    state.centerContactSettings = { ...state.centerContactSettings, ...avatar };
-    state.pendingCenterAvatarDataUrl = '';
-    elements.adminCenterAvatarInput.value = '';
-    if (elements.adminAvatarFilename) {
-      elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
-    }
-    renderAdminCenterAvatarEditor();
-    renderMode();
-    elements.adminCenterAvatarStatus.textContent = t('admin.avatar.saved');
-  } catch (error) {
-    elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, 'Icona non salvata');
-  } finally {
-    elements.adminCenterAvatarSave.disabled = !state.pendingCenterAvatarDataUrl;
   }
 }
 
@@ -5220,7 +5191,6 @@ function renderAdminCenterAvatarEditor() {
   } else {
     elements.adminCenterAvatarPreview.removeAttribute('src');
   }
-  elements.adminCenterAvatarSave.disabled = !state.pendingCenterAvatarDataUrl || !commonPasswordSet;
   elements.adminCenterAvatarRemove.hidden = !activeAvatar;
   elements.adminCenterAvatarStatus.textContent = state.pendingCenterAvatarDataUrl
     ? commonPasswordSet

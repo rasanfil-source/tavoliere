@@ -38,14 +38,28 @@ test('il Pannello proprietario usa didascalie grammaticalmente coerenti', () => 
   assert.doesNotMatch(html, />Gestisci centri e amministratori\.</);
 });
 
-test('la configurazione presenta responsabile salvataggio e icona nell ordine operativo', () => {
+test('la configurazione raggruppa identita e orari e termina con un solo salvataggio', () => {
   const configuration = html.match(/id="admin-configuration-section"[\s\S]*?<div class="admin-role-stack"/)?.[0] || '';
+  const identity = configuration.indexOf('Identità centro');
+  const centerName = configuration.indexOf('Nome centro');
+  const avatar = configuration.indexOf('Icona del centro');
+  const displayName = configuration.indexOf('Nome di presentazione');
+  const schedule = configuration.indexOf('Orari delle prenotazioni');
+  const breakfast = configuration.indexOf('data-admin-cutoff-breakfast');
+  const lunch = configuration.indexOf('data-admin-cutoff-lunch');
+  const dinner = configuration.indexOf('data-admin-cutoff-dinner');
   const responsible = configuration.indexOf('Responsabile del centro');
   const save = configuration.indexOf('data-admin-center-settings-save');
-  const avatar = configuration.indexOf('Icona del centro');
 
-  assert.ok(responsible >= 0 && responsible < save);
-  assert.ok(save < avatar);
+  assert.ok(identity >= 0 && identity < centerName);
+  assert.ok(centerName < avatar && avatar < displayName);
+  assert.ok(displayName < schedule && schedule < breakfast);
+  assert.ok(breakfast < lunch && lunch < dinner);
+  assert.ok(dinner < responsible && responsible < save);
+  assert.equal((configuration.match(/data-admin-center-settings-save/g) || []).length, 1);
+  assert.doesNotMatch(configuration, /data-admin-center-avatar-save/);
+  assert.doesNotMatch(app, /adminCenterAvatarSave|handleAdminCenterAvatarSave/);
+  assert.match(app, /state\.pendingCenterAvatarDataUrl = await prepareCenterAvatar\(file\);[\s\S]*?state\.adminCenterDirty = true/);
   assert.doesNotMatch(configuration, /data-admin-center-settings-cancel/);
   assert.doesNotMatch(configuration, /data-bootstrap-button/);
 });
@@ -332,7 +346,8 @@ test('il primo accesso richiede i dati del responsabile e riusa la email autenti
   assert.match(profile, /data-admin-administrator-signature[^>]*required/);
   assert.match(profile, /data-admin-administrator-email[^>]*required/);
   assert.match(profile, /data-admin-administrator-password/);
-  assert.match(profile, /Richiesti per iniziare · modificabili in seguito/);
+  assert.match(profile, /Nome, sigla ed email sono obbligatori\./);
+  assert.match(profile, /admin\.administrator\.signature\.help[^>]*>Codice personale usato per accedere come residente\./);
   assert.match(app, /adminAdministratorEmail\.value = user\.email \|\| ''/);
   assert.match(app, /requiresAdministratorPassword\(user\)/);
   assert.match(app, /Inserisci la password amministratore/);
@@ -361,6 +376,7 @@ test('il salvataggio del responsabile crea o aggiorna automaticamente la Persona
 });
 
 test('i campi del responsabile restano contenuti nelle rispettive colonne', () => {
+  assert.match(css, /\.admin-administrator-profile-fields\s*\{[\s\S]*?align-items: start;/);
   assert.match(css, /\.admin-administrator-profile-fields input\s*\{[\s\S]*?width: 100%;[\s\S]*?max-width: 100%;[\s\S]*?min-width: 0;/);
 });
 

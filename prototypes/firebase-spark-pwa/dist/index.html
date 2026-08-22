@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822a">
+    <link rel="stylesheet" href="/styles.css?v=20260822c">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -497,36 +497,77 @@
                 <div class="section-title">
                   <h2 id="admin-center-settings-title" data-i18n="admin.centerSettings.title">Centro attivo</h2>
                 </div>
-                <div class="admin-form-grid admin-center-fields">
-                  <label class="field-label">
-                    <span data-i18n="admin.centerSettings.name.label">Nome centro</span>
-                    <input type="text" data-admin-center-name maxlength="120" placeholder="Nome della sede" data-i18n-placeholder="admin.centerSettings.name.placeholder">
-                  </label>
-                  <label class="field-label">
-                    <span data-i18n="admin.centerSettings.timezone.label">Fuso orario</span>
-                    <select data-admin-center-timezone>
-                      <option value="Europe/Rome">Europe/Rome</option>
-                      <option value="Europe/Madrid">Europe/Madrid</option>
-                      <option value="Europe/Paris">Europe/Paris</option>
-                      <option value="Europe/London">Europe/London</option>
-                    </select>
-                  </label>
-                  <label class="field-label">
-                    <span data-i18n="admin.centerSettings.cutoff.lunch">Chiusura pranzo</span>
-                    <input type="time" data-admin-cutoff-lunch required>
-                  </label>
-                  <label class="field-label">
-                    <span data-i18n="admin.centerSettings.cutoff.dinner">Chiusura cena</span>
-                    <input type="time" data-admin-cutoff-dinner required>
-                  </label>
-                  <label class="field-label admin-field-wide">
-                    <span data-i18n="admin.centerSettings.cutoff.breakfast">Chiusura colazione del giorno dopo</span>
-                    <input type="time" data-admin-cutoff-breakfast required>
-                  </label>
-                </div>
+                <fieldset class="admin-configuration-group admin-identity-group">
+                  <legend data-i18n="admin.configuration.identity.title">Identità centro</legend>
+                  <div class="admin-form-grid admin-center-fields">
+                    <label class="field-label admin-field-wide">
+                      <span data-i18n="admin.centerSettings.name.label">Nome centro</span>
+                      <input type="text" data-admin-center-name maxlength="120" placeholder="Nome della sede" data-i18n-placeholder="admin.centerSettings.name.placeholder">
+                    </label>
+                  </div>
+                  <section class="admin-center-avatar" aria-labelledby="admin-center-avatar-title">
+                    <div class="admin-center-avatar-preview-wrap">
+                      <img class="admin-center-avatar-preview" data-admin-center-avatar-preview alt="Anteprima icona del centro" hidden>
+                      <span class="admin-center-avatar-placeholder" data-admin-center-avatar-placeholder aria-hidden="true">+</span>
+                    </div>
+                    <div class="admin-center-avatar-controls">
+                      <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
+                      <div class="field-label admin-center-avatar-picker">
+                        <div class="admin-center-avatar-input-wrapper">
+                          <input type="file" id="admin-center-avatar-input" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif" class="visually-hidden">
+                          <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseFile">Scegli file</label>
+                          <span class="avatar-file-name" data-admin-avatar-filename data-i18n="admin.avatar.noFileSelected">Nessun file selezionato</span>
+                        </div>
+                      </div>
+                      <div class="admin-center-avatar-actions">
+                        <button type="button" class="tertiary-action" data-admin-center-avatar-remove hidden data-i18n="common.actions.delete">Rimuovi</button>
+                      </div>
+                      <p data-admin-center-avatar-status aria-live="polite" data-i18n="admin.avatar.none">Nessuna icona inserita.</p>
+                    </div>
+                  </section>
+                  <div class="admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
+                    <label class="field-label">
+                      <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
+                      <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
+                      <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Nome mostrato come prima riga nella schermata iniziale.</small>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.adaptations.appDisplaySubtitle.label">Seconda riga</span>
+                      <input type="text" data-admin-app-display-subtitle maxlength="100" autocomplete="off" value="Per prenotarsi sempre in tempo!">
+                      <small class="field-help" data-i18n="admin.adaptations.appDisplaySubtitle.help">Frase mostrata sotto il nome nella schermata iniziale.</small>
+                    </label>
+                  </div>
+                </fieldset>
+                <fieldset class="admin-configuration-group admin-schedule-group">
+                  <legend data-i18n="admin.configuration.schedule.title">Orari delle prenotazioni</legend>
+                  <div class="admin-form-grid admin-center-fields">
+                    <label class="field-label admin-field-wide">
+                      <span data-i18n="admin.centerSettings.timezone.label">Fuso orario</span>
+                      <select data-admin-center-timezone>
+                        <option value="Europe/Rome">Europe/Rome</option>
+                        <option value="Europe/Madrid">Europe/Madrid</option>
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Europe/London">Europe/London</option>
+                      </select>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.centerSettings.cutoff.breakfast">Chiusura colazione del giorno dopo</span>
+                      <input type="time" data-admin-cutoff-breakfast required>
+                    </label>
+                    <label class="field-label">
+                      <span data-i18n="admin.centerSettings.cutoff.lunch">Chiusura pranzo</span>
+                      <input type="time" data-admin-cutoff-lunch required>
+                    </label>
+                    <label class="field-label admin-field-wide">
+                      <span data-i18n="admin.centerSettings.cutoff.dinner">Chiusura cena</span>
+                      <input type="time" data-admin-cutoff-dinner required>
+                    </label>
+                  </div>
+                  <p class="field-help admin-cutoffs-help" data-i18n="admin.centerSettings.cutoffsHelp">Gli orari si applicano alle prenotazioni future.</p>
+                </fieldset>
                 <fieldset class="admin-administrator-profile" data-admin-administrator-profile>
                   <legend data-i18n="role.owner">Responsabile del centro</legend>
-                  <p class="field-help" data-i18n="admin.administrator.help">Richiesti per iniziare · modificabili in seguito</p>
+                  <p class="field-help" data-i18n="admin.administrator.help">Nome, sigla ed email sono obbligatori.</p>
                   <div class="admin-administrator-profile-fields">
                     <label class="field-label">
                       <span data-i18n="admin.people.name">Nome</span>
@@ -535,6 +576,7 @@
                     <label class="field-label">
                       <span data-i18n="admin.people.signature">Sigla</span>
                       <input type="text" data-admin-administrator-signature minlength="2" maxlength="12" pattern="[A-Za-z0-9]{2,12}" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" required>
+                      <small class="field-help" data-i18n="admin.administrator.signature.help">Codice personale usato per accedere come residente.</small>
                     </label>
                     <label class="field-label">
                       <span data-i18n="admin.administrator.email.label">Email dell'amministratore</span>
@@ -549,7 +591,7 @@
                     </label>
                   </div>
                   <label class="field-label admin-field-wide" data-admin-common-password-row>
-                    <span data-i18n="admin.configuration.password.label">Password comune</span>
+                    <span data-i18n="admin.configuration.password.label">Password residenti</span>
                     <span class="password-field">
                       <input
                         type="password"
@@ -566,19 +608,19 @@
                         class="password-toggle tertiary-action"
                         data-password-toggle="common-password"
                         aria-pressed="false"
-                        aria-label="Mostra password comune"
+                        aria-label="Mostra password residenti"
                         data-i18n="auth.resident.password.show"
                       >Mostra</button>
                     </span>
-                    <small class="field-help"><span data-i18n="admin.commonPassword.help">Vuoto = password invariata · </span><span data-admin-common-password-status></span></small>
+                    <small class="field-help"><span data-i18n="admin.commonPassword.help">Lascia vuoto per non modificare la password attuale. </span><span data-admin-common-password-status></span></small>
                   </label>
                   <div class="admin-shared-password-fields admin-field-wide" data-admin-shared-password-row hidden>
                     <div class="admin-shared-password-heading">
-                      <strong data-i18n="admin.sharedPassword.label">Password amministratori</strong>
-                      <small class="field-help" data-i18n="admin.sharedPassword.configurationHelp">Usata per concedere le funzioni proprie dei vice amministratori.</small>
+                      <strong data-i18n="admin.sharedPassword.label">Password vice amministratori</strong>
+                      <small class="field-help" data-i18n="admin.sharedPassword.configurationHelp">Concede ai vice le funzioni operative autorizzate; non dà accesso al controllo completo.</small>
                     </div>
                     <label class="field-label">
-                      <span data-i18n="admin.sharedPassword.newLabel">Password amministratori</span>
+                      <span data-i18n="admin.sharedPassword.newLabel">Password vice amministratori</span>
                       <span class="password-field">
                         <input type="password" data-admin-shared-password-new minlength="6" maxlength="64" autocomplete="new-password">
                         <button type="button" class="password-toggle tertiary-action" data-password-toggle="admin-shared-new" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
@@ -588,41 +630,8 @@
                   </div>
                 </fieldset>
                 <div class="admin-section-actions">
-                  <button type="button" class="save-button" data-admin-center-settings-save data-i18n="admin.centerSettings.save">Salva centro</button>
-                  <p data-admin-center-settings-status aria-live="polite" data-i18n="admin.centerSettings.cutoffsHelp">Gli orari si applicano alle prenotazioni future.</p>
-                </div>
-                <section class="admin-center-avatar" aria-labelledby="admin-center-avatar-title">
-                  <div class="admin-center-avatar-preview-wrap">
-                    <img class="admin-center-avatar-preview" data-admin-center-avatar-preview alt="Anteprima icona del centro" hidden>
-                    <span class="admin-center-avatar-placeholder" data-admin-center-avatar-placeholder aria-hidden="true">+</span>
-                  </div>
-                  <div class="admin-center-avatar-controls">
-                    <strong id="admin-center-avatar-title" data-i18n="admin.avatar.title">Icona del centro</strong>
-                    <div class="field-label admin-center-avatar-picker">
-                      <div class="admin-center-avatar-input-wrapper">
-                        <input type="file" id="admin-center-avatar-input" data-admin-center-avatar-input accept="image/png,image/jpeg,image/webp,image/gif" class="visually-hidden">
-                        <label for="admin-center-avatar-input" class="secondary-action avatar-file-button" data-i18n="admin.avatar.chooseFile">Scegli file</label>
-                        <span class="avatar-file-name" data-admin-avatar-filename data-i18n="admin.avatar.noFileSelected">Nessun file selezionato</span>
-                      </div>
-                    </div>
-                    <div class="admin-center-avatar-actions">
-                      <button type="button" class="save-button" data-admin-center-avatar-save disabled data-i18n="common.actions.save">Salva icona</button>
-                      <button type="button" class="tertiary-action" data-admin-center-avatar-remove hidden data-i18n="common.actions.delete">Rimuovi</button>
-                    </div>
-                    <p data-admin-center-avatar-status aria-live="polite" data-i18n="admin.avatar.none">Nessuna icona inserita.</p>
-                  </div>
-                </section>
-                <div class="admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
-                  <label class="field-label">
-                    <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
-                    <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
-                    <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Prima riga mostrata nella schermata iniziale. Può modificarla soltanto il responsabile del centro.</small>
-                  </label>
-                  <label class="field-label">
-                    <span data-i18n="admin.adaptations.appDisplaySubtitle.label">Seconda riga</span>
-                    <input type="text" data-admin-app-display-subtitle maxlength="100" autocomplete="off" value="Per prenotarsi sempre in tempo!">
-                    <small class="field-help" data-i18n="admin.adaptations.appDisplaySubtitle.help">Frase mostrata sotto il nome nella schermata iniziale.</small>
-                  </label>
+                  <button type="button" class="save-button" data-admin-center-settings-save data-i18n="admin.centerSettings.save">Salva configurazione</button>
+                  <p data-admin-center-settings-status aria-live="polite"></p>
                 </div>
               </section>
 
@@ -1047,6 +1056,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822a"></script>
+  <script type="module" src="/app.js?v=20260822c"></script>
   </body>
 </html>

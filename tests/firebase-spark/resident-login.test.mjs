@@ -727,7 +727,9 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(centerSettings, /cached\?\.version === avatarVersion/);
   assert.match(app, /admin\.avatar\.readyNeedsPassword/);
   assert.match(app, /state\.pendingCenterAvatarDataUrl && state\.centerContactSettings\.commonPasswordSet/);
-  assert.match(app, /elements\.adminCenterAvatarSave\.disabled = !state\.pendingCenterAvatarDataUrl \|\| !commonPasswordSet/);
+  assert.doesNotMatch(index, /data-admin-center-avatar-save/);
+  assert.doesNotMatch(app, /adminCenterAvatarSave|handleAdminCenterAvatarSave/);
+  assert.match(app, /state\.pendingCenterAvatarDataUrl = await prepareCenterAvatar\(file\);[\s\S]*?state\.adminCenterDirty = true/);
   assert.match(centerSettings, /export async function saveCenterAvatar/);
   assert.doesNotMatch(participantData.match(/export async function forgetResidentDevice\(\)[\s\S]*?\n\}/)?.[0] || '', /CENTER_AVATAR/);
 });
