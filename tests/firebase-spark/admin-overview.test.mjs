@@ -38,17 +38,21 @@ test('la panoramica riassume persone, inviti e ruolo senza nuove letture', () =>
   assert.equal(overview.activePeople, 2);
   assert.equal(overview.suspendedPeople, 1);
   assert.equal(overview.activeInvitations, 1);
-  assert.match(overview.calendar.label, /2031/);
+  assert.equal(overview.calendar.labelKey, 'admin.overview.calendar.until');
+  assert.equal(overview.calendar.through, '2031-08-10');
   assert.equal(overview.calendar.needsAttention, false);
-  assert.equal(overview.links, 'Disponibili');
+  assert.equal(overview.linksKey, 'admin.overview.links.available');
 });
 
 test('la panoramica segnala calendario e collegamenti non gestibili', () => {
   const overview = buildAdminOverview({ role: 'MANAGER' });
 
   assert.equal(overview.roleLabel, 'Vice amministratore');
-  assert.deepEqual(overview.calendar, { label: 'Da preparare', needsAttention: true });
-  assert.equal(overview.links, 'Gestiti dal responsabile');
+  assert.deepEqual(overview.calendar, {
+    labelKey: 'admin.overview.calendar.prepare',
+    needsAttention: true
+  });
+  assert.equal(overview.linksKey, 'admin.overview.links.ownerManaged');
 });
 
 test('target persone coerente con index.html', () => {

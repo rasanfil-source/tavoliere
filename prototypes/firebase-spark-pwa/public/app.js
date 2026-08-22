@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260822a';
+} from './i18n/i18n.mjs?v=20260823a';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -46,12 +46,12 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260822d';
+} from './center-settings.js?v=20260823a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260818w';
+} from './diet-utils.mjs?v=20260823a';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
@@ -77,12 +77,12 @@ import {
   normalizePhoneNumber,
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20260816g';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260818w';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260823a';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260822c';
+} from './summary-matrix-view.js?v=20260823a';
 
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -105,7 +105,7 @@ const domainModulePaths = {
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
-  kitchen: './kitchen-data.js?v=20260821b',
+  kitchen: './kitchen-data.js?v=20260823a',
   notes: './kitchen-notes.js?v=20260821a',
   participant: './participant-data.js?v=20260822b'
 };
@@ -630,6 +630,7 @@ const state = {
     name: '',
     appDisplayName: DEFAULT_APP_DISPLAY_NAME,
     appDisplaySubtitle: DEFAULT_APP_DISPLAY_SUBTITLE,
+    startupPresentationEnabled: false,
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
     themePalette: 'inchiostro',
@@ -793,6 +794,7 @@ const elements = {
   adminAppDisplayNamePicker: document.querySelector('[data-admin-app-display-name-picker]'),
   adminAppDisplayName: document.querySelector('[data-admin-app-display-name]'),
   adminAppDisplaySubtitle: document.querySelector('[data-admin-app-display-subtitle]'),
+  adminStartupPresentationEnabled: document.querySelector('[data-admin-startup-presentation-enabled]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
@@ -1404,6 +1406,10 @@ async function bootstrapApp() {
 bootstrapApp().catch(console.error);
 
 function syncStartupSplashPresentation() {
+  const splash = document.querySelector('[data-startup-splash]');
+  if (splash) {
+    splash.hidden = state.centerContactSettings.startupPresentationEnabled !== true;
+  }
   if (elements.startupSplashTitle) {
     elements.startupSplashTitle.textContent = state.centerContactSettings.appDisplayName
       || DEFAULT_APP_DISPLAY_NAME;
@@ -4588,27 +4594,42 @@ function renderAdminOverview() {
     elements.adminOverviewInvitations.textContent = String(overview.activeInvitations);
   }
   if (elements.adminOverviewCalendar) {
-    elements.adminOverviewCalendar.textContent = overview.calendar.label;
+    const calendarDate = overview.calendar.through
+      ? new Date(`${overview.calendar.through}T12:00:00`)
+      : null;
+    const calendarLabel = calendarDate && !Number.isNaN(calendarDate.getTime())
+      ? new Intl.DateTimeFormat(getLocale(), { month: 'short', year: 'numeric' }).format(calendarDate)
+      : '';
+    elements.adminOverviewCalendar.textContent = t(
+      overview.calendar.labelKey,
+      calendarLabel ? { date: calendarLabel } : undefined
+    );
     elements.adminOverviewCalendar.classList.toggle('admin-overview-warning', overview.calendar.needsAttention);
   }
   if (elements.adminOverviewLinks) {
-    elements.adminOverviewLinks.textContent = overview.links;
+    elements.adminOverviewLinks.textContent = t(overview.linksKey);
   }
 
   if (elements.activationChecklistWrap && elements.activationChecklistList) {
     const checklistItems = overview.checklist?.items || [];
     elements.activationChecklistWrap.hidden = checklistItems.length === 0 || overview.checklist.complete;
 
-    elements.activationChecklistList.innerHTML = checklistItems.map((item) => `
+    elements.activationChecklistList.innerHTML = checklistItems.map((item) => {
+      const itemLabel = t(item.labelKey);
+      const stateLabel = t(item.done
+        ? 'admin.overview.checklist.completed'
+        : 'admin.overview.checklist.pending');
+      return `
       <li class="activation-checklist-item${item.done ? ' is-done' : ''}${item.required ? '' : ' is-recommended'}">
         <a href="#${escapeHtml(item.target)}"
            data-admin-checklist-target="${escapeHtml(item.target)}"
-           aria-label="${escapeHtml(`${item.label}: ${item.done ? 'completato' : 'da completare'}`)}">
+           aria-label="${escapeHtml(`${itemLabel}: ${stateLabel}`)}">
           <span class="activation-checklist-mark" aria-hidden="true">${item.done ? '✓' : '○'}</span>
-          <span>${escapeHtml(item.label)}${item.required ? '' : ' (consigliato)'}</span>
+          <span>${escapeHtml(itemLabel)}${item.required ? '' : ` (${escapeHtml(t('admin.overview.checklist.recommended'))})`}</span>
         </a>
       </li>
-    `).join('');
+    `;
+    }).join('');
   }
   // La scheda può essere ridisegnata dopo il caricamento asincrono dei token.
   // Riallineiamo sempre i comandi allo stato autorevole e alla capability.
@@ -4801,7 +4822,8 @@ async function performAdminCenterSettingsSave() {
       ...(state.adminRole === 'OWNER'
         ? {
             appDisplayName: elements.adminAppDisplayName?.value,
-            appDisplaySubtitle: elements.adminAppDisplaySubtitle?.value
+            appDisplaySubtitle: elements.adminAppDisplaySubtitle?.value,
+            startupPresentationEnabled: elements.adminStartupPresentationEnabled?.checked === true
           }
         : {}),
       timezone: elements.adminCenterTimezone.value,
@@ -4918,7 +4940,7 @@ async function saveAdministratorAsParticipant({
 
   const participant = participantWithPreviousSignature || participantWithNextSignature || null;
   const sortOrder = participant?.sortOrder
-    || Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
+    ?? Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
 
   return saveAdminParticipant(participant?.participantId || '', {
     displayName: administratorName,
@@ -4957,6 +4979,10 @@ function syncAdminCenterSettingsForm() {
     elements.adminAppDisplaySubtitle.disabled = !canEditAppDisplayName;
     elements.adminAppDisplaySubtitle.value = state.centerContactSettings.appDisplaySubtitle
       || DEFAULT_APP_DISPLAY_SUBTITLE;
+  }
+  if (elements.adminStartupPresentationEnabled) {
+    elements.adminStartupPresentationEnabled.disabled = !canEditAppDisplayName;
+    elements.adminStartupPresentationEnabled.checked = state.centerContactSettings.startupPresentationEnabled === true;
   }
   elements.adminCenterTimezone.value = state.centerContactSettings.timezone || 'Europe/Rome';
   elements.adminCutoffLunch.value = state.centerContactSettings.reservationCutoffs?.lunch || '09:30';
@@ -5823,7 +5849,7 @@ function renderAdminPeopleList() {
         ? ''
         : (/^\d+$/.test(dietCode)
           ? t('diet.numbered', { number: dietCode })
-          : formatDietLabel(dietCode)),
+          : formatDietLabel(dietCode, t)),
       ...roleLabels
     ].filter(Boolean).map(escapeHtml).join(' · ');
     const phoneIcon = participant.phone
@@ -7314,7 +7340,7 @@ async function performAdminSaveContact() {
     const dietCode = readAdminDietCode();
     const dietTags = dietCode && dietCode !== 'STANDARD' ? [dietCode] : ['STANDARD'];
     const sortOrder = participant?.sortOrder
-      || Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
+      ?? Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
     const viceAdminRole = canAssignOperationalRoles()
       ? selectedAdministrativeRole === 'vice'
       : participant?.viceAdminRole === true;
@@ -8132,7 +8158,7 @@ function applyDailyDietsToKitchenMeals(meals, dietAssignments) {
     return {
       ...meal,
       diets: [...counts.entries()]
-        .map(([tag, count]) => ({ tag, label: formatDietLabel(tag), count }))
+        .map(([tag, count]) => ({ tag, label: formatDietLabel(tag, t), count }))
         .sort((left, right) => left.label.localeCompare(right.label, 'it'))
     };
   });
@@ -8191,7 +8217,7 @@ function renderDietNameList(participants) {
   return '<ul class="contact-list diet-contact-list">' + participants.map((participant) => {
     const dietCodes = (Array.isArray(participant.dietTags) ? participant.dietTags : [])
       .filter((tag) => tag !== 'STANDARD')
-      .map(formatDietLabel);
+      .map((tag) => formatDietLabel(tag, t));
     return `<li>${renderParticipantContact(participant, ` (${dietCodes.join(', ')})`)}</li>`;
   }).join('') + '</ul>';
 }

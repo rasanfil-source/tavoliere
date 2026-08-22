@@ -116,10 +116,15 @@ test('solo il responsabile unico modifica il nome di presentazione dell app', as
   }));
   await assertSucceeds(ownerDb.doc(presentationPath).set({
     appDisplayName: 'Il pranzo è una cosa seria',
+    startupPresentationEnabled: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }));
   await assertFails(administratorDb.doc(presentationPath).set({
     appDisplayName: 'Nome non autorizzato',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(administratorDb.doc(presentationPath).set({
+    startupPresentationEnabled: false,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }));
   await assertSucceeds(administratorDb.doc(presentationPath).set({

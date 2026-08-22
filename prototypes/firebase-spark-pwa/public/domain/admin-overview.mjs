@@ -29,7 +29,9 @@ export function buildAdminOverview({
     activeInvitations,
     calendar: calendarSummary(coverage),
     checklist,
-    links: canViewOperationalLinks ? 'Disponibili' : 'Gestiti dal responsabile'
+    linksKey: canViewOperationalLinks
+      ? 'admin.overview.links.available'
+      : 'admin.overview.links.ownerManaged'
   };
 }
 
@@ -37,7 +39,7 @@ function buildChecklist({ activePeople, coverage, canViewOperationalLinks, opera
   const items = [
     {
       id: 'people',
-      label: 'Inserisci la prima persona',
+      labelKey: 'admin.overview.checklist.people',
       target: 'admin-person-editor',
       done: activePeople > 0,
       required: true
@@ -46,7 +48,7 @@ function buildChecklist({ activePeople, coverage, canViewOperationalLinks, opera
 
   items.push({
     id: 'calendar',
-    label: 'Prepara il calendario',
+    labelKey: 'admin.overview.checklist.calendar',
     target: 'admin-configuration-section',
     done: hasUsableCalendar(coverage),
     required: true
@@ -56,14 +58,14 @@ function buildChecklist({ activePeople, coverage, canViewOperationalLinks, opera
     items.push(
       {
         id: 'publicLink',
-        label: 'Attiva e copia il collegamento residenti',
+        labelKey: 'admin.overview.checklist.publicLink',
         target: 'admin-overview-section',
         done: hasActiveToken(operationalLinks?.publicTokenId, operationalLinks?.publicStatus),
         required: true
       },
       {
         id: 'kitchenLink',
-        label: 'Attiva e copia il collegamento cucina',
+        labelKey: 'admin.overview.checklist.kitchenLink',
         target: 'admin-overview-section',
         done: hasActiveToken(operationalLinks?.kitchenTokenId, operationalLinks?.kitchenStatus),
         required: true
@@ -74,7 +76,7 @@ function buildChecklist({ activePeople, coverage, canViewOperationalLinks, opera
   if (!hasCollaborator) {
     items.push({
       id: 'collaborator',
-      label: 'Nomina un amministratore o vice',
+      labelKey: 'admin.overview.checklist.collaborator',
       target: 'admin-person-editor',
       done: false,
       required: false
@@ -103,20 +105,20 @@ function isActiveInvitation(invitation, now) {
 
 function calendarSummary(coverage) {
   if (!coverage?.through) {
-    return { label: 'Da preparare', needsAttention: true };
+    return { labelKey: 'admin.overview.calendar.prepare', needsAttention: true };
   }
   if (Number(coverage.remainingDays || 0) < 45) {
-    return { label: 'Da estendere', needsAttention: true };
+    return { labelKey: 'admin.overview.calendar.extend', needsAttention: true };
   }
   const date = new Date(`${coverage.through}T12:00:00`);
   if (Number.isNaN(date.getTime())) {
-    return { label: 'Da verificare', needsAttention: true };
+    return { labelKey: 'admin.overview.calendar.verify', needsAttention: true };
   }
-  const label = new Intl.DateTimeFormat('it-IT', {
-    month: 'short',
-    year: 'numeric'
-  }).format(date);
-  return { label: `Fino a ${label}`, needsAttention: false };
+  return {
+    labelKey: 'admin.overview.calendar.until',
+    through: coverage.through,
+    needsAttention: false
+  };
 }
 
 function toDate(value) {

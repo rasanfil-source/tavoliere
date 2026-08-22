@@ -27,9 +27,9 @@ import {
   withAdministratorTechnicalSession
 } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260818w';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260823a';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
@@ -42,7 +42,7 @@ import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260822d';
+} from './center-settings.js?v=20260823a';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -50,7 +50,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260822d';
+} from './center-settings.js?v=20260823a';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

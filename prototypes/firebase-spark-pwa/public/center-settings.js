@@ -45,6 +45,7 @@ export function loadCachedCenterContactSettings() {
       name: normalizeCenterName(cached.name),
       appDisplayName: normalizeAppDisplayName(cached.appDisplayName),
       appDisplaySubtitle: normalizeAppDisplaySubtitle(cached.appDisplaySubtitle),
+      startupPresentationEnabled: cached.startupPresentationEnabled === true,
       timezone: typeof cached.timezone === 'string' ? cached.timezone : 'Europe/Rome',
       reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
       participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
@@ -164,6 +165,7 @@ export async function updateCenterSettings({
   name,
   appDisplayName,
   appDisplaySubtitle,
+  startupPresentationEnabled,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
@@ -223,7 +225,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260822a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260823a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -232,6 +234,9 @@ export async function updateCenterSettings({
     ...(appDisplaySubtitle === undefined
       ? {}
       : { appDisplaySubtitle: normalizeAppDisplaySubtitle(appDisplaySubtitle) }),
+    ...(startupPresentationEnabled === undefined
+      ? {}
+      : { startupPresentationEnabled: startupPresentationEnabled === true }),
     timezone,
     reservationCutoffs: normalizedCutoffs,
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
@@ -340,6 +345,7 @@ function refreshCenterContactSettings() {
         name: normalizeCenterName(data.name),
         appDisplayName: normalizeAppDisplayName(data.appDisplayName),
         appDisplaySubtitle: normalizeAppDisplaySubtitle(data.appDisplaySubtitle),
+        startupPresentationEnabled: data.startupPresentationEnabled === true,
         timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
         reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,

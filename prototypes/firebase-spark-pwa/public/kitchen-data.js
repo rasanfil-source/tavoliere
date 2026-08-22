@@ -14,9 +14,10 @@ import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20260816g';
+} from './reservation-state.mjs?v=20260823a';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { formatDietLabel } from './diet-utils.mjs?v=20260818w';
+import { formatDietLabel } from './diet-utils.mjs?v=20260823a';
+import { t } from './i18n/i18n.mjs?v=20260823a';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
 const SESSION_LIFETIME_DAYS = 30;
@@ -280,7 +281,7 @@ function formatDietCounts(diets) {
   return [...diets.entries()]
     .filter(([tag]) => tag !== 'STANDARD')
     .filter(([, count]) => count > 0)
-    .map(([tag, count]) => ({ tag, label: formatDietLabel(tag), count }))
+    .map(([tag, count]) => ({ tag, label: formatDietLabel(tag, t), count }))
     .sort((a, b) => a.label.localeCompare(b.label, 'it'));
 }
 

@@ -8,7 +8,7 @@ import {
 import { db } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { normalizeDietCode } from './diet-utils.mjs?v=20260818w';
+import { normalizeDietCode } from './diet-utils.mjs?v=20260823a';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
 const DAILY_CACHE_MAX_ENTRIES = 30;

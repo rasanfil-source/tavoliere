@@ -58,10 +58,16 @@ export function resolveDietSelection(selectedValue, customValue) {
   return String(number);
 }
 
-export function formatDietLabel(value) {
+export function formatDietLabel(value, translate) {
   const normalized = normalizeDietCode(value);
   if (/^\d+$/.test(normalized)) {
     return normalized;
+  }
+  const catalogCode = normalized === 'DIABETE' ? 'DIAB' : normalized;
+  const key = `diet.option.${catalogCode}`;
+  if (typeof translate === 'function') {
+    const translated = translate(key);
+    if (translated && translated !== key) return translated;
   }
   return DIET_LABELS[normalized] || normalized;
 }

@@ -38,6 +38,7 @@ export async function saveCenterConfiguration({
   name,
   appDisplayName,
   appDisplaySubtitle,
+  startupPresentationEnabled,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
@@ -81,6 +82,7 @@ export async function saveCenterConfiguration({
     name,
     ...(typeof appDisplayName === 'string' ? { appDisplayName } : {}),
     ...(typeof appDisplaySubtitle === 'string' ? { appDisplaySubtitle } : {}),
+    ...(typeof startupPresentationEnabled === 'boolean' ? { startupPresentationEnabled } : {}),
     timezone,
     reservationCutoffs: normalizeReservationCutoffs(reservationCutoffs),
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
@@ -391,6 +393,9 @@ function presentationData(centerId, target) {
       : {}),
     ...(typeof target.appDisplaySubtitle === 'string'
       ? { appDisplaySubtitle: target.appDisplaySubtitle }
+      : {}),
+    ...(typeof target.startupPresentationEnabled === 'boolean'
+      ? { startupPresentationEnabled: target.startupPresentationEnabled }
       : {}),
     participantContactSharingEnabled: target.participantContactSharingEnabled,
     themePalette: target.themePalette,

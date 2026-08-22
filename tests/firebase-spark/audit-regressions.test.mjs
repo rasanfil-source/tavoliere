@@ -31,6 +31,15 @@ test('una sessione pubblica non viene creata sopra un account forte non autorizz
   assert.match(ensurePublic, /if \(getStrongAuthenticatedUser\(\)\) \{[\s\S]*Account amministratore non autorizzato/);
 });
 
+test('la cucina non sovrascrive una sessione Firebase amministrativa persistente', () => {
+  const ensureKitchen = kitchenData.match(/export async function ensureKitchenDemoSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(ensureKitchen, /if \(user && !user\.isAnonymous\) \{\s*return user;\s*}/);
+  assert.ok(
+    ensureKitchen.indexOf('return user;') < ensureKitchen.indexOf('signInAnonymousUser()'),
+    'un account Firebase forte deve uscire prima di qualunque autenticazione anonima'
+  );
+});
+
 test('le cache operative restano confinate al centro attivo', () => {
   assert.match(accessLinks, /const cachedLinksByCenter = new Map\(\)/);
   assert.match(accessLinks, /cachedLinksByCenter\.get\(centerId\)/);

@@ -2110,19 +2110,20 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 }
 
 .admin-tools-row[data-admin-tools] {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
   gap: 14px;
 }
 
 .admin-tools-row[data-admin-tools] .admin-export-copy {
-  width: auto;
-  text-align: center;
+  width: 100%;
+  text-align: left;
 }
 
 .admin-tools-row[data-admin-tools] .admin-download-action {
   width: auto;
+  justify-self: center;
 }
 
 /* Originale: Sì/No usa un piccolo disco pieno, senza il vecchio anello. */
@@ -2235,14 +2236,18 @@ html[data-interface-style="urban"] .week-matrix-row-today > button {
   }
 
   .admin-tools-row[data-admin-tools] {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
-  .admin-tools-row[data-admin-tools] .admin-export-copy,
+  .admin-tools-row[data-admin-tools] .admin-export-copy {
+    width: 100%;
+  }
+
   .admin-tools-row[data-admin-tools] .admin-download-action {
-    width: auto;
+    width: min(100%, 190px);
+    justify-self: center;
   }
 
   /* Il pieno si riduce; numero e sfondo azzurro esterno restano invariati. */

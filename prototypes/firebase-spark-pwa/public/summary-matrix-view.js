@@ -1,6 +1,6 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260822a";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260823a";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
-import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260818w";
+import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260823a";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
@@ -433,7 +433,7 @@ function renderDietItems(items, extraClass = "") {
 
 function formatDietIdentifier(tag) {
   const value = normalizeDietCode(tag);
-  return /^\d+$/.test(value) ? value : formatDietLabel(value);
+  return /^\d+$/.test(value) ? value : formatDietLabel(value, t);
 }
 
 function renderNamesCell(column, { compactActions = false, residentLabel = "name" } = {}) {

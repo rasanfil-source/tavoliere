@@ -1,7 +1,7 @@
 export const PRESENT = 'PRESENT';
 export const ABSENT = 'ABSENT';
 
-import { normalizeDietTags } from './diet-utils.mjs?v=20260818w';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260823a';
 
 const VALID_EFFECTS = new Set([PRESENT, ABSENT]);
 
@@ -22,11 +22,11 @@ export function findApplicableRule(rules, participantId, mealTypeId, mealDate) {
 }
 
 export function resolveEffectiveDietTags(rule, override) {
-  if (Array.isArray(rule?.dietTags) && rule.dietTags.length > 0) {
-    return normalizeDietTags(rule.dietTags);
-  }
   if (Array.isArray(override?.dietTags) && override.dietTags.length > 0) {
     return normalizeDietTags(override.dietTags);
+  }
+  if (Array.isArray(rule?.dietTags) && rule.dietTags.length > 0) {
+    return normalizeDietTags(rule.dietTags);
   }
   return ['STANDARD'];
 }

@@ -153,6 +153,7 @@ test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   assert.match(configuration, /data-admin-app-display-name-picker hidden/);
   assert.match(configuration, /data-admin-app-display-name[^>]*maxlength="60"/);
   assert.match(configuration, /data-admin-app-display-subtitle[^>]*maxlength="100"/);
+  assert.match(configuration, /data-admin-startup-presentation-enabled/);
   assert.doesNotMatch(adaptations, /data-admin-app-display-name/);
   assert.doesNotMatch(adaptations, /data-admin-app-display-subtitle/);
   assert.match(app, /const canEditAppDisplayName = state\.adminRole === 'OWNER' && !state\.residentSettingsMode/);
@@ -163,12 +164,19 @@ test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!'/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.match(splash, /data-startup-splash[^>]*hidden/);
   assert.match(splash, /<img src="\/icons\/splash-512-blended\.png/);
   assert.match(splash, /data-startup-splash-title[\s\S]*Oggi a tavola/);
   assert.doesNotMatch(splash, /Oggi a Tavola/);
   assert.match(splash, /data-startup-splash-subtitle[\s\S]*Per prenotarsi sempre in tempo!/);
   assert.match(app, /function syncStartupSplashPresentation\(\)[\s\S]*appDisplaySubtitle/);
+  assert.match(app, /startupPresentationEnabled !== true/);
   assert.doesNotMatch(splash, /data-title/);
+});
+
+test('la posizione zero resta valida quando si salva una Persona esistente', () => {
+  assert.equal((app.match(/participant\?\.sortOrder\s*\?\?/g) || []).length, 2);
+  assert.doesNotMatch(app, /participant\?\.sortOrder\s*\|\|/);
 });
 
 test('la configurazione permette di impostare o sostituire la password amministratori', () => {

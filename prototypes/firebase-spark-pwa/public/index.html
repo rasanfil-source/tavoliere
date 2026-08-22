@@ -35,10 +35,10 @@
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/styles.css?v=20260822l">
-    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260822c">
+    <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260823a">
   </head>
   <body>
-    <div class="startup-splash" data-startup-splash aria-hidden="true">
+    <div class="startup-splash" data-startup-splash aria-hidden="true" hidden>
       <img src="/icons/splash-512-blended.png?v=20260822a" width="512" height="512" fetchpriority="high" alt="">
       <p class="startup-splash-title">
         <strong data-startup-splash-title>Oggi a tavola</strong>
@@ -533,6 +533,11 @@
                     </div>
                   </section>
                   <div class="admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
+                    <label class="checkbox-row admin-startup-presentation-toggle">
+                      <input type="checkbox" data-admin-startup-presentation-enabled>
+                      <span data-i18n="admin.adaptations.startupPresentation.label">Mostra la schermata di presentazione personalizzata</span>
+                    </label>
+                    <p class="field-help admin-startup-presentation-help" data-i18n="admin.adaptations.startupPresentation.help">Se disattivata, dopo la schermata iniziale del dispositivo si apre direttamente l'app.</p>
                     <label class="field-label">
                       <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
                       <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
@@ -1086,6 +1091,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822s"></script>
+  <script type="module" src="/app.js?v=20260823a"></script>
   </body>
 </html>

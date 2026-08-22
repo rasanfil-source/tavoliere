@@ -441,7 +441,7 @@ service cloud.firestore {
           'centerId', 'participantContactSharingEnabled', 'themePalette',
           'interfaceStyle', 'defaultView', 'summaryLayout', 'kitchenLayout',
           'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language',
-          'appDisplayName', 'appDisplaySubtitle', 'updatedAt'
+          'appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled', 'updatedAt'
         ])
         && request.resource.data.centerId == centerId
         && request.resource.data.participantContactSharingEnabled is bool
@@ -465,6 +465,10 @@ service cloud.firestore {
           || request.resource.data.appDisplaySubtitle is string
             && request.resource.data.appDisplaySubtitle.size() > 0
             && request.resource.data.appDisplaySubtitle.size() <= 100
+        )
+        && (
+          !request.resource.data.keys().hasAny(['startupPresentationEnabled'])
+          || request.resource.data.startupPresentationEnabled is bool
         )
         && request.resource.data.updatedAt == request.time;
     }
@@ -1158,7 +1162,7 @@ service cloud.firestore {
           && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
           && adaptationDocumentIsValid(centerId)
           && (
-            !request.resource.data.keys().hasAny(['appDisplayName', 'appDisplaySubtitle'])
+            !request.resource.data.keys().hasAny(['appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled'])
             || isCenterOwner(centerId)
           );
         allow update: if settingsId == 'current'
@@ -1166,7 +1170,7 @@ service cloud.firestore {
           && adaptationDocumentIsValid(centerId)
           && (
             !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['appDisplayName', 'appDisplaySubtitle'])
+              .hasAny(['appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled'])
             || isCenterOwner(centerId)
           );
         allow delete: if false;
