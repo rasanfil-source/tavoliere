@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v295';
+const CACHE_NAME = CACHE_PREFIX + 'v396';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -17,7 +17,10 @@ const APP_SHELL = [
   '/diet-utils.mjs',
   '/role-policy.mjs',
   '/schedule-utils.mjs',
+  '/meal-reminders.mjs',
   '/core/connectivity.mjs',
+  '/core/auth-session-policy.mjs',
+  '/core/auth-state-machine.mjs',
   '/core/operation-guard.mjs',
   '/core/state-store.mjs',
   '/core/user-error.mjs',
@@ -27,8 +30,10 @@ const APP_SHELL = [
   '/i18n/i18n.mjs',
   '/manifest.webmanifest',
   '/manifest-kitchen.webmanifest',
-  '/icons/launcher-192.png?v=20260816a',
-  '/icons/launcher-512.png?v=20260816a',
+  '/icons/launcher-192.png?v=20260821a',
+  '/icons/launcher-512.png?v=20260821a',
+  '/icons/launcher-192-maskable.png?v=20260822a',
+  '/icons/launcher-512-maskable.png?v=20260822a',
   '/icons/splash-512.png',
   '/icons/whatsapp.svg'
 ];
@@ -72,6 +77,37 @@ self.addEventListener('activate', (event) => {
         .map((name) => caches.delete(name))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CLEAR_APPLICATION_CACHE') return;
+  const purge = caches.keys().then((names) => Promise.all(names
+    .filter((name) => name.startsWith(CACHE_PREFIX))
+    .map((name) => caches.delete(name))));
+  event.waitUntil(purge);
+  if (event.ports?.[0]) {
+    purge.then(() => event.ports[0].postMessage({ ok: true }));
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || '/?view=participant', self.location.origin);
+  if (event.action === 'disable') {
+    targetUrl.searchParams.set('mealReminders', 'off');
+  }
+
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(async (windowClients) => {
+      const existingClient = windowClients.find((client) => (
+        new URL(client.url).origin === self.location.origin
+      ));
+      if (existingClient) {
+        await existingClient.navigate(targetUrl.toString());
+        return existingClient.focus();
+      }
+      return self.clients.openWindow(targetUrl.toString());
+    }));
 });
 
 self.addEventListener('fetch', (event) => {

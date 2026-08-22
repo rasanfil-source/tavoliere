@@ -61,7 +61,7 @@ export function resolveDietSelection(selectedValue, customValue) {
 export function formatDietLabel(value) {
   const normalized = normalizeDietCode(value);
   if (/^\d+$/.test(normalized)) {
-    return `Dieta ${normalized}`;
+    return normalized;
   }
   return DIET_LABELS[normalized] || normalized;
 }

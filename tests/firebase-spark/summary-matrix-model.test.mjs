@@ -29,7 +29,8 @@ const operations = [{
   dateId: '2026-08-16',
   dailyHealth: {
     sickPeople: [diners[3], diners[4]],
-    dietAssignments: []
+    dietAssignments: [],
+    invitedMeals: { breakfast: 0, lunch: 2, dinner: 0 }
   }
 }];
 
@@ -43,6 +44,8 @@ test('il modello raggruppa le diete uguali per tavola e ammalati', () => {
   ]);
   assert.deepEqual(lunch.sickDiets, [{ tag: '5', count: 2 }]);
   assert.deepEqual(lunch.names.map((person) => person.dietTags), [['3'], ['3'], ['4']]);
+  assert.equal(lunch.guestCount, 2);
+  assert.equal(lunch.total, 5);
 });
 
 test('la cucina usa gli stessi conteggi sanitizzati dai nomi', () => {
@@ -55,4 +58,24 @@ test('la cucina usa gli stessi conteggi sanitizzati dai nomi', () => {
   ]);
   assert.deepEqual(lunch.sickDiets, [{ tag: '5', count: 2 }]);
   assert.deepEqual(lunch.names, []);
+  assert.equal(lunch.guestCount, 2);
+  assert.equal(lunch.total, 5);
+});
+
+test('gli ospiti stabili restano commensali nominativi e non diventano invitati occasionali', () => {
+  const stableGuest = { participantId: 'g', displayName: 'Ospite stabile', groupId: 'group_ospiti' };
+  const guestDays = [{
+    dateId: '2026-08-16',
+    meals: ['breakfast', 'lunch', 'dinner'].map((mealTypeId) => ({
+      mealTypeId,
+      label: mealTypeId,
+      present: [stableGuest]
+    }))
+  }];
+  const [screen] = buildSummaryMatrixScreens(guestDays, [stableGuest], []);
+  const lunch = screen.columns.find((column) => column.mealTypeId === 'lunch');
+
+  assert.equal(lunch.total, 1);
+  assert.equal(lunch.guestCount, 0);
+  assert.deepEqual(lunch.names.map((person) => person.displayName), ['Ospite stabile']);
 });

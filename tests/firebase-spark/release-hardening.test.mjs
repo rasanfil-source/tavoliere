@@ -43,7 +43,9 @@ test('gli accessi pubblici e cucina non usano token demo come fallback', () => {
   assert.doesNotMatch(participantData, /PUBLIC_DEMO_TOKEN_ID|public_demo/);
   assert.doesNotMatch(kitchenData, /KITCHEN_DEMO_TOKEN_ID|kitchen_demo/);
   assert.match(participantData, /if \(!tokenId\)[\s\S]*collegamento per residenti/);
-  assert.match(kitchenData, /if \(!tokenId\)[\s\S]*collegamento cucina/);
+  assert.doesNotMatch(kitchenData, /collegamento cucina/);
+  assert.doesNotMatch(kitchenData, /getKitchenTokenId/);
+  assert.match(kitchenData, /scope: 'KITCHEN'[\s\S]*targetType: 'CENTER'/);
 });
 
 test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
@@ -54,10 +56,14 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
   assert.match(accessLinks, /!LEGACY_OPERATIONAL_TOKENS\.has\(normalized\)/);
 });
 
-test('ogni sessione operativa ricontrolla il token nelle regole', () => {
+test('la sessione personale usa un handshake iniziale e non ricontrolla il token per ogni cella', () => {
   const hasSession = rules.match(/function hasSession\(centerId\) \{[\s\S]*?\n    \}/)?.[0] || '';
+  const personalSession = rules.match(/function personalSessionIsUsable\(centerId\) \{[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(hasSession, /tokenIsUsable/);
   assert.match(hasSession, /accessSessions/);
+  assert.match(personalSession, /accessSessions/);
+  assert.match(personalSession, /session\.scope == 'PERSONAL'/);
+  assert.doesNotMatch(personalSession, /tokenIsUsable|tokenData|participantIsActive/);
 });
 
 test('il limite della revoca per singolo dispositivo e documentato', () => {

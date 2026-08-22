@@ -8,13 +8,14 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260816o';
+} from './i18n/i18n.mjs?v=20260822a';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
 import { escapeHtml } from './html-utils.js?v=20260816g';
 import {
   getCurrentUser,
+  authorizeResidentAdministratorSession,
   isFirebaseConfigured,
   isResidentTechnicalEmail,
   missingFirebaseConfigValues,
@@ -23,16 +24,19 @@ import {
   signInAdministratorWithEmail,
   signInWithGoogle,
   signOutCurrentUser,
+  waitForAuthReady,
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260816g';
+} from './firebase-client.js?v=20260820u';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
 } from './center-context.js?v=20260816h';
 import {
+  DEFAULT_APP_DISPLAY_NAME,
+  DEFAULT_APP_DISPLAY_SUBTITLE,
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
   loadCenterContactSettings,
@@ -42,17 +46,28 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260816j';
+} from './center-settings.js?v=20260822d';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260816g';
+} from './diet-utils.mjs?v=20260818w';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260816h';
+import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
-import { toUserMessage } from './core/user-error.mjs?v=20260816i';
+import {
+  AUTH_STATES,
+  createInitialAuthState,
+  reduceAuthState,
+  selectAuthSurface
+} from './core/auth-state-machine.mjs?v=20260820a';
+import { toUserMessage } from './core/user-error.mjs?v=20260822a';
+import {
+  shouldPreserveResidentViewAfterRefreshError,
+  shouldProcessAdminAuthEvent
+} from './core/auth-session-policy.mjs?v=20260818a';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
@@ -62,28 +77,37 @@ import {
   normalizePhoneNumber,
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20260816g';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260816g';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260818w';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260816j';
+} from './summary-matrix-view.js?v=20260822c';
 
 const initialMode = resolveMode();
+let authLifecycle = createInitialAuthState({ route: initialMode });
+
+function transitionAuthLifecycle(type, data = {}) {
+  authLifecycle = reduceAuthState(authLifecycle, { type, ...data });
+  return selectAuthSurface(authLifecycle);
+}
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
+const RESIDENT_ENTRY_GATE_STORAGE_KEY = 'tavolaComune.residentEntryGateClosed';
+const RESIDENT_SETTINGS_ACCESS = 'resident-settings';
 const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
+const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPending.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816g',
-  admin: './admin-center.js?v=20260817a',
-  audit: './audit-log.js?v=20260816g',
+  accessLinks: './access-links.js?v=20260816h',
+  admin: './admin-center.js?v=20260822b',
+  audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
-  daily: './daily-operations.js?v=20260816h',
-  kitchen: './kitchen-data.js?v=20260816g',
-  notes: './kitchen-notes.js?v=20260816h',
-  participant: './participant-data.js?v=20260816l'
+  daily: './daily-operations.js?v=20260817c',
+  kitchen: './kitchen-data.js?v=20260821b',
+  notes: './kitchen-notes.js?v=20260821a',
+  participant: './participant-data.js?v=20260822a'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -121,11 +145,13 @@ const createCenterInvitation = callDomain('admin', 'createCenterInvitation');
 const createPlatformAdministratorInvitation = callDomain('admin', 'createPlatformAdministratorInvitation');
 const deactivatePlatformCenter = callDomain('admin', 'deactivatePlatformCenter');
 const createAdministratorInvitation = callDomain('admin', 'createAdministratorInvitation');
+const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministratorAccess');
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
 const linkCurrentAdministratorParticipant = callDomain('admin', 'linkCurrentAdministratorParticipant');
 const listPlatformCenters = callDomain('admin', 'listPlatformCenters');
 const listAdministratorInvitations = callDomain('admin', 'listAdministratorInvitations');
+const loadCurrentAdminMembership = callDomain('admin', 'loadCurrentAdminMembership');
 const revokeAdministratorInvitation = callDomain('admin', 'revokeAdministratorInvitation');
 const revokeCenterAdministrator = callDomain('admin', 'revokeCenterAdministrator');
 const rejectAdministratorInvitation = callDomain('admin', 'rejectAdministratorInvitation');
@@ -134,7 +160,6 @@ const listAuditEvents = callDomain('audit', 'listAuditEvents');
 const transferCenterOwnership = callDomain('admin', 'transferCenterOwnership');
 const loadOperationalLinks = callDomain('accessLinks', 'loadOperationalLinks');
 const ensureOperationalLinks = callDomain('accessLinks', 'ensureOperationalLinks');
-const rotateOperationalLink = callDomain('accessLinks', 'rotateOperationalLink');
 const ensureKitchenDemoSession = callDomain('kitchen', 'ensureKitchenDemoSession');
 const loadKitchenCounts = callDomain('kitchen', 'loadKitchenCounts');
 const loadKitchenNote = callDomain('notes', 'loadKitchenNote');
@@ -145,10 +170,13 @@ const loadDailyOperations = callDomain('daily', 'loadDailyOperations');
 const loadDailyHealth = callDomain('daily', 'loadDailyHealth');
 const saveSickPeople = callDomain('daily', 'saveSickPeople');
 const saveDietAssignments = callDomain('daily', 'saveDietAssignments');
+const saveInvitedMeals = callDomain('daily', 'saveInvitedMeals');
 const saveMassStatus = callDomain('daily', 'saveMassStatus');
 const saveMassStatuses = callDomain('daily', 'saveMassStatuses');
 const ensurePublicDemoSession = callDomain('participant', 'ensurePublicDemoSession');
 const ensureStoredResidentSession = callDomain('participant', 'ensureStoredResidentSession');
+const recoverStoredResidentSession = callDomain('participant', 'recoverStoredResidentSession');
+const loadResidentAdministratorAuthorization = callDomain('participant', 'loadResidentAdministratorAuthorization');
 const forgetResidentDevice = callDomain('participant', 'forgetResidentDevice');
 const restoreFriendlyResidentSession = callDomain('participant', 'restoreFriendlyResidentSession');
 const restoreResidentIdentityForAuthorizedAdministrator = callDomain(
@@ -156,6 +184,7 @@ const restoreResidentIdentityForAuthorizedAdministrator = callDomain(
   'restoreResidentIdentityForAuthorizedAdministrator'
 );
 const signInFriendlyResident = callDomain('participant', 'signInFriendlyResident');
+const signInFriendlyViceAdministrator = callDomain('participant', 'signInFriendlyViceAdministrator');
 const listPublicParticipants = callDomain('participant', 'listPublicParticipants');
 const listAdminParticipants = callDomain('participant', 'listAdminParticipants');
 const listCenterAdministrators = callDomain('participant', 'listCenterAdministrators');
@@ -166,6 +195,7 @@ const saveParticipantMeal = callDomain('participant', 'saveParticipantMeal');
 const saveParticipantDay = callDomain('participant', 'saveParticipantDay');
 const saveParticipantMonthSelection = callDomain('participant', 'saveParticipantMonthSelection');
 const saveAdminParticipant = callDomain('participant', 'saveAdminParticipant');
+const assignCenterAdministratorParticipant = callDomain('participant', 'assignCenterAdministratorParticipant');
 const setAdminParticipantActiveStatus = callDomain('participant', 'setAdminParticipantActiveStatus');
 const deleteAdminParticipant = callDomain('participant', 'deleteAdminParticipant');
 const exportCenterData = callDomain('participant', 'exportCenterData');
@@ -264,10 +294,136 @@ const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
 const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
-const MEAL_VIEW_SWIPE_MIN_X = 72;
+const MEAL_VIEW_SWIPE_MIN_X = 52;
 const MEAL_VIEW_SWIPE_MAX_Y = 96;
 const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
+const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
+const MEAL_REMINDER_PREFERENCE_STORAGE_KEY = 'tavolaComune.mealRemindersEnabled';
+const MEAL_REMINDER_HISTORY_STORAGE_KEY = 'tavolaComune.mealReminderHistory';
+const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let mealViewSwipeStart = null;
+let mealViewSwipeTimer = 0;
+const mealReminderTimers = new Map();
+const mealReminderInFlight = new Set();
+
+function applyInterfaceStyle(value) {
+  const migratedValue = value === 'urban' ? 'urban-plus' : value;
+  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'urban-plus';
+  document.documentElement.dataset.interfaceVariant = style;
+  document.documentElement.dataset.interfaceStyle = style === 'urban-plus' ? 'urban' : style;
+  document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
+  return style;
+}
+
+function isResidentEntryGateClosed() {
+  try {
+    return window.localStorage.getItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY)
+    ) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function getAdminSuccessionStorageKey(centerId, adminUid) {
+  return `${ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX}${centerId}.${adminUid}`;
+}
+
+function storePendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return;
+  try {
+    window.localStorage.setItem(
+      getAdminSuccessionStorageKey(centerId, adminUid),
+      String(Date.now())
+    );
+  } catch {
+    // Il controllo del ruolo resta disponibile al ritorno/focus anche senza storage.
+  }
+}
+
+function hasPendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return false;
+  try {
+    return Boolean(window.localStorage.getItem(getAdminSuccessionStorageKey(centerId, adminUid)));
+  } catch {
+    return false;
+  }
+}
+
+function clearPendingAdminSuccession(centerId, adminUid) {
+  if (!centerId || !adminUid) return;
+  try {
+    window.localStorage.removeItem(getAdminSuccessionStorageKey(centerId, adminUid));
+  } catch {
+    // La membership Firebase rimane comunque la fonte autorevole del ruolo.
+  }
+}
+
+function closeResidentEntryGate() {
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY),
+      '1'
+    );
+  } catch {
+    // Lo stato in memoria mantiene comunque chiuso il modulo in questa pagina.
+  }
+}
+
+function openResidentEntryGate() {
+  try {
+    window.localStorage.removeItem(
+      getCenterScopedStorageKey(RESIDENT_ENTRY_GATE_STORAGE_KEY)
+    );
+  } catch {
+    // Il login corrente resta valido anche senza persistenza del marcatore.
+  }
+}
+
+function loadResidentPreferences() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(
+      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY)
+    ) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function applyResidentPreferences(settings) {
+  // The center-level settings must win while the control panel is active.
+  // An administrator can also have a resident session restored in the same
+  // tab; applying that tab's old preferences here would silently bring back
+  // a previous interface style (and make the week/Agenda rendering appear to
+  // change as the mode is mounted again).
+  if (!state.residentReady || state.adminRole || (state.mode === 'admin' && !state.residentSettingsMode)) {
+    return settings;
+  }
+  const preferences = loadResidentPreferences();
+  return {
+    ...settings,
+    ...(preferences.themePalette ? { themePalette: preferences.themePalette } : {}),
+    ...(preferences.interfaceStyle ? { interfaceStyle: preferences.interfaceStyle } : {}),
+    ...(preferences.defaultView ? { defaultView: preferences.defaultView } : {}),
+    ...(preferences.summaryLayout ? { summaryLayout: preferences.summaryLayout } : {}),
+    ...(preferences.summaryResidentLabel ? { summaryResidentLabel: preferences.summaryResidentLabel } : {}),
+    ...(preferences.monthControlsSide ? { monthControlsSide: preferences.monthControlsSide } : {}),
+    ...(preferences.language ? { language: preferences.language } : {})
+  };
+}
+
+function storeResidentPreferences(preferences) {
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
+      JSON.stringify(preferences)
+    );
+  } catch {
+    // Le preferenze locali sono accessorie: un browser con storage negato non
+    // deve lasciare bloccato il salvataggio autorevole del centro.
+  }
+}
 
 function readDietCode(select, numberInput) {
   const selected = String(select?.value || 'STANDARD').trim();
@@ -398,12 +554,20 @@ const state = {
   friendlyAccess: ['participant', 'week'].includes(initialMode)
     || new URLSearchParams(window.location.search).get('access') === 'friendly',
   residentReady: false,
-  residentRestorePending: Boolean(loadStoredResidentSignature()),
+  residentAuthTransition: '',
+  residentSettingsMode: new URLSearchParams(window.location.search).get('access')
+    === RESIDENT_SETTINGS_ACCESS,
+  residentAdministratorAuthorized: false,
+  residentEntryKind: '',
+  residentRestorePending: Boolean(loadStoredResidentSignature())
+    && !isResidentEntryGateClosed(),
+  residentSettingsRestorePending: false,
   participantMeals: [],
   participantWeek: [],
   participantMonth: [],
   participantSummary: null,
   calendarAnchoredToCenter: false,
+  calendarAnchorDateId: '',
   todayOverview: [],
   summaryDays: [],
   summaryOperations: [],
@@ -422,6 +586,18 @@ const state = {
   weekStartDate: startOfWeek(new Date()),
   monthDate: startOfMonth(new Date()),
   adminRole: '',
+  adminAuthUid: '',
+  // True only while the backend reports that this account must initialize a
+  // center.  Do not infer activation from a stale invite token kept in local
+  // storage: residents/vice-admins can legitimately have such a token left
+  // over from an earlier flow.
+  adminNeedsInitialization: false,
+  adminAuthorizationPending: false,
+  adminRequestId: 0,
+  adminPanelHydrating: false,
+  adminHydrationVersion: 0,
+  adminAccessReconcilePromise: null,
+  adminSuccessionPollTimerId: 0,
   adminMassPermission: false,
   adminCanManageMass: false,
   adminCanManageDailyOperations: false,
@@ -447,22 +623,36 @@ const state = {
   weekDailyOperations: [],
   pendingCenterAvatarDataUrl: '',
   pendingThemePalette: '',
+  pendingInterfaceStyle: '',
+  ownerInvitationExpiryLabel: '',
   centerContactSettings: {
     name: '',
+    appDisplayName: DEFAULT_APP_DISPLAY_NAME,
+    appDisplaySubtitle: DEFAULT_APP_DISPLAY_SUBTITLE,
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
-    themePalette: 'smeraldo',
+    themePalette: 'inchiostro',
+    interfaceStyle: 'future',
     defaultView: loadCachedDefaultView(),
-    summaryLayout: 'international',
+    summaryLayout: 'classic',
     kitchenLayout: 'classic',
+    monthLayout: 'grid',
+    monthControlsSide: 'right',
+    summaryResidentLabel: 'name',
     language: 'it',
     administratorName: '',
     administratorSignature: '',
+    administratorParticipantId: '',
     adminEmail: '',
     administratorProfileRequired: false,
     administratorProfileComplete: true,
     administratorPasswordRequired: false,
     adminPasswordSet: false,
+    adminSharedPasswordSet: false,
+    adminPasswordVersion: 0,
+    adminTechnicalEmail: '',
+    adminTechnicalUid: '',
+    adminPasswordRotationRequired: false,
     avatarVersion: '',
     avatarDataUrl: loadCachedCenterAvatar(),
     ...(cachedCenterContactSettings || {})
@@ -567,6 +757,9 @@ const elements = {
   adminCenterSwitcher: document.querySelector('[data-admin-center-switcher]'),
   adminCenterSelect: document.querySelector('[data-admin-center-select]'),
   adminPanel: document.querySelector('[data-admin-panel]'),
+  adminSuccessionNotice: document.querySelector('[data-admin-succession-notice]'),
+  adminSuccessionNoticeTitle: document.querySelector('[data-admin-succession-notice-title]'),
+  adminSuccessionNoticeMessage: document.querySelector('[data-admin-succession-notice-message]'),
   adminOverviewRole: document.querySelector('[data-admin-overview-role]'),
   adminOverviewActivePeople: document.querySelector('[data-admin-overview-active-people]'),
   adminOverviewSuspendedPeople: document.querySelector('[data-admin-overview-suspended-people]'),
@@ -585,10 +778,25 @@ const elements = {
   adminDefaultViewSelect: document.querySelector('[data-admin-default-view-select]'),
   adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
   adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
+  adminMonthLayoutSelect: document.querySelector('[data-admin-month-layout-select]'),
+  adminMonthControlsSideSelect: document.querySelector('[data-admin-month-controls-side-select]'),
+  adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
+  adminAdaptationsTitle: document.querySelector('[data-admin-adaptations-title]'),
+  adminAdaptationsDescription: document.querySelector('[data-admin-adaptations-description]'),
+  residentDevicePreferencesIntro: document.querySelector('[data-resident-device-preferences-intro]'),
+  viewPreferenceHelp: document.querySelector('[data-view-preference-help]'),
+  adminLayoutsHelp: document.querySelector('[data-admin-layouts-help]'),
+  adminKitchenLayoutPicker: document.querySelector('[data-admin-kitchen-layout-picker]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
+  adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
+  adminAppDisplayNamePicker: document.querySelector('[data-admin-app-display-name-picker]'),
+  adminAppDisplayName: document.querySelector('[data-admin-app-display-name]'),
+  adminAppDisplaySubtitle: document.querySelector('[data-admin-app-display-subtitle]'),
   adminThemeStatus: document.querySelector('[data-admin-theme-status]'),
   adminThemeSelectPreview: document.querySelector('[data-theme-select-preview]'),
   adminLanguageSelect: document.querySelector('[data-admin-language-select]'),
+  mealReminderSelect: document.querySelector('[data-meal-reminder-select]'),
+  mealReminderStatus: document.querySelector('[data-meal-reminder-status]'),
   adminAdaptationsSave: document.querySelector('[data-admin-adaptations-save]'),
   adminAdaptationsCancel: document.querySelector('[data-admin-adaptations-cancel]'),
   adminAdaptationsReset: document.querySelector('[data-admin-adaptations-reset]'),
@@ -598,7 +806,7 @@ const elements = {
   ownerInvitationResult: document.querySelector('[data-owner-invitation-result]'),
   ownerInvitationLink: document.querySelector('[data-owner-invitation-link]'),
   ownerInvitationCopy: document.querySelector('[data-owner-invitation-copy]'),
-  ownerInvitationShare: document.querySelector('[data-owner-invitation-share]'),
+  ownerInvitationShares: document.querySelectorAll('[data-owner-invitation-share]'),
   ownerInvitationStatus: document.querySelector('[data-owner-invitation-status]'),
   platformCenterList: document.querySelector('[data-platform-center-list]'),
   adminStatus: document.querySelector('[data-admin-status]'),
@@ -614,7 +822,6 @@ const elements = {
   adminCenterAvatarPlaceholder: document.querySelector('[data-admin-center-avatar-placeholder]'),
   adminCenterAvatarInput: document.querySelector('[data-admin-center-avatar-input]'),
   adminAvatarFilename: document.querySelector('[data-admin-avatar-filename]'),
-  adminCenterAvatarSave: document.querySelector('[data-admin-center-avatar-save]'),
   adminCenterAvatarRemove: document.querySelector('[data-admin-center-avatar-remove]'),
   adminCenterAvatarStatus: document.querySelector('[data-admin-center-avatar-status]'),
   adminAccessSection: document.querySelector('#admin-access-section'),
@@ -645,19 +852,25 @@ const elements = {
   adminAuditStatus: document.querySelector('[data-admin-audit-status]'),
   adminAuditLoad: document.querySelector('[data-admin-audit-load]'),
   adminAuditList: document.querySelector('[data-admin-audit-list]'),
+  adminAuditDialog: document.querySelector('[data-admin-audit-dialog]'),
+  adminAuditClose: document.querySelector('[data-admin-audit-close]'),
+  adminAuditDateFilter: document.querySelector('[data-admin-audit-date-filter]'),
+  adminAuditUserFilter: document.querySelector('[data-admin-audit-user-filter]'),
+  adminAuditTableWrap: document.querySelector('[data-admin-audit-table-wrap]'),
+  adminAuditMore: document.querySelector('[data-admin-audit-more]'),
   adminCalendarExtension: document.querySelector('[data-admin-calendar-extension]'),
   adminCalendarExtensionStatus: document.querySelector('[data-admin-calendar-extension-status]'),
   adminPersonEditor: document.querySelector('#admin-person-editor'),
-  adminParticipantSelect: document.querySelector('[data-admin-participant-select]'),
   adminNewParticipant: document.querySelector('[data-admin-new-participant]'),
   adminParticipantName: document.querySelector('[data-admin-participant-name]'),
   adminParticipantSignature: document.querySelector('[data-admin-participant-signature]'),
+  adminParticipantInitials: document.querySelector('[data-admin-participant-initials]'),
   adminParticipantGroup: document.querySelector('[data-admin-participant-group]'),
   adminParticipantDiets: document.querySelector('[data-admin-participant-diets]'),
   adminParticipantDietNumber: document.querySelector('[data-admin-participant-diet-number]'),
   adminParticipantLiturgy: document.querySelector('[data-admin-participant-liturgy]'),
-  adminParticipantVice: document.querySelector('[data-admin-participant-vice]'),
-  adminRoleOptions: document.querySelectorAll('[data-admin-role-option]'),
+  adminParticipantAdministrativeRole: document.querySelector('[data-admin-participant-administrative-role]'),
+  adminPermissionsGroup: document.querySelector('[data-admin-permissions-group]'),
   adminPhoneInput: document.querySelector('[data-admin-phone-input]'),
   adminPhoneConsent: document.querySelector('[data-admin-phone-consent]'),
   adminWhatsappEnabled: document.querySelector('[data-admin-whatsapp-enabled]'),
@@ -666,14 +879,13 @@ const elements = {
   adminCancelParticipant: document.querySelector('[data-admin-cancel-participant]'),
   adminDeleteParticipant: document.querySelector('[data-admin-delete-participant]'),
   adminPeopleList: document.querySelector('[data-admin-people-list]'),
-  adminGuestPreset: document.querySelector('[data-admin-guest-preset]'),
-  adminGuestCustomWrap: document.querySelector('[data-admin-guest-custom-wrap]'),
-  adminGuestCustom: document.querySelector('[data-admin-guest-custom]'),
-  adminAddGuest: document.querySelector('[data-admin-add-guest]'),
-  adminGuestStatus: document.querySelector('[data-admin-guest-status]'),
   weekOperations: document.querySelector('[data-week-operations]'),
   weekOperationsStatus: document.querySelector('[data-week-operations-status]'),
   weekOperationsDay: document.querySelector('[data-week-operations-day]'),
+  weekInvitedSection: document.querySelector('[data-week-invited-section]'),
+  weekInvitedInputs: document.querySelectorAll('[data-week-invited-meal]'),
+  weekInvitedSave: document.querySelector('[data-week-invited-save]'),
+  weekInvitedStatus: document.querySelector('[data-week-invited-status]'),
   weekHealthSection: document.querySelector('[data-week-health-section]'),
   weekHealthList: document.querySelector('[data-week-health-list]'),
   weekHealthSave: document.querySelector('[data-week-health-save]'),
@@ -699,12 +911,27 @@ const elements = {
   adminPasswordToggle: document.querySelector('[data-password-toggle="admin"]'),
   participantRefreshButton: document.querySelector('[data-participant-refresh]'),
   ownerExitButton: document.querySelector('[data-owner-exit]'),
+  platformOwnerExitButton: document.querySelector('[data-platform-owner-exit]'),
   forgetDeviceButton: document.querySelector('[data-forget-device]'),
   adminExportButton: document.querySelector('[data-admin-export-button]'),
+  adminExportSpinner: document.querySelector('[data-admin-export-spinner]'),
+  adminExportLabel: document.querySelector('[data-admin-export-label]'),
   adminTools: document.querySelector('[data-admin-tools]'),
   adminContactSharingRow: document.querySelector('[data-admin-contact-sharing-row]'),
   adminCommonPasswordRow: document.querySelector('[data-admin-common-password-row]'),
   adminCommonPasswordInput: document.querySelector('[data-admin-common-password-input]'),
+  adminSharedPasswordRow: document.querySelector('[data-admin-shared-password-row]'),
+  adminSharedPasswordCurrent: document.querySelector('[data-admin-shared-password-current]'),
+  adminSharedPasswordNew: document.querySelector('[data-admin-shared-password-new]'),
+  adminSharedPasswordStatus: document.querySelector('[data-admin-shared-password-status]'),
+  adminSharedPasswordCurrentToggle: document.querySelector('[data-password-toggle="admin-shared-current"]'),
+  adminSharedPasswordNewToggle: document.querySelector('[data-password-toggle="admin-shared-new"]'),
+  adminPasswordRotationWarning: document.querySelector('[data-admin-password-rotation-warning]'),
+  residentAdminUnlock: document.querySelector('[data-resident-admin-unlock]'),
+  residentAdminPassword: document.querySelector('[data-resident-admin-password]'),
+  residentAdminPasswordToggle: document.querySelector('[data-password-toggle="resident-admin"]'),
+  residentAdminUnlockButton: document.querySelector('[data-resident-admin-unlock-button]'),
+  residentAdminUnlockStatus: document.querySelector('[data-resident-admin-unlock-status]'),
   adminCommonPasswordStatus: document.querySelector('[data-admin-common-password-status]'),
   adminCommonPasswordToggle: document.querySelector('[data-password-toggle="common-password"]'),
   adminAdministratorName: document.querySelector('[data-admin-administrator-name]'),
@@ -713,6 +940,8 @@ const elements = {
   adminAdministratorPasswordRow: document.querySelector('[data-admin-administrator-password-row]'),
   adminAdministratorPassword: document.querySelector('[data-admin-administrator-password]'),
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
+  startupSplashTitle: document.querySelector('[data-startup-splash-title]'),
+  startupSplashSubtitle: document.querySelector('[data-startup-splash-subtitle]'),
   title: document.querySelector('[data-title]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
@@ -750,16 +979,7 @@ const elements = {
   participantSummary: document.querySelector('[data-participant-summary]'),
   weekPrev: document.querySelector('[data-week-prev]'),
   weekNext: document.querySelector('[data-week-next]'),
-  operationalLinks: document.querySelector('[data-operational-links]'),
-  publicLink: document.querySelector('[data-public-link]'),
-  summaryLink: document.querySelector('[data-summary-link]'),
-  kitchenLink: document.querySelector('[data-kitchen-link]'),
-  publicLinkStatus: document.querySelector('[data-public-link-status]'),
-  publicLinkMeta: document.querySelector('[data-public-link-meta]'),
-  kitchenLinkStatus: document.querySelector('[data-kitchen-link-status]'),
-  kitchenLinkMeta: document.querySelector('[data-kitchen-link-meta]'),
   operationalLinksStatus: document.querySelector('[data-operational-links-status]'),
-  rotateLinkButtons: document.querySelectorAll('[data-rotate-operational-link]'),
   summaryNavLinks: document.querySelectorAll('[data-summary-nav-link]'),
   participantWeekNavLinks: document.querySelectorAll('[data-participant-week-nav-link]'),
   monthNavLinks: document.querySelectorAll('[data-month-nav-link]'),
@@ -883,23 +1103,26 @@ document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
 elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
 elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
-elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
 elements.weekPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
-elements.weekPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: true });
+elements.weekPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.weekPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
 elements.authButton.addEventListener('click', handleAuthButton);
 elements.adminCenterSelect.addEventListener('change', handleAdminCenterChange);
 elements.ownerExitButton.addEventListener('click', handleOwnerExit);
+elements.platformOwnerExitButton?.addEventListener('click', handleOwnerExit);
 elements.adminEmailChoice.addEventListener('click', handleAdministratorEmailChoice);
 elements.adminEmailSignIn.addEventListener('click', handleAdministratorEmailSignIn);
 elements.adminEmailCreate.addEventListener('click', handleAdministratorEmailCreation);
 elements.adminPasswordReset.addEventListener('click', handleAdministratorPasswordReset);
 elements.ownerInvitationGenerate.addEventListener('click', handleCenterInvitationGeneration);
 elements.ownerInvitationCopy.addEventListener('click', handleCenterInvitationCopy);
-if (elements.ownerInvitationShare && typeof navigator.share === 'function') {
-  elements.ownerInvitationShare.hidden = false;
-  elements.ownerInvitationShare.addEventListener('click', handleCenterInvitationShare);
+if (typeof navigator.share === 'function') {
+  elements.ownerInvitationShares.forEach((button) => {
+    button.hidden = false;
+    button.addEventListener('click', handleCenterInvitationShare);
+  });
 }
 elements.bootstrapButton.addEventListener('click', handleBootstrapButton);
 elements.centerInitializerButton.addEventListener('click', handleCenterInitialization);
@@ -912,7 +1135,6 @@ elements.monthGrid.addEventListener('click', handleMonthGridClick);
 elements.participantMeals.addEventListener('click', handleParticipantMealsClick);
 elements.weekPrev.addEventListener('click', () => shiftWeek(-7));
 elements.weekNext.addEventListener('click', () => shiftWeek(7));
-elements.adminParticipantSelect.addEventListener('change', handleAdminParticipantChange);
 elements.adminNewParticipant.addEventListener('click', handleAdminNewParticipant);
 elements.adminSaveButton.addEventListener('click', handleAdminSaveContact);
 elements.adminCancelParticipant.addEventListener('click', handleAdminCancelParticipant);
@@ -924,8 +1146,6 @@ elements.adminPeopleList.addEventListener('change', handleAdminPeopleListChange)
 elements.adminParticipantDiets.addEventListener('change', () => {
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
 });
-elements.adminGuestPreset.addEventListener('change', syncAdminGuestControls);
-elements.adminAddGuest.addEventListener('click', handleAdminAddGuest);
 elements.adminCenterSettingsSave.addEventListener('click', handleAdminCenterSettingsSave);
 elements.adminCenterSettingsSection.addEventListener('input', markAdminCenterDirty);
 elements.adminCenterSettingsSection.addEventListener('change', markAdminCenterDirty);
@@ -960,13 +1180,12 @@ elements.adminPanel?.addEventListener('touchcancel', cancelAdminSectionSwipe, { 
 if (elements.activationChecklistList) {
   elements.activationChecklistList.addEventListener('click', handleAdminSectionNavigation);
 }
-elements.adminAuditLoad.addEventListener('toggle', () => {
-  if (elements.adminAuditLoad.open && elements.adminAuditLoad.dataset.loaded !== 'true') {
-    handleAuditLoad();
-  }
-});
+elements.adminAuditLoad.addEventListener('click', handleAuditDialogOpen);
+elements.adminAuditClose.addEventListener('click', () => elements.adminAuditDialog.close());
+elements.adminAuditDateFilter.addEventListener('input', renderFilteredAuditEvents);
+elements.adminAuditUserFilter.addEventListener('input', renderFilteredAuditEvents);
+elements.adminAuditMore.addEventListener('click', handleAuditLoad);
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
-elements.adminCenterAvatarSave.addEventListener('click', handleAdminCenterAvatarSave);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
 elements.adminExportButton.addEventListener('click', handleAdminExport);
 if (elements.adminAdaptationsSave) {
@@ -981,6 +1200,9 @@ if (elements.adminAdaptationsReset) {
 if (elements.adminThemeSelect) {
   elements.adminThemeSelect.addEventListener('change', handleThemeSelectChange);
 }
+if (elements.adminInterfaceStyleSelect) {
+  elements.adminInterfaceStyleSelect.addEventListener('change', handleInterfaceStyleSelectChange);
+}
 if (elements.adminLanguageSelect) {
   elements.adminLanguageSelect.addEventListener('change', async (event) => {
     const newLocale = event.target.value;
@@ -989,6 +1211,9 @@ if (elements.adminLanguageSelect) {
       renderAllViews();
     }
   });
+}
+if (elements.mealReminderSelect) {
+  elements.mealReminderSelect.addEventListener('change', handleMealReminderPreferenceChange);
 }
 if (elements.adminContactSharingSelect) {
   elements.adminContactSharingSelect.addEventListener('change', (event) => {
@@ -1002,6 +1227,18 @@ if (elements.adminCommonPasswordToggle) {
 }
 if (elements.adminAdministratorPasswordToggle) {
   elements.adminAdministratorPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminAdministratorPassword, elements.adminAdministratorPasswordToggle));
+}
+if (elements.adminSharedPasswordCurrentToggle) {
+  elements.adminSharedPasswordCurrentToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminSharedPasswordCurrent, elements.adminSharedPasswordCurrentToggle));
+}
+if (elements.adminSharedPasswordNewToggle) {
+  elements.adminSharedPasswordNewToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminSharedPasswordNew, elements.adminSharedPasswordNewToggle));
+}
+if (elements.residentAdminPasswordToggle) {
+  elements.residentAdminPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.residentAdminPassword, elements.residentAdminPasswordToggle));
+}
+if (elements.residentAdminUnlockButton) {
+  elements.residentAdminUnlockButton.addEventListener('click', handleResidentAdministratorUnlock);
 }
 if (elements.initializerPasswordToggle) {
   elements.initializerPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.initializerPassword, elements.initializerPasswordToggle));
@@ -1018,8 +1255,8 @@ if (elements.adminPasswordSetupDialog) {
 elements.residentLoginForm.addEventListener('submit', handleResidentLogin);
 elements.forgetDeviceButton.addEventListener('click', handleForgetDevice);
 elements.summaryPanel.addEventListener('click', handleSummaryPanelClick);
-document.querySelectorAll('[data-access-link]').forEach((btn) => {
-  btn.addEventListener('click', handleAccessLinkCopy);
+document.querySelectorAll('[data-copy-access-link]').forEach((button) => {
+  button.addEventListener('click', handleAccessLinkCopy);
 });
 document.querySelectorAll('[data-share-access-link]').forEach((button) => {
   button.addEventListener('click', handleAccessLinkShare);
@@ -1028,6 +1265,7 @@ elements.kitchenPanel.addEventListener('click', handleKitchenPanelClick);
 window.addEventListener('beforeunload', handleBeforeUnload);
 window.addEventListener('hashchange', handleAdminHashChange);
 elements.weekOperationsDay.addEventListener('change', () => refreshWeekOperations(true));
+elements.weekInvitedSave.addEventListener('click', handleWeekInvitedSave);
 elements.weekHealthList.addEventListener('click', handleWeekHealthListClick);
 elements.weekHealthSave.addEventListener('click', handleWeekHealthSave);
 elements.weekDietType.addEventListener('change', () => {
@@ -1039,7 +1277,6 @@ elements.weekKitchenNoteSave.addEventListener('click', handleWeekKitchenNoteSave
 elements.weekKitchenNoteList.addEventListener('click', handleWeekKitchenNoteListClick);
 elements.adminPhoneConsent.addEventListener('change', syncAdminCheckboxes);
 elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
-elements.operationalLinks.addEventListener('click', handleOperationalLinksClick);
 [
   ...elements.summaryNavLinks,
   ...elements.participantWeekNavLinks,
@@ -1062,6 +1299,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
     scheduleBackgroundRefresh('ripresa');
   }
+  if (!document.hidden) scheduleMealRemindersFromCurrentCalendar();
 });
 window.addEventListener('online', handleConnectivityChange);
 window.addEventListener('offline', handleConnectivityChange);
@@ -1112,22 +1350,30 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
+  syncStartupSplashPresentation();
+  applyMealReminderUrlPreference();
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
-  if (hasAdminInterface) initializeAuthPanel();
   initializeResidentAccess();
-  renderMode();
-  hideStartupSplash();
 
   const settingsPromise = loadCenterContactSettings().catch(() => null);
   const i18nPromise = initI18n({
     development: window.location.hostname === 'localhost',
     centerLocale: state.centerContactSettings.language || null
   });
+  // Translation files are local, small and required before auth status text
+  // can be painted. Firestore settings continue loading in parallel and do
+  // not delay the first usable frame.
+  await i18nPromise;
+  renderAllViews();
+  if (hasAdminInterface) initializeAuthPanel();
+  const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
+  if (!keepStartupGate) hideStartupSplash();
   const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
   if (centerSettings) {
-    state.centerContactSettings = centerSettings;
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    syncStartupSplashPresentation();
     await applyCenterDefaultLanguage(centerSettings);
   }
   renderAllViews();
@@ -1147,6 +1393,17 @@ async function bootstrapApp() {
 }
 
 bootstrapApp().catch(console.error);
+
+function syncStartupSplashPresentation() {
+  if (elements.startupSplashTitle) {
+    elements.startupSplashTitle.textContent = state.centerContactSettings.appDisplayName
+      || DEFAULT_APP_DISPLAY_NAME;
+  }
+  if (elements.startupSplashSubtitle) {
+    elements.startupSplashSubtitle.textContent = state.centerContactSettings.appDisplaySubtitle
+      || DEFAULT_APP_DISPLAY_SUBTITLE;
+  }
+}
 
 function hideStartupSplash() {
   const splash = document.querySelector('[data-startup-splash]');
@@ -1180,6 +1437,16 @@ function scheduleBackgroundRefresh(source) {
 
 function prepareMonthAutoScrollEntry(previousMode, nextMode) {
   if (previousMode === nextMode) return;
+  if (nextMode === 'participant' || nextMode === 'week') {
+    // Mese e Settimana sono due consultazioni distinte: quando si passa da
+    // una vista all'altra si riparte sempre dal periodo che contiene oggi,
+    // nel fuso orario del centro. I periodi sfogliati restano validi soltanto
+    // finché si rimane nella vista corrente.
+    const today = getCenterToday();
+    state.selectedSummaryDate = formatDateId(today);
+    state.weekStartDate = startOfWeek(today);
+    state.monthDate = startOfMonth(today);
+  }
   if (nextMode === 'summary') {
     // Ogni nuovo ingresso nel riepilogo parte da Oggi. La scelta Domani vale
     // soltanto durante la consultazione corrente.
@@ -1333,7 +1600,7 @@ function updateConnectivityState() {
   });
 }
 
-function handleInAppNavigation(event) {
+async function handleInAppNavigation(event) {
   const link = event.currentTarget;
   const targetUrl = new URL(link.href, window.location.href);
   const targetMode = targetUrl.searchParams.get('view');
@@ -1343,13 +1610,44 @@ function handleInAppNavigation(event) {
     return;
   }
 
+  // Participant-first pages deliberately remove the large admin DOM at
+  // startup. In that case keep the link's native navigation so the browser
+  // loads the complete control panel automatically; intercepting it would
+  // only change the URL while leaving an empty page.
+  if (isControlPanelTarget && !hasAdminInterface) {
+    return;
+  }
+
   event.preventDefault();
   if (isOperationalTarget) {
+    state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
   } else {
-    targetUrl.searchParams.delete('access');
+    state.residentSettingsMode = shouldOpenResidentSettingsPanel();
+    if (state.residentSettingsMode) {
+      targetUrl.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+    } else {
+      targetUrl.searchParams.delete('access');
+    }
+  }
+  if (isOperationalTarget && hasStrongAdministratorIdentity() && state.adminRole) {
+    state.residentEntryKind = 'strong-admin';
     if (!state.residentReady) {
-      targetUrl.searchParams.delete('c');
+      try {
+        const restored = await restoreResidentIdentityForAuthorizedAdministrator();
+        if (restored) {
+          state.participants = restored.participants;
+          state.selectedParticipant = restored.participant;
+          state.residentReady = true;
+          state.residentRestorePending = false;
+        }
+      } catch (error) {
+        // Il collegamento Prenotarsi deve restare utilizzabile anche se la
+        // scheda persona dell'amministratore non e' ancora collegata: in quel
+        // caso mostriamo il normale accesso residente, senza interrompere la
+        // navigazione con un errore tecnico.
+        console.warn('[admin-to-resident]', error?.code || error?.message || error);
+      }
     }
   }
   window.history.pushState({}, '', targetUrl.pathname + targetUrl.search);
@@ -1357,13 +1655,64 @@ function handleInAppNavigation(event) {
   state.mode = targetMode;
   invalidateViewRequests();
   state.friendlyAccess = isOperationalTarget;
+  if (state.residentSettingsMode) {
+    state.adminActiveSection = 'adaptations';
+    state.adminMobileSection = 'adaptations';
+    renderResidentSettingsPanel();
+  }
   renderMode();
+  if (isControlPanelTarget) {
+    // The normal refresh path intentionally skips admin mode. Hydrate the
+    // panel explicitly when reached through an in-app link, otherwise mobile
+    // and tablet users only see it after a browser refresh.
+    void hydrateAdminNavigation().catch(showAuthError);
+    return;
+  }
+  if (state.residentReady || (state.mode === 'week' && canUseWeekWithoutParticipant())) {
+    // Rebuild immediately from the in-memory model. Original and the modern
+    // styles use different icons/markup, so waiting for the network refresh
+    // leaves the previous visual language visible for several moments.
+    renderParticipantMeals();
+  }
   refreshNow('navigazione');
+}
+
+async function hydrateAdminNavigation() {
+  if (state.mode !== 'admin') return;
+  // residentSettingsMode is an explicit UI boundary, not a loading hint.
+  // Honour it before looking at a possibly persistent Firebase session.
+  if (state.residentSettingsMode) {
+    if (state.residentReady) {
+      renderResidentSettingsPanel();
+      renderMode();
+    } else {
+      await reconcileAdminAccessWithoutStrongUser();
+    }
+    return;
+  }
+  const user = getCurrentUser();
+  if (user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)) {
+    state.residentSettingsMode = false;
+    if (state.adminRole && state.adminAuthUid === user.uid && !state.adminAuthorizationPending) {
+      renderMode();
+      return;
+    }
+    beginAdminAuthorizationCheck();
+    await applyAdminAuthState(user);
+    renderMode();
+    return;
+  }
+
+  // A resident technical session can replace Firebase Auth while the previous
+  // strong admin role is still held in memory. Reconcile it exactly as the
+  // initial auth watcher does; this also mounts either resident settings or
+  // the administrator sign-in panel without requiring a page refresh.
+  await reconcileAdminAccessWithoutStrongUser();
 }
 
 function handleMealViewSwipeStart(event) {
   const touch = event.touches?.[0];
-  if (!touch || event.target.closest('input, select, textarea, button, a, dialog, [contenteditable="true"]')) {
+  if (!touch || event.target.closest('input, select, textarea, dialog, [contenteditable="true"]')) {
     mealViewSwipeStart = null;
     return;
   }
@@ -1380,11 +1729,20 @@ function handleMealViewSwipeEnd(event) {
   if (Math.abs(deltaX) < MEAL_VIEW_SWIPE_MIN_X
       || Math.abs(deltaY) > MEAL_VIEW_SWIPE_MAX_Y
       || Math.abs(deltaX) < Math.abs(deltaY) * 1.35) return;
-  if (state.mode === 'participant' && deltaX < 0) {
-    elements.participantWeekNavLinks[0]?.click();
-  } else if (state.mode === 'week' && deltaX > 0) {
-    elements.monthNavLinks[0]?.click();
+  event.preventDefault();
+  const direction = deltaX < 0 ? 1 : -1;
+  const panel = state.mode === 'participant' ? elements.participantPanel : elements.weekPanel;
+  window.clearTimeout(mealViewSwipeTimer);
+  panel?.classList.remove('meal-snap-forward', 'meal-snap-backward');
+  panel?.classList.add(direction > 0 ? 'meal-snap-forward' : 'meal-snap-backward');
+  if (state.mode === 'participant') {
+    shiftMonth(direction);
+  } else if (state.mode === 'week') {
+    shiftWeek(direction * 7);
   }
+  mealViewSwipeTimer = window.setTimeout(() => {
+    panel?.classList.remove('meal-snap-forward', 'meal-snap-backward');
+  }, 260);
 }
 
 function cancelMealViewSwipe() {
@@ -1396,17 +1754,9 @@ function initializeOperationalLinks() {
   const publicToken = state.adminRole
     ? state.operationalLinks.publicTokenId
     : requestedToken || state.operationalLinks.publicTokenId;
-  const kitchenToken = state.adminRole
-    ? state.operationalLinks.kitchenTokenId
-    : state.mode === 'kitchen' && requestedToken
-      ? requestedToken
-      : state.operationalLinks.kitchenTokenId;
   const centerId = getActiveCenterId();
   const personalAccess = 'friendly';
   const monthHref = buildOperationalLink('participant', publicToken, centerId, personalAccess);
-  elements.publicLink.href = monthHref;
-  elements.summaryLink.href = buildOperationalLink('summary', publicToken, centerId);
-  elements.kitchenLink.href = buildOperationalLink('kitchen', kitchenToken, centerId);
   elements.summaryNavLinks.forEach((link) => {
     link.href = buildOperationalLink('summary', publicToken, centerId, personalAccess);
   });
@@ -1421,25 +1771,70 @@ function initializeOperationalLinks() {
   elements.monthNavLinks.forEach((link) => {
     link.href = monthHref;
   });
-  const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
-  adminEntryUrl.searchParams.set('view', 'admin');
-  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
-  elements.controlPanelEntry.href = adminEntryUrl.pathname + adminEntryUrl.search;
+  updateControlPanelEntryHref();
   elements.mealsReturnEntry.href = buildOperationalLink(
     entryMode,
     publicToken,
     centerId,
     personalAccess
   );
-  const mealsAccessButton = document.querySelector('[data-access-link="pasti"]');
-  const kitchenAccessButton = document.querySelector('[data-access-link="cucina"]');
-  const mealsShareButton = document.querySelector('[data-share-access-link="pasti"]');
-  const kitchenShareButton = document.querySelector('[data-share-access-link="cucina"]');
-  if (mealsAccessButton) mealsAccessButton.disabled = !publicToken;
-  if (kitchenAccessButton) kitchenAccessButton.disabled = !kitchenToken;
-  if (mealsShareButton) mealsShareButton.disabled = !publicToken;
-  if (kitchenShareButton) kitchenShareButton.disabled = !kitchenToken;
-  renderOperationalLinkMetadata();
+  syncOperationalLinkActionState();
+}
+
+function normalizeOperationalLinksFromAuthorizedLogin(data) {
+  if (!data || typeof data !== 'object') return null;
+  const normalizeToken = (value) => {
+    const token = String(value || '').trim();
+    return /^[A-Za-z0-9_]{8,160}$/.test(token)
+      && !['public_demo', 'kitchen_demo'].includes(token)
+      ? token
+      : '';
+  };
+  const publicTokenId = normalizeToken(data.publicTokenId);
+  const kitchenTokenId = normalizeToken(data.kitchenTokenId);
+  if (!publicTokenId && !kitchenTokenId) return null;
+  return {
+    publicTokenId,
+    kitchenTokenId,
+    publicStatus: publicTokenId ? 'ACTIVE' : 'INACTIVE',
+    kitchenStatus: kitchenTokenId ? 'ACTIVE' : 'INACTIVE',
+    publicCreatedAt: data.publicCreatedAt || data.updatedAt || null,
+    kitchenCreatedAt: data.kitchenCreatedAt || data.updatedAt || null
+  };
+}
+
+function syncOperationalLinkActionState(
+  canView = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS)
+) {
+  document.querySelectorAll('[data-copy-access-link], [data-open-access-link], [data-share-access-link]').forEach((control) => {
+    const kind = control.dataset.copyAccessLink
+      || control.dataset.openAccessLink
+      || control.dataset.shareAccessLink;
+    const tokenReady = kind === 'cucina'
+      ? Boolean(state.operationalLinks.kitchenTokenId)
+      : Boolean(state.operationalLinks.publicTokenId);
+    const enabled = canView && tokenReady;
+    if (control.matches('[data-open-access-link]')) {
+      if (enabled) {
+        control.href = getCachedAccessLinkUrl(kind);
+        control.tabIndex = 0;
+      } else {
+        control.removeAttribute('href');
+        control.tabIndex = -1;
+      }
+      control.setAttribute('aria-disabled', String(!enabled));
+      return;
+    }
+    control.disabled = !enabled;
+  });
+  document.querySelectorAll('[data-operational-link-url]').forEach((input) => {
+    const kind = input.dataset.operationalLinkUrl;
+    const tokenReady = kind === 'cucina'
+      ? Boolean(state.operationalLinks.kitchenTokenId)
+      : Boolean(state.operationalLinks.publicTokenId);
+    input.value = canView && tokenReady ? getCachedAccessLinkUrl(kind) : '';
+    input.setAttribute('aria-disabled', String(!canView || !tokenReady));
+  });
 }
 
 function buildOperationalLink(view, token, centerId, access = '') {
@@ -1447,20 +1842,6 @@ function buildOperationalLink(view, token, centerId, access = '') {
   if (token) params.set('t', token);
   if (access) params.set('access', access);
   return `${window.location.origin}/?${params.toString()}`;
-}
-
-function renderOperationalLinkMetadata() {
-  const linkRows = [
-    [elements.publicLinkStatus, elements.publicLinkMeta, state.operationalLinks.publicCreatedAt],
-    [elements.kitchenLinkStatus, elements.kitchenLinkMeta, state.operationalLinks.kitchenCreatedAt]
-  ];
-  linkRows.forEach(([status, metadata, createdAt]) => {
-    status.textContent = t('admin.access.active');
-    const date = normalizeClientDate(createdAt);
-    metadata.textContent = date
-      ? t('admin.access.activatedOn', { date: new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(date) })
-      : t('admin.access.noActivationDate');
-  });
 }
 
 function handleAdminSectionNavigation(event) {
@@ -1636,7 +2017,6 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
   if (section === 'people') {
     state.adminParticipantId = '';
     state.adminPersonDirty = false;
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
   }
@@ -1696,21 +2076,23 @@ function renderAdminMobileSection() {
 }
 
 function isAdminSectionAllowed(section) {
+  if (state.residentSettingsMode) return section === 'adaptations';
   if (!isAdministratorProfileComplete() && section !== 'configuration') {
     return false;
   }
   const capabilityMap = {
     configuration: [CAPABILITIES.MANAGE_CENTER_SETTINGS],
-    overview: [CAPABILITIES.VIEW_CENTER_OVERVIEW],
+    overview: [CAPABILITIES.VIEW_CENTER_OVERVIEW, CAPABILITIES.VIEW_OPERATIONAL_LINKS],
     people: [CAPABILITIES.MANAGE_PARTICIPANTS],
-    adaptations: [CAPABILITIES.MANAGE_CENTER_SETTINGS],
-    access: [CAPABILITIES.ASSIGN_VICE, CAPABILITIES.ASSIGN_LITURGY, CAPABILITIES.MANAGE_ADMINS],
+    adaptations: [CAPABILITIES.MANAGE_ADAPTATIONS],
+    access: [CAPABILITIES.MANAGE_ADMINS],
     activity: [CAPABILITIES.VIEW_AUDIT_LOG, CAPABILITIES.MANAGE_CALENDAR]
   };
   return (capabilityMap[section] || []).some((capability) => hasCurrentCapability(capability));
 }
 
 function isAdministratorProfileComplete() {
+  if (state.adminRole === 'OWNER' || state.adminRole === 'ADMIN') return true;
   return state.centerContactSettings.administratorProfileRequired !== true
     || state.centerContactSettings.administratorProfileComplete === true;
 }
@@ -1739,35 +2121,156 @@ function initializeAuthPanel() {
   }
 
   const authFallback = window.setTimeout(() => {
-    if (authSettled) {
+    if (authSettled || state.mode !== 'admin') {
       return;
     }
-    setSignedOutState();
-  }, 1800);
+    void reconcileAdminAccessWithoutStrongUser();
+  }, 8000);
 
   elements.authButton.disabled = false;
   watchAuth((user) => {
+    const strongAuthUser = user && !user.isAnonymous && !isResidentTechnicalEmail(user.email);
+    if (state.mode === 'admin' && state.residentSettingsMode) {
+      authSettled = true;
+      window.clearTimeout(authFallback);
+      void reconcileAdminAccessWithoutStrongUser();
+      return;
+    }
+    if (!shouldProcessAdminAuthEvent({
+      mode: state.mode,
+      residentAuthTransition: state.residentAuthTransition,
+      residentRestorePending: state.residentRestorePending,
+      strongAuthUser: Boolean(strongAuthUser)
+    })) {
+      // Al refresh del pannello una sessione residente/vice persistente parte
+      // con residentRestorePending=true. L'evento Auth anonimo iniziale non
+      // deve smontarla, ma deve avviarne subito il ripristino: attendere il
+      // timeout di sicurezza rendeva il pannello inutilizzabile per 8 secondi.
+      if (state.mode === 'admin'
+          && state.residentRestorePending
+          && !state.residentAuthTransition
+          && !strongAuthUser) {
+        authSettled = true;
+        window.clearTimeout(authFallback);
+        void reconcileAdminAccessWithoutStrongUser();
+      }
+      return;
+    }
     const revision = ++authRevision;
     authSettled = true;
     window.clearTimeout(authFallback);
     if (!user) {
-      setSignedOutState();
+      if (state.mode === 'admin') void reconcileAdminAccessWithoutStrongUser();
+      else if (state.adminRole) setSignedOutState();
       return;
     }
 
     if (user.isAnonymous || isResidentTechnicalEmail(user.email)) {
-      setSignedOutState();
-      elements.authStatus.textContent = t('role.admin'); // elements.authStatus.textContent = 'Accesso amministratore'
+      if (state.mode === 'admin') void reconcileAdminAccessWithoutStrongUser();
+      else if (state.adminRole) setSignedOutState();
       return;
     }
 
-    showAuthenticatedAdministratorControls();
-    elements.authStatus.textContent = t('app.header.verifyingAuth');
+    beginAdminAuthorizationCheck();
     applyAdminAuthState(user, revision, () => authRevision).catch(showAuthError);
   });
 }
 
+function beginAdminAuthorizationCheck() {
+  transitionAuthLifecycle('ADMIN_AUTH_START');
+  state.adminRequestId = authLifecycle.adminRequestId;
+  state.adminAuthorizationPending = true;
+  elements.adminShell.setAttribute('aria-busy', 'true');
+  elements.adminShell.open = state.mode === 'admin';
+  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = true;
+  elements.adminEmailAuth.hidden = true;
+  elements.adminPanel.hidden = true;
+  elements.authStatus.textContent = t('app.header.verifyingAuth', {}, {
+    fallback: 'Accesso al pannello in corso…'
+  });
+}
+
+function finishAdminAuthorizationCheck() {
+  state.adminAuthorizationPending = false;
+  if (state.adminRole && state.adminAuthUid) {
+    transitionAuthLifecycle('ADMIN_AUTH_SUCCESS', {
+      firebaseUid: state.adminAuthUid,
+      role: state.adminRole,
+      requestId: state.adminRequestId
+    });
+  } else {
+    transitionAuthLifecycle('ADMIN_AUTH_FAILURE', { requestId: state.adminRequestId });
+  }
+  elements.adminShell.removeAttribute('aria-busy');
+  hideStartupSplash();
+}
+
+function reconcileAdminAccessWithoutStrongUser() {
+  if (state.residentAuthTransition) {
+    return Promise.resolve();
+  }
+  if (state.adminAccessReconcilePromise) return state.adminAccessReconcilePromise;
+  let request;
+  request = (async () => {
+    const canRestoreResident = state.mode === 'admin'
+      && !isResidentEntryGateClosed()
+      && (state.residentReady || Boolean(loadStoredResidentSignature()));
+    if (!canRestoreResident) {
+      setSignedOutState();
+      renderMode();
+      return;
+    }
+    // Prima ricostruiamo la sessione residente/vice. Azzerare subito lo stato
+    // amministrativo mostrava per errore Google/email e poteva invalidare la
+    // vice-sessione già valida, lasciando il pannello fermo su "verifica".
+    beginAdminAuthorizationCheck();
+    await restoreResidentSettingsPanel();
+    finishAdminAuthorizationCheck();
+    renderMode();
+  })().catch((error) => {
+    finishAdminAuthorizationCheck();
+    showAuthError(error);
+  }).finally(() => {
+    if (state.adminAccessReconcilePromise === request) {
+      state.adminAccessReconcilePromise = null;
+    }
+  });
+  state.adminAccessReconcilePromise = request;
+  return request;
+}
+
 async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
+  const hydrationVersion = ++state.adminHydrationVersion;
+  state.adminPanelHydrating = true;
+  try {
+    return await resolveAdminAuthState(user, revision, () => (
+      hydrationVersion === state.adminHydrationVersion
+        ? getCurrentRevision()
+        : Number.NaN
+    ));
+  } catch (error) {
+    // A membership/settings read may fail independently of Firebase Auth. Do
+    // not leave the shell permanently in "Accesso in verifica". If the role
+    // was already established, keep the panel mounted with the data currently
+    // available and surface the recoverable error in its status row.
+    if (hydrationVersion === state.adminHydrationVersion
+        && state.mode === 'admin'
+        && state.adminRole
+        && state.adminAuthUid === user?.uid) {
+      elements.adminPanel.hidden = false;
+      renderMode();
+    }
+    throw error;
+  } finally {
+    if (hydrationVersion === state.adminHydrationVersion) {
+      state.adminPanelHydrating = false;
+      finishAdminAuthorizationCheck();
+    }
+  }
+}
+
+async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
   const adminModule = await loadDomainModule('admin');
   const isPlatformOwner = adminModule.isPlatformOwnerUser(user);
   let access = await adminModule.loadAdminCenterAccess(user);
@@ -1790,13 +2293,11 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       elements.adminEmailStatus.textContent = 'Attivazione in corso...';
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
+      if (result.role === 'ADMIN') {
+        storePendingAdminSuccession(result.centerId, user.uid);
+      }
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
-      await showActionDialog({
-        title: t('admin.invitations.acceptedWaitTitle'),
-        message: t('admin.invitations.acceptedWaitMessage'),
-        confirmLabel: t('common.actions.confirm'),
-        hideCancel: true
-      });
+      await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -1830,12 +2331,33 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     return;
   }
 
+  const activeCenterId = access.centerId || getActiveCenterId();
+  if (access.active && access.role === 'ADMIN' && access.roleInvitationId) {
+    // Recover the waiting state even after a reload or when acceptance was
+    // completed in another tab of the same browser.
+    storePendingAdminSuccession(activeCenterId, user.uid);
+  }
+  const successionWasPending = hasPendingAdminSuccession(activeCenterId, user.uid);
+  const successionCompleted = access.active
+    && access.role === 'OWNER'
+    && successionWasPending;
+  if (successionCompleted) {
+    clearPendingAdminSuccession(activeCenterId, user.uid);
+    cancelAdminSuccessionRoleCheck();
+  }
+
   const isAdmin = access.active;
   const invitationPending = access.invitationPending === true;
+  const requiresDifferentAdminIdentity = !isAdmin
+    && !isPlatformOwner
+    && !invitationPending
+    && !access.needsInitialization;
   state.platformOwner = isPlatformOwner;
+  state.adminNeedsInitialization = !isPlatformOwner && access.needsInitialization === true;
   state.adminRole = isAdmin ? access.role : '';
+  state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
   state.adminMassPermission = isAdmin && access.massPermission === true;
-  state.adminCanManageMass = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_MASS);
+  state.adminCanManageMass = isAdmin && access.canManageMass === true;
   state.adminCanManageDailyOperations = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
   renderAdminCenterSwitcher(access.availableCenters, access.centerId, isPlatformOwner);
   showRequiredAdminPasswordSetup(user, access.passwordSetupRequired === true);
@@ -1844,10 +2366,11 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   elements.adminShell.dataset.platformOwner = isPlatformOwner ? 'true' : 'false';
   elements.adminShell.open = isAdmin || invitationPending || access.needsInitialization || state.platformOwner || state.mode === 'admin';
   elements.authActions.classList.add('auth-actions-signed-in');
-  elements.authActions.hidden = true;
-  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = !requiresDifferentAdminIdentity;
+  elements.adminAuthMethods.hidden = !requiresDifferentAdminIdentity;
   elements.authButton.textContent = t('common.actions.exit');
-  elements.adminEmailAuth.hidden = true;
+  elements.adminEmailChoice.hidden = !requiresDifferentAdminIdentity;
+  elements.adminEmailAuth.hidden = !requiresDifferentAdminIdentity || !state.adminInviteEmailExpanded;
   elements.authStatus.textContent = isPlatformOwner
     ? user.email || t('role.platformOwner')
     : isAdmin
@@ -1861,9 +2384,13 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
           : invitationResponse === 'REJECTED'
             ? t('app.header.invitationRejected')
             : t('app.header.unauthorizedAccount');
+  if (requiresDifferentAdminIdentity) {
+    elements.adminEmailStatus.textContent = t('admin.succession.identityMismatch');
+  }
   const roleLabels = {
     OWNER: t('role.owner'),
     ADMIN: t('role.admin'),
+    MANAGER: t('role.vice'),
     RESIDENT: t('role.resident')
   };
   const roleLabel = state.platformOwner
@@ -1877,12 +2404,12 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   elements.authUid.textContent = '';
   elements.centerInitializer.hidden = !access.needsInitialization;
   elements.bootstrapButton.hidden = !hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR);
-  elements.operationalLinks.hidden = !hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
   if (isPlatformOwner) {
     elements.bootstrapButton.hidden = true;
-    elements.operationalLinks.hidden = true;
   }
-  elements.adminPanel.hidden = !isAdmin || state.platformOwner;
+  // Keep the complete panel atomic: participants, roles and operational links
+  // must be ready before any actionable control becomes visible.
+  elements.adminPanel.hidden = true;
   if (elements.adminInviteAcceptPanel) {
     elements.adminInviteAcceptPanel.hidden = !invitationPending
       && !access.invitationError
@@ -1890,7 +2417,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     elements.adminInviteAcceptText.textContent = invitationResponse === 'REJECTED'
       ? t('admin.invitations.rejectedNotice')
       : invitationPending
-      ? t('admin.invitations.acceptPrompt')
+      ? invitationPrompt(access.invitationRole)
       : t('admin.invitations.invalidOrExpired');
     elements.inviteAccept.disabled = !invitationPending;
     elements.inviteReject.disabled = !invitationPending;
@@ -1919,13 +2446,18 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     elements.adminAdministratorPassword.value = '';
   }
   elements.ownerInvitationPanel.hidden = !state.platformOwner;
+  renderAdminSuccessionNotice(
+    successionCompleted ? 'completed' : successionWasPending && access.role === 'ADMIN' ? 'waiting' : ''
+  );
   applyAdminCapabilityVisibility();
   if (state.platformOwner) {
     await refreshPlatformCenterList();
+    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
   }
   if (isAdmin && !state.platformOwner) {
     await refreshAdminParticipants();
-    if (state.mode === 'week') {
+    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
+    if (state.mode === 'participant' || state.mode === 'week') {
       if (!state.residentReady) {
         const restored = await restoreResidentIdentityForAuthorizedAdministrator();
         if (restored) {
@@ -1936,26 +2468,25 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       }
       renderResidentAccess(false);
       renderMode();
-      await refreshParticipant('autorizzazione');
+      await refreshNow('autorizzazione');
+      if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     }
   }
+  finishAdminAuthorizationCheck();
+  elements.adminPanel.hidden = !isAdmin || state.platformOwner;
   renderMode();
+  if (successionCompleted) {
+    await showOwnershipTransferCompleted();
+  } else if (successionWasPending && access.role === 'ADMIN') {
+    scheduleAdminSuccessionRoleCheck();
+  }
 }
 
 
 
 function setSignedOutState() {
-  state.adminRole = '';
-  state.adminPersonDirty = false;
-  state.adminCenterDirty = false;
-  state.adminMassPermission = false;
-  state.adminCanManageMass = false;
-  state.adminCanManageDailyOperations = false;
-  state.adminCenters = [];
-  state.weekOperationalHealth = null;
-  state.weekOperationalNote = null;
-  state.weekOperationalDateId = '';
-  state.platformOwner = false;
+  finishAdminAuthorizationCheck();
+  clearAdminAuthorizationState();
   elements.adminShell.dataset.adminActive = 'false';
   elements.adminShell.dataset.adminOwner = 'false';
   elements.adminShell.dataset.platformOwner = 'false';
@@ -2003,7 +2534,7 @@ function setSignedOutState() {
       ? t('admin.invitations.acceptedIdentify')
       : storedDecision === 'REJECT'
         ? t('admin.invitations.rejectedIdentify')
-        : t('admin.invitations.acceptPrompt');
+        : invitationPrompt();
     elements.inviteAcceptActions.hidden = Boolean(storedDecision);
     elements.inviteAccept.disabled = invitationNeedsDecision === false;
     elements.inviteReject.disabled = invitationNeedsDecision === false;
@@ -2029,11 +2560,94 @@ function setSignedOutState() {
   elements.adminCenterSelect.replaceChildren();
   elements.bootstrapButton.hidden = true;
   elements.centerInitializer.hidden = true;
-  elements.operationalLinks.hidden = true;
   elements.adminPanel.hidden = true;
   elements.ownerInvitationPanel.hidden = true;
   applyAdminCapabilityVisibility();
   elements.adminShell.open = state.mode === 'admin';
+}
+
+function clearAdminAuthorizationState() {
+  // Invalidate any admin hydration that started before logout. A late
+  // response must not be able to restore privileges on the new resident
+  // session.
+  state.adminHydrationVersion += 1;
+  state.adminAuthorizationPending = false;
+  state.adminPanelHydrating = false;
+  state.adminAccessReconcilePromise = null;
+  state.adminRole = '';
+  state.adminAuthUid = '';
+  state.adminNeedsInitialization = false;
+  state.adminPersonDirty = false;
+  state.adminCenterDirty = false;
+  state.adminMassPermission = false;
+  state.adminCanManageMass = false;
+  state.adminCanManageDailyOperations = false;
+  state.adminCenters = [];
+  state.weekOperationalHealth = null;
+  state.weekOperationalNote = null;
+  state.weekOperationalDateId = '';
+  state.residentAdministratorAuthorized = false;
+  state.platformOwner = false;
+  cancelAdminSuccessionRoleCheck();
+  renderAdminSuccessionNotice('');
+}
+
+function renderAdminSuccessionNotice(mode = '') {
+  if (!elements.adminSuccessionNotice) return;
+  const content = mode === 'waiting'
+    ? {
+        title: t('admin.invitations.acceptedWaitTitle'),
+        message: t('admin.invitations.acceptedWaitMessage')
+      }
+    : mode === 'completed'
+      ? {
+          title: t('admin.succession.completedTitle'),
+          message: t('admin.succession.completedMessage')
+        }
+      : null;
+  elements.adminSuccessionNotice.hidden = !content;
+  elements.adminSuccessionNoticeTitle.textContent = content?.title || '';
+  elements.adminSuccessionNoticeMessage.textContent = content?.message || '';
+}
+
+function showOwnershipTransferCompleted() {
+  return showActionDialog({
+    title: t('admin.succession.completedTitle'),
+    message: t('admin.succession.completedMessage'),
+    confirmLabel: t('common.actions.confirm'),
+    hideCancel: true
+  });
+}
+
+function cancelAdminSuccessionRoleCheck() {
+  if (!state.adminSuccessionPollTimerId) return;
+  window.clearTimeout(state.adminSuccessionPollTimerId);
+  state.adminSuccessionPollTimerId = 0;
+}
+
+function scheduleAdminSuccessionRoleCheck(delay = 8000) {
+  cancelAdminSuccessionRoleCheck();
+  if (state.mode !== 'admin' || state.adminRole !== 'ADMIN') return;
+  const user = getCurrentUser();
+  const centerId = getActiveCenterId();
+  if (!user || user.isAnonymous || !hasPendingAdminSuccession(centerId, user.uid)) return;
+  state.adminSuccessionPollTimerId = window.setTimeout(async () => {
+    state.adminSuccessionPollTimerId = 0;
+    if (document.visibilityState === 'hidden') {
+      scheduleAdminSuccessionRoleCheck(12000);
+      return;
+    }
+    try {
+      const membership = await loadCurrentAdminMembership(user);
+      if (!membership.active || membership.role !== state.adminRole) {
+        await applyAdminAuthState(user);
+        return;
+      }
+    } catch {
+      // Un errore di rete temporaneo non deve interrompere l'attesa del passaggio.
+    }
+    scheduleAdminSuccessionRoleCheck(12000);
+  }, delay);
 }
 
 function renderAdminCenterSwitcher(centers = [], activeCenterId = '', isPlatformOwner = false) {
@@ -2081,23 +2695,67 @@ function showAuthenticatedAdministratorControls() {
   elements.accountFooter.hidden = false;
 }
 
-function handleAuthButton() {
+async function handleAuthButton() {
   if (!isFirebaseConfigured) {
     return;
   }
 
-  if (elements.authActions.classList.contains('auth-actions-signed-in') || getCurrentUser()) {
-    signOutCurrentUser().catch(showAuthError);
+  const currentUser = getCurrentUser();
+  const hasStrongAdministratorIdentity = Boolean(
+    currentUser
+    && !currentUser.isAnonymous
+    && !isResidentTechnicalEmail(currentUser.email)
+  );
+  if (elements.authActions.classList.contains('auth-actions-signed-in') || hasStrongAdministratorIdentity) {
+    handleOwnerExit();
     return;
   }
 
   storeImplicitAdministratorInvitationAcceptance();
-  signInWithGoogle().catch(showAuthError);
+  try {
+    const credential = await signInWithGoogle();
+    // The Auth observer is intentionally debounced for mutation stability.
+    // Hydrate from the credential as a second, idempotent path so the first
+    // Gmail access cannot remain on the empty shell if the observer event is
+    // coalesced by the browser.
+    if (credential?.user && state.mode === 'admin') {
+      await hydrateAdminNavigation();
+    }
+  } catch (error) {
+    showAuthError(error);
+  }
 }
 
-function handleOwnerExit() {
-  if (!isFirebaseConfigured) return;
-  handleForgetDevice().catch(showAuthError);
+async function handleOwnerExit() {
+  if (!isFirebaseConfigured || state.residentAuthTransition) return;
+  if (state.residentSettingsMode) {
+    // Il pannello ristretto usa lo stesso comando interno del pannello
+    // amministrativo, ma deve chiudere soltanto la sessione residente.
+    return handleForgetDevice();
+  }
+  if (state.adminRole === 'MANAGER'
+      && state.residentAdministratorAuthorized
+      && !hasStrongAdministratorIdentity()) {
+    // Il vice usa una sessione residente autorizzata, non un account Firebase
+    // amministratore. Il pulsante Esci deve quindi chiudere quella sessione e
+    // tornare al modulo con sigla, come nelle viste delle prenotazioni.
+    return handleForgetDevice();
+  }
+  state.residentAuthTransition = 'admin-signing-out';
+  invalidateViewRequests();
+  state.adminAuthorizationPending = true;
+  elements.adminShell.setAttribute('aria-busy', 'true');
+  elements.adminPanel.hidden = true;
+  elements.authStatus.textContent = t('auth.signingOut', {}, { fallback: 'Uscita in corso…' });
+  try {
+    await signOutCurrentUser();
+    setSignedOutState();
+    renderMode();
+  } catch (error) {
+    showAuthError(error);
+  } finally {
+    state.residentAuthTransition = '';
+  }
 }
 
 async function handleAdministratorEmailSignIn() {
@@ -2255,6 +2913,7 @@ async function handleRequiredAdminPasswordSetup(event) {
 
 async function handleCenterInvitationGeneration() {
   elements.ownerInvitationGenerate.disabled = true;
+  state.ownerInvitationExpiryLabel = '';
   elements.ownerInvitationStatus.textContent = t('admin.invitations.generating');
   try {
     const invitation = await createCenterInvitation();
@@ -2264,6 +2923,7 @@ async function handleCenterInvitationGeneration() {
     elements.ownerInvitationLink.value = url.toString();
     elements.ownerInvitationResult.hidden = false;
     const expiry = formatDateTime(invitation.expiresAt, { dateStyle: 'medium' }, getLocale());
+    state.ownerInvitationExpiryLabel = expiry;
     elements.ownerInvitationStatus.textContent = t('admin.invitations.validUntil', { date: expiry });
   } catch (error) {
     elements.ownerInvitationStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
@@ -2292,7 +2952,7 @@ async function handleCenterInvitationShare() {
   try {
     await navigator.share({
       title: 'Collegamento per il responsabile del centro',
-      text: 'Usa questo collegamento per configurare il centro:',
+      text: buildOwnerInvitationShareText(state.ownerInvitationExpiryLabel),
       url: elements.ownerInvitationLink.value
     });
   } catch (error) {
@@ -2300,6 +2960,185 @@ async function handleCenterInvitationShare() {
       elements.ownerInvitationStatus.textContent = friendlyErrorMessage(error, 'Condivisione non riuscita');
     }
   }
+}
+
+function mealRemindersAreSupported() {
+  return 'Notification' in window && 'serviceWorker' in navigator;
+}
+
+function loadMealReminderPreference() {
+  try {
+    return window.localStorage.getItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_PREFERENCE_STORAGE_KEY)
+    ) === 'enabled';
+  } catch {
+    return false;
+  }
+}
+
+function storeMealReminderPreference(enabled) {
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_PREFERENCE_STORAGE_KEY),
+      enabled ? 'enabled' : 'disabled'
+    );
+  } catch {
+    // Il promemoria resta facoltativo anche quando lo storage è indisponibile.
+  }
+}
+
+function loadSentMealReminderIds() {
+  try {
+    const history = JSON.parse(window.localStorage.getItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_HISTORY_STORAGE_KEY)
+    ) || '[]');
+    return Array.isArray(history) ? history.filter((item) => typeof item === 'string').slice(-20) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberSentMealReminder(reminderId) {
+  const history = loadSentMealReminderIds().filter((item) => item !== reminderId);
+  history.push(reminderId);
+  try {
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(MEAL_REMINDER_HISTORY_STORAGE_KEY),
+      JSON.stringify(history.slice(-20))
+    );
+  } catch {
+    // Una mancata scrittura non deve interferire con le prenotazioni.
+  }
+}
+
+function clearMealReminderTimers() {
+  mealReminderTimers.forEach((timerId) => window.clearTimeout(timerId));
+  mealReminderTimers.clear();
+}
+
+function getLoadedResidentCalendarDays() {
+  return [...state.participantWeek, ...state.participantMonth];
+}
+
+function syncMealReminderControl(statusKey = '') {
+  if (!elements.mealReminderSelect) return;
+  const supported = mealRemindersAreSupported();
+  const enabled = supported
+    && loadMealReminderPreference()
+    && Notification.permission === 'granted';
+  elements.mealReminderSelect.disabled = !supported;
+  elements.mealReminderSelect.value = enabled ? 'enabled' : 'disabled';
+  if (!elements.mealReminderStatus) return;
+  const key = statusKey || (!supported
+    ? 'mealReminder.status.unsupported'
+    : Notification.permission === 'denied'
+      ? 'mealReminder.status.denied'
+      : enabled
+        ? 'mealReminder.status.enabled'
+        : 'mealReminder.status.disabled');
+  elements.mealReminderStatus.textContent = t(key);
+}
+
+async function handleMealReminderPreferenceChange(event) {
+  const wantsReminder = event.target.value === 'enabled';
+  if (!wantsReminder) {
+    storeMealReminderPreference(false);
+    clearMealReminderTimers();
+    syncMealReminderControl('mealReminder.status.disabled');
+    return;
+  }
+  if (!mealRemindersAreSupported()) {
+    storeMealReminderPreference(false);
+    syncMealReminderControl('mealReminder.status.unsupported');
+    return;
+  }
+
+  event.target.disabled = true;
+  if (elements.mealReminderStatus) {
+    elements.mealReminderStatus.textContent = t('mealReminder.status.requesting');
+  }
+  try {
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    const enabled = permission === 'granted';
+    storeMealReminderPreference(enabled);
+    syncMealReminderControl(enabled ? 'mealReminder.status.enabled' : 'mealReminder.status.denied');
+    if (enabled) scheduleMealRemindersFromCurrentCalendar();
+  } finally {
+    event.target.disabled = !mealRemindersAreSupported();
+  }
+}
+
+function scheduleMealRemindersFromCurrentCalendar() {
+  if (!mealRemindersAreSupported()
+      || !loadMealReminderPreference()
+      || Notification.permission !== 'granted'
+      || !state.residentReady
+      || !state.selectedParticipant) {
+    clearMealReminderTimers();
+    return;
+  }
+
+  const days = getLoadedResidentCalendarDays();
+  if (!days.some((day) => day?.isToday === true)) return;
+  clearMealReminderTimers();
+  const plan = buildMealReminderPlan(days, {
+    sentReminderIds: loadSentMealReminderIds()
+  });
+  plan.filter((item) => !mealReminderInFlight.has(item.reminderId)).forEach((item) => {
+    const timerId = window.setTimeout(
+      () => showMealReminder(item).catch(() => undefined),
+      item.delayMs
+    );
+    mealReminderTimers.set(item.reminderId, timerId);
+  });
+}
+
+async function showMealReminder(item) {
+  if (mealReminderInFlight.has(item.reminderId)) return;
+  mealReminderInFlight.add(item.reminderId);
+  mealReminderTimers.delete(item.reminderId);
+  try {
+    if (!loadMealReminderPreference()
+        || Notification.permission !== 'granted'
+        || item.meal.effect === 'PRESENT'
+        || item.meal.isOpen !== true
+        || Date.now() >= item.closesAtMs) return;
+
+    const mealLabel = t(`meal.type.${item.meal.mealTypeId}`);
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(t('mealReminder.notification.title'), {
+      body: t('mealReminder.notification.body', { meal: mealLabel }),
+      icon: '/icons/launcher-192.png?v=20260821a',
+      badge: '/icons/icon-192.png?v=20260821b',
+      tag: `meal-reminder-${getActiveCenterId()}-${item.reminderId}`,
+      renotify: false,
+      data: {
+        url: `/?view=participant&c=${encodeURIComponent(getActiveCenterId())}`
+      },
+      actions: [{ action: 'disable', title: t('mealReminder.notification.disable') }]
+    });
+    rememberSentMealReminder(item.reminderId);
+  } finally {
+    mealReminderInFlight.delete(item.reminderId);
+  }
+}
+
+function applyMealReminderUrlPreference() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('mealReminders') !== 'off') return;
+  storeMealReminderPreference(false);
+  clearMealReminderTimers();
+  url.searchParams.delete('mealReminders');
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+}
+
+function buildOwnerInvitationShareText(expiryLabel) {
+  const expiry = expiryLabel
+    ? `Il collegamento scade il ${expiryLabel}`
+    : 'Il collegamento ha una scadenza limitata';
+  return `Ecco il collegamento personale per accedere come responsabile del centro su Oggi a tavola. Aprilo e completa l’identificazione. ${expiry} e non deve essere inoltrato.`;
 }
 
 async function refreshPlatformCenterList() {
@@ -2413,8 +3252,16 @@ async function handlePlatformCenterListClick(event) {
 }
 
 function showAuthError(error) {
+  finishAdminAuthorizationCheck();
+  const currentUser = getCurrentUser();
+  const keepAuthorizedPanel = state.mode === 'admin'
+    && Boolean(state.adminRole)
+    && state.adminAuthUid
+    && state.adminAuthUid === currentUser?.uid;
+  elements.adminPanel.hidden = !keepAuthorizedPanel;
   showAuthenticatedAdministratorControls();
   elements.authStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
+  if (keepAuthorizedPanel) renderMode();
 }
 
 function setBootstrapProgress(active, detail = 'Estensione calendario prenotazioni...') {
@@ -2552,59 +3399,6 @@ async function handleCenterInitialization() {
     setBootstrapProgress(false);
     elements.centerInitializerButton.disabled = false;
   }
-}
-
-async function handleCopyLink(event) {
-  const target = document.querySelector(event.currentTarget.dataset.copyLink || '');
-  if (!target?.href) return;
-  try {
-    await navigator.clipboard.writeText(target.href);
-    event.currentTarget.textContent = t('status.copied');
-    window.setTimeout(() => { event.currentTarget.textContent = t('common.actions.copy'); }, 1400);
-  } catch {
-    openAccessShareDialog('Collegamento', target.href);
-  }
-}
-
-function handleOperationalLinksClick(event) {
-  const copyButton = event.target.closest('[data-copy-link]');
-  if (copyButton) {
-    handleCopyLink({ currentTarget: copyButton });
-    return;
-  }
-  const rotateButton = event.target.closest('[data-rotate-operational-link]');
-  if (rotateButton) {
-    handleOperationalLinkRotation(rotateButton);
-  }
-}
-
-function handleOperationalLinkRotation(button) {
-  const scope = button.dataset.rotateOperationalLink;
-  return operationGuard.run(`admin:rotate-link:${scope}`, async () => {
-    if (!hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) return;
-    const label = scope === 'KITCHEN' ? 'della cucina' : 'dei residenti e del riepilogo';
-    const decision = await showActionDialog({
-      title: t('dialog.rotateLink.title'),
-      message: t('dialog.rotateLink.message', { label }),
-      confirmLabel: t('common.actions.reset')
-    });
-    if (!decision.confirmed) return;
-
-    button.disabled = true;
-    button.setAttribute('aria-busy', 'true');
-    elements.operationalLinksStatus.textContent = 'Rigenero il collegamento...';
-    try {
-      state.operationalLinks = await rotateOperationalLink(scope);
-      initializeOperationalLinks();
-      renderAdminOverview();
-      elements.operationalLinksStatus.textContent = 'Nuovo collegamento attivo. Ora puoi copiarlo e inviarlo.';
-    } catch (error) {
-      elements.operationalLinksStatus.textContent = friendlyErrorMessage(error, 'Collegamento non rigenerato');
-    } finally {
-      button.disabled = false;
-      button.removeAttribute('aria-busy');
-    }
-  });
 }
 
 async function refreshNow(source) {
@@ -2759,7 +3553,9 @@ async function performRefresh(source) {
   hideStartupSplash();
 }
 
-async function refreshParticipant(source) {
+async function refreshParticipant(source, options = {}) {
+  const retryPermission = !String(source || '').endsWith(':auth-retry');
+  if (state.residentAuthTransition) return;
   let request = beginParticipantRequest();
   const hadVisibleData = state.mode === 'summary'
     ? state.todayOverview.length > 0
@@ -2770,15 +3566,28 @@ async function refreshParticipant(source) {
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
+      if (isResidentEntryGateClosed()) {
+        state.residentRestorePending = false;
+        renderResidentAccess(true);
+        hideStartupSplash();
+        setParticipantStatus('Inserisci sigla e password comune');
+        return;
+      }
       state.residentRestorePending = Boolean(loadStoredResidentSignature());
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession();
+      // A login/logout may have superseded this refresh while session restore
+      // was awaiting Firebase. A stale request must never remount the login.
+      if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (restored) {
         state.participants = restored.participants;
         state.selectedParticipant = restored.participant;
         state.residentReady = true;
         state.residentRestorePending = false;
+        if (restored.strongAdministrator === true) {
+          state.residentEntryKind = 'strong-admin';
+        }
         if (applyResidentEntryView()) {
           request = beginParticipantRequest();
         }
@@ -2794,10 +3603,8 @@ async function refreshParticipant(source) {
     }
     if (!isCurrentParticipantRequest(request)) return;
     let sessionPromise = Promise.resolve();
-    if (state.friendlyAccess && state.residentReady && state.mode !== 'summary') {
-      if (!canUseWeekWithoutParticipant()) {
-        sessionPromise = ensureStoredResidentSession();
-      }
+    if (state.friendlyAccess && state.residentReady) {
+      sessionPromise = ensureStoredResidentSession();
     } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
       sessionPromise = ensurePublicDemoSession();
     }
@@ -2805,23 +3612,33 @@ async function refreshParticipant(source) {
       error.refreshStage = 'sessione';
       throw error;
     });
-    const settingsPromise = loadCenterContactSettings({
+    await sessionPromise;
+    const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    const [, centerSettings] = await Promise.all([sessionPromise, settingsPromise]);
-    state.centerContactSettings = centerSettings;
-    await applyCenterDefaultLanguage(centerSettings);
-    if (state.mode === 'week' && canManageDailyOperations() && !state.adminRole) {
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    await applyCenterDefaultLanguage(state.centerContactSettings);
+    await refreshResidentAdministratorAuthorization();
+    await refreshStrongAdministratorOperationalAuthorization();
+    if (state.mode === 'week'
+        && canManageDailyOperations()
+        && (state.adminParticipants.length === 0 || source === 'manuale')) {
       state.adminParticipants = await listPublicParticipants({
         forceRefresh: source === 'manuale',
         staticVersion: centerSettings.participantDataVersion || '0'
       });
     }
     if (!isCurrentParticipantRequest(request)) return;
-    anchorCalendarToCenterToday();
+    // The request snapshot is created before the centre timezone is known.
+    // On the first resident load, anchoring the calendar can therefore change
+    // the active month/week and make that snapshot stale.  Renew it here so
+    // the data loaded for the current period is also rendered immediately.
+    if (anchorCalendarToCenterToday()) {
+      request = beginParticipantRequest();
+    }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
       const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
@@ -2874,17 +3691,56 @@ async function refreshParticipant(source) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
+    scheduleMealRemindersFromCurrentCalendar();
     state.lastSuccessfulRefreshAt = new Date();
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
-    if (error?.preserveResidentIdentity === true) {
-      state.residentRestorePending = true;
+    if (retryPermission
+      && isCenterAccessRevokedError(error)
+      && isConnectionAvailable()
+      && !state.residentAuthTransition) {
+      try {
+        await waitForAuthReady();
+        if (state.friendlyAccess && state.residentReady) {
+          await recoverStoredResidentSession();
+        }
+        if (!isCurrentParticipantRequest(request)) return;
+        return await refreshParticipant(`${source}:auth-retry`, options);
+      } catch (retryError) {
+        error = retryError;
+      }
+    }
+    if (options.loginHandshake) {
+      state.residentReady = false;
+      state.residentRestorePending = false;
+      renderResidentAccess(true);
+      renderMode();
+      const loginMessage = isCenterAccessRevokedError(error)
+        ? t('auth.resident.calendarUnavailable')
+        : friendlyErrorMessage(error, t('auth.resident.calendarUnavailable'));
+      elements.residentLoginStatus.textContent = loginMessage;
+      return false;
+    }
+    const preserveResidentView = error?.preserveResidentIdentity === true
+      || shouldPreserveResidentViewAfterRefreshError({
+        friendlyAccess: state.friendlyAccess,
+        residentReady: state.residentReady,
+        hasParticipant: Boolean(state.selectedParticipant),
+        permissionDenied: isCenterAccessRevokedError(error)
+      });
+    if (preserveResidentView) {
+      state.residentRestorePending = !state.residentReady;
       renderResidentAccess(false);
       renderMode();
     }
-    const message = friendlyErrorMessage(error, 'Prenotazione non disponibile');
-    if (error?.preserveResidentIdentity !== true && isCenterAccessRevokedError(error)) {
+    if (error?.refreshStage) {
+      console.error('[resident-calendar]', error.refreshStage, error.code || error.message || error);
+    }
+    const message = isCenterAccessRevokedError(error) && state.friendlyAccess
+      ? t('auth.resident.calendarUnavailable')
+      : friendlyErrorMessage(error, 'Prenotazione non disponibile');
+    if (!preserveResidentView && isCenterAccessRevokedError(error)) {
       clearParticipantDataAfterAccessRevocation();
       renderResidentAccess(true);
       setParticipantStatus('Centro non disponibile');
@@ -2900,16 +3756,18 @@ async function refreshParticipant(source) {
   } finally {
     hideStartupSplash();
   }
+  return true;
 }
 
 function isCenterAccessRevokedError(error) {
-  return error?.code === 'permission-denied'
-    || /permission.?denied|non autorizzat|insufficient permission/i.test(String(error?.message || ''));
+  const code = String(error?.code || '').toLowerCase();
+  return code === 'permission-denied' || code === 'firestore/permission-denied';
 }
 
 function clearParticipantDataAfterAccessRevocation() {
   state.residentReady = false;
   state.residentRestorePending = false;
+  state.residentEntryKind = '';
   state.selectedParticipant = null;
   state.participants = [];
   state.participantMeals = [];
@@ -2952,27 +3810,83 @@ function renderResidentAccess(showLogin) {
 
 async function handleResidentLogin(event) {
   event.preventDefault();
+  if (state.residentAuthTransition) return;
+  transitionAuthLifecycle('RESIDENT_LOGIN_START');
+  state.residentAuthTransition = 'signing-in';
+  invalidateViewRequests();
   elements.residentLoginButton.disabled = true;
   elements.residentLoginStatus.textContent = 'Accesso in corso...';
   try {
-    const result = await signInFriendlyResident(
-      elements.residentSignatureInput.value,
-      elements.residentPasswordInput.value
-    );
+    let result;
+    try {
+      result = await signInFriendlyViceAdministrator(
+        elements.residentSignatureInput.value,
+        elements.residentPasswordInput.value,
+        state.centerContactSettings
+      );
+    } catch {
+      // Lo stesso modulo accetta anche la password amministratori per un
+      // residente già qualificato come vice. Se la persona non è un vice o la
+      // password non coincide, proseguiamo con il normale accesso residente.
+      result = await signInFriendlyResident(
+        elements.residentSignatureInput.value,
+        elements.residentPasswordInput.value
+      );
+    }
     state.participants = result.participants;
     state.selectedParticipant = result.participant;
     state.residentReady = true;
     state.residentRestorePending = false;
+    state.residentAuthTransition = '';
+    if (result.administratorAuthorized === true) {
+      const authorizedLinks = normalizeOperationalLinksFromAuthorizedLogin(result.operationalLinks);
+      if (authorizedLinks) state.operationalLinks = authorizedLinks;
+      transitionAuthLifecycle('RESIDENT_READY', { entry: 'vice', route: state.mode });
+      // La password amministratori amplia la normale identità residente: non
+      // sostituisce il percorso delle prenotazioni con il pannello. La persona
+      // entra quindi nella propria vista pasti e conserva in parallelo la
+      // vice-sessione, che verrà riutilizzata senza altre richieste quando
+      // aprirà il Pannello di controllo.
+      clearAdminAuthorizationState();
+      state.residentAdministratorAuthorized = true;
+      state.residentEntryKind = 'shared-admin';
+      state.friendlyAccess = true;
+      state.residentSettingsMode = false;
+      applyResidentEntryView();
+      renderResidentAccess(true);
+      renderMode();
+      const authorized = await refreshParticipant('avvio', { loginHandshake: true });
+      if (!authorized) return;
+      openResidentEntryGate();
+      elements.residentPasswordInput.value = '';
+      renderResidentAccess(false);
+      renderMode();
+      return;
+    }
+    // L'ingresso esplicito con la password comune apre sempre il percorso
+    // residente. Un'eventuale identità Firebase forte rimasta nel browser non
+    // deve trasformare questo specifico accesso in un pannello completo.
+    clearAdminAuthorizationState();
+    transitionAuthLifecycle('RESIDENT_READY', { entry: 'common', route: state.mode });
+    state.residentEntryKind = 'common';
     applyResidentEntryView();
+    // Handshake session-first: il calendario resta smontato finché le letture
+    // necessarie al periodo corrente non sono state autorizzate davvero.
+    renderResidentAccess(true);
+    renderMode();
+    const authorized = await refreshParticipant('avvio', { loginHandshake: true });
+    if (!authorized) return;
+    openResidentEntryGate();
     elements.residentPasswordInput.value = '';
     renderResidentAccess(false);
     renderMode();
-    await refreshParticipant('avvio');
   } catch (error) {
+    state.residentAuthTransition = '';
     elements.residentLoginStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
     elements.residentPasswordInput.focus();
     elements.residentPasswordInput.select();
   } finally {
+    state.residentAuthTransition = '';
     elements.residentLoginButton.disabled = false;
   }
 }
@@ -2987,14 +3901,106 @@ function togglePasswordVisibility(input, toggle) {
 }
 
 async function handleForgetDevice() {
-  await forgetResidentDevice();
+  if (state.residentAuthTransition) return;
+  state.residentAuthTransition = 'signing-out';
+  invalidateViewRequests();
+  const leavingAdminPanel = state.mode === 'admin';
+  const currentUser = getCurrentUser();
+  const leavingPrivilegedControlPanel = leavingAdminPanel
+    && Boolean(
+      state.adminRole
+      || state.residentAdministratorAuthorized
+      || (currentUser && !currentUser.isAnonymous && !isResidentTechnicalEmail(currentUser.email))
+    );
+  if (leavingPrivilegedControlPanel) transitionAuthLifecycle('SIGN_OUT_START');
+
+  // Nelle viste dei pasti "Esci" chiude soltanto la porta grafica del
+  // residente. La sessione tecnica Firebase rimane intatta: in questo modo
+  // un nuovo accesso con sigla e password non dipende da una revoca e da una
+  // ricreazione immediata delle credenziali anonime. Dal pannello privilegiato
+  // di amministratore/vice, invece, l'uscita resta un logout reale.
+  if (!leavingPrivilegedControlPanel) {
+    closeResidentEntryGate();
+    state.residentReady = false;
+    state.residentRestorePending = false;
+    state.residentEntryKind = '';
+    state.selectedParticipant = null;
+    state.residentAuthTransition = '';
+    state.mode = 'participant';
+    state.friendlyAccess = true;
+    state.participants = [];
+    state.participantMeals = [];
+    state.participantWeek = [];
+    state.participantMonth = [];
+    state.todayOverview = [];
+    state.summaryDays = [];
+    state.summaryOperations = [];
+    const residentUrl = new URL(window.location.href);
+    residentUrl.searchParams.set('view', 'participant');
+    residentUrl.searchParams.set('access', 'friendly');
+    residentUrl.searchParams.delete('invite');
+    residentUrl.searchParams.delete('adminInvite');
+    window.history.replaceState({}, '', residentUrl.pathname + residentUrl.search);
+    invalidateViewRequests();
+    elements.residentSignatureInput.value = loadStoredResidentSignature();
+    elements.residentPasswordInput.value = '';
+    elements.residentLoginStatus.textContent = '';
+    renderResidentAccess(true);
+    renderMode();
+    elements.residentSignatureInput.focus();
+    if (leavingPrivilegedControlPanel) transitionAuthLifecycle('SIGN_OUT_COMPLETE');
+    return;
+  }
+  try {
+    await forgetResidentDevice();
+    // The Auth watcher is deliberately muted while logout is in progress.
+    // Clear strong-role capabilities synchronously so the next anonymous
+    // resident session cannot inherit administrator-only reads.
+    clearAdminAuthorizationState();
+  } catch (error) {
+    state.residentAuthTransition = '';
+    throw error;
+  }
   state.residentReady = false;
   state.residentRestorePending = false;
+  state.residentEntryKind = '';
   state.selectedParticipant = null;
+  state.residentAuthTransition = '';
+  invalidateViewRequests();
   if (!state.adminRole) state.adminParticipants = [];
+  if (leavingAdminPanel) {
+    // Logout from the control panel must return to a real resident entry
+    // route. Keeping view=admin leaves the resident form hidden and produces
+    // the apparently empty panel that previously required a manual refresh.
+    const residentUrl = new URL(window.location.href);
+    residentUrl.searchParams.set('view', 'participant');
+    residentUrl.searchParams.set('access', 'friendly');
+    residentUrl.searchParams.delete('invite');
+    residentUrl.searchParams.delete('adminInvite');
+    window.location.assign(residentUrl.pathname + residentUrl.search);
+    return;
+  }
+  // Leaving a resident view must also reset the operational route. Keeping
+  // view=week (or view=summary) while the resident identity is cleared lets
+  // the first refresh mount the old screen before its session check rejects
+  // it again, producing the apparent login loop. Start the next sign-in from
+  // the single, stable resident entry route instead.
+  const residentUrl = new URL(window.location.href);
+  residentUrl.searchParams.set('view', 'participant');
+  residentUrl.searchParams.set('access', 'friendly');
+  window.history.replaceState({}, '', residentUrl.pathname + residentUrl.search);
+  state.mode = 'participant';
+  invalidateViewRequests();
+  state.participants = [];
+  state.participantWeek = [];
+  state.participantMonth = [];
+  state.todayOverview = [];
+  state.summaryDays = [];
+  state.summaryOperations = [];
   renderResidentAccess(true);
   renderMode();
   elements.residentLoginStatus.textContent = 'Sei uscito.';
+  transitionAuthLifecycle('SIGN_OUT_COMPLETE');
 }
 
 async function refreshAdminParticipants() {
@@ -3002,16 +4008,13 @@ async function refreshAdminParticipants() {
   try {
     const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
     const canManageRoles = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
-    const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
     const [adminParticipants, adminAccounts, centerSettings, coverage, operationalLinks, adminInvitations] = await Promise.all([
       listAdminParticipants(),
-      listCenterAdministrators(),
-      loadCenterContactSettings({ forceRefresh: true }),
+      canManageRoles ? listCenterAdministrators() : Promise.resolve([]),
+      loadCenterContactSettings(),
       loadMealWindowCoverage(),
       canViewOperationalLinks
-        ? canManageOperationalLinks
-          ? ensureOperationalLinks()
-          : loadOperationalLinks({ forceRefresh: true })
+        ? loadOperationalLinks({ forceRefresh: true }).catch(() => state.operationalLinks)
         : Promise.resolve(state.operationalLinks),
       canManageRoles ? listAdministratorInvitations() : Promise.resolve([])
     ]);
@@ -3045,7 +4048,6 @@ async function refreshAdminParticipants() {
       elements.adminCenterAvatarInput.value = '';
     }
     renderAdminCenterAvatarEditor();
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     const profileComplete = isAdministratorProfileComplete();
     state.adminActiveSection = profileComplete
@@ -3061,6 +4063,14 @@ async function refreshAdminParticipants() {
       syncAdminContactForm();
     }
     initializeOperationalLinks();
+    if (hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) {
+      void ensureOperationalLinks().then((links) => {
+        if (!requestCoordinator.isCurrentRequest(request)) return;
+        state.operationalLinks = links;
+        initializeOperationalLinks();
+        renderAdminOverview();
+      }).catch(() => undefined);
+    }
     elements.adminStatus.textContent = !profileComplete
       ? t('admin.people.completeProfile')
       : state.adminPersonDirty ? t('admin.people.unsavedChanges') : t('admin.people.ready');
@@ -3075,36 +4085,52 @@ async function refreshAdminParticipants() {
 function renderAdminLeadershipForm() {
   const canManageAdministrators = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
   const canTransferOwnership = hasCurrentCapability(CAPABILITIES.TRANSFER_OWNERSHIP);
+  const currentUid = getCurrentUser()?.uid || '';
   const activeParticipantIds = new Set(
     state.adminParticipants
       .filter((participant) => participant.status === 'ACTIVE')
       .map((participant) => participant.participantId)
   );
+  const acceptedInvitationByUid = new Map(state.adminInvitations
+    .filter((invitation) => (
+      invitation.role === 'ADMIN'
+      && invitation.status === 'USED'
+      && invitation.consumedBy
+    ))
+    .map((invitation) => [invitation.consumedBy, invitation]));
   const successors = state.adminAccounts.filter((admin) => (
     admin.role === 'ADMIN'
     && admin.status === 'ACTIVE'
     && admin.participantId
     && admin.passwordSetupRequired !== true
     && activeParticipantIds.has(admin.participantId)
+    && acceptedInvitationByUid.get(admin.adminUid)?.invitationId === admin.invitationId
   ));
 
   elements.adminLeadership.hidden = !canManageAdministrators;
   elements.adminInvitationGenerate.disabled = !canManageAdministrators;
 
-  elements.adminSuccessorSelect.innerHTML = successors.map((admin) => (
-    `<option value="${escapeHtml(admin.adminUid)}">${escapeHtml(admin.email || admin.adminUid)}</option>`
-  )).join('');
+  elements.adminSuccessorSelect.innerHTML = successors.length > 0
+    ? successors.map((admin) => {
+      const participant = state.adminParticipants.find((item) => item.participantId === admin.participantId);
+      const label = participant?.displayName || admin.email || admin.adminUid;
+      return `<option value="${escapeHtml(admin.adminUid)}">${escapeHtml(label)}</option>`;
+    }).join('')
+    : `<option value="">${escapeHtml(t('admin.succession.noAccepted'))}</option>`;
   elements.adminSuccessorSelect.disabled = !canTransferOwnership || successors.length === 0;
   elements.adminTransferOwnership.disabled = !canTransferOwnership || successors.length === 0;
+  const successionFields = elements.adminSuccessorSelect.closest('.admin-succession-fields');
+  if (successionFields) successionFields.hidden = false;
 
-  const currentUid = getCurrentUser()?.uid || '';
   const acceptedInvitation = state.adminRole === 'OWNER'
     ? state.adminInvitations.find((invitation) => (
       invitation.status === 'USED'
-      && invitation.createdBy === currentUid
       && invitation.consumedBy
       && invitation.consumedBy !== currentUid
-      && successors.some((admin) => admin.adminUid === invitation.consumedBy)
+      && successors.some((admin) => (
+        admin.adminUid === invitation.consumedBy
+        && admin.invitationId === invitation.invitationId
+      ))
     ))
     : null;
   const acceptedSuccessor = acceptedInvitation
@@ -3131,13 +4157,23 @@ function renderAdminLeadershipForm() {
   }
 
   if (canManageAdministrators && !acceptedInvitation && successors.length === 0) {
-    elements.adminLeadershipStatus.textContent = t('admin.succession.inviteAnother');
+    elements.adminLeadershipStatus.textContent = t('admin.succession.noAcceptedHelp');
   }
 
   // Selettore candidato amministratore
-  const candidates = (state.adminParticipants || []).filter((p) => p.status === 'ACTIVE');
+  const configuredAdministratorId = getConfiguredAdministratorParticipantId();
+  const administratorParticipantIds = new Set(state.adminAccounts
+    .filter((admin) => admin.status === 'ACTIVE')
+    .map((admin) => admin.participantId)
+    .filter(Boolean));
+  const candidates = (state.adminParticipants || []).filter((participant) => (
+    participant.status === 'ACTIVE'
+      && participant.participantId !== configuredAdministratorId
+      && !administratorParticipantIds.has(participant.participantId)
+  ));
   if (elements.adminCandidateSelect) {
-    elements.adminCandidateSelect.innerHTML = candidates.map((participant) => {
+    const placeholder = `<option value="" selected disabled>${escapeHtml(t('admin.invitations.choosePerson'))}</option>`;
+    elements.adminCandidateSelect.innerHTML = placeholder + candidates.map((participant) => {
       const id = escapeHtml(participant.participantId);
       const name = escapeHtml(participant.displayName || participant.signature || 'Senza nome');
       return `<option value="${id}">${name}</option>`;
@@ -3173,13 +4209,11 @@ function handleInviteAccept() {
       elements.adminEmailStatus.textContent = 'Accettazione in corso...';
       const result = await acceptAdministratorInvitation();
       clearAdminInvitationDecision(getAdminRoleInvitationId());
+      if (result.role === 'ADMIN') {
+        storePendingAdminSuccession(result.centerId, user.uid);
+      }
       elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
-      await showActionDialog({
-        title: t('admin.invitations.acceptedWaitTitle'),
-        message: t('admin.invitations.acceptedWaitMessage'),
-        confirmLabel: t('common.actions.confirm'),
-        hideCancel: true
-      });
+      await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
@@ -3243,6 +4277,7 @@ async function performAdministratorInvitationGeneration() {
     const invitationUrl = new URL('/', window.location.origin);
     invitationUrl.searchParams.set('view', 'admin');
     invitationUrl.searchParams.set('adminInvite', invitation.invitationId);
+    invitationUrl.searchParams.set('adminRole', 'ADMIN');
     invitationUrl.searchParams.set('c', getActiveCenterId());
 
     // Recupera il nome del partecipante invitato
@@ -3254,12 +4289,12 @@ async function performAdministratorInvitationGeneration() {
     if (elements.adminInvitationStatus) {
       elements.adminInvitationStatus.hidden = false;
       elements.adminInvitationStatus.textContent =
-        `Invito preparato per ${displayName}. Invia il collegamento e attendi la conferma.`;
+        `Passaggio preparato per ${displayName}. Invia il collegamento: quando la persona si sarà identificata, qui apparirà il comando per completare il passaggio.`;
     }
     elements.adminInvitationLink.value = invitationUrl.toString();
     elements.adminInvitationResult.hidden = false;
 
-    elements.adminLeadershipStatus.textContent = 'Invito amministratore generato.';
+    elements.adminLeadershipStatus.textContent = 'Collegamento preparato.';
   } catch (error) {
     elements.adminLeadershipStatus.textContent = friendlyErrorMessage(error, 'Invito non generato');
     if (elements.adminInvitationStatus) {
@@ -3325,7 +4360,7 @@ async function performOwnershipTransfer() {
     title: t('dialog.transferOwnership.title'),
     message: t('dialog.transferOwnership.finalMessage', { email: successor.email || successor.adminUid }),
     confirmLabel: t('dialog.transferOwnership.title'),
-    requiredText: 'TRASFERISCI',
+    requiredText: t('dialog.transferOwnership.requiredText'),
     destructive: true
   });
   if (!decision.confirmed) {
@@ -3357,48 +4392,111 @@ function handleAuditLoad() {
   return operationGuard.run('admin:audit-load', performAuditLoad);
 }
 
+function handleAuditDialogOpen() {
+  if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
+  if (!elements.adminAuditDialog.open) elements.adminAuditDialog.showModal();
+  if (elements.adminAuditLoad.dataset.loaded !== 'true') handleAuditLoad();
+}
+
 async function performAuditLoad() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
+  elements.adminAuditLoad.disabled = true;
+  elements.adminAuditMore.disabled = true;
   elements.adminAuditLoad.setAttribute('aria-busy', 'true');
-  elements.adminAuditStatus.textContent = 'Carico le attività...';
+  elements.adminAuditStatus.textContent = t('admin.activity.loading');
   try {
-    const events = await listAuditEvents(20);
-    renderAuditEvents(events);
+    const page = await listAuditEvents({
+      maximum: 20,
+      cursors: state.adminAuditCursors || {}
+    });
+    const currentEvents = state.adminAuditEvents || [];
+    const knownIds = new Set(currentEvents.map((event) => event.eventId));
+    state.adminAuditEvents = [
+      ...currentEvents,
+      ...page.events.filter((event) => !knownIds.has(event.eventId))
+    ].sort((left, right) => auditTimestampValue(right.createdAt) - auditTimestampValue(left.createdAt));
+    state.adminAuditCursors = page.cursors;
+    state.adminAuditHasMore = page.hasMore;
+    renderFilteredAuditEvents();
     elements.adminAuditLoad.dataset.loaded = 'true';
-    elements.adminAuditStatus.textContent = events.length === 0
-      ? 'Nessuna modifica registrata'
-      : `Ultime ${events.length} modifiche`;
   } catch (error) {
     elements.adminAuditStatus.textContent = friendlyErrorMessage(error, 'Attività non disponibili');
+    elements.adminAuditTableWrap.hidden = true;
   } finally {
+    elements.adminAuditLoad.disabled = false;
+    elements.adminAuditMore.disabled = false;
     elements.adminAuditLoad.setAttribute('aria-busy', 'false');
   }
 }
 
+function renderFilteredAuditEvents() {
+  const dateFilter = elements.adminAuditDateFilter.value;
+  const userFilter = elements.adminAuditUserFilter.value.trim().toLocaleLowerCase(getLocale());
+  const events = (state.adminAuditEvents || []).filter((event) => {
+    const date = event.createdAt?.toDate?.();
+    const eventDate = date instanceof Date ? formatDateId(date) : '';
+    const actor = String(event.actorName || event.actorEmail || event.actorUid || '').toLocaleLowerCase(getLocale());
+    return (!dateFilter || eventDate === dateFilter) && (!userFilter || actor.includes(userFilter));
+  });
+  renderAuditEvents(events);
+  elements.adminAuditTableWrap.hidden = events.length === 0;
+  elements.adminAuditMore.hidden = state.adminAuditHasMore !== true;
+  elements.adminAuditStatus.textContent = events.length === 0
+    ? t('admin.activity.noEvents')
+    : t('admin.activity.eventCount', { count: events.length });
+}
+
 function renderAuditEvents(events) {
-  const actionLabels = {
-    DELETE_PARTICIPANT: 'Persona eliminata',
-    REVOKE_ADMIN: 'Amministratore revocato',
-    REVOKE_ADMIN_INVITATION: 'Invito revocato',
-    ROTATE_OPERATIONAL_LINK: 'Collegamento rigenerato',
-    TRANSFER_OWNERSHIP: 'Responsabilità trasferita',
-    UPDATE_ADMIN_PERMISSIONS: 'Autorizzazioni aggiornate',
-    UPDATE_CENTER_SETTINGS: 'Impostazioni centro aggiornate',
-    UPSERT_PARTICIPANT: 'Anagrafica aggiornata'
-  };
   elements.adminAuditList.innerHTML = events.map((event) => {
     const date = event.createdAt?.toDate?.();
     const dateLabel = date instanceof Date
-      ? formatDateTime(date, { dateStyle: 'short', timeStyle: 'short' }, getLocale())
+      ? formatAuditDateTime(date)
       : '';
+    const actorLabel = resolveAuditActorLabel(event);
+    const actionLabel = event.summary || event.action;
     return `
-      <article class="admin-audit-row">
-        <strong>${escapeHtml(actionLabels[event.action] || event.action)}</strong>
-        <span>${escapeHtml(event.summary || event.targetId)}</span>
-        <time>${escapeHtml(dateLabel)}</time>
-      </article>
+      <tr>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whenColumn'))}"><time>${escapeHtml(dateLabel)}</time></td>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whoColumn'))}">${escapeHtml(actorLabel)}</td>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whatColumn'))}"><strong>${escapeHtml(actionLabel)}</strong></td>
+      </tr>
     `;
   }).join('');
+}
+
+function resolveAuditActorLabel(event) {
+  const account = (state.adminAccounts || []).find((item) => item.adminUid === event.actorUid);
+  const participantId = event.actorParticipantId || account?.participantId || '';
+  const participant = (state.adminParticipants || []).find((item) => item.participantId === participantId);
+  return participant?.displayName
+    || participant?.signature
+    || event.actorLabel
+    || account?.email
+    || event.actorUid
+    || t('admin.activity.unknownUser');
+}
+
+function formatAuditDateTime(date) {
+  const now = new Date();
+  const todayId = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateId = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDifference = Math.round((todayId - dateId) / 86400000);
+  const time = formatDateTime(date, { hour: '2-digit', minute: '2-digit' }, getLocale());
+  if (dayDifference === 0) return t('admin.activity.todayAt', { time });
+  if (dayDifference === 1) return t('admin.activity.yesterdayAt', { time });
+  return formatDateTime(date, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }, getLocale());
+}
+
+function auditTimestampValue(value) {
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return 0;
 }
 
 async function refreshAdminInvitationList() {
@@ -3419,10 +4517,21 @@ function refreshAdminRolesWhenVisible() {
   if (document.visibilityState === 'hidden'
       || state.mode !== 'admin'
       || !state.adminRole
-      || !hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+      || state.residentAdministratorAuthorized) {
     return;
   }
-  operationGuard.run('admin:role-state-refresh', refreshAdminInvitationList).catch((error) => {
+  operationGuard.run('admin:role-state-refresh', async () => {
+    const user = getCurrentUser();
+    if (!user || user.isAnonymous || user.uid !== state.adminAuthUid) return;
+    const membership = await loadCurrentAdminMembership(user);
+    if (!membership.active || membership.role !== state.adminRole) {
+      await applyAdminAuthState(user);
+      return;
+    }
+    if (hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+      await refreshAdminInvitationList();
+    }
+  }).catch((error) => {
     if (elements.adminInvitationManagementStatus) {
       elements.adminInvitationManagementStatus.textContent = friendlyErrorMessage(
         error,
@@ -3492,6 +4601,9 @@ function renderAdminOverview() {
       </li>
     `).join('');
   }
+  // La scheda può essere ridisegnata dopo il caricamento asincrono dei token.
+  // Riallineiamo sempre i comandi allo stato autorevole e alla capability.
+  syncOperationalLinkActionState();
 }
 
 function renderAdminInvitationList() {
@@ -3501,7 +4613,8 @@ function renderAdminInvitationList() {
   if (!canManageRoles) return;
 
   const now = Date.now();
-  elements.adminInvitationList.innerHTML = state.adminInvitations.map((invitation) => {
+  const visibleInvitations = state.adminInvitations.filter((invitation) => invitation.role === 'ADMIN');
+  elements.adminInvitationList.innerHTML = visibleInvitations.map((invitation) => {
     const expiresAt = invitation.expiresAt?.toDate?.() || new Date(invitation.expiresAt || 0);
     const expired = Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now;
     const active = invitation.status === 'ACTIVE' && !expired;
@@ -3527,7 +4640,7 @@ function renderAdminInvitationList() {
     const canRevoke = active && (state.adminRole === 'OWNER' || invitation.role === 'MANAGER');
     return `
       <article class="admin-invitation-row">
-        <span><strong>${escapeHtml(roleLabel)}</strong><small>${escapeHtml(targetLabel)}</small></span>
+        <span><strong>${escapeHtml(targetLabel)}</strong><small>${escapeHtml(roleLabel)}</small></span>
         <span class="admin-invitation-state ${active ? 'admin-invitation-active' : invitation.status === 'USED' ? 'admin-invitation-accepted' : ''}">${escapeHtml(statusLabel)}</span>
         <span class="admin-invitation-dates">
           ${createdLabel ? `<time datetime="${escapeHtml(createdAt.toISOString())}">${escapeHtml(t('admin.invitations.sentOn', { date: createdLabel }))}</time>` : ''}
@@ -3536,9 +4649,9 @@ function renderAdminInvitationList() {
         ${canRevoke ? `<button type="button" class="tertiary-action" data-revoke-admin-invitation="${escapeHtml(invitation.invitationId)}">${escapeHtml(t('admin.invitations.revoke'))}</button>` : ''}
       </article>`;
   }).join('');
-  elements.adminInvitationManagementStatus.textContent = state.adminInvitations.length === 0
+  elements.adminInvitationManagementStatus.textContent = visibleInvitations.length === 0
     ? t('admin.invitations.none')
-    : t('admin.invitations.recentCount', { count: state.adminInvitations.length });
+    : t('admin.invitations.recentCount', { count: visibleInvitations.length });
 }
 
 async function handleAdminInvitationListClick(event) {
@@ -3656,6 +4769,8 @@ async function performAdminCenterSettingsSave() {
     const administratorName = elements.adminAdministratorName?.value.trim() || '';
     const administratorSignature = elements.adminAdministratorSignature?.value.trim() || '';
     const newAdminPassword = elements.adminAdministratorPassword?.value || '';
+    const newSharedAdminPassword = elements.adminSharedPasswordNew?.value || '';
+    const currentSharedAdminPassword = elements.adminSharedPasswordCurrent?.value || '';
     const passwordRequired = requiresAdministratorPassword(getCurrentUser());
     if (passwordRequired && !state.centerContactSettings.adminPasswordSet && !newAdminPassword) {
       throw new Error('Inserisci la password amministratore');
@@ -3674,15 +4789,28 @@ async function performAdminCenterSettingsSave() {
     }
     const settings = await updateCenterSettings({
       name: elements.adminCenterName.value,
+      ...(state.adminRole === 'OWNER'
+        ? {
+            appDisplayName: elements.adminAppDisplayName?.value,
+            appDisplaySubtitle: elements.adminAppDisplaySubtitle?.value
+          }
+        : {}),
       timezone: elements.adminCenterTimezone.value,
       participantContactSharingEnabled: elements.adminContactSharingSelect
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
-      themePalette: state.centerContactSettings.themePalette || 'smeraldo',
+      themePalette: state.centerContactSettings.themePalette || 'inchiostro',
+      interfaceStyle: state.centerContactSettings.interfaceStyle || 'future',
       defaultView: state.centerContactSettings.defaultView || 'month',
-      summaryLayout: state.centerContactSettings.summaryLayout || 'international',
+      summaryLayout: state.centerContactSettings.summaryLayout || 'classic',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
+      monthLayout: state.centerContactSettings.monthLayout || 'grid',
+      monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
+      summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
+      language: state.centerContactSettings.language || 'it',
       commonPassword: elements.adminCommonPasswordInput?.value || '',
+      administratorSharedPassword: newSharedAdminPassword,
+      currentAdministratorSharedPassword: currentSharedAdminPassword,
       administratorName,
       administratorSignature,
       adminEmail: state.adminRole === 'OWNER'
@@ -3705,6 +4833,9 @@ async function performAdminCenterSettingsSave() {
         togglePasswordVisibility(elements.adminCommonPasswordInput, elements.adminCommonPasswordToggle);
       }
     }
+    [elements.adminSharedPasswordCurrent, elements.adminSharedPasswordNew].forEach((input) => {
+      if (input) input.value = '';
+    });
     state.centerContactSettings = {
       ...state.centerContactSettings,
       ...settings,
@@ -3713,7 +4844,15 @@ async function performAdminCenterSettingsSave() {
       // Se è stata inserita una nuova password, aggiorna il flag; altrimenti mantieni quello attuale.
       commonPasswordSet: settings.commonPassword !== null
         ? true
-        : state.centerContactSettings.commonPasswordSet
+        : state.centerContactSettings.commonPasswordSet,
+      adminSharedPasswordSet: state.centerContactSettings.adminSharedPasswordSet
+        || Boolean(newSharedAdminPassword),
+      adminPasswordVersion: newSharedAdminPassword
+        ? Number(state.centerContactSettings.adminPasswordVersion || 0) + 1
+        : Number(state.centerContactSettings.adminPasswordVersion || 0),
+      adminPasswordRotationRequired: newSharedAdminPassword
+        ? false
+        : state.centerContactSettings.adminPasswordRotationRequired
     };
     const administratorParticipantId = await saveAdministratorAsParticipant({
       administratorName,
@@ -3796,6 +4935,20 @@ function markAdminCenterDirty(event) {
 
 function syncAdminCenterSettingsForm() {
   elements.adminCenterName.value = state.centerContactSettings.name || '';
+  const canEditAppDisplayName = state.adminRole === 'OWNER' && !state.residentSettingsMode;
+  if (elements.adminAppDisplayNamePicker) {
+    elements.adminAppDisplayNamePicker.hidden = !canEditAppDisplayName;
+  }
+  if (elements.adminAppDisplayName) {
+    elements.adminAppDisplayName.disabled = !canEditAppDisplayName;
+    elements.adminAppDisplayName.value = state.centerContactSettings.appDisplayName
+      || DEFAULT_APP_DISPLAY_NAME;
+  }
+  if (elements.adminAppDisplaySubtitle) {
+    elements.adminAppDisplaySubtitle.disabled = !canEditAppDisplayName;
+    elements.adminAppDisplaySubtitle.value = state.centerContactSettings.appDisplaySubtitle
+      || DEFAULT_APP_DISPLAY_SUBTITLE;
+  }
   elements.adminCenterTimezone.value = state.centerContactSettings.timezone || 'Europe/Rome';
   elements.adminCutoffLunch.value = state.centerContactSettings.reservationCutoffs?.lunch || '09:30';
   elements.adminCutoffDinner.value = state.centerContactSettings.reservationCutoffs?.dinner || '15:00';
@@ -3839,18 +4992,86 @@ function syncAdminCenterSettingsForm() {
   syncAdminAdaptationsForm();
 }
 
+function syncAdaptationsContextCopy() {
+  const residentDeviceMode = state.residentSettingsMode;
+  if (elements.adminSectionNav) elements.adminSectionNav.hidden = residentDeviceMode;
+  if (elements.adminAdaptationsTitle) {
+    elements.adminAdaptationsTitle.textContent = residentDeviceMode
+      ? t('resident.preferences.title')
+      : t('admin.adaptations.title');
+  }
+  if (elements.adminAdaptationsDescription) {
+    elements.adminAdaptationsDescription.textContent = residentDeviceMode
+      ? t('resident.preferences.description')
+      : t('admin.adaptations.description');
+  }
+  if (elements.residentDevicePreferencesIntro) {
+    elements.residentDevicePreferencesIntro.hidden = !residentDeviceMode;
+    elements.residentDevicePreferencesIntro.textContent = t('resident.preferences.intro');
+  }
+  if (elements.viewPreferenceHelp) {
+    elements.viewPreferenceHelp.textContent = residentDeviceMode
+      ? t('resident.preferences.defaultViewHelp')
+      : t('viewPreference.help');
+  }
+  if (elements.adminDefaultViewSelect) {
+    elements.adminDefaultViewSelect.setAttribute('aria-label', residentDeviceMode
+      ? t('resident.preferences.defaultViewAria')
+      : t('viewPreference.label'));
+  }
+  if (elements.adminLayoutsHelp) {
+    elements.adminLayoutsHelp.textContent = residentDeviceMode
+      ? t('resident.preferences.layoutsHelp')
+      : t('admin.adaptations.layouts.help');
+  }
+  if (elements.adminKitchenLayoutPicker) {
+    elements.adminKitchenLayoutPicker.hidden = residentDeviceMode;
+  }
+  if (elements.adminAdaptationsSave) {
+    elements.adminAdaptationsSave.textContent = residentDeviceMode
+      ? t('resident.preferences.save')
+      : t('admin.adaptations.save');
+  }
+}
+
 function syncAdminAdaptationsForm() {
-  const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+  syncAdaptationsContextCopy();
+  const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
+  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'future';
   document.documentElement.dataset.theme = currentPalette;
+  applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
   }
   if (elements.adminSummaryLayoutSelect) {
-    elements.adminSummaryLayoutSelect.value = state.centerContactSettings.summaryLayout || 'international';
+    elements.adminSummaryLayoutSelect.value = state.centerContactSettings.summaryLayout || 'classic';
   }
   if (elements.adminKitchenLayoutSelect) {
     elements.adminKitchenLayoutSelect.value = state.centerContactSettings.kitchenLayout || 'classic';
+    elements.adminKitchenLayoutSelect.disabled = state.residentSettingsMode;
+  }
+  if (elements.adminMonthLayoutSelect) {
+    elements.adminMonthLayoutSelect.value = state.centerContactSettings.monthLayout || 'grid';
+  }
+  if (elements.adminMonthControlsSideSelect) {
+    elements.adminMonthControlsSideSelect.value = state.centerContactSettings.monthControlsSide || 'right';
+  }
+  if (elements.adminSummaryResidentLabelSelect) {
+    elements.adminSummaryResidentLabelSelect.value = state.centerContactSettings.summaryResidentLabel || 'name';
+  }
+  if (elements.adminSharedPasswordStatus) {
+    const isSet = Boolean(state.centerContactSettings.adminSharedPasswordSet);
+    elements.adminSharedPasswordStatus.textContent = isSet
+      ? t('admin.sharedPassword.set')
+      : t('admin.sharedPassword.notSet');
+    elements.adminSharedPasswordStatus.className = isSet ? 'password-status-set' : 'password-status-unset';
+  }
+  if (elements.adminSharedPasswordCurrent) {
+    elements.adminSharedPasswordCurrent.hidden = !state.centerContactSettings.adminSharedPasswordSet;
+    const sharedPasswordLabel = elements.adminSharedPasswordCurrent.closest('label');
+    if (sharedPasswordLabel) sharedPasswordLabel.hidden = !state.centerContactSettings.adminSharedPasswordSet;
   }
   if (elements.adminContactSharingSelect) {
     const isEnabled = state.centerContactSettings.participantContactSharingEnabled;
@@ -3861,6 +5082,37 @@ function syncAdminAdaptationsForm() {
   if (elements.adminLanguageSelect) {
     elements.adminLanguageSelect.value = state.centerContactSettings.language || 'it';
   }
+  syncMealReminderControl();
+  if (elements.residentAdminUnlock) {
+    // L'accesso del vice avviene ora direttamente dal modulo iniziale con
+    // sigla + password amministratori. Non mostriamo al residente ordinario
+    // funzioni bloccate o un secondo passaggio di autenticazione.
+    elements.residentAdminUnlock.hidden = true;
+  }
+  if (elements.adminPasswordRotationWarning) {
+    elements.adminPasswordRotationWarning.hidden = true;
+  }
+}
+
+function invitationPrompt() {
+  return t('admin.invitations.acceptPrompt');
+}
+
+function showRoleInvitationAccepted(role) {
+  if (role === 'OWNER') {
+    return showActionDialog({
+      title: t('admin.succession.completedTitle'),
+      message: t('admin.succession.completedMessage'),
+      confirmLabel: t('common.actions.confirm'),
+      hideCancel: true
+    });
+  }
+  return showActionDialog({
+    title: t('admin.invitations.acceptedWaitTitle'),
+    message: t('admin.invitations.acceptedWaitMessage'),
+    confirmLabel: t('common.actions.confirm'),
+    hideCancel: true
+  });
 }
 
 function updateThemeSelectControl(palette) {
@@ -3880,42 +5132,101 @@ function handleThemeSelectChange(event) {
   }
 }
 
+function handleInterfaceStyleSelectChange(event) {
+  const selectedStyle = INTERFACE_STYLE_VALUES.has(event.target.value)
+    ? event.target.value
+    : 'urban-plus';
+  state.pendingInterfaceStyle = selectedStyle;
+  applyInterfaceStyle(selectedStyle);
+  if (elements.adminThemeStatus) {
+    elements.adminThemeStatus.textContent = t('admin.adaptations.interfaceStyle.preview');
+  }
+  renderMode();
+}
+
 async function handleAdminAdaptationsSave() {
   try {
     if (elements.adminAdaptationsSave) elements.adminAdaptationsSave.disabled = true;
     if (elements.adminAdaptationsCancel) elements.adminAdaptationsCancel.disabled = true;
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('common.status.saving');
-    const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'smeraldo';
+    const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
+    const interfaceStyleToSave = state.pendingInterfaceStyle
+      || state.centerContactSettings.interfaceStyle
+      || 'urban-plus';
     const sharingEnabled = elements.adminContactSharingSelect
       ? elements.adminContactSharingSelect.value === 'enabled'
       : state.centerContactSettings.participantContactSharingEnabled;
     const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
+    if (state.residentSettingsMode) {
+      const preferences = {
+        themePalette: paletteToSave,
+        interfaceStyle: interfaceStyleToSave,
+        defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
+        summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
+        monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
+        language: languageToSave
+      };
+      storeResidentPreferences(preferences);
+      state.centerContactSettings = { ...state.centerContactSettings, ...preferences };
+      state.pendingThemePalette = '';
+      state.pendingInterfaceStyle = '';
+      await setLocale(languageToSave);
+      applyTranslations(document);
+      renderMode();
+      await clearApplicationCache();
+      if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
+      return;
+    }
     const settings = await updateCenterSettings({
       name: state.centerContactSettings.name,
       timezone: state.centerContactSettings.timezone,
       participantContactSharingEnabled: sharingEnabled,
       themePalette: paletteToSave,
+      interfaceStyle: interfaceStyleToSave,
       defaultView: elements.adminDefaultViewSelect ? elements.adminDefaultViewSelect.value : state.centerContactSettings.defaultView,
       summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
       kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
+      monthLayout: elements.adminMonthLayoutSelect ? elements.adminMonthLayoutSelect.value : state.centerContactSettings.monthLayout,
+      monthControlsSide: elements.adminMonthControlsSideSelect ? elements.adminMonthControlsSideSelect.value : state.centerContactSettings.monthControlsSide,
+      summaryResidentLabel: elements.adminSummaryResidentLabelSelect
+        ? elements.adminSummaryResidentLabelSelect.value
+        : state.centerContactSettings.summaryResidentLabel,
       language: languageToSave,
       commonPassword: '',
       administratorName: state.centerContactSettings.administratorName || getCurrentUser()?.displayName || '',
       administratorSignature: state.centerContactSettings.administratorSignature || '',
       adminEmail: state.centerContactSettings.adminEmail || getCurrentUser()?.email || '',
-      reservationCutoffs: state.centerContactSettings.reservationCutoffs
+      reservationCutoffs: state.centerContactSettings.reservationCutoffs,
+      adaptationsOnly: true
     });
     state.centerContactSettings = {
       ...state.centerContactSettings,
       ...settings,
       language: languageToSave
     };
+    if (state.residentReady || state.adminRole) {
+      const residentPreferences = loadResidentPreferences();
+      storeResidentPreferences({
+        ...residentPreferences,
+        themePalette: settings.themePalette || paletteToSave,
+        interfaceStyle: settings.interfaceStyle || interfaceStyleToSave,
+        defaultView: settings.defaultView || elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
+        summaryLayout: settings.summaryLayout || elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        summaryResidentLabel: settings.summaryResidentLabel || elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
+        monthControlsSide: settings.monthControlsSide || elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
+        language: languageToSave
+      });
+    }
     state.pendingThemePalette = '';
+    state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
+    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
     applyTranslations(document);
     renderMode();
+    await clearApplicationCache();
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
   } catch (error) {
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = friendlyErrorMessage(error, 'Errore durante il salvataggio');
@@ -3927,15 +5238,20 @@ async function handleAdminAdaptationsSave() {
 
 function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
-  document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'smeraldo';
+  state.pendingInterfaceStyle = '';
+  document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'inchiostro';
+  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
-  state.pendingThemePalette = 'smeraldo';
-  document.documentElement.dataset.theme = 'smeraldo';
-  updateThemeSelectControl('smeraldo');
+  state.pendingThemePalette = 'inchiostro';
+  state.pendingInterfaceStyle = 'urban-plus';
+  document.documentElement.dataset.theme = 'inchiostro';
+  applyInterfaceStyle('urban-plus');
+  updateThemeSelectControl('inchiostro');
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'urban-plus';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -3959,6 +5275,8 @@ async function handleAdminCenterAvatarSelection(event) {
   elements.adminCenterAvatarStatus.textContent = t('common.status.loading');
   try {
     state.pendingCenterAvatarDataUrl = await prepareCenterAvatar(file);
+    state.adminCenterDirty = true;
+    elements.adminCenterSettingsStatus.textContent = 'Modifiche non salvate';
     renderAdminCenterAvatarEditor();
   } catch (error) {
     event.currentTarget.value = '';
@@ -3966,35 +5284,6 @@ async function handleAdminCenterAvatarSelection(event) {
       elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
     }
     elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, t('admin.avatar.notUsable'));
-  }
-}
-
-async function handleAdminCenterAvatarSave() {
-  if (!hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_AVATAR)) return;
-  if (!state.pendingCenterAvatarDataUrl) {
-    return;
-  }
-  if (!state.centerContactSettings.commonPasswordSet) {
-    elements.adminCenterAvatarStatus.textContent = t('admin.avatar.needsCommonPassword');
-    return;
-  }
-  elements.adminCenterAvatarSave.disabled = true;
-  elements.adminCenterAvatarStatus.textContent = t('admin.avatar.saving');
-  try {
-    const avatar = await saveCenterAvatar(state.pendingCenterAvatarDataUrl);
-    state.centerContactSettings = { ...state.centerContactSettings, ...avatar };
-    state.pendingCenterAvatarDataUrl = '';
-    elements.adminCenterAvatarInput.value = '';
-    if (elements.adminAvatarFilename) {
-      elements.adminAvatarFilename.textContent = t('admin.avatar.noFileSelected');
-    }
-    renderAdminCenterAvatarEditor();
-    renderMode();
-    elements.adminCenterAvatarStatus.textContent = t('admin.avatar.saved');
-  } catch (error) {
-    elements.adminCenterAvatarStatus.textContent = friendlyErrorMessage(error, 'Icona non salvata');
-  } finally {
-    elements.adminCenterAvatarSave.disabled = !state.pendingCenterAvatarDataUrl;
   }
 }
 
@@ -4034,12 +5323,20 @@ function renderAdminCenterAvatarEditor() {
   const commonPasswordSet = Boolean(state.centerContactSettings.commonPasswordSet);
   elements.adminCenterAvatarPreview.hidden = !previewAvatar;
   elements.adminCenterAvatarPlaceholder.hidden = Boolean(previewAvatar);
+  const hasPendingAvatar = Boolean(state.pendingCenterAvatarDataUrl);
+  // Le etichette dello stato iniziale servono solo prima del primo
+  // caricamento. Quando l'icona è già salvata lasciamo spazio all'anteprima.
+  if (elements.adminAvatarFilename) {
+    elements.adminAvatarFilename.hidden = Boolean(activeAvatar) && !hasPendingAvatar;
+  }
+  if (elements.adminCenterAvatarStatus) {
+    elements.adminCenterAvatarStatus.hidden = Boolean(activeAvatar) && !hasPendingAvatar;
+  }
   if (previewAvatar) {
     elements.adminCenterAvatarPreview.src = previewAvatar;
   } else {
     elements.adminCenterAvatarPreview.removeAttribute('src');
   }
-  elements.adminCenterAvatarSave.disabled = !state.pendingCenterAvatarDataUrl || !commonPasswordSet;
   elements.adminCenterAvatarRemove.hidden = !activeAvatar;
   elements.adminCenterAvatarStatus.textContent = state.pendingCenterAvatarDataUrl
     ? commonPasswordSet
@@ -4095,21 +5392,38 @@ function loadImage(source) {
 function renderMode() {
   const activePalette = state.pendingThemePalette
     || state.centerContactSettings.themePalette
-    || 'smeraldo';
+    || 'inchiostro';
   document.documentElement.dataset.theme = activePalette;
+  const activeInterfaceStyle = state.pendingInterfaceStyle
+    || state.centerContactSettings.interfaceStyle
+    || 'urban-plus';
+  applyInterfaceStyle(activeInterfaceStyle);
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
   const isSummary = state.mode === 'summary';
   const isKitchen = state.mode === 'kitchen';
   const isAdminView = state.mode === 'admin';
-  const isCenterActivation = isAdminView && Boolean(getAdminInvitationId());
+  // A stale center-invitation token must not turn an ordinary admin/vice
+  // panel into the old "Attivazione centro" screen.  Activation is a real
+  // backend state, reported by loadAdminCenterAccess.
+  const isCenterActivation = isAdminView
+    && state.adminNeedsInitialization === true
+    && !state.adminRole
+    && !state.residentSettingsMode;
   document.body.dataset.mode = state.mode;
   document.body.dataset.centerActivation = isCenterActivation ? 'true' : 'false';
   const needsResidentLogin = state.friendlyAccess
     && !state.residentReady
     && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
-  const mealTitle = t('app.title');
+  // The compact verb belongs to the dense Cool/Urban mobile header only.
+  // Keep the full product title on tablets and desktop where there is room
+  // for the established application identity.
+  const useCompactMobileTitle = activeInterfaceStyle !== 'original'
+    && window.matchMedia?.('(max-width: 620px)').matches;
+  const mealTitle = useCompactMobileTitle
+    ? t('app.title.compact')
+    : t('app.title');
   const participantName = state.selectedParticipant?.displayName || '';
   const centerName = state.centerContactSettings.name || '';
   const currentUser = getCurrentUser();
@@ -4118,6 +5432,8 @@ function renderMode() {
     && !isResidentTechnicalEmail(currentUser.email);
   const showResidentLogin = needsResidentLogin
     && !isAdminView;
+  const appDisplayName = state.centerContactSettings.appDisplayName
+    || DEFAULT_APP_DISPLAY_NAME;
   document.body.dataset.residentLoginVisible = showResidentLogin ? 'true' : 'false';
   const sessionRole = state.platformOwner
     ? t('role.platformOwner')
@@ -4131,11 +5447,14 @@ function renderMode() {
           ? t('role.resident')
           : '';
   [elements.participantStatusName, elements.weekStatusName].forEach((element) => {
+    if (!element) return;
     element.textContent = participantName;
     element.hidden = !participantName;
   });
   elements.title.textContent = isCenterActivation
     ? 'Attivazione centro'
+    : showResidentLogin
+      ? appDisplayName
     : isParticipant
     ? mealTitle
     : isWeek
@@ -4143,19 +5462,31 @@ function renderMode() {
     : isSummary
       ? getSummaryTitle()
       : isAdminView
-        ? t('app.title')
+        ? mealTitle
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
-  elements.titleCenter.textContent = isAdminView ? t('app.header.controlPanel') : centerName;
+  elements.titleCenter.textContent = isAdminView
+    ? state.residentSettingsMode
+      ? t('resident.preferences.title')
+      : t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
   elements.sessionRole.textContent = isAdminView && authenticatedAdministrator
     ? currentUser.email || ''
     : '';
   elements.sessionRole.hidden = !elements.sessionRole.textContent;
   renderCenterAvatar(isParticipant || isWeek || isSummary || isKitchen, centerName);
-  const browserTitle = isSummary && centerName
-    ? `${elements.title.textContent} - ${centerName}`
-    : elements.title.textContent;
-  document.title = `${browserTitle} · Prenotazione pasti`;
+  const browserTitle = isAdminView
+    ? state.residentSettingsMode
+      ? t('resident.preferences.title')
+      : t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    : isSummary && centerName
+      ? `${elements.title.textContent} - ${centerName}`
+      : elements.title.textContent;
+  document.title = showResidentLogin
+    ? appDisplayName
+    : isAdminView
+      ? browserTitle
+      : `${browserTitle} · Prenotazione pasti`;
   elements.residentLogin.hidden = !showResidentLogin;
   elements.participantPanel.hidden = !isParticipant || needsResidentLogin || state.platformOwner;
   elements.weekPanel.hidden = !isWeek || needsResidentLogin || state.platformOwner;
@@ -4170,18 +5501,31 @@ function renderMode() {
     elements.kitchenPanel.hidden = true;
   }
   const isOrdinaryView = isParticipant || isWeek || isSummary;
-  const showResidentExit = isOrdinaryView;
+  const showResidentExit = isOrdinaryView
+    || (isAdminView && state.residentSettingsMode);
   const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
   const canOpenControlPanel = hasCurrentCapability(CAPABILITIES.OPEN_ADMIN_AREA)
     || selectedResidentCanOpenControlPanel();
   elements.controlPanelEntry.hidden = !isOrdinaryView
     || (!needsResidentLogin && !canOpenControlPanel);
+  updateControlPanelEntryHref();
   elements.mealsReturnEntry.hidden = !isAdminView
     || isCenterActivation
-    || state.platformOwner;
-  elements.forgetDeviceButton.hidden = !showResidentExit;
-  elements.ownerExitButton.hidden = !isAdminView || isCenterActivation;
+    || (state.platformOwner && !state.residentSettingsMode);
+  const usePanelExit = isAdminView && state.residentSettingsMode;
+  elements.forgetDeviceButton.hidden = !showResidentExit || usePanelExit;
+  // Nel pannello completo il comando Esci deve restare sempre disponibile,
+  // anche per un amministratore appena riconciliato o dopo un cambio vista.
+  // Anche nel pannello ristretto del residente resta dentro il box bianco:
+  // handleOwnerExit conserva comunque il logout residente, non quello Firebase.
+  elements.ownerExitButton.hidden = !isAdminView;
+  if (elements.platformOwnerExitButton) {
+    elements.platformOwnerExitButton.hidden = !isAdminView || !state.platformOwner;
+  }
+  if (state.platformOwner) {
+    elements.ownerExitButton.hidden = true;
+  }
   if (authenticatedAdministrator) {
     elements.authActions.classList.add('auth-actions-signed-in');
     elements.authActions.hidden = true;
@@ -4195,6 +5539,7 @@ function renderMode() {
     && (!hasAdminInterface || elements.ownerExitButton.hidden);
   if (isAdminView) {
     elements.adminShell.open = true;
+    if (state.residentSettingsMode) renderResidentSettingsPanel();
   }
   if (elements.participantRefreshButton) {
     elements.participantRefreshButton.hidden = true;
@@ -4202,11 +5547,22 @@ function renderMode() {
   if (isKitchen) {
     renderKitchenHeading();
   }
+
+  // Changing the interface style does not reload the week data.  Reconcile the
+  // operational section here as well, otherwise a previous render made while
+  // resident authorisation was still pending can leave Agenda Centro hidden
+  // when returning to the Original style.
+  if (isWeek && !needsResidentLogin && canManageDailyOperations()) {
+    renderWeekOperations();
+  }
 }
 
 function renderCenterAvatar(showInCurrentMode, centerName) {
-  const dataUrl = state.centerContactSettings.avatarDataUrl || '';
+  const configuredDataUrl = state.centerContactSettings.avatarDataUrl || '';
+  const usesFutureView = state.centerContactSettings.interfaceStyle === 'future';
+  const dataUrl = configuredDataUrl || (usesFutureView ? '/icons/splash-512-transparent.png' : '');
   const show = showInCurrentMode && Boolean(dataUrl);
+  elements.centerAvatar.classList.toggle('center-avatar-fallback', show && !configuredDataUrl);
   elements.centerAvatar.hidden = !show;
   if (!show) {
     elements.centerAvatar.removeAttribute('src');
@@ -4258,7 +5614,10 @@ function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) 
   const previousOffset = state.kitchenDayOffset;
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
   state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
-  state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || state.kitchenNote;
+  const selectedNote = state.kitchenNotes[state.kitchenDayOffset];
+  state.kitchenNote = selectedNote?.dateId === formatDateId(getKitchenDate())
+    ? selectedNote.note
+    : null;
   state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || state.kitchenDailyOperation;
   state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || state.kitchenDailyHealth;
   elements.kitchenDayButtons.forEach((button) => {
@@ -4293,28 +5652,105 @@ function getCenterToday() {
 }
 
 function anchorCalendarToCenterToday() {
-  if (state.calendarAnchoredToCenter) {
-    return;
-  }
   const today = getCenterToday();
-  state.selectedSummaryDate = formatDateId(today);
-  state.weekStartDate = startOfWeek(today);
-  state.monthDate = startOfMonth(today);
+  const todayId = formatDateId(today);
+  if (!state.calendarAnchoredToCenter) {
+    state.selectedSummaryDate = todayId;
+    state.weekStartDate = startOfWeek(today);
+    state.monthDate = startOfMonth(today);
+    state.calendarAnchorDateId = todayId;
+    state.calendarAnchoredToCenter = true;
+    return true;
+  }
+  if (state.calendarAnchorDateId === todayId) {
+    return false;
+  }
+
+  // Se l'app rimane aperta oltre mezzanotte, sposta automaticamente il
+  // calendario quando il nuovo giorno appartiene a una nuova settimana o a
+  // un nuovo mese. Una consultazione volontaria di un periodo storico resta
+  // invece dov'è: avanziamo soltanto la vista che mostrava il periodo
+  // corrente prima del cambio di data.
+  const previousToday = state.calendarAnchorDateId
+    ? parseDateId(state.calendarAnchorDateId)
+    : today;
+  const wasCurrentWeek = state.weekStartDate.getTime() === startOfWeek(previousToday).getTime();
+  const wasCurrentMonth = state.monthDate.getTime() === startOfMonth(previousToday).getTime();
+  if (wasCurrentWeek) state.weekStartDate = startOfWeek(today);
+  if (wasCurrentMonth) state.monthDate = startOfMonth(today);
+  if (!state.selectedSummaryDate || state.selectedSummaryDate === state.calendarAnchorDateId) {
+    state.selectedSummaryDate = todayId;
+  }
+  state.calendarAnchorDateId = todayId;
   state.calendarAnchoredToCenter = true;
+  return true;
 }
 
 function getSummaryTitle() {
   return t(state.summaryDayOffset === 1 ? 'summary.view.tomorrowTitle' : 'summary.view.todayTitle');
 }
 
-function renderAdminParticipantOptions() {
-  elements.adminParticipantSelect.innerHTML = `<option value="">${escapeHtml(t('admin.people.selectPerson'))}</option>`
-    + getAdminParticipantsSortedBySignature().map((participant) => {
-    const selected = participant.participantId === state.adminParticipantId ? ' selected' : '';
-    const statusLabel = participant.status === 'ACTIVE' ? '' : ' (disattivato)';
-    return '<option value="' + escapeHtml(participant.participantId) + '"' + selected + '>'
-      + escapeHtml(participant.displayName + statusLabel) + '</option>';
-  }).join('');
+async function clearApplicationCache() {
+  // Purge only the PWA Cache Storage. Firebase Auth persistence, local
+  // preferences, tokens and IndexedDB are deliberately left untouched.
+  try {
+    const cacheNames = await window.caches?.keys?.() || [];
+    await Promise.all(cacheNames
+      .filter((name) => name.startsWith('tavola-comune-app-'))
+      .map((name) => window.caches.delete(name)));
+    const controller = navigator.serviceWorker?.controller;
+    if (controller) {
+      await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = resolve;
+        controller.postMessage({ type: 'CLEAR_APPLICATION_CACHE' }, [channel.port2]);
+        window.setTimeout(resolve, 1200);
+      });
+    }
+  } catch {
+    // Cache cleanup is an optimization; a settings save must remain valid if
+    // a browser does not expose Cache Storage or MessageChannel.
+  }
+}
+
+function captureFocusWithin(container) {
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLElement) || !container?.contains(activeElement)) {
+    return null;
+  }
+
+  const focusableSelector = 'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])';
+  const focusableElements = [...container.querySelectorAll(focusableSelector)];
+  const attributes = [...activeElement.attributes]
+    .filter(({ name }) => name === 'name' || name.startsWith('data-'))
+    .map(({ name, value }) => `[${name}="${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`)
+    .join('');
+  const selector = activeElement.id
+    ? `#${CSS.escape(activeElement.id)}`
+    : `${activeElement.localName}${attributes}`;
+
+  return {
+    selector,
+    matchIndex: [...container.querySelectorAll(selector)].indexOf(activeElement),
+    focusIndex: focusableElements.indexOf(activeElement),
+    selectionStart: typeof activeElement.selectionStart === 'number' ? activeElement.selectionStart : null,
+    selectionEnd: typeof activeElement.selectionEnd === 'number' ? activeElement.selectionEnd : null
+  };
+}
+
+function restoreFocusWithin(container, snapshot) {
+  if (!snapshot || !container) return;
+  const exactMatches = [...container.querySelectorAll(snapshot.selector)];
+  const focusableElements = [...container.querySelectorAll(
+    'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+  )];
+  const target = exactMatches[Math.max(0, snapshot.matchIndex)]
+    || focusableElements[Math.min(Math.max(0, snapshot.focusIndex), focusableElements.length - 1)];
+  if (!target) return;
+  target.focus({ preventScroll: true });
+  if (snapshot.selectionStart !== null && typeof target.setSelectionRange === 'function') {
+    target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+  }
 }
 
 function renderAdminPeopleList() {
@@ -4326,6 +5762,7 @@ function renderAdminPeopleList() {
       participantId: participant.participantId,
       displayName: participant.displayName,
       signature: participant.signature,
+      initials: participant.initials,
       groupId: participant.groupId,
       status: participant.status,
       dietTags: participant.dietTags,
@@ -4349,6 +5786,7 @@ function renderAdminPeopleList() {
     return;
   }
 
+  const focusSnapshot = captureFocusWithin(elements.adminPeopleList);
   elements.adminPeopleList.innerHTML = getAdminParticipantsSortedBySignature().map((participant) => {
     const dietCode = normalizeDietCode(
       (participant.dietTags || []).find((tag) => tag !== 'STANDARD') || 'STANDARD'
@@ -4356,6 +5794,7 @@ function renderAdminPeopleList() {
     const participantId = escapeHtml(participant.participantId);
     const displayName = escapeHtml(participant.displayName || t('admin.people.unnamed'));
     const signature = escapeHtml(participant.signature || t('admin.people.noSignature'));
+    const initials = escapeHtml(participant.initials || '—');
     const groupLabel = participant.groupId === 'group_ospiti' ? t('role.guest') : t('role.resident');
     const statusLabel = participant.status === 'ACTIVE' ? t('admin.people.statusActive') : t('admin.people.statusSuspended');
     const roleLabels = [
@@ -4365,7 +5804,11 @@ function renderAdminPeopleList() {
     ].filter(Boolean);
     const details = [
       groupLabel,
-      dietCode === 'STANDARD' ? '' : formatDietLabel(dietCode),
+      dietCode === 'STANDARD'
+        ? ''
+        : (/^\d+$/.test(dietCode)
+          ? t('diet.numbered', { number: dietCode })
+          : formatDietLabel(dietCode)),
       ...roleLabels
     ].filter(Boolean).map(escapeHtml).join(' · ');
     const phoneIcon = participant.phone
@@ -4382,6 +5825,7 @@ function renderAdminPeopleList() {
           <strong>
             <span class="admin-person-signature" title="${escapeHtml(t('admin.people.signatureTitle'))}">${signature}</span>
             <span class="admin-person-display">${displayName}</span>
+            <span class="admin-person-initials" title="${escapeHtml(t('admin.people.initialsTitle', { initials: participant.initials || deriveInitials(participant.displayName) }))}" aria-label="${escapeHtml(t('admin.people.initialsTitle', { initials: participant.initials || deriveInitials(participant.displayName) }))}">${initials}</span>
           </strong>
           <span class="admin-person-details">${details}${phoneIcon}</span>
         </button>
@@ -4390,7 +5834,7 @@ function renderAdminPeopleList() {
             data-admin-person-toggle-active="${participantId}"
             ${statusPending || deletePending ? 'disabled aria-busy="true"' : ''}
             ${isActive ? 'checked' : ''}>
-          <span style="${isActive ? '' : 'color: #8f342d;'}">${statusLabel}</span>
+          <span class="admin-person-status-label${isActive ? ' is-active' : ' is-suspended'}">${statusLabel}</span>
         </label>
         ${canDeleteParticipants ? `
           <button type="button" class="admin-person-delete" data-admin-person-delete="${participantId}"${deletePending ? ' disabled aria-busy="true"' : ''}
@@ -4400,6 +5844,7 @@ function renderAdminPeopleList() {
       </div>`;
   }).join('') || `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
   elements.adminPeopleList.dataset.renderKey = renderKey;
+  restoreFocusWithin(elements.adminPeopleList, focusSnapshot);
 }
 
 function getAdminParticipantsSortedBySignature() {
@@ -4419,16 +5864,29 @@ function getAdminParticipantsSortedBySignature() {
 
 function participantHasAdministratorRole(participant) {
   const participantId = String(participant?.participantId || '');
-  const linkedAccount = state.adminAccounts.some((account) => (
-    account.status === 'ACTIVE'
-    && ['OWNER', 'ADMIN'].includes(account.role)
-    && String(account.participantId || '') === participantId
-  ));
+  const configuredParticipantId = getConfiguredAdministratorParticipantId();
   const participantSignature = String(participant?.signature || '').trim().toUpperCase();
   const configuredSignature = String(
     state.centerContactSettings.administratorSignature || ''
   ).trim().toUpperCase();
-  return linkedAccount || Boolean(participantSignature && participantSignature === configuredSignature);
+  return Boolean(
+    configuredParticipantId
+      ? participantId === configuredParticipantId
+      : participantSignature && participantSignature === configuredSignature
+  );
+}
+
+function getConfiguredAdministratorParticipantId() {
+  const configured = String(state.centerContactSettings.administratorParticipantId || '').trim();
+  if (configured) return configured;
+  const signature = String(state.centerContactSettings.administratorSignature || '').trim().toUpperCase();
+  return state.adminParticipants.find((participant) => (
+    String(participant.signature || '').trim().toUpperCase() === signature
+  ))?.participantId || '';
+}
+
+function canDesignateCenterAdministrator() {
+  return state.adminRole === 'OWNER';
 }
 
 async function handleAdminPeopleListChange(event) {
@@ -4450,7 +5908,6 @@ async function handleAdminPeopleListChange(event) {
     nextActive ? 'admin.people.reactivating' : 'admin.people.suspending',
     { name: participant.displayName }
   );
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
 
   try {
@@ -4471,7 +5928,6 @@ async function handleAdminPeopleListChange(event) {
     elements.adminStatus.textContent = friendlyErrorMessage(error, t('errors.statusUpdateFailed'));
   } finally {
     state.pendingAdminParticipantStatusIds.delete(participantId);
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
   }
 }
@@ -4491,88 +5947,16 @@ async function handleAdminPeopleListClick(event) {
   if (!await confirmAdminPersonTransition()) return;
   state.adminParticipantId = openButton.dataset.adminPersonOpen;
   state.adminPersonDirty = false;
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminParticipantName.focus();
-}
-
-function syncAdminGuestControls() {
-  const customGuest = elements.adminGuestPreset.value === 'other';
-  elements.adminGuestCustomWrap.hidden = !customGuest;
-  if (customGuest) {
-    elements.adminGuestCustom.focus();
-  }
-}
-
-async function handleAdminAddGuest() {
-  const rawNumber = elements.adminGuestPreset.value === 'other'
-    ? elements.adminGuestCustom.value
-    : elements.adminGuestPreset.value;
-  const guestNumber = Number.parseInt(rawNumber, 10);
-  if (!Number.isInteger(guestNumber) || guestNumber < 1 || guestNumber > 999) {
-    elements.adminGuestStatus.textContent = t('admin.people.guestInvalidNumber');
-    return;
-  }
-
-  const signature = `OSP${guestNumber}`;
-  const existing = state.adminParticipants.find((participant) => (
-    participant.signature === signature
-    || (participant.groupId === 'group_ospiti'
-      && participant.displayName?.trim().toLowerCase() === `ospite ${guestNumber}`)
-  ));
-  if (existing) {
-    state.adminParticipantId = existing.participantId;
-    renderAdminParticipantOptions();
-    syncAdminContactForm();
-    elements.adminGuestStatus.textContent = t('admin.people.guestExists', { name: existing.displayName });
-    return;
-  }
-
-  elements.adminAddGuest.disabled = true;
-  elements.adminGuestStatus.textContent = t('admin.people.guestAdding');
-  try {
-    const sortOrder = Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
-    const participantId = await saveAdminParticipant('', {
-      displayName: `Ospite ${guestNumber}`,
-      signature,
-      groupId: 'group_ospiti',
-      dietTags: ['STANDARD'],
-      liturgicalRole: false,
-      viceAdminRole: false,
-      sortOrder,
-      active: true,
-      phone: '',
-      phoneConsent: false,
-      whatsappEnabled: false
-    });
-    state.adminParticipantId = participantId;
-    elements.adminGuestCustom.value = '';
-    await refreshAdminParticipants();
-    elements.adminGuestStatus.textContent = t('admin.people.guestAdded', { number: guestNumber });
-  } catch (error) {
-    elements.adminGuestStatus.textContent = friendlyErrorMessage(error, 'Ospite non aggiunto');
-  } finally {
-    elements.adminAddGuest.disabled = false;
-  }
-}
-
-async function handleAdminParticipantChange() {
-  const nextParticipantId = elements.adminParticipantSelect.value;
-  if (!await confirmAdminPersonTransition()) {
-    renderAdminParticipantOptions();
-    return;
-  }
-  state.adminParticipantId = nextParticipantId;
-  state.adminPersonDirty = false;
-  syncAdminContactForm();
 }
 
 async function handleAdminNewParticipant() {
   if (!await confirmAdminPersonTransition()) return;
   state.adminParticipantId = '';
   state.adminPersonDirty = false;
-  elements.adminParticipantSelect.selectedIndex = -1;
+  renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminParticipantName.focus();
   elements.adminStatus.textContent = t('admin.people.newPerson');
@@ -4597,10 +5981,6 @@ async function confirmAdminPersonTransition() {
 
 function handleAdminCancelParticipant() {
   state.adminPersonDirty = false;
-  if (!state.adminParticipantId && state.adminParticipants[0]) {
-    state.adminParticipantId = state.adminParticipants[0].participantId;
-  }
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.changesCancelled');
@@ -4616,15 +5996,15 @@ function syncAdminContactForm() {
   if (!participant) {
     elements.adminParticipantName.value = '';
     elements.adminParticipantSignature.value = '';
+    elements.adminParticipantInitials.value = '';
     elements.adminParticipantGroup.value = 'group_residenti';
     elements.adminParticipantDiets.value = 'STANDARD';
     elements.adminParticipantDietNumber.value = '';
     syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
     elements.adminPhoneInput.value = '';
     elements.adminParticipantLiturgy.checked = false;
-    elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
-    elements.adminParticipantVice.checked = false;
-    elements.adminParticipantVice.disabled = !canAssignOperationalRoles();
+    elements.adminParticipantLiturgy.disabled = true;
+    syncAdminAdministrativeRoleControl(null);
     elements.adminPhoneConsent.checked = false;
     elements.adminWhatsappEnabled.checked = false;
     syncAdminCheckboxes();
@@ -4633,6 +6013,7 @@ function syncAdminContactForm() {
 
   elements.adminParticipantName.value = participant.displayName || '';
   elements.adminParticipantSignature.value = participant.signature || '';
+  elements.adminParticipantInitials.value = participant.initials || deriveInitials(participant.displayName);
   elements.adminParticipantGroup.value = participant.groupId === 'group_ospiti' ? 'group_ospiti' : 'group_residenti';
   const dietValue = (participant.dietTags || [])
     .map(normalizeDietCode)
@@ -4643,12 +6024,29 @@ function syncAdminContactForm() {
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
   elements.adminPhoneInput.value = participant.phone || '';
   elements.adminParticipantLiturgy.checked = participant.liturgicalRole === true;
-  elements.adminParticipantLiturgy.disabled = !canAssignOperationalRoles();
-  elements.adminParticipantVice.checked = participant.viceAdminRole === true;
-  elements.adminParticipantVice.disabled = !canAssignOperationalRoles();
+  elements.adminParticipantLiturgy.disabled = !canEditParticipantLiturgy(participant);
+  syncAdminAdministrativeRoleControl(participant);
   elements.adminPhoneConsent.checked = Boolean(participant.phoneConsent);
   elements.adminWhatsappEnabled.checked = Boolean(participant.whatsappEnabled);
   syncAdminCheckboxes();
+}
+
+function syncAdminAdministrativeRoleControl(participant) {
+  const select = elements.adminParticipantAdministrativeRole;
+  if (!select) return;
+  const canAssignVice = canAssignOperationalRoles();
+  const canAssignAdministrator = canDesignateCenterAdministrator();
+  const isConfiguredAdministrator = participantHasAdministratorRole(participant);
+  const selectedRole = isConfiguredAdministrator
+    ? 'administrator'
+    : participant?.viceAdminRole === true ? 'vice' : 'none';
+  const viceOption = select.querySelector('option[value="vice"]');
+  const administratorOption = select.querySelector('option[value="administrator"]');
+  select.value = selectedRole;
+  if (viceOption) viceOption.disabled = !canAssignVice;
+  if (administratorOption) administratorOption.disabled = !canAssignAdministrator;
+  select.disabled = isConfiguredAdministrator
+    || (!canAssignVice && !canAssignAdministrator);
 }
 
 function canAssignOperationalRoles() {
@@ -4656,9 +6054,20 @@ function canAssignOperationalRoles() {
     && hasCurrentCapability(CAPABILITIES.ASSIGN_LITURGY);
 }
 
+function canEditParticipantLiturgy(participant) {
+  if (canAssignOperationalRoles()) return true;
+  return state.residentAdministratorAuthorized === true
+    && Boolean(participant?.participantId)
+    && participant.participantId === state.selectedParticipant?.participantId;
+}
+
 function hasCurrentCapability(capability, options = {}) {
   if (!isAdministratorProfileComplete()
-      && capability !== CAPABILITIES.MANAGE_CENTER_SETTINGS) {
+      && ![
+        CAPABILITIES.MANAGE_CENTER_SETTINGS,
+        CAPABILITIES.VIEW_OPERATIONAL_LINKS,
+        CAPABILITIES.MANAGE_OPERATIONAL_LINKS
+      ].includes(capability)) {
     return false;
   }
   return hasCapability(state.adminRole, capability, {
@@ -4670,6 +6079,7 @@ function hasCurrentCapability(capability, options = {}) {
 }
 
 function applyAdminCapabilityVisibility() {
+  syncAdaptationsContextCopy();
   if (!state.adminActiveSection) {
     state.adminActiveSection = resolveInitialAdminSection();
     state.adminMobileSection = state.adminActiveSection;
@@ -4677,13 +6087,36 @@ function applyAdminCapabilityVisibility() {
       markAdminPanelVisited();
     }
   }
+  if (state.residentSettingsMode) {
+    state.adminActiveSection = 'adaptations';
+    state.adminMobileSection = 'adaptations';
+    elements.adminNavConfiguration.hidden = true;
+    elements.adminNavOverview.hidden = true;
+    elements.adminNavPeople.hidden = true;
+    elements.adminNavAdaptations.hidden = false;
+    elements.adminNavAccess.hidden = true;
+    elements.adminNavActivity.hidden = true;
+    elements.adminAccessSection.hidden = true;
+    if (elements.adminCenterSettingsSection) elements.adminCenterSettingsSection.hidden = true;
+    if (elements.adminAuditSection) elements.adminAuditSection.hidden = true;
+    if (elements.adminCalendarExtension) elements.adminCalendarExtension.hidden = true;
+    if (elements.adminTools) elements.adminTools.hidden = true;
+    if (elements.adminContactSharingRow) elements.adminContactSharingRow.hidden = true;
+    if (elements.adminCommonPasswordRow) elements.adminCommonPasswordRow.hidden = true;
+    if (elements.adminAdministratorPasswordRow) elements.adminAdministratorPasswordRow.hidden = true;
+    if (elements.bootstrapButton) elements.bootstrapButton.hidden = true;
+    if (elements.adminPermissionsGroup) elements.adminPermissionsGroup.hidden = true;
+    syncOperationalLinkActionState(false);
+    mountAdminSection('adaptations');
+    renderAdminMobileSection();
+    return;
+  }
   const canConfigureCenter = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
-  const canManageAdaptations = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
-  const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
+  const canManageAdaptations = state.residentSettingsMode
+    || hasCurrentCapability(CAPABILITIES.MANAGE_ADAPTATIONS);
+  const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
   const canManagePeople = hasCurrentCapability(CAPABILITIES.MANAGE_PARTICIPANTS);
-  const canManageAccess = hasCurrentCapability(CAPABILITIES.ASSIGN_VICE)
-    || hasCurrentCapability(CAPABILITIES.ASSIGN_LITURGY)
-    || hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
+  const canManageAccess = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
   const canViewActivity = hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG);
   const canManageCalendar = hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR);
   const profileComplete = isAdministratorProfileComplete();
@@ -4691,7 +6124,7 @@ function applyAdminCapabilityVisibility() {
     state.adminActiveSection = ADMIN_SECTIONS.find((section) => isAdminSectionAllowed(section)) || 'overview';
     state.adminMobileSection = state.adminActiveSection;
   }
-  elements.adminNavOverview.hidden = !profileComplete;
+  elements.adminNavOverview.hidden = state.residentSettingsMode || !canViewOperationalLinks;
   elements.adminNavPeople.hidden = !canManagePeople;
   if (elements.adminNavAdaptations) {
     elements.adminNavAdaptations.hidden = !canManageAdaptations;
@@ -4703,9 +6136,11 @@ function applyAdminCapabilityVisibility() {
   if (elements.adminAdaptationsSection) {
     elements.adminAdaptationsSection.hidden = !canManageAdaptations;
   }
-  elements.adminRoleOptions.forEach((option) => {
-    option.hidden = !canManageAccess;
-  });
+  if (elements.adminPermissionsGroup) {
+    elements.adminPermissionsGroup.hidden = !canAssignOperationalRoles()
+      && !canDesignateCenterAdministrator()
+      && !state.residentAdministratorAuthorized;
+  }
   if (elements.adminAuditSection) {
     elements.adminAuditSection.hidden = !canViewActivity;
   }
@@ -4719,7 +6154,7 @@ function applyAdminCapabilityVisibility() {
     elements.adminTools.hidden = !hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA);
   }
   if (elements.adminContactSharingRow) {
-    elements.adminContactSharingRow.hidden = !canConfigureCenter;
+    elements.adminContactSharingRow.hidden = !canConfigureCenter || state.residentSettingsMode;
     if (elements.adminContactSharingSelect) {
       elements.adminContactSharingSelect.disabled = !canConfigureCenter;
     }
@@ -4729,6 +6164,12 @@ function applyAdminCapabilityVisibility() {
     if (elements.adminCommonPasswordInput) {
       elements.adminCommonPasswordInput.disabled = !canConfigureCenter;
     }
+  }
+  if (elements.adminSharedPasswordRow) {
+    elements.adminSharedPasswordRow.hidden = !canConfigureCenter || state.residentSettingsMode;
+    [elements.adminSharedPasswordCurrent, elements.adminSharedPasswordNew].forEach((input) => {
+      if (input) input.disabled = !canConfigureCenter || state.residentSettingsMode;
+    });
   }
   if (elements.adminAdministratorPasswordRow) {
     elements.adminAdministratorPasswordRow.hidden = state.adminRole !== 'OWNER'
@@ -4741,9 +6182,7 @@ function applyAdminCapabilityVisibility() {
   if (elements.bootstrapButton) {
     elements.bootstrapButton.hidden = !profileComplete || !canManageCalendar;
   }
-  elements.rotateLinkButtons.forEach((button) => {
-    button.hidden = !canManageOperationalLinks;
-  });
+  syncOperationalLinkActionState(canViewOperationalLinks);
   renderAdminMobileSection();
 }
 
@@ -4777,7 +6216,14 @@ function renderParticipantMeals() {
     } else {
       elements.todayOverview.innerHTML = '';
     }
-    elements.participantMeals.innerHTML = `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
+    // During friendly login/restore there is intentionally no selected
+    // participant yet. Do not expose the administrative empty-list message:
+    // it looks like a failed login and can survive a stale render.
+    elements.participantMeals.innerHTML = (state.friendlyAccess && !state.residentReady)
+      || state.residentAuthTransition
+      || state.residentRestorePending
+      ? ''
+      : `<p class="empty-state">${escapeHtml(t('admin.people.noParticipants'))}</p>`;
     elements.participantSummary.innerHTML = '';
     elements.participantSummary.hidden = true;
     return;
@@ -4823,10 +6269,13 @@ function renderParticipantMeals() {
   const massBulkLabel = massBulkScheduled
     ? 'Segna Messa sì per i giorni modificabili'
     : 'Segna Messa no per i giorni modificabili';
+  const weekControlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const weekRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
     weekStart: formatDateId(state.weekStartDate),
     today: formatDateId(getCenterToday()),
+    controlsSide: weekControlsOnLeft ? 'left' : 'right',
     showMassColumn,
     headings: mealHeadings.map((meal) => [meal.mealTypeId, meal.label]),
     days: state.participantWeek.map((day) => day.date)
@@ -4840,16 +6289,19 @@ function renderParticipantMeals() {
     return;
   }
 
+  const weekScopeButtonMarkup = `
+    <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
+      <span class="week-heading-icon" aria-hidden="true">${getInterfaceIcon('calendar', '▦')}</span>
+      <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
+    </button>
+  `;
   elements.participantMeals.innerHTML = `
-    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''}" aria-label="Prenotazioni della settimana">
+    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''} week-controls-${weekControlsOnLeft ? 'left' : 'right'}" aria-label="Prenotazioni della settimana">
       <div class="week-matrix-header">
-        <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
-          <span class="week-heading-icon" aria-hidden="true">▦</span>
-          <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
-        </button>
+        ${weekControlsOnLeft ? weekScopeButtonMarkup : ''}
         ${showMassColumn ? `
           <button type="button" class="week-mass-heading${allOpenMassesScheduled ? ' week-mass-heading-complete' : ''}" data-week-mass-bulk data-week-mass-scheduled="${massBulkScheduled}" aria-pressed="${allOpenMassesScheduled}" aria-label="${massBulkLabel}" title="${massBulkLabel}"${openMassDays.length > 0 ? '' : ' disabled'}>
-            <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">⛪</span>
+            <span class="week-heading-icon week-mass-mobile-icon" aria-hidden="true">${getInterfaceIcon('church', '⛪')}</span>
             <span class="week-heading-label">${escapeHtml(t('summary.mass'))}</span>
           </button>
         ` : ''}
@@ -4867,6 +6319,7 @@ function renderParticipantMeals() {
             </button>
           `;
         }).join('')}
+        ${weekControlsOnLeft ? '' : weekScopeButtonMarkup}
       </div>
       ${state.participantWeek.map((day) => {
         const dayEffect = getBulkSelectionEffect(day.meals);
@@ -4877,14 +6330,18 @@ function renderParticipantMeals() {
           ? ' week-matrix-row-subdued'
           : '';
         const dayAction = dayEffect === 'PRESENT' ? 'Prenota tutta la giornata' : 'Svuota tutta la giornata';
+        const dayButtonMarkup = `
+          <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
+            <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
+            ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
+          </button>
+        `;
         return `
           <article class="week-matrix-row${todayClass}${subduedClass}" data-day-date="${day.date}">
-            <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
-              <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
-              ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
-            </button>
+            ${weekControlsOnLeft ? dayButtonMarkup : ''}
             ${showMassColumn ? renderWeekMassButton(day, massByDate.get(day.date)) : ''}
             ${day.meals.map((meal) => renderMealCell(day.date, meal)).join('')}
+            ${weekControlsOnLeft ? '' : dayButtonMarkup}
           </article>
         `;
       }).join('')}
@@ -4936,7 +6393,6 @@ function handleParticipantMealsClick(event) {
 
 function canManageMass() {
   return state.adminCanManageMass
-    || selectedParticipantIsCenterAdministrator()
     || hasCurrentCapability(CAPABILITIES.MANAGE_MASS, {
       liturgicalRole: state.selectedParticipant?.liturgicalRole === true
     });
@@ -4944,10 +6400,7 @@ function canManageMass() {
 
 function canManageDailyOperations() {
   return state.adminCanManageDailyOperations
-    || selectedParticipantIsCenterAdministrator()
-    || hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS, {
-      viceAdminRole: state.selectedParticipant?.viceAdminRole === true
-    });
+    || state.residentAdministratorAuthorized;
 }
 
 function selectedParticipantIsCenterAdministrator() {
@@ -4959,10 +6412,56 @@ function selectedParticipantIsCenterAdministrator() {
 }
 
 function selectedResidentCanOpenControlPanel() {
-  return state.residentReady && (
-    selectedParticipantIsCenterAdministrator()
-    || state.selectedParticipant?.viceAdminRole === true
+  return state.residentReady;
+}
+
+function deriveInitials(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  return words.slice(0, 3).map((word) => word[0]).join('').toUpperCase();
+}
+
+function selectedResidentCanUseFullControlPanel() {
+  return Boolean(state.selectedParticipant) && (
+    state.selectedParticipant.viceAdminRole === true
+    || selectedParticipantIsCenterAdministrator()
   );
+}
+
+function hasStrongAdministratorIdentity() {
+  const currentUser = getCurrentUser();
+  return Boolean(currentUser
+    && !currentUser.isAnonymous
+    && !isResidentTechnicalEmail(currentUser.email));
+}
+
+function shouldOpenResidentSettingsPanel() {
+  // A strong Firebase session can remain on a shared device after an
+  // administrator has used it. It must not turn the control panel opened by
+  // an ordinary resident into the complete administrative panel.
+  if (!state.residentReady) return false;
+  if (state.residentEntryKind === 'common') return true;
+  if (state.residentEntryKind === 'strong-admin') return false;
+  return !state.residentAdministratorAuthorized && !state.adminRole;
+}
+
+function setResidentSettingsAccessBoundary(enabled) {
+  state.residentSettingsMode = enabled;
+  const url = new URL(window.location.href);
+  if (enabled) url.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+  else if (url.searchParams.get('access') === RESIDENT_SETTINGS_ACCESS) url.searchParams.delete('access');
+  window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+}
+
+function updateControlPanelEntryHref() {
+  const adminEntryUrl = new URL(window.location.origin + window.location.pathname);
+  adminEntryUrl.searchParams.set('view', 'admin');
+  const centerId = getActiveCenterId();
+  if (centerId) adminEntryUrl.searchParams.set('c', centerId);
+  if (shouldOpenResidentSettingsPanel()) {
+    adminEntryUrl.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
+  }
+  elements.controlPanelEntry.href = adminEntryUrl.pathname + adminEntryUrl.search;
 }
 
 function canUseWeekWithoutParticipant() {
@@ -5004,11 +6503,35 @@ function getBulkSelectionEffect(meals) {
 }
 
 function getMealIcon(mealTypeId) {
-  return {
+  const originalIcons = {
     breakfast: '☕',
     lunch: '🍝',
     dinner: '🍲'
-  }[mealTypeId] || '•';
+  };
+  const coolIcons = {
+    breakfast: 'coffee',
+    lunch: 'sun',
+    dinner: 'moon'
+  };
+  return getInterfaceIcon(coolIcons[mealTypeId], originalIcons[mealTypeId] || '•');
+}
+
+function getInterfaceIcon(kind, fallback = '•') {
+  const usesCoolIcons = document.documentElement.dataset.interfaceFamily === 'cool'
+    || document.documentElement.dataset.interfaceStyle === 'urban';
+  if (!usesCoolIcons || !kind) {
+    return fallback;
+  }
+  const paths = {
+    coffee: '<path d="M4 10h11v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path d="M15 11h2a3 3 0 0 1 0 6h-2"></path><path d="M6 5c0 1 .8 1.4.8 2.4S6 8.8 6 9.5M10 5c0 1 .8 1.4.8 2.4S10 8.8 10 9.5"></path>',
+    sun: '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',
+    moon: '<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"></path>',
+    church: '<path d="M4 20h16M6 20v-8l6-5 6 5v8M12 3v4M10 5h4M9 20v-4h6v4M3 12h3M18 12h3"></path>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18M7 14h.01M12 14h.01M17 14h.01M7 18h.01M12 18h.01M17 18h.01"></path>'
+  };
+  const path = paths[kind];
+  if (!path) return fallback;
+  return `<svg class="meal-line-icon meal-line-icon-${kind}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${path}</svg>`;
 }
 
 function getLocalizedMealLabel(mealTypeId, fallback = '') {
@@ -5026,7 +6549,8 @@ function renderTodayOverview() {
     mountSummaryMatrix(elements.todayOverview, {
       days: state.summaryDays,
       operationDays: state.summaryOperations,
-      layout: state.centerContactSettings.summaryLayout || 'international',
+      layout: state.centerContactSettings.summaryLayout || 'classic',
+      residentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: (index) => {
         selectSummaryMatrixDay(index, { scroll: false });
@@ -5037,7 +6561,15 @@ function renderTodayOverview() {
     return;
   }
 
-  const mealIcons = { breakfast: '☕', lunch: '🍝', dinner: '🍲' };
+  const hasLegacySummaryData = state.todayOverview.length > 0
+    || state.summaryDailyOperation !== null
+    || state.summaryDailyHealth !== null;
+  if (!hasLegacySummaryData) {
+    elements.todayOverview.replaceChildren();
+    delete elements.todayOverview.dataset.renderKey;
+    return;
+  }
+
   elements.todayOverview.innerHTML = `
     <section class="today-panel">
       <p class="today-date">${formatSummaryDate(getSummaryDate())}</p>
@@ -5045,7 +6577,7 @@ function renderTodayOverview() {
         ${state.todayOverview.map((meal) => `
           <article class="today-card">
             <div class="today-card-head">
-              <strong><span class="meal-icon" aria-hidden="true">${mealIcons[meal.mealTypeId] || '•'}</span><span class="meal-label">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</span></strong>
+              <strong><span class="meal-icon" aria-hidden="true">${getMealIcon(meal.mealTypeId)}</span><span class="meal-label">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</span></strong>
             </div>
             ${renderGroupedSummary(meal.present)}
           </article>
@@ -5058,6 +6590,7 @@ function renderTodayOverview() {
 }
 
 function renderMassCard(dailyOperation) {
+  if (!dailyOperation) return '';
   const massScheduled = dailyOperation?.massScheduled === true;
   const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
   return `
@@ -5170,26 +6703,54 @@ function renderWeekControls() {
 }
 
 function renderMonthGrid() {
+  const isFuture = document.documentElement.dataset.interfaceStyle === 'future';
   const monthCells = buildMonthCells(state.monthDate, state.participantMonth);
+  const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
+  const monthRenderKey = JSON.stringify({
+    participantId: state.selectedParticipant?.participantId || '',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
+    language: document.documentElement.lang || 'it',
+    month: formatMonthId(state.monthDate),
+    monthControlsSide: controlsOnLeft ? 'left' : 'right',
+    today: formatDateId(getCenterToday()),
+    // The first paint can legitimately happen before the reservation payload
+    // arrives. Include only the meal structure (not mutable effects) so that
+    // empty date cells are rebuilt once their controls become available,
+    // while ordinary reservation changes still use the lightweight DOM sync.
+    days: monthCells.map((day) => [
+      day.date,
+      (day.meals || []).map((meal) => meal.mealTypeId)
+    ])
+  });
+  const hasGridBody = isFuture
+    ? Boolean(elements.monthGrid.querySelector('.month-future'))
+    : Boolean(elements.monthGrid.querySelector('.month-sheet-body'));
+  if (elements.monthGrid.dataset.renderKey === monthRenderKey && hasGridBody) {
+    syncMonthGridFromState();
+    scheduleMonthAutoScroll();
+    return;
+  }
+
+  if (isFuture) {
+    renderFutureMonth();
+    elements.monthGrid.dataset.renderKey = monthRenderKey;
+    return;
+  }
+
   const monthWeeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7));
   const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
   const monthEffect = getMonthSelectionEffect();
   const monthHasOpenMeals = state.participantMonth
     .flatMap((day) => day.meals || [])
     .some((meal) => meal.isOpen);
-  const monthRenderKey = JSON.stringify({
-    participantId: state.selectedParticipant?.participantId || '',
-    month: formatMonthId(state.monthDate),
-    today: formatDateId(getCenterToday()),
-    days: monthCells.map((day) => day.date)
-  });
-  if (elements.monthGrid.dataset.renderKey === monthRenderKey
-      && elements.monthGrid.querySelector('.month-sheet-body')) {
-    syncMonthGridFromState();
-    scheduleMonthAutoScroll();
-    return;
-  }
+  const monthControlMarkup = `
+    <span class="month-weekday-month-control">
+      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
+        <span class="month-toggle-glyph" aria-hidden="true">M</span>
+      </button>
+    </span>`;
 
+  const focusSnapshot = captureFocusWithin(elements.monthGrid);
   elements.monthGrid.innerHTML = `
     <div class="month-sheet-body">
       ${monthWeeks.map((week, index) => {
@@ -5201,20 +6762,25 @@ function renderMonthGrid() {
         return `
           <div class="month-week-cluster">
             ${index === 0 ? `
-              <div class="month-weekday-row" aria-label="Giorni della settimana">
+              <div class="month-weekday-row month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="Giorni della settimana">
+                ${controlsOnLeft ? monthControlMarkup : ''}
                 ${weekdayLabels.map((label) => `<span class="month-weekday-cell">${label}</span>`).join('')}
-                <span class="month-weekday-month-control">
-                  <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
-                    <span class="month-toggle-glyph" aria-hidden="true">M</span>
-                  </button>
-                </span>
+                ${controlsOnLeft ? '' : monthControlMarkup}
               </div>
             ` : ''}
-            <div class="month-week-row">
+            <div class="month-week-row month-controls-${controlsOnLeft ? 'left' : 'right'}">
               <div class="month-week-mobile-header">
+                ${controlsOnLeft ? renderMonthScopeButtons('Settimana', weekStart, null) : ''}
                 ${week.map(renderMonthDayNumber).join('')}
-                ${renderMonthScopeButtons('Settimana', weekStart, null)}
+                ${controlsOnLeft ? '' : renderMonthScopeButtons('Settimana', weekStart, null)}
               </div>
+              ${controlsOnLeft ? `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+                <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
+                ${renderMonthScopeButtons('Settimana', weekStart, null)}
+                ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
+                ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
+                ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
+              </aside>` : ''}
               ${week.map((day) => {
                 const classes = [
                   'month-day',
@@ -5230,13 +6796,13 @@ function renderMonthGrid() {
                   </article>
                 `;
               }).join('')}
-              <aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+              ${controlsOnLeft ? '' : `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
                 <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
                 ${renderMonthScopeButtons('Settimana', weekStart, null)}
                 ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
                 ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
                 ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
-              </aside>
+              </aside>`}
             </div>
           </div>
         `;
@@ -5244,6 +6810,7 @@ function renderMonthGrid() {
     </div>
   `;
   elements.monthGrid.dataset.renderKey = monthRenderKey;
+  restoreFocusWithin(elements.monthGrid, focusSnapshot);
 
   scheduleMonthAutoScroll();
 
@@ -5279,12 +6846,9 @@ function handleMonthGridClick(event) {
 
 function renderMonthScopeButtons(label, weekStart, mealTypeId) {
   const scope = mealTypeId ? 'week-meal' : 'week';
-  const icon = {
-    Settimana: '▦',
-    Colazione: '☕',
-    Pranzo: '🍝',
-    Cena: '🍲'
-  }[label] || '•';
+  const icon = mealTypeId
+    ? getMealIcon(mealTypeId)
+    : getInterfaceIcon('calendar', '▦');
   const effect = getMonthScopeEffect(weekStart, mealTypeId);
   const action = effect === 'PRESENT' ? 'prenota' : 'libera';
   const selectedClass = effect === 'ABSENT' ? ' month-scope-toggle-selected' : '';
@@ -5620,7 +7184,7 @@ async function handleMonthMealButton(event, button) {
   if (!state.selectedParticipant) return;
   const day = state.participantMonth.find((item) => item.date === button.dataset.monthDate);
   const meal = day?.meals.find((item) => item.mealTypeId === button.dataset.monthMealId);
-  if (!meal || !meal.isOpen) return;
+  if (!meal || meal.isOpen === false || day?.isPast) return;
 
   const effect = button.dataset.monthEffect;
   await saveMealOptimistically({
@@ -5708,24 +7272,45 @@ function handleAdminSaveContact() {
 
 async function performAdminSaveContact() {
   const participant = state.adminParticipants.find((item) => item.participantId === state.adminParticipantId);
+  const configuredAdministratorId = getConfiguredAdministratorParticipantId();
+  const selectedAdministrativeRole = elements.adminParticipantAdministrativeRole?.value || 'none';
+  const administratorChecked = selectedAdministrativeRole === 'administrator';
+  const assigningAdministrator = canDesignateCenterAdministrator()
+    && administratorChecked
+    && (!participant || participant.participantId !== configuredAdministratorId);
 
   try {
+    if (participant?.participantId === configuredAdministratorId && !administratorChecked) {
+      throw new Error(t('admin.people.assignAdministrator.chooseSuccessor'));
+    }
+    if (assigningAdministrator) {
+      const decision = await showActionDialog({
+        title: t('admin.people.assignAdministrator.title'),
+        message: t('admin.people.assignAdministrator.message', {
+          name: elements.adminParticipantName.value.trim()
+        }),
+        confirmLabel: t('common.actions.confirm'),
+        destructive: true
+      });
+      if (!decision.confirmed) return;
+    }
     const rawPhone = elements.adminPhoneInput.value.trim();
     const dietCode = readAdminDietCode();
     const dietTags = dietCode && dietCode !== 'STANDARD' ? [dietCode] : ['STANDARD'];
     const sortOrder = participant?.sortOrder
       || Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
     const viceAdminRole = canAssignOperationalRoles()
-      ? elements.adminParticipantVice.checked
+      ? selectedAdministrativeRole === 'vice'
       : participant?.viceAdminRole === true;
     assertViceSelectionLimit(participant?.participantId || '', viceAdminRole);
     clearAdminParticipantFieldErrors();
     const profile = validateParticipantProfile({
       displayName: elements.adminParticipantName.value,
       signature: elements.adminParticipantSignature.value,
+      initials: elements.adminParticipantInitials.value,
       groupId: elements.adminParticipantGroup.value,
       dietTags,
-      liturgicalRole: canAssignOperationalRoles()
+      liturgicalRole: canEditParticipantLiturgy(participant)
         ? elements.adminParticipantLiturgy.checked
         : participant?.liturgicalRole === true,
       viceAdminRole,
@@ -5745,6 +7330,23 @@ async function performAdminSaveContact() {
       ...profile,
       expectedRevision: participant?.revision
     });
+    if (assigningAdministrator) {
+      const assigned = await assignCenterAdministratorParticipant(
+        savedParticipantId,
+        configuredAdministratorId
+      );
+      state.centerContactSettings.administratorParticipantId = assigned.participantId;
+      state.centerContactSettings.administratorName = assigned.displayName;
+      state.centerContactSettings.administratorSignature = assigned.signature;
+      elements.adminStatus.textContent = t('admin.people.assignAdministrator.done', {
+        name: assigned.displayName
+      });
+    }
+    if (!viceAdminRole && participant?.viceAdminRole === true) {
+      // La membership viene revocata nel database: nascondere una scheda non
+      // sarebbe sufficiente e una sessione Firebase già aperta non la riattiva.
+      await revokeViceAdministratorAccess(savedParticipantId);
+    }
     state.adminParticipantId = savedParticipantId;
     state.adminPersonDirty = false;
     await refreshAdminParticipants();
@@ -5752,7 +7354,9 @@ async function performAdminSaveContact() {
       state.selectedParticipant = state.participants.find((item) => item.participantId === savedParticipantId) || state.selectedParticipant;
       renderMode();
     }
-    elements.adminStatus.textContent = t('admin.people.saved');
+    if (!assigningAdministrator) {
+      elements.adminStatus.textContent = t('admin.people.saved');
+    }
   } catch (error) {
     focusInvalidAdminParticipantField(error);
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Salvataggio non riuscito');
@@ -5769,6 +7373,7 @@ function clearAdminParticipantFieldErrors() {
   [
     elements.adminParticipantName,
     elements.adminParticipantSignature,
+    elements.adminParticipantInitials,
     elements.adminPhoneInput
   ].forEach((field) => field.removeAttribute('aria-invalid'));
 }
@@ -5833,7 +7438,6 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   }
   elements.adminSaveButton.disabled = true;
   elements.adminDeleteParticipant.disabled = true;
-  renderAdminParticipantOptions();
   renderAdminPeopleList();
   syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.deleting');
@@ -5845,7 +7449,6 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     state.participants = previousParticipants;
     state.adminParticipantId = previousSelectedParticipantId;
     state.adminPersonDirty = previousPersonDirty;
-    renderAdminParticipantOptions();
     renderAdminPeopleList();
     syncAdminContactForm();
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');
@@ -5935,6 +7538,15 @@ function renderWeekOperations() {
   }
 
   const sickCount = selectedSickIds.size;
+  const invitedMeals = state.weekOperationalHealth?.invitedMeals || {};
+  let invitedTotal = 0;
+  elements.weekInvitedInputs.forEach((input) => {
+    const count = Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[input.dataset.weekInvitedMeal]) || 0)));
+    input.value = String(count);
+    invitedTotal += count;
+  });
+  elements.weekInvitedSection.open = invitedTotal > 0;
+  renderWeekInvitedStatus(invitedMeals);
   elements.weekHealthSection.open = sickCount > 0;
   elements.weekHealthStatus.textContent = sickCount > 0
     ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
@@ -5943,11 +7555,306 @@ function renderWeekOperations() {
   renderWeekDietAssignments();
 }
 
+function renderFutureMonth() {
+  const monthCells = buildMonthCells(state.monthDate, state.participantMonth);
+  const weeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7))
+    .filter((week) => week.some((day) => day.inCurrentMonth));
+  const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
+  const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
+  const monthScopeButton = renderFutureMonthScopeButton('Mese', null, null, { scope: 'month' });
+  const focusSnapshot = captureFocusWithin(elements.monthGrid);
+  elements.monthGrid.innerHTML = `
+    <div class="month-future month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(formatMonthLabel(state.monthDate))}">
+      <div class="month-future-row month-future-weekdays">
+        ${controlsOnLeft ? monthScopeButton + weekdayLabels.map((label) => `<span>${label}</span>`).join('') : weekdayLabels.map((label) => `<span>${label}</span>`).join('') + monthScopeButton}
+      </div>
+      ${weeks.map((week) => {
+        const weekStart = week[0].date;
+        const weekScopeButton = renderFutureMonthScopeButton('Settimana', weekStart, null);
+        return `
+        <section class="month-future-week" data-week-start="${escapeHtml(weekStart)}">
+          <div class="month-future-row month-future-dates">
+            ${controlsOnLeft ? weekScopeButton + week.map((day) => `<button type="button" data-month-day="${escapeHtml(day.date)}" class="month-future-date${day.isToday ? ' month-future-date-today' : ''}${day.isPast ? ' month-future-date-past' : ''}"${day.inCurrentMonth ? '' : ' disabled'}>${day.inCurrentMonth ? day.dayNumber : ''}</button>`).join('') : week.map((day) => `<button type="button" data-month-day="${escapeHtml(day.date)}" class="month-future-date${day.isToday ? ' month-future-date-today' : ''}${day.isPast ? ' month-future-date-past' : ''}"${day.inCurrentMonth ? '' : ' disabled'}>${day.inCurrentMonth ? day.dayNumber : ''}</button>`).join('') + weekScopeButton}
+          </div>
+          ${['breakfast', 'lunch', 'dinner'].map((mealTypeId) => `
+            <div class="month-future-row month-future-meal-row">
+              ${controlsOnLeft ? renderFutureMonthScopeButton(getLocalizedMealLabel(mealTypeId), weekStart, mealTypeId) + week.map((day) => renderFutureMonthMeal(day, mealTypeId)).join('') : week.map((day) => renderFutureMonthMeal(day, mealTypeId)).join('') + renderFutureMonthScopeButton(getLocalizedMealLabel(mealTypeId), weekStart, mealTypeId)}
+            </div>
+          `).join('')}
+        </section>
+      `;
+      }).join('')}
+    </div>
+  `;
+  restoreFocusWithin(elements.monthGrid, focusSnapshot);
+  scheduleMonthAutoScroll();
+}
+
+function renderFutureMonthScopeButton(label, weekStart, mealTypeId, { scope = '' } = {}) {
+  const isMonth = scope === 'month';
+  const resolvedScope = isMonth ? 'month' : mealTypeId ? 'week-meal' : 'week';
+  const meals = isMonth ? getMonthScopeMeals(null, null) : getMonthScopeMeals(weekStart, mealTypeId);
+  const effect = isMonth ? getMonthSelectionEffect() : getMonthScopeEffect(weekStart, mealTypeId);
+  const selected = effect === 'ABSENT';
+  const editableMeals = meals.filter((meal) => meal.isOpen !== false);
+  const hasPendingMeals = editableMeals.some((meal) => (
+    state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId))
+  ));
+  const action = effect === 'PRESENT' ? 'Prenota' : 'Libera';
+  const actionLabel = isMonth
+    ? `${action} tutto il mese`
+    : `${action} ${label.toLowerCase()} per la settimana`;
+  const icon = isMonth
+    ? 'M'
+    : mealTypeId
+      ? getMealIcon(mealTypeId)
+      : getInterfaceIcon('calendar', '▦');
+  const selectedClass = selected ? ' month-future-scope-selected' : '';
+  const monthClass = isMonth ? ' month-future-month-scope' : '';
+  return `
+    <button type="button" class="month-future-scope${monthClass}${selectedClass}" data-month-scope="${resolvedScope}" data-week-start="${escapeHtml(weekStart || '')}" data-meal-type="${escapeHtml(mealTypeId || '')}" data-month-effect="${effect}" aria-pressed="${selected}" aria-label="${escapeHtml(`${label}: ${actionLabel}`)}" title="${escapeHtml(actionLabel)}"${editableMeals.length === 0 || hasPendingMeals ? ' disabled' : ''}>
+      <span class="month-future-scope-glyph" aria-hidden="true">${icon}</span>
+    </button>
+  `;
+}
+
+function renderFutureMonthMeal(day, mealTypeId) {
+  if (!day.inCurrentMonth) return '<span class="month-future-empty">–</span>';
+  const meal = (day.meals || []).find((item) => item.mealTypeId === mealTypeId);
+  if (!meal) {
+    return `<button type="button" class="month-future-meal month-future-meal-locked" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(mealTypeId)}" data-month-effect="PRESENT" disabled aria-label="${escapeHtml(getLocalizedMealLabel(mealTypeId))}">–</button>`;
+  }
+  const isPresent = meal.effect === 'PRESENT';
+  const pending = state.pendingMealKeys.has(getMealPendingKey(day.date, meal.mealTypeId));
+  const stateLabel = getMealStateLabel(isPresent);
+  const editable = !day.isPast && meal.isOpen !== false;
+  return `<button type="button" class="month-future-meal${isPresent ? ' month-future-meal-present' : ''}${!editable ? ' month-future-meal-locked' : ''}" data-month-meal data-month-date="${escapeHtml(day.date)}" data-month-meal-id="${escapeHtml(meal.mealTypeId)}" data-month-effect="${isPresent ? 'ABSENT' : 'PRESENT'}" aria-pressed="${isPresent}" aria-label="${escapeHtml(stateLabel)}"${editable && !pending ? '' : ' disabled'}>${isPresent ? '✓' : '–'}</button>`;
+}
+
+function renderWeekInvitedStatus(invitedMeals = {}) {
+  const entries = ['breakfast', 'lunch', 'dinner']
+    .filter((mealTypeId) => Number(invitedMeals[mealTypeId] || 0) > 0)
+    .map((mealTypeId) => (
+      `<span class="week-invited-saved-meal"><span aria-hidden="true">${getMealIcon(mealTypeId)}</span> ${Number(invitedMeals[mealTypeId])}</span>`
+    ));
+  elements.weekInvitedStatus.innerHTML = entries.length > 0
+    ? `${escapeHtml(t('week.operations.invited.saved'))} ${entries.join(' ')}`
+    : escapeHtml(t('week.operations.invited.empty'));
+}
+
+async function restoreResidentSettingsPanel() {
+  const residentViceRole = state.adminRole === 'MANAGER' && !hasStrongAdministratorIdentity();
+  if (state.residentSettingsRestorePending
+      || (state.adminRole && !residentViceRole)
+      || state.mode !== 'admin') return;
+  state.residentSettingsRestorePending = true;
+  try {
+    if (!state.residentReady) {
+      const restored = await restoreFriendlyResidentSession();
+      if (!restored) return;
+      state.participants = restored.participants;
+      state.selectedParticipant = restored.participant;
+      state.residentReady = true;
+    }
+    const settings = await loadCenterContactSettings();
+    state.centerContactSettings = applyResidentPreferences(settings);
+    await refreshResidentAdministratorAuthorization();
+    if (state.residentAdministratorAuthorized && getResidentAuthorizedRole()) {
+      await activateResidentAdministratorPanel();
+      return;
+    }
+    state.residentSettingsMode = true;
+    renderResidentSettingsPanel();
+    renderMode();
+  } catch (error) {
+    elements.authStatus.textContent = friendlyErrorMessage(error, t('auth.resident.status'));
+  } finally {
+    state.residentSettingsRestorePending = false;
+  }
+  if (elements.adminSharedPasswordRow) elements.adminSharedPasswordRow.hidden = true;
+  if (elements.adminPasswordRotationWarning) elements.adminPasswordRotationWarning.hidden = true;
+}
+
+function renderResidentSettingsPanel() {
+  if (!state.residentSettingsMode || !state.residentReady) return;
+  state.adminActiveSection = 'adaptations';
+  state.adminMobileSection = 'adaptations';
+  elements.adminShell.dataset.adminActive = 'resident-settings';
+  elements.adminShell.open = true;
+  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = true;
+  elements.authStatus.textContent = state.selectedParticipant?.displayName
+    || t('role.resident');
+  // The restricted panel is still part of the resident journey. Always keep
+  // its return route visible, even if a stale owner/admin state survives on a
+  // shared device until the next authorisation reconciliation.
+  elements.topbarContextNav.hidden = false;
+  elements.mealsReturnEntry.hidden = false;
+  elements.adminPanel.hidden = false;
+  mountAdminSection('adaptations');
+  syncAdminAdaptationsForm();
+  applyAdminCapabilityVisibility();
+}
+
+async function refreshResidentAdministratorAuthorization() {
+  if (!state.residentReady) {
+    state.residentAdministratorAuthorized = false;
+    return false;
+  }
+  // Il ruolo MANAGER impostato mentre il vice consulta il pannello non deve
+  // cancellare la sua vice-sessione quando torna a Prenotazioni o Riepilogo.
+  // Una sessione Firebase forte segue invece il normale percorso ADMIN.
+  if (state.adminRole && hasStrongAdministratorIdentity()) {
+    state.residentAdministratorAuthorized = false;
+    return false;
+  }
+  try {
+    const authorization = await loadResidentAdministratorAuthorization();
+    state.residentAdministratorAuthorized = authorization.active === true
+      && Number(authorization.passwordVersion || 0)
+        === Number(state.centerContactSettings.adminPasswordVersion || 0);
+    if (state.residentAdministratorAuthorized) {
+      state.residentEntryKind = 'shared-admin';
+    }
+  } catch {
+    state.residentAdministratorAuthorized = false;
+  }
+  return state.residentAdministratorAuthorized;
+}
+
+function clearStrongAdministratorOperationalAuthorization() {
+  state.adminRole = '';
+  state.adminAuthUid = '';
+  state.adminMassPermission = false;
+  state.adminCanManageMass = false;
+  state.adminCanManageDailyOperations = false;
+}
+
+async function refreshStrongAdministratorOperationalAuthorization() {
+  // An ordinary resident session must never inherit the Firebase account that
+  // may still be persisted on a shared device. Only the resident identity
+  // explicitly restored from an authorised strong administrator can use it.
+  if (state.residentEntryKind !== 'strong-admin' || !hasStrongAdministratorIdentity()) {
+    return false;
+  }
+
+  const user = getCurrentUser();
+  const membership = await loadCurrentAdminMembership(user);
+  // A logout, a resident login or another auth transition may have completed
+  // while Firestore was loading the membership. Ignore that obsolete result.
+  if (state.residentEntryKind !== 'strong-admin'
+      || getCurrentUser()?.uid !== user?.uid
+      || !hasStrongAdministratorIdentity()) {
+    return false;
+  }
+
+  const active = membership.active === true && Boolean(membership.role);
+  if (!active) {
+    clearStrongAdministratorOperationalAuthorization();
+    return false;
+  }
+
+  state.adminRole = membership.role;
+  state.adminAuthUid = user.uid;
+  state.adminMassPermission = membership.massPermission === true;
+  state.adminCanManageMass = membership.canManageMass === true;
+  state.adminCanManageDailyOperations = membership.canManageDailyOperations === true;
+  state.residentAdministratorAuthorized = false;
+  return state.adminCanManageDailyOperations;
+}
+
+async function handleResidentAdministratorUnlock() {
+  if (!state.selectedParticipant || !elements.residentAdminPassword?.value) return;
+  elements.residentAdminUnlockButton.disabled = true;
+  elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.checking');
+  try {
+    await authorizeResidentAdministratorSession({
+      centerId: getActiveCenterId(),
+      participantId: state.selectedParticipant.participantId,
+      password: elements.residentAdminPassword.value,
+      passwordVersion: state.centerContactSettings.adminPasswordVersion,
+      technicalEmail: state.centerContactSettings.adminTechnicalEmail
+    });
+    state.residentAdministratorAuthorized = true;
+    state.residentEntryKind = 'shared-admin';
+    elements.residentAdminPassword.value = '';
+    elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.unlocked');
+    await activateResidentAdministratorPanel();
+  } catch (error) {
+    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(
+      error,
+      t('admin.sharedPassword.unlockFailed')
+    );
+  } finally {
+    elements.residentAdminUnlockButton.disabled = false;
+  }
+}
+
+function getResidentAuthorizedRole() {
+  // La password amministratori è una chiave operativa condivisa: anche quando
+  // la usa il responsabile, concede deliberatamente lo stesso perimetro del
+  // vice. Il pannello completo richiede invece Google o email personale.
+  return state.residentAdministratorAuthorized ? 'MANAGER' : '';
+}
+
+async function activateResidentAdministratorPanel() {
+  const role = getResidentAuthorizedRole();
+  if (!role || !state.residentAdministratorAuthorized) return false;
+  state.adminRole = role;
+  state.adminAuthUid = getCurrentUser()?.uid || '';
+  state.adminMassPermission = false;
+  state.adminCanManageMass = state.selectedParticipant?.liturgicalRole === true;
+  state.adminCanManageDailyOperations = true;
+  state.residentSettingsMode = false;
+  state.adminActiveSection = 'people';
+  state.adminMobileSection = 'people';
+  elements.adminShell.dataset.adminActive = 'true';
+  elements.adminShell.dataset.adminOwner = 'false';
+  elements.adminShell.open = true;
+  elements.adminAuthMethods.hidden = true;
+  elements.authActions.hidden = true;
+  elements.adminPanel.hidden = true;
+  await refreshAdminParticipants();
+  elements.adminPanel.hidden = false;
+  applyAdminCapabilityVisibility();
+  mountAdminSection('people');
+  renderAdminMobileSection();
+  renderMode();
+  return true;
+}
+
+async function handleWeekInvitedSave() {
+  const invitedMeals = {};
+  elements.weekInvitedInputs.forEach((input) => {
+    invitedMeals[input.dataset.weekInvitedMeal] = Math.min(
+      999,
+      Math.max(0, Math.floor(Number(input.value) || 0))
+    );
+  });
+  elements.weekInvitedSave.disabled = true;
+  elements.weekInvitedStatus.textContent = t('week.operations.invited.saving');
+  try {
+    state.weekOperationalHealth = await saveInvitedMeals(
+      parseDateId(state.weekOperationalDateId),
+      invitedMeals
+    );
+    renderWeekOperations();
+  } catch (error) {
+    elements.weekInvitedStatus.textContent = friendlyErrorMessage(
+      error,
+      t('week.operations.invited.notSaved')
+    );
+  } finally {
+    elements.weekInvitedSave.disabled = false;
+  }
+}
+
 function renderWeekKitchenNotes() {
-  const messages = Array.isArray(state.weekOperationalNote?.messages)
-    ? state.weekOperationalNote.messages
-    : state.weekOperationalNote?.text
-      ? [{ id: 'legacy', text: state.weekOperationalNote.text }]
+  const visibleNote = filterKitchenNoteForToday(state.weekOperationalNote);
+  const messages = Array.isArray(visibleNote?.messages)
+    ? visibleNote.messages
+    : visibleNote?.text
+      ? [{ id: 'legacy', text: visibleNote.text }]
       : [];
   elements.weekKitchenNoteList.innerHTML = messages.map((message) => `
     <div class="week-kitchen-note-row">
@@ -6127,6 +8034,9 @@ async function handleWeekKitchenNoteListClick(event) {
 async function handleAdminExport() {
   if (!hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA)) return;
   elements.adminExportButton.disabled = true;
+  elements.adminExportButton.setAttribute('aria-busy', 'true');
+  elements.adminExportSpinner.hidden = false;
+  elements.adminExportLabel.textContent = t('admin.export.preparing');
   elements.adminStatus.textContent = t('admin.export.preparing');
   try {
     const backup = await exportCenterData();
@@ -6142,6 +8052,9 @@ async function handleAdminExport() {
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Esportazione non riuscita');
   } finally {
     elements.adminExportButton.disabled = false;
+    elements.adminExportButton.setAttribute('aria-busy', 'false');
+    elements.adminExportSpinner.hidden = true;
+    elements.adminExportLabel.textContent = t('admin.backup.downloadAction');
   }
 }
 
@@ -6270,6 +8183,15 @@ function renderDietNameList(participants) {
 function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   renderKitchenHeading();
   if (state.kitchenDays.length > 0) {
+    const todayId = formatDateId(getCenterToday());
+    const visibleKitchenOperations = state.kitchenOperations.map((operation) => {
+      if (operation.dateId < todayId) return { ...operation, notes: [] };
+      const visibleNote = filterKitchenNoteForToday({
+        mealDate: operation.dateId,
+        messages: operation.notes
+      });
+      return { ...operation, notes: visibleNote?.messages || [] };
+    });
     elements.kitchenNote.hidden = true;
     elements.kitchenSick.hidden = true;
     const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
@@ -6278,7 +8200,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
     }
     mountSummaryMatrix(elements.cards, {
       days: state.kitchenDays,
-      operationDays: state.kitchenOperations,
+      operationDays: visibleKitchenOperations,
       kitchen: true,
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,
@@ -6292,10 +8214,12 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   }
   const massCard = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
   if (massCard) {
-    massCard.hidden = false;
+    massCard.hidden = state.kitchenDailyOperation === null;
   }
   renderKitchenNote();
-  renderKitchenMass();
+  if (state.kitchenDailyOperation !== null) {
+    renderKitchenMass();
+  }
   renderKitchenSickPeople();
   if (state.meals.length === 0) {
     elements.cards.innerHTML = '<p class="empty-state">' + escapeHtml(emptyMessage) + '</p>';
@@ -6328,9 +8252,14 @@ function renderKitchenSickPeople() {
 }
 
 function renderKitchenMass() {
+  const card = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+  if (!card || state.kitchenDailyOperation === null) {
+    if (card) card.hidden = true;
+    return;
+  }
   const massScheduled = state.kitchenDailyOperation?.massScheduled === true;
   const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
-  const card = elements.kitchenPanel.querySelector('[data-kitchen-mass]');
+  card.hidden = false;
   card.classList.toggle('mass-card-yes', massScheduled);
   card.classList.toggle('mass-card-no', !massScheduled);
   card.setAttribute('aria-label', `Messa: ${statusLabel}`);
@@ -6338,11 +8267,45 @@ function renderKitchenMass() {
 }
 
 function renderKitchenNote() {
-  const text = Array.isArray(state.kitchenNote?.messages)
-    ? state.kitchenNote.messages.map((message) => message.text).filter(Boolean).join('\n')
-    : state.kitchenNote?.text?.trim() || '';
+  const visibleNote = filterKitchenNoteForToday(state.kitchenNote);
+  const text = Array.isArray(visibleNote?.messages)
+    ? visibleNote.messages.map((message) => message.text).filter(Boolean).join('\n')
+    : visibleNote?.text?.trim() || '';
   elements.kitchenNote.hidden = !text;
   elements.kitchenNoteText.textContent = text;
+}
+
+function filterKitchenNoteForToday(note) {
+  if (!note) return null;
+  const todayId = formatDateId(getCenterToday());
+  const fallbackDateId = kitchenNoteTimestampDateId(note.updatedAt)
+    || String(note.mealDate || '');
+  const sourceMessages = Array.isArray(note.messages)
+    ? note.messages
+    : note.text?.trim()
+      ? [{ text: note.text.trim(), createdAt: '', updatedAt: note.updatedAt }]
+      : [];
+  const messages = sourceMessages.filter((message) => {
+    const writtenDateId = kitchenNoteTimestampDateId(message?.createdAt)
+      || kitchenNoteTimestampDateId(message?.updatedAt)
+      || fallbackDateId;
+    return !writtenDateId || writtenDateId === todayId;
+  });
+  if (messages.length === 0) return null;
+  return {
+    ...note,
+    messages,
+    text: messages.map((message) => message.text).filter(Boolean).join('\n')
+  };
+}
+
+function kitchenNoteTimestampDateId(value) {
+  const date = toJavaScriptDate(value);
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return formatDateId(getDateInTimeZone(
+    state.centerContactSettings.timezone || 'Europe/Rome',
+    date
+  ));
 }
 
 function formatKitchenWindowLabel(meal) {
@@ -6496,7 +8459,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
     state.participantMonth = [];
   } else {
     const monthStart = startOfMonth(state.monthDate);
-    state.participantMonth = await loadParticipantWeek(
+    const participantMonth = await loadParticipantWeek(
       state.selectedParticipant.participantId,
       monthStart,
       daysInMonth(monthStart),
@@ -6506,6 +8469,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
       }
     );
     if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
+    state.participantMonth = participantMonth;
     state.participantWeek = [];
     state.participantSummary = null;
   }
@@ -6608,6 +8572,12 @@ function syncMonthMealButton(button, meal) {
   button.classList.toggle('month-flag-absent', !isPresent);
   button.classList.toggle('month-flag-locked', !meal.isOpen);
   button.classList.toggle('month-flag-pending', pending);
+  const isFutureButton = button.classList.contains('month-future-meal');
+  if (isFutureButton) {
+    button.classList.toggle('month-future-meal-present', isPresent);
+    button.classList.toggle('month-future-meal-locked', !meal.isOpen);
+    button.textContent = isPresent ? '✓' : '–';
+  }
   button.dataset.monthEffect = isPresent ? 'ABSENT' : 'PRESENT';
   button.setAttribute('aria-pressed', String(isPresent));
   button.setAttribute('aria-label', actionLabel);
@@ -6718,6 +8688,7 @@ function syncMonthSelectionControls() {
     button.dataset.monthEffect = effect;
     button.classList.toggle('month-toggle-button-selected', button.dataset.monthScope === 'month' && selected);
     button.classList.toggle('month-scope-toggle-selected', button.dataset.monthScope !== 'month' && selected);
+    button.classList.toggle('month-future-scope-selected', selected);
     button.setAttribute('aria-pressed', String(selected));
     button.disabled = busy || meals.length === 0 || hasPendingMeals;
   });
@@ -6786,6 +8757,7 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
     },
     finish() {
       mealKeys.forEach((key) => state.pendingMealKeys.delete(key));
+      scheduleMealRemindersFromCurrentCalendar();
     }
   };
 }
@@ -6809,6 +8781,7 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
   } finally {
     state.pendingMealKeys.delete(pendingKey);
     sync();
+    scheduleMealRemindersFromCurrentCalendar();
   }
 }
 
@@ -6963,27 +8936,49 @@ function registerServiceWorker() {
 
 async function handleAccessLinkCopy(event) {
   const button = event.currentTarget;
-  const scope = button.getAttribute('data-access-link');
-  const url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  const scope = button.getAttribute('data-copy-access-link');
+  let url = '';
+  try {
+    url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  } catch (error) {
+    elements.operationalLinksStatus.textContent = friendlyErrorMessage(
+      error,
+      'Collegamento non disponibile'
+    );
+  }
   if (!url) return;
-  const originalText = button.textContent;
   try {
     await navigator.clipboard.writeText(url);
-    button.textContent = t('status.copied');
-    button.setAttribute('aria-label', t('status.linkCopied'));
-    window.setTimeout(() => {
-      button.textContent = originalText;
-      button.setAttribute('aria-label', scope === 'pasti' ? 'Copia link Pasti' : 'Copia link Cucina');
-    }, 1400);
+    showOperationalLinkFeedback(scope, t('status.linkCopied'));
   } catch {
     openAccessShareDialog(scope === 'pasti' ? 'Prenotazione pasti' : 'Pannello cucina', url);
   }
 }
 
+function showOperationalLinkFeedback(scope, message) {
+  const feedback = document.querySelector(`[data-access-link-feedback="${scope}"]`);
+  if (!feedback) return;
+  window.clearTimeout(Number(feedback.dataset.clearTimer || 0));
+  feedback.textContent = message;
+  const timer = window.setTimeout(() => {
+    feedback.textContent = '';
+    delete feedback.dataset.clearTimer;
+  }, 2000);
+  feedback.dataset.clearTimer = String(timer);
+}
+
 async function handleAccessLinkShare(event) {
   const button = event.currentTarget;
   const scope = button.getAttribute('data-share-access-link');
-  const url = getCachedAccessLinkUrl(scope);
+  let url = '';
+  try {
+    url = getCachedAccessLinkUrl(scope) || await resolveAccessLinkUrl(scope);
+  } catch (error) {
+    elements.operationalLinksStatus.textContent = friendlyErrorMessage(
+      error,
+      'Collegamento non disponibile'
+    );
+  }
   if (!url) return;
 
   const label = scope === 'pasti' ? 'Prenotazione pasti' : 'Pannello cucina';

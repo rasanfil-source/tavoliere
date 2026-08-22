@@ -131,9 +131,25 @@ test('le selezioni multiple mostrano subito il risultato e proteggono i pasti co
 test('i refresh dello stesso periodo riusano le griglie gia presenti', () => {
   assert.match(app, /elements\.participantMeals\.dataset\.renderKey === weekRenderKey/);
   assert.match(app, /elements\.monthGrid\.dataset\.renderKey === monthRenderKey/);
+  const monthRenderer = app.match(/function renderMonthGrid\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(monthRenderer, /interfaceStyle: document\.documentElement\.dataset\.interfaceStyle/);
+  assert.match(monthRenderer, /days: monthCells\.map\(\(day\) => \[[\s\S]*day\.date[\s\S]*meal\.mealTypeId/);
   assert.match(app, /elements\.adminPeopleList\.dataset\.renderKey === renderKey/);
   assert.match(app, /const daysByDate = new Map\(state\.participantWeek/);
   assert.match(app, /const daysByDate = new Map\(state\.participantMonth/);
+});
+
+test('i rendering dinamici conservano il focus di tastiera', () => {
+  assert.match(app, /function captureFocusWithin\(container\)/);
+  assert.match(app, /function restoreFocusWithin\(container, snapshot\)/);
+
+  const peopleRenderer = app.match(/function renderAdminPeopleList\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(peopleRenderer, /captureFocusWithin\(elements\.adminPeopleList\)/);
+  assert.match(peopleRenderer, /restoreFocusWithin\(elements\.adminPeopleList, focusSnapshot\)/);
+
+  const monthRenderer = app.match(/function renderMonthGrid\(\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(monthRenderer, /captureFocusWithin\(elements\.monthGrid\)/);
+  assert.match(monthRenderer, /restoreFocusWithin\(elements\.monthGrid, focusSnapshot\)/);
 });
 
 test('gli aggiornamenti restano adattivi e non aprono listener Firestore permanenti', () => {

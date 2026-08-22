@@ -28,6 +28,23 @@ service cloud.firestore {
         && request.auth.token.email.lower() == ('residenti+' + centerId + '@tavola-comune.local').lower();
     }
 
+    function hasAdministratorTechnicalEmail() {
+      return signedIn()
+        && request.auth.token.email.matches('^amministratori\\+[A-Za-z0-9_-]{1,120}@tavola-comune\\.local$')
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isAdministratorTechnicalUser(centerId) {
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      return hasAdministratorTechnicalEmail()
+        && (
+          get(centerPath).data.get('adminTechnicalUid', '') == request.auth.uid
+          || get(centerPath).data.get('adminTechnicalUid', '') == ''
+            && request.auth.token.email.lower()
+              == ('amministratori+' + centerId + '@tavola-comune.local').lower()
+        );
+    }
+
     function isInteractiveAdminUser() {
       return signedIn()
         && request.auth.token.firebase.sign_in_provider != 'anonymous'
@@ -79,11 +96,39 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.consumedBy == adminUid;
     }
 
+    function administratorAuthenticationMatches(centerId) {
+      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
+      let passwordSignIn = request.auth.token.firebase.sign_in_provider == 'password';
+      return membership.get('administratorPasswordRequired', passwordSignIn) == passwordSignIn;
+    }
+
+    function activeViceParticipant(centerId, participantId) {
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      let participant = get(participantPath);
+      return exists(participantPath)
+        && participant.data.get('status', '') == 'ACTIVE'
+        && participant.data.get('viceAdminRole', false) == true;
+    }
+
     function isAdmin(centerId) {
-      return signedIn()
-        && centerIsActive(centerId)
-        && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE';
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      let membershipPath = /databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid);
+      let center = get(centerPath);
+      let membership = get(membershipPath);
+      let passwordSignIn = request.auth.token.firebase.sign_in_provider == 'password';
+      let participantId = membership.data.get('participantId', '');
+      return hasVerifiedAdministratorIdentity()
+        && exists(centerPath)
+        && center.data.status == 'ACTIVE'
+        && exists(membershipPath)
+        && membership.data.status == 'ACTIVE'
+        && membership.data.get('administratorPasswordRequired', passwordSignIn) == passwordSignIn
+        && (
+          membership.data.get('role', '') != 'MANAGER'
+          || participantId is string
+            && participantId != ''
+            && activeViceParticipant(centerId, participantId)
+        );
     }
 
     function centerIsActive(centerId) {
@@ -107,9 +152,20 @@ service cloud.firestore {
       return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
     }
 
-    function canManageRoleInvitation(centerId, role) {
-      return isCenterOwner(centerId)
-        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
+    function canAssignOperationalRoles(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
+    }
+
+    function canManagePeople(centerId) {
+      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
+    }
+
+    function canCreatePersonalTokenForManager(centerId, participantId) {
+      return isInteractiveAdminUser()
+        && isAdmin(centerId)
+        && adminRole(centerId) == 'MANAGER'
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('participantId', '') == participantId
+        && participantIsActive(centerId, participantId);
     }
 
     function centerTimezoneIsValid(value) {
@@ -181,11 +237,6 @@ service cloud.firestore {
         );
     }
 
-    function canCreateCenterAdministrator(centerId, role) {
-      return isCenterOwner(centerId) && role in ['ADMIN', 'MANAGER']
-        || isAdmin(centerId) && adminRole(centerId) == 'ADMIN' && role == 'MANAGER';
-    }
-
     function canUpdateCenterAdministrator(centerId, adminUid) {
       return resource.data.get('role', '') != 'OWNER'
           && (
@@ -232,6 +283,8 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid))
         && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
         && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'ADMIN'
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationConsumedBy', '') == nextOwnerUid
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationAcceptedAt', null) is timestamp
         && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
         && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'OWNER'
         && (
@@ -271,7 +324,7 @@ service cloud.firestore {
         && resource.data.role == 'OWNER'
         && request.resource.data.status == 'REVOKED'
         && request.resource.data.role == 'ADMIN'
-        && request.resource.data.massPermission == false
+        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == false
         && request.resource.data.revokedBy == request.auth.uid
         && request.resource.data.revokedAt == request.time
@@ -282,13 +335,21 @@ service cloud.firestore {
         ]);
     }
 
+    function adminHasLiturgicalRole(centerId) {
+      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
+      let participantId = membership.get('participantId', '');
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      return participantId is string
+        && participantId.size() > 0
+        && exists(participantPath)
+        && get(participantPath).data.status == 'ACTIVE'
+        && get(participantPath).data.get('liturgicalRole', false) == true;
+    }
+
     function adminCanManageMass(centerId) {
       return isInteractiveAdminUser()
         && isAdmin(centerId)
-        && (
-          adminRole(centerId) in ['OWNER', 'ADMIN']
-          || get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.get('massPermission', false) == true
-        );
+        && adminHasLiturgicalRole(centerId);
     }
 
     function adminCanManageDailyOperations(centerId) {
@@ -300,25 +361,172 @@ service cloud.firestore {
     function canManageMass(centerId) {
       return adminCanManageMass(centerId)
         || residentHasOperationalIdentity(centerId)
-          && (
-            residentIsCenterAdministrator(centerId)
-            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('liturgicalRole', false) == true
-          );
+          && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('liturgicalRole', false) == true;
     }
 
     function canManageDailyOperations(centerId) {
       return adminCanManageDailyOperations(centerId)
-        || residentHasOperationalIdentity(centerId)
-          && (
-            residentIsCenterAdministrator(centerId)
-            || get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('viceAdminRole', false) == true
-          );
+        || hasAuthorizedResidentAdministratorSession(centerId);
+    }
+
+    function residentMayAdminister(centerId, participantId) {
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      return participantId is string
+        && exists(participantPath)
+        && get(participantPath).data.status == 'ACTIVE'
+        && (
+          get(participantPath).data.get('viceAdminRole', false) == true
+          || get(participantPath).data.get('signature', '')
+            == get(centerPath).data.get('administratorSignature', '')
+        );
+    }
+
+    function existingViceSessionAuthorizes(centerId, viceSessionPath) {
+      let centerPath = /databases/$(database)/documents/centers/$(centerId);
+      let viceSession = get(viceSessionPath).data;
+      let center = get(centerPath).data;
+      let participantId = viceSession.get('participantId', '');
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
+      let participant = get(participantPath).data;
+      return viceSession.get('centerId', '') == centerId
+        && viceSession.get('authUid', '') == request.auth.uid
+        && viceSession.get('status', '') == 'ACTIVE'
+        && request.time < viceSession.expiresAt
+        && viceSession.get('passwordVersion', -1) == center.get('adminPasswordVersion', 0)
+        && participantId is string
+        && exists(participantPath)
+        && participant.get('status', '') == 'ACTIVE'
+        && (
+          participant.get('viceAdminRole', false) == true
+          || participant.get('signature', '') == center.get('administratorSignature', '')
+        );
+    }
+
+    function hasAuthorizedResidentAdministratorSession(centerId) {
+      let viceSessionPath = /databases/$(database)/documents/centers/$(centerId)/viceSessions/$(request.auth.uid);
+      return signedIn()
+        && exists(viceSessionPath)
+        && existingViceSessionAuthorizes(centerId, viceSessionPath);
+    }
+
+    // Il vice-amministratore entra prima come residente e sblocca poi le sole
+    // funzioni operative con la password amministratori corrente. Questa
+    // capacità non equivale a una membership ADMIN e non consente di assegnare
+    // ruoli o modificare l'amministratore del centro.
+    function canUseViceAdministratorTools(centerId) {
+      return hasAuthorizedResidentAdministratorSession(centerId);
+    }
+
+    function viceAdaptationUpdateIsValid(centerId) {
+      return canUseViceAdministratorTools(centerId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'participantContactSharingEnabled', 'themePalette', 'interfaceStyle',
+          'defaultView', 'summaryLayout', 'kitchenLayout', 'monthLayout', 'monthControlsSide',
+          'summaryResidentLabel', 'language', 'updatedAt'
+        ])
+        && request.resource.data.participantContactSharingEnabled is bool
+        && request.resource.data.themePalette is string
+        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'urban-plus', 'future']
+        && request.resource.data.defaultView in ['month', 'week']
+        && request.resource.data.summaryLayout in ['classic', 'international', 'future']
+        && request.resource.data.kitchenLayout in ['classic', 'international']
+        && request.resource.data.monthLayout in ['grid', 'future']
+        && request.resource.data.monthControlsSide in ['right', 'left']
+        && request.resource.data.summaryResidentLabel in ['name', 'signature', 'initials']
+        && request.resource.data.language is string
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function adaptationDocumentIsValid(centerId) {
+      return request.resource.data.keys().hasAll([
+          'centerId', 'participantContactSharingEnabled', 'themePalette',
+          'interfaceStyle', 'defaultView', 'summaryLayout', 'kitchenLayout',
+          'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'centerId', 'participantContactSharingEnabled', 'themePalette',
+          'interfaceStyle', 'defaultView', 'summaryLayout', 'kitchenLayout',
+          'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language',
+          'appDisplayName', 'appDisplaySubtitle', 'updatedAt'
+        ])
+        && request.resource.data.centerId == centerId
+        && request.resource.data.participantContactSharingEnabled is bool
+        && request.resource.data.themePalette is string
+        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'urban-plus', 'future']
+        && request.resource.data.defaultView in ['month', 'week']
+        && request.resource.data.summaryLayout in ['classic', 'international', 'future']
+        && request.resource.data.kitchenLayout in ['classic', 'international']
+        && request.resource.data.monthLayout in ['grid', 'future']
+        && request.resource.data.monthControlsSide in ['right', 'left']
+        && request.resource.data.summaryResidentLabel in ['name', 'signature', 'initials']
+        && request.resource.data.language is string
+        && (
+          !request.resource.data.keys().hasAny(['appDisplayName'])
+          || request.resource.data.appDisplayName is string
+            && request.resource.data.appDisplayName.size() > 0
+            && request.resource.data.appDisplayName.size() <= 60
+        )
+        && (
+          !request.resource.data.keys().hasAny(['appDisplaySubtitle'])
+          || request.resource.data.appDisplaySubtitle is string
+            && request.resource.data.appDisplaySubtitle.size() > 0
+            && request.resource.data.appDisplaySubtitle.size() <= 100
+        )
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function viceParticipantWriteDoesNotAssignRoles(centerId) {
+      return canUseViceAdministratorTools(centerId)
+        && request.resource.data.get('viceAdminRole', false) == false
+        && request.resource.data.get('liturgicalRole', false) == false;
+    }
+
+    function viceParticipantUpdateDoesNotChangeRoles(centerId, participantId) {
+      return canUseViceAdministratorTools(centerId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole'])
+        && (
+          participantId == sessionParticipantId(centerId)
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['liturgicalRole'])
+        );
+    }
+
+    function viceMayDeleteParticipant(centerId) {
+      return canUseViceAdministratorTools(centerId)
+        && resource.data.get('viceAdminRole', false) == false
+        && resource.data.get('signature', '')
+          != get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
+    }
+
+    function viceMayManageParticipantAfterWrite(centerId, participantId) {
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/participants/$(participantId);
+      return canUseViceAdministratorTools(centerId)
+        && participantId is string
+        && existsAfter(participantPath)
+        && getAfter(participantPath).data.get('viceAdminRole', false) == false
+        && getAfter(participantPath).data.get('signature', '')
+          != get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
+    }
+
+    function viceMayCleanDisabledParticipant(centerId, participantId) {
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/participants/$(participantId);
+      return canUseViceAdministratorTools(centerId)
+        && participantId is string
+        && participantId != sessionParticipantId(centerId)
+        && exists(participantPath)
+        && get(participantPath).data.status == 'DISABLED'
+        && get(participantPath).data.get('viceAdminRole', false) == false
+        && get(participantPath).data.get('signature', '')
+          != get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
     }
 
     function residentHasOperationalIdentity(centerId) {
+      let accessSessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
+      let participantId = get(accessSessionPath).data.participantId;
+      let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
       return hasSessionScope(centerId, 'PERSONAL')
-        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId is string
-        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.status == 'ACTIVE';
+        && participantId is string
+        && get(participantPath).data.status == 'ACTIVE';
     }
 
     function residentIsCenterAdministrator(centerId) {
@@ -332,15 +540,39 @@ service cloud.firestore {
     }
 
     function hasSession(centerId) {
+      let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
       return signedIn()
         && centerIsActive(centerId)
-        && exists(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid))
-        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.status == 'ACTIVE'
-        && request.time < get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.expiresAt
-        && tokenIsUsable(
-          centerId,
-          get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.tokenId
+        && exists(sessionPath)
+        && get(sessionPath).data.centerId == centerId
+        && get(sessionPath).data.status == 'ACTIVE'
+        && request.time < get(sessionPath).data.expiresAt
+        && (
+          get(sessionPath).data.scope == 'PERSONAL'
+            && personalSessionIsUsable(centerId)
+          || get(sessionPath).data.scope == 'KITCHEN'
+          || get(sessionPath).data.scope != 'PERSONAL'
+            && tokenIsUsable(centerId, get(sessionPath).data.tokenId)
         );
+    }
+
+    // Session-first: token e persona vengono verificati quando la sessione
+    // personale viene creata. Le letture operative successive si fidano del
+    // documento accessSessions, evitando di rivalutare l'intera catena per
+    // ogni singola cella del calendario. Disattivazione ed eliminazione della
+    // persona revocano esplicitamente le sue sessioni.
+    function personalSessionIsUsable(centerId) {
+      let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
+      let session = get(sessionPath).data;
+      return signedIn()
+        && exists(sessionPath)
+        && centerIsActive(centerId)
+        && session.centerId == centerId
+        && session.status == 'ACTIVE'
+        && session.scope == 'PERSONAL'
+        && session.participantId is string
+        && session.tokenId is string
+        && request.time < session.expiresAt;
     }
 
     function hasSessionScope(centerId, scope) {
@@ -399,22 +631,16 @@ service cloud.firestore {
     }
 
     function canReadParticipantOverride(centerId) {
-      return hasSessionScope(centerId, 'PERSONAL')
-        && hasSelectedParticipant(centerId)
+      return personalSessionIsUsable(centerId)
         && resource.data.participantId == sessionParticipantId(centerId);
     }
 
     function personalOverrideSessionIsValid(centerId, participantId) {
       let session = get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data;
-      let token = get(/databases/$(database)/documents/centers/$(centerId)/linkTokens/$(session.tokenId)).data;
-      return signedIn()
-        && get(/databases/$(database)/documents/centers/$(centerId)).data.status == 'ACTIVE'
-        && session.status == 'ACTIVE'
+      return personalSessionIsUsable(centerId)
         && session.scope == 'PERSONAL'
         && session.participantId == participantId
-        && request.time < session.expiresAt
-        && token.status == 'ACTIVE'
-        && request.time < token.expiresAt;
+        && participantIsActive(centerId, participantId);
     }
 
     function overrideKeysAreValid() {
@@ -498,28 +724,21 @@ service cloud.firestore {
       return hasVerifiedAdministratorIdentity()
         && adminUid == request.auth.uid
         && request.resource.data.centerId == centerId
-        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.role == 'ADMIN'
         && request.resource.data.status == 'ACTIVE'
-        && request.resource.data.massPermission == (request.resource.data.role == 'ADMIN')
+        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == true
-        && (
-          request.resource.data.role != 'ADMIN'
-          || request.resource.data.get('administratorPasswordRequired', false)
-            == (request.auth.token.firebase.sign_in_provider == 'password')
-            && request.resource.data.get('passwordSetupRequired', false)
-              == (request.auth.token.firebase.sign_in_provider == 'password')
-        )
+        && request.resource.data.invitationConsumedBy == adminUid
+        && request.resource.data.invitationAcceptedAt == request.time
+        && request.resource.data.get('administratorPasswordRequired', false)
+          == (request.auth.token.firebase.sign_in_provider == 'password')
+        && request.resource.data.get('passwordSetupRequired', false)
+          == (request.auth.token.firebase.sign_in_provider == 'password')
         && request.resource.data.participantId is string
         && (
-          request.resource.data.role == 'ADMIN'
-            && (
-              request.resource.data.participantId == ''
-              || participantExists(centerId, request.resource.data.participantId)
-                && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            )
-          || request.resource.data.role == 'MANAGER'
-            && participantExists(centerId, request.resource.data.participantId)
-            && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.get('viceAdminRole', false) == true
+          request.resource.data.participantId == ''
+          || participantExists(centerId, request.resource.data.participantId)
+            && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
         )
         && adminInvitationClaimsRole(
           request.resource.data.invitationId,
@@ -606,14 +825,11 @@ service cloud.firestore {
       allow read: if isBootstrapOwner()
         || canManageAdministrativeRoles(resource.data.centerId)
         || hasVerifiedAdministratorIdentity()
+          && resource.data.role == 'ADMIN'
           && resource.data.status == 'ACTIVE'
           && request.time < resource.data.expiresAt;
-      allow create: if (
-          request.resource.data.role == 'MANAGER'
-            && canManageAdministrativeRoles(request.resource.data.centerId)
-          || request.resource.data.role == 'ADMIN'
-            && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
-        )
+      allow create: if request.resource.data.role == 'ADMIN'
+        && (isCenterOwner(request.resource.data.centerId) || isBootstrapOwner())
         && request.resource.data.keys().hasAll([
           'centerId', 'participantId', 'role', 'status', 'createdBy',
           'expiresAt', 'createdAt', 'updatedAt'
@@ -622,23 +838,35 @@ service cloud.firestore {
           'centerId', 'participantId', 'role', 'status', 'createdBy',
           'expiresAt', 'createdAt', 'updatedAt'
         ])
-        && request.resource.data.role in ['ADMIN', 'MANAGER']
+        && request.resource.data.role == 'ADMIN'
         && request.resource.data.status == 'ACTIVE'
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.expiresAt > request.time
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && (
-          request.resource.data.role == 'ADMIN'
-            && (
-              request.resource.data.participantId == ''
-              || get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            )
-          || request.resource.data.role == 'MANAGER'
-            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
-            && get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.viceAdminRole == true
+          request.resource.data.participantId == ''
+          || get(/databases/$(database)/documents/centers/$(request.resource.data.centerId)/publicParticipants/$(request.resource.data.participantId)).data.status == 'ACTIVE'
         );
-      allow update: if canManageRoleInvitation(resource.data.centerId, resource.data.role)
+      allow update: if hasVerifiedAdministratorIdentity()
+          && resource.data.status == 'ACTIVE'
+          && request.time < resource.data.expiresAt
+          && request.resource.data.status == 'USED'
+          && request.resource.data.consumedBy == request.auth.uid
+          && request.resource.data.centerId == resource.data.centerId
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.consumedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.role == resource.data.role
+          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.participantId == resource.data.participantId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'consumedBy', 'consumedAt', 'updatedAt'
+          ])
+        || canManageAdministrativeRoles(resource.data.centerId)
           && resource.data.status == 'ACTIVE'
           && request.resource.data.status == 'REVOKED'
           && request.resource.data.revokedBy == request.auth.uid
@@ -657,25 +885,8 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status', 'rejectedBy', 'rejectedAt', 'updatedAt'
           ])
-        || hasVerifiedAdministratorIdentity()
-          && resource.data.status == 'ACTIVE'
-          && request.time < resource.data.expiresAt
-          && request.resource.data.status == 'USED'
-          && request.resource.data.consumedBy == request.auth.uid
-          && request.resource.data.centerId == resource.data.centerId
-          && request.resource.data.participantId == resource.data.participantId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.createdBy == resource.data.createdBy
-          && request.resource.data.expiresAt == resource.data.expiresAt
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.consumedAt == request.time
-          && request.resource.data.updatedAt == request.time
-          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.role == resource.data.role
-          && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.participantId == resource.data.participantId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status', 'consumedBy', 'consumedAt', 'updatedAt'
-          ]);
-      allow delete: if canManageRoleInvitation(resource.data.centerId, resource.data.role) || isBootstrapOwner();
+        ;
+      allow delete: if canManageAdministrativeRoles(resource.data.centerId) || isBootstrapOwner();
     }
 
     match /centers/{centerId} {
@@ -733,14 +944,12 @@ service cloud.firestore {
       allow delete: if false;
 
       match /admins/{adminUid} {
-        allow read: if isAdmin(centerId);
-        allow update: if canUpdateCenterAdministrator(centerId, adminUid)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'participantId', 'status', 'email', 'role', 'massPermission',
-              'dailyOperationsPermission', 'administratorPasswordRequired',
-              'passwordSetupRequired', 'revokedBy', 'revokedAt', 'updatedAt'
-            ])
-          || adminUid == request.auth.uid
+        allow read: if signedIn() && request.auth.uid == adminUid && isAdmin(centerId)
+          || canManageAdministrativeRoles(centerId)
+          || isAdmin(centerId)
+            && adminRole(centerId) == 'MANAGER'
+            && resource.data.get('role', '') == 'MANAGER';
+        allow update: if adminUid == request.auth.uid
             && resource.data.status == 'ACTIVE'
             && request.resource.data.status == resource.data.status
             && request.resource.data.role == resource.data.role
@@ -758,16 +967,24 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'passwordSetupRequired', 'updatedAt'
             ])
+          || isOwnershipRoleChange(centerId, adminUid)
+          || isOwnershipRevocation(centerId, adminUid)
+          || canUpdateCenterAdministrator(centerId, adminUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'participantId', 'status', 'email', 'role', 'massPermission',
+              'dailyOperationsPermission', 'administratorPasswordRequired',
+              'passwordSetupRequired', 'revokedBy', 'revokedAt', 'updatedAt'
+            ])
           || resource.data.status == 'REVOKED'
             && invitationMembershipClaimIsValid(centerId, adminUid)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'centerId', 'participantId', 'invitationId', 'status', 'email',
               'role', 'massPermission', 'dailyOperationsPermission',
               'administratorPasswordRequired', 'passwordSetupRequired',
+              'invitationConsumedBy', 'invitationAcceptedAt',
               'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'
             ])
-          || isOwnershipRoleChange(centerId, adminUid)
-          || isOwnershipRevocation(centerId, adminUid);
+          ;
         allow delete: if canDeleteCenterAdministrator(centerId)
           || adminUid == request.auth.uid
             && resource.data.role == 'OWNER'
@@ -776,10 +993,10 @@ service cloud.firestore {
             'centerId', 'participantId', 'invitationId', 'status', 'email',
             'role', 'massPermission', 'dailyOperationsPermission',
             'administratorPasswordRequired', 'passwordSetupRequired',
+            'invitationConsumedBy', 'invitationAcceptedAt',
             'createdAt', 'updatedAt'
           ])
-          && (canCreateCenterAdministrator(centerId, request.resource.data.role)
-          || invitationMembershipClaimIsValid(centerId, adminUid)
+          && (invitationMembershipClaimIsValid(centerId, adminUid)
           || (
             isBootstrapOwner()
             && adminUid == request.auth.uid
@@ -802,7 +1019,7 @@ service cloud.firestore {
 
       match /assets/{assetId} {
         allow read: if isAdmin(centerId) || hasSession(centerId);
-        allow create, update: if canManageAdministrativeRoles(centerId)
+        allow create, update: if canManageCenterConfiguration(centerId)
           && assetId == 'avatar'
           && request.resource.data.keys().hasAll(['centerId', 'dataUrl', 'version', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['centerId', 'dataUrl', 'version', 'updatedAt'])
@@ -812,7 +1029,7 @@ service cloud.firestore {
           && request.resource.data.version is string
           && request.resource.data.version.size() <= 80
           && request.resource.data.updatedAt == request.time;
-        allow delete: if canManageAdministrativeRoles(centerId);
+        allow delete: if canManageCenterConfiguration(centerId);
       }
 
       match /auditEvents/{eventId} {
@@ -822,10 +1039,20 @@ service cloud.firestore {
             'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.keys().hasOnly([
-            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+            'centerId', 'actorUid', 'actorLabel', 'actorParticipantId',
+            'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.centerId == centerId
           && request.resource.data.actorUid == request.auth.uid
+          && (!request.resource.data.keys().hasAny(['actorLabel']) || (
+            request.resource.data.actorLabel is string
+            && request.resource.data.actorLabel.size() > 0
+            && request.resource.data.actorLabel.size() <= 120
+          ))
+          && (!request.resource.data.keys().hasAny(['actorParticipantId']) || (
+            request.resource.data.actorParticipantId is string
+            && request.resource.data.actorParticipantId.size() <= 160
+          ))
           && request.resource.data.action in [
             'DELETE_PARTICIPANT', 'TRANSFER_OWNERSHIP',
             'UPDATE_ADMIN_PERMISSIONS', 'UPSERT_PARTICIPANT',
@@ -842,8 +1069,52 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Gli eventi prodotti da una sessione vice restano separati dal log
+      // amministrativo: sono consultabili dall'amministratore e immutabili.
+      match /viceAuditEvents/{eventId} {
+        allow read: if isAdmin(centerId);
+        allow create: if canUseViceAdministratorTools(centerId)
+          && request.resource.data.keys().hasAll([
+            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'centerId', 'actorUid', 'actorLabel', 'actorParticipantId',
+            'action', 'targetType', 'targetId', 'summary', 'createdAt'
+          ])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.actorUid == request.auth.uid
+          && (!request.resource.data.keys().hasAny(['actorLabel']) || (
+            request.resource.data.actorLabel is string
+            && request.resource.data.actorLabel.size() > 0
+            && request.resource.data.actorLabel.size() <= 120
+          ))
+          && (!request.resource.data.keys().hasAny(['actorParticipantId']) || (
+            request.resource.data.actorParticipantId is string
+            && request.resource.data.actorParticipantId.size() <= 160
+          ))
+          && request.resource.data.action in [
+            'DELETE_PARTICIPANT', 'UPSERT_PARTICIPANT', 'UPDATE_CENTER_SETTINGS'
+          ]
+          && request.resource.data.targetType is string
+          && request.resource.data.targetType.size() <= 40
+          && request.resource.data.targetId is string
+          && request.resource.data.targetId.size() <= 160
+          && request.resource.data.summary is string
+          && request.resource.data.summary.size() <= 240
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
       match /privateSettings/{settingsId} {
         allow read: if canManageCenterConfiguration(centerId);
+        allow read: if isAdministratorTechnicalUser(centerId)
+          && settingsId == 'operationalLinks';
+        allow read: if isAdmin(centerId)
+          && adminRole(centerId) == 'MANAGER'
+          && settingsId == 'operationalLinks';
+        allow read: if !isAdmin(centerId)
+          && canUseViceAdministratorTools(centerId)
+          && settingsId == 'operationalLinks';
         allow create, update: if canManageCenterConfiguration(centerId)
           && (
             settingsId == 'operationalLinks'
@@ -880,50 +1151,106 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Preferenze non sensibili necessarie a disegnare la stessa interfaccia
+      // su tutti i dispositivi del centro. Solo admin e vice validati scrivono.
+      match /presentationSettings/{settingsId} {
+        allow read: if settingsId == 'current'
+          && (
+            isAdmin(centerId)
+            || hasSessionScope(centerId, 'PUBLIC')
+            || hasSessionScope(centerId, 'KITCHEN')
+            || hasSessionScope(centerId, 'PERSONAL')
+          );
+        allow create: if settingsId == 'current'
+          && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
+          && adaptationDocumentIsValid(centerId)
+          && (
+            !request.resource.data.keys().hasAny(['appDisplayName', 'appDisplaySubtitle'])
+            || isCenterOwner(centerId)
+          );
+        allow update: if settingsId == 'current'
+          && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
+          && adaptationDocumentIsValid(centerId)
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['appDisplayName', 'appDisplaySubtitle'])
+            || isCenterOwner(centerId)
+          );
+        allow delete: if false;
+      }
+
+      match /participantMetadata/{metadataId} {
+        allow read: if metadataId == 'current'
+          && (
+            isAdmin(centerId)
+            || hasSessionScope(centerId, 'PUBLIC')
+            || hasSessionScope(centerId, 'KITCHEN')
+            || hasSessionScope(centerId, 'PERSONAL')
+          );
+        allow create, update: if metadataId == 'current'
+          && (isAdmin(centerId) || canUseViceAdministratorTools(centerId))
+          && request.resource.data.keys().hasAll(['centerId', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'updatedAt'])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
+
       match /participants/{participantId} {
         allow read: if isAdmin(centerId)
           || centerSharesParticipantContacts(centerId) && (
             hasSessionScope(centerId, 'PUBLIC')
             || hasSessionScope(centerId, 'PERSONAL')
           );
+        allow read: if !isAdmin(centerId)
+          && canUseViceAdministratorTools(centerId);
         allow create: if isAdmin(centerId)
           && (
             !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
             || request.resource.data.get('viceAdminRole', false) == false
               && request.resource.data.get('liturgicalRole', false) == false
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
+        allow create: if !isAdmin(centerId)
+          && viceParticipantWriteDoesNotAssignRoles(centerId);
         allow update: if isAdmin(centerId)
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
-        allow delete: if canManageCenterConfiguration(centerId);
+        allow update: if !isAdmin(centerId)
+          && viceParticipantUpdateDoesNotChangeRoles(centerId, participantId);
+        allow delete: if canManagePeople(centerId);
+        allow delete: if !isAdmin(centerId)
+          && viceMayDeleteParticipant(centerId);
       }
 
       match /publicParticipants/{participantId} {
         allow read: if isAdmin(centerId)
           || isResidentTechnicalUser(centerId)
+          || isAdministratorTechnicalUser(centerId)
           || hasSessionScope(centerId, 'PUBLIC')
           || canManageDailyOperations(centerId)
-          || (
-            hasSessionScope(centerId, 'PERSONAL')
-            && hasSelectedParticipant(centerId)
-            && participantId == sessionParticipantId(centerId)
-          );
+          || hasSessionScope(centerId, 'PERSONAL');
         allow create: if isAdmin(centerId)
           && (
             !request.resource.data.keys().hasAny(['viceAdminRole', 'liturgicalRole'])
             || request.resource.data.get('viceAdminRole', false) == false
               && request.resource.data.get('liturgicalRole', false) == false
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
+        allow create: if !isAdmin(centerId)
+          && viceParticipantWriteDoesNotAssignRoles(centerId);
         allow update: if isAdmin(centerId)
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['viceAdminRole', 'liturgicalRole'])
-            || canManageAdministrativeRoles(centerId)
+            || canAssignOperationalRoles(centerId)
           );
-        allow delete: if canManageCenterConfiguration(centerId);
+        allow update: if !isAdmin(centerId)
+          && viceParticipantUpdateDoesNotChangeRoles(centerId, participantId);
+        allow delete: if canManagePeople(centerId);
+        allow delete: if !isAdmin(centerId)
+          && viceMayDeleteParticipant(centerId);
       }
 
       match /mealTypes/{mealTypeId} {
@@ -939,8 +1266,9 @@ service cloud.firestore {
       match /linkTokens/{tokenId} {
         allow read: if false;
         allow create: if canManageCenterConfiguration(centerId)
+          || canCreatePersonalTokenForManager(centerId, request.resource.data.participantId)
           || (
-            isResidentTechnicalUser(centerId)
+            (isResidentTechnicalUser(centerId) || isAdministratorTechnicalUser(centerId))
             && tokenId.matches('personal_[A-Za-z0-9_]+')
             && request.resource.data.keys().hasAll([
               'status',
@@ -979,17 +1307,21 @@ service cloud.firestore {
             && tokenId == get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.tokenId
             && resource.data.participantId == sessionParticipantId(centerId)
           );
+        allow delete: if !isAdmin(centerId)
+          && resource.data.scope == 'PERSONAL'
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
       }
 
       match /accessSessions/{authUid} {
         allow read: if signedIn() && request.auth.uid == authUid || isAdmin(centerId);
+        allow read: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
         allow create: if signedIn()
           && request.auth.uid == authUid
           && request.resource.data.keys().hasAll([
             'centerId',
             'scope',
             'targetType',
-            'tokenId',
             'status',
             'expiresAt',
             'createdAt',
@@ -1010,25 +1342,28 @@ service cloud.firestore {
           && request.resource.data.centerId == centerId
           && request.resource.data.status == 'ACTIVE'
           && request.resource.data.expiresAt > request.time
-          && request.resource.data.expiresAt <= tokenData(centerId, request.resource.data.tokenId).expiresAt
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time
-          && tokenIsUsable(centerId, request.resource.data.tokenId)
-          && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
-          && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
           && (
             (
-              request.resource.data.scope == 'PUBLIC'
-              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
-            )
-            || (
               request.resource.data.scope == 'KITCHEN'
-              && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+              && request.resource.data.targetType == 'CENTER'
+              && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
+              && !request.resource.data.keys().hasAny(['participantId', 'groupId', 'tokenId'])
             )
             || (
-              request.resource.data.scope == 'PERSONAL'
-              && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
-              && !request.resource.data.keys().hasAny(['groupId'])
+              request.resource.data.keys().hasAll(['tokenId'])
+              && request.resource.data.expiresAt <= tokenData(centerId, request.resource.data.tokenId).expiresAt
+              && tokenIsUsable(centerId, request.resource.data.tokenId)
+              && request.resource.data.scope == tokenData(centerId, request.resource.data.tokenId).scope
+              && request.resource.data.targetType == tokenData(centerId, request.resource.data.tokenId).targetType
+              && (
+                request.resource.data.scope == 'PUBLIC'
+                  && !request.resource.data.keys().hasAny(['participantId', 'groupId'])
+                || request.resource.data.scope == 'PERSONAL'
+                  && request.resource.data.participantId == tokenData(centerId, request.resource.data.tokenId).participantId
+                  && !request.resource.data.keys().hasAny(['groupId'])
+              )
             )
           );
         allow update: if signedIn()
@@ -1038,13 +1373,49 @@ service cloud.firestore {
           && request.resource.data.centerId == resource.data.centerId
           && request.resource.data.scope == resource.data.scope
           && request.resource.data.targetType == resource.data.targetType
-          && request.resource.data.tokenId == resource.data.tokenId
+          && request.resource.data.get('tokenId', '') == resource.data.get('tokenId', '')
           && request.resource.data.status == resource.data.status
           && request.resource.data.expiresAt == resource.data.expiresAt
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt']);
         allow delete: if isAdmin(centerId) || signedIn() && request.auth.uid == authUid;
+        allow delete: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
+      }
+
+      match /viceSessions/{authUid} {
+        allow read: if signedIn() && request.auth.uid == authUid || isAdmin(centerId);
+        allow read: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
+        allow create: if isAdministratorTechnicalUser(centerId)
+          && request.resource.data.keys().hasAll([
+            'centerId', 'authUid', 'participantId', 'passwordVersion',
+            'status', 'expiresAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.keys().hasOnly([
+            'centerId', 'authUid', 'participantId', 'passwordVersion',
+            'status', 'expiresAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.centerId == centerId
+          && request.resource.data.authUid == authUid
+          && request.resource.data.status == 'ACTIVE'
+          && request.resource.data.passwordVersion
+            == get(/databases/$(database)/documents/centers/$(centerId)).data.get('adminPasswordVersion', 0)
+          && request.resource.data.expiresAt > request.time
+          && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
+          && request.resource.data.updatedAt == request.time
+          && exists(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid))
+          && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.scope == 'PERSONAL'
+          && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.status == 'ACTIVE'
+          && request.time < get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.expiresAt
+          && request.resource.data.participantId
+            == get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(authUid)).data.participantId
+          && residentMayAdminister(centerId, request.resource.data.participantId);
+        allow update: if false;
+        allow delete: if isAdmin(centerId) || signedIn() && request.auth.uid == authUid;
+        allow delete: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
       }
 
       match /kitchenNotes/{mealDate} {
@@ -1087,13 +1458,24 @@ service cloud.firestore {
           || hasSessionScope(centerId, 'PERSONAL');
         allow create, update: if canManageDailyOperations(centerId)
           && request.resource.data.keys().hasAll(['centerId', 'dateId', 'sickPeople', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'sickPeople', 'dietAssignments', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'sickPeople', 'dietAssignments', 'invitedMeals', 'updatedAt'])
           && request.resource.data.centerId == centerId
           && request.resource.data.dateId == dateId
           && request.resource.data.sickPeople is list
           && request.resource.data.sickPeople.size() <= 100
           && request.resource.data.get('dietAssignments', []) is list
           && request.resource.data.get('dietAssignments', []).size() <= 100
+          && request.resource.data.get('invitedMeals', {}) is map
+          && request.resource.data.get('invitedMeals', {}).keys().hasOnly(['breakfast', 'lunch', 'dinner'])
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('breakfast', 0) <= 999
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('lunch', 0) <= 999
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) is int
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) >= 0
+          && request.resource.data.get('invitedMeals', {}).get('dinner', 0) <= 999
           && request.resource.data.updatedAt == request.time;
         allow delete: if canManageDailyOperations(centerId);
       }
@@ -1102,14 +1484,21 @@ service cloud.firestore {
         allow read: if isAdmin(centerId)
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
-          || (
-            (
-              hasSessionScope(centerId, 'PERSONAL')
-            )
-            && hasSelectedParticipant(centerId)
-            && resource.data.participantId == sessionParticipantId(centerId)
-          );
+          || hasSessionScope(centerId, 'PERSONAL');
+        // Il riepilogo calcola i pasti dell'intero centro: i residenti e il vice
+        // validato possono leggere tutte le regole.
+        allow read: if !isAdmin(centerId)
+          && canUseViceAdministratorTools(centerId);
         allow create: if isAdmin(centerId)
+          && ruleId == 'rule_' + request.resource.data.participantId
+          && request.resource.data.participantId is string
+          && ruleStatusMatchesParticipant(
+            centerId,
+            request.resource.data.participantId,
+            request.resource.data.status
+          );
+        allow create: if !isAdmin(centerId)
+          && viceMayManageParticipantAfterWrite(centerId, request.resource.data.participantId)
           && ruleId == 'rule_' + request.resource.data.participantId
           && request.resource.data.participantId is string
           && ruleStatusMatchesParticipant(
@@ -1128,7 +1517,22 @@ service cloud.firestore {
             request.resource.data.participantId,
             request.resource.data.status
           );
+        allow update: if !isAdmin(centerId)
+          && viceMayManageParticipantAfterWrite(centerId, request.resource.data.participantId)
+          && ruleId == 'rule_' + request.resource.data.participantId
+          && request.resource.data.participantId == resource.data.participantId
+          && request.resource.data.mealTypeIds == resource.data.mealTypeIds
+          && request.resource.data.startsOn == resource.data.startsOn
+          && request.resource.data.endsOn == resource.data.endsOn
+          && ruleStatusMatchesParticipant(
+            centerId,
+            request.resource.data.participantId,
+            request.resource.data.status
+          );
         allow delete: if isAdmin(centerId)
+          && !existsAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(resource.data.participantId));
+        allow delete: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId)
           && !existsAfter(/databases/$(database)/documents/centers/$(centerId)/participants/$(resource.data.participantId));
       }
 
@@ -1136,7 +1540,11 @@ service cloud.firestore {
         allow read: if isAdmin(centerId)
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
-          || canReadParticipantOverride(centerId);
+          || hasSessionScope(centerId, 'PERSONAL');
+        // Stesso principio per gli override: lettura completa necessaria al
+        // riepilogo per tutti i commensali con sessione valida.
+        allow read: if !isAdmin(centerId)
+          && canUseViceAdministratorTools(centerId);
 
         allow create: if overrideKeysAreValid()
           && overrideIdentityIsValid(centerId, overrideId)
@@ -1152,6 +1560,8 @@ service cloud.firestore {
           && overrideValuesAreValid(centerId);
 
         allow delete: if isAdmin(centerId);
+        allow delete: if !isAdmin(centerId)
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
       }
 
       match /reservationOverrideHistory/{historyId} {

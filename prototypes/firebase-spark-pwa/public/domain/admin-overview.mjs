@@ -1,4 +1,4 @@
-import { roleLabel } from '../role-policy.mjs?v=20260816h';
+import { roleLabel } from '../role-policy.mjs?v=20260822a';
 
 export function buildAdminOverview({
   role,
@@ -57,14 +57,14 @@ function buildChecklist({ activePeople, coverage, canViewOperationalLinks, opera
       {
         id: 'publicLink',
         label: 'Attiva e copia il collegamento residenti',
-        target: 'admin-access-section',
+        target: 'admin-overview-section',
         done: hasActiveToken(operationalLinks?.publicTokenId, operationalLinks?.publicStatus),
         required: true
       },
       {
         id: 'kitchenLink',
         label: 'Attiva e copia il collegamento cucina',
-        target: 'admin-access-section',
+        target: 'admin-overview-section',
         done: hasActiveToken(operationalLinks?.kitchenTokenId, operationalLinks?.kitchenStatus),
         required: true
       }

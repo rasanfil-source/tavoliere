@@ -8,7 +8,7 @@ import {
   formatTime,
   resolveLocale,
   applyTranslations
-} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260816o';
+} from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20260822a';
 import { toUserMessage, classifyApplicationError } from '../../prototypes/firebase-spark-pwa/public/core/user-error.mjs';
 
 // Setup mock DOM environment for node test
@@ -80,6 +80,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('summary.view.todayTitle'), 'Today at the table');
   assert.equal(t('admin.avatar.chooseFile'), 'Choose file');
   assert.equal(t('status.copied'), 'Copied');
+  assert.equal(t('app.title.compact'), 'Book meals');
 
   // Passa a Francese
   await setLocale('fr');
@@ -90,6 +91,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('meal.type.dinner'), 'Dîner');
   assert.equal(t('week.agenda.title'), 'Agenda du centre');
   assert.equal(t('dialog.deactivateCenter.title'), 'Désactiver le centre');
+  assert.equal(t('app.title.compact'), 'Réserver');
 
   // Passa a Spagnolo
   await setLocale('es');
@@ -98,6 +100,7 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('meal.type.breakfast'), 'Desayuno');
   assert.equal(t('meal.type.lunch'), 'Almuerzo');
   assert.equal(t('meal.type.dinner'), 'Cena');
+  assert.equal(t('app.title.compact'), 'Reservar');
   assert.equal(t('dialog.deletePerson.title'), 'Eliminar persona');
 
   // Passa a Tedesco
@@ -170,7 +173,7 @@ test('i18n runtime: applicazione traduzioni nel DOM simulato con data-i18n', asy
   const root = new MockElement('div');
   const title = new MockElement('h2');
   title.setAttribute('data-i18n', 'admin.adaptations.title');
-  title.textContent = 'Impostazioni';
+  title.textContent = 'Aspetto';
 
   const input = new MockElement('input');
   input.setAttribute('data-i18n-placeholder', 'placeholder.specialNotes');
@@ -185,21 +188,21 @@ test('i18n runtime: applicazione traduzioni nel DOM simulato con data-i18n', asy
   // Applica in Inglese
   await setLocale('en');
   applyTranslations(root);
-  assert.equal(title.textContent, 'Settings');
+  assert.equal(title.textContent, 'Appearance');
   assert.equal(input.placeholder, 'For example: lunch served at 12:30');
   assert.equal(nav.getAttribute('aria-label'), 'Participant navigation');
 
   // Applica in Tedesco
   await setLocale('de');
   applyTranslations(root);
-  assert.equal(title.textContent, 'Einstellungen');
+  assert.equal(title.textContent, 'Erscheinungsbild');
   assert.equal(input.placeholder, 'Zum Beispiel: Mittagessen um 12:30 serviert');
   assert.equal(nav.getAttribute('aria-label'), 'Teilnehmer-Navigation');
 
   // Applica in Francese
   await setLocale('fr');
   applyTranslations(root);
-  assert.equal(title.textContent, 'Paramètres');
+  assert.equal(title.textContent, 'Apparence');
   assert.equal(input.placeholder, 'Par exemple : déjeuner servi à 12h30');
   assert.equal(nav.getAttribute('aria-label'), 'Navigation participant');
 });

@@ -7,6 +7,7 @@ export const CENTER_ROLES = Object.freeze({
 export const CAPABILITIES = Object.freeze({
   OPEN_ADMIN_AREA: 'openAdminArea',
   VIEW_CENTER_OVERVIEW: 'viewCenterOverview',
+  MANAGE_ADAPTATIONS: 'manageAdaptations',
   MANAGE_CENTER_SETTINGS: 'manageCenterSettings',
   MANAGE_CENTER_AVATAR: 'manageCenterAvatar',
   MANAGE_CALENDAR: 'manageCalendar',
@@ -28,13 +29,13 @@ export const CAPABILITIES = Object.freeze({
 const OWNER_CAPABILITIES = [
   CAPABILITIES.OPEN_ADMIN_AREA,
   CAPABILITIES.VIEW_CENTER_OVERVIEW,
+  CAPABILITIES.MANAGE_ADAPTATIONS,
   CAPABILITIES.MANAGE_CENTER_SETTINGS,
   CAPABILITIES.MANAGE_CENTER_AVATAR,
   CAPABILITIES.MANAGE_CALENDAR,
   CAPABILITIES.MANAGE_PARTICIPANTS,
   CAPABILITIES.DELETE_PARTICIPANTS,
   CAPABILITIES.MANAGE_DAILY_OPERATIONS,
-  CAPABILITIES.MANAGE_MASS,
   CAPABILITIES.ASSIGN_VICE,
   CAPABILITIES.ASSIGN_LITURGY,
   CAPABILITIES.MANAGE_ADMINS,
@@ -50,11 +51,17 @@ const ADMIN_CAPABILITIES = OWNER_CAPABILITIES.filter((capability) => ![
   CAPABILITIES.TRANSFER_OWNERSHIP
 ].includes(capability));
 
+// Il vice entra come residente con sigla e password amministratori. Il suo
+// pannello è deliberatamente operativo e ristretto: Persone, Link e
+// Impostazioni. Configurazione, Attività e passaggio di consegne restano
+// riservati a responsabile/amministratori con autenticazione forte.
 const MANAGER_CAPABILITIES = [
   CAPABILITIES.OPEN_ADMIN_AREA,
-  CAPABILITIES.VIEW_CENTER_OVERVIEW,
+  CAPABILITIES.MANAGE_ADAPTATIONS,
   CAPABILITIES.MANAGE_PARTICIPANTS,
-  CAPABILITIES.MANAGE_DAILY_OPERATIONS
+  CAPABILITIES.DELETE_PARTICIPANTS,
+  CAPABILITIES.MANAGE_DAILY_OPERATIONS,
+  CAPABILITIES.VIEW_OPERATIONAL_LINKS
 ];
 
 const ROLE_CAPABILITIES = Object.freeze({
@@ -80,20 +87,11 @@ export function getRoleCapabilities(role, options = {}) {
   const normalizedRole = normalizeCenterRole(role);
   const capabilities = new Set(ROLE_CAPABILITIES[normalizedRole] || []);
 
-  if (normalizedRole === CENTER_ROLES.MANAGER && options.massPermission === true) {
-    capabilities.add(CAPABILITIES.MANAGE_MASS);
-  }
   if (options.liturgicalRole === true) {
     capabilities.add(CAPABILITIES.MANAGE_MASS);
   }
-  // Il vice amministratore non richiede più un account amministratore
-  // separato: la spunta "Vice amministratore" sulla scheda persona
-  // sblocca direttamente la gestione quotidiana per chi è collegato
-  // come quel residente, mentre "Celebrazioni liturgiche" sblocca
-  // esclusivamente la gestione delle Messe.
-  if (options.viceAdminRole === true) {
-    capabilities.add(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
-  }
+  // La spunta identifica la Persona ammessa; l'abilitazione effettiva richiede
+  // anche una sessione residente con la password amministratori corrente.
   if (options.platformOwner === true) {
     capabilities.add(CAPABILITIES.MANAGE_PLATFORM_CENTERS);
   }

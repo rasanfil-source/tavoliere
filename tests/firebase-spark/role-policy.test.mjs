@@ -32,30 +32,37 @@ test('l amministratore gestisce il centro ma non puo sostituire il responsabile'
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
   assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_DAILY_OPERATIONS), true);
-  assert.equal(capabilities.has(CAPABILITIES.MANAGE_MASS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_MASS), false);
   assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
   assert.equal(capabilities.has(CAPABILITIES.ASSIGN_LITURGY), true);
 });
 
-test('il vice gestisce persone e operativita quotidiana senza modificare la configurazione', () => {
+test('il vice usa Persone Link e Aspetto ma non le schede riservate', () => {
   const capabilities = getRoleCapabilities(CENTER_ROLES.MANAGER);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_PARTICIPANTS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_DAILY_OPERATIONS), true);
-  assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), false);
+  assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADAPTATIONS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_CENTER_SETTINGS), false);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_OPERATIONAL_LINKS), false);
-  assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), false);
+  assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), true);
+  assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADMINS), false);
+  assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
 });
 
-test('la gestione delle Messe e separata per vice e incaricato liturgico', () => {
+test('la Liturgia e personale e non viene ereditata dai ruoli amministrativi', () => {
+  assert.equal(hasCapability(CENTER_ROLES.OWNER, CAPABILITIES.MANAGE_MASS), false);
+  assert.equal(hasCapability(CENTER_ROLES.ADMIN, CAPABILITIES.MANAGE_MASS), false);
   assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS), false);
-  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { massPermission: true }), true);
+  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { massPermission: true }), false);
+  assert.equal(hasCapability(CENTER_ROLES.OWNER, CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
+  assert.equal(hasCapability(CENTER_ROLES.MANAGER, CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
   assert.equal(hasCapability('', CAPABILITIES.MANAGE_MASS, { liturgicalRole: true }), true);
   assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { liturgicalRole: true }), false);
 });
 
-test('la spunta Vice amministratore sblocca direttamente la gestione quotidiana', () => {
-  assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { viceAdminRole: true }), true);
+test('la spunta Vice amministratore non concede privilegi senza sessione autorizzata', () => {
+  assert.equal(hasCapability('', CAPABILITIES.MANAGE_DAILY_OPERATIONS, { viceAdminRole: true }), false);
 });
 
 test('la gestione della piattaforma resta distinta dal ruolo nel centro', () => {

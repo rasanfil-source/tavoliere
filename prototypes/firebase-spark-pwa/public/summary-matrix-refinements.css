@@ -266,9 +266,9 @@
      non il verde di stato globale (--good). */
   --week-complete-surface: color-mix(in srgb, var(--primary) 9%, var(--surface));
   --week-complete-line: color-mix(in srgb, var(--primary) 34%, var(--line));
-  --mass-yes-bg: color-mix(in srgb, var(--good) 26%, var(--surface));
-  --mass-yes-border: color-mix(in srgb, var(--good) 58%, var(--line));
-  --mass-yes-ink: color-mix(in srgb, var(--good) 88%, var(--ink));
+  --mass-yes-bg: color-mix(in srgb, var(--affirmative) 26%, var(--surface));
+  --mass-yes-border: color-mix(in srgb, var(--affirmative) 58%, var(--line));
+  --mass-yes-ink: color-mix(in srgb, var(--affirmative) 88%, var(--ink));
   --mass-no-bg: color-mix(in srgb, var(--danger) 24%, var(--surface));
   --mass-no-border: color-mix(in srgb, var(--danger) 60%, var(--line));
   --mass-no-ink: color-mix(in srgb, var(--danger) 90%, var(--ink));
@@ -685,6 +685,434 @@
   }
 }
 
+/* Aspetto Originale: i tre comandi dei pasti condividono un solo contenitore. */
+html[data-interface-style="original"] .month-week-action-row {
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 10px;
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-group + .month-scope-group {
+  border-top: 1px solid color-mix(in srgb, var(--view-border) 62%, transparent);
+}
+
+html[data-interface-style="original"] .month-week-action-row .month-scope-toggle-selected {
+  background: var(--complete-surface);
+  color: var(--confirmed);
+}
+
+/* Classic: la Messa resta compatta e circolare, non una seconda griglia. */
+.summary-layout-classic .summary-mass-control {
+  width: auto;
+  min-width: 48px;
+  aspect-ratio: auto;
+  grid-template-rows: auto auto;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.summary-layout-classic .summary-mass-control-day {
+  min-height: 18px;
+  padding: 0 2px 3px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.summary-layout-classic .summary-mass-control-state {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.summary-layout-classic .summary-mass-state-yes .summary-mass-control-state {
+  border-color: var(--mass-yes-border);
+  background: var(--mass-yes-bg);
+  color: var(--mass-yes-ink);
+}
+
+.summary-layout-classic .summary-mass-state-no .summary-mass-control-state {
+  border-color: var(--mass-no-border);
+  background: var(--mass-no-bg);
+  color: var(--mass-no-ink);
+}
+
+/* Nel riepilogo Classico Sì/No resta una semplice indicazione testuale:
+   niente pillola circolare né riquadro attorno al controllo. Le altre viste
+   mantengono i propri indicatori compatti e colorati. */
+.summary-layout-diners.summary-layout-classic .summary-mass-control,
+.summary-layout-diners.summary-layout-classic .summary-mass-control-state,
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-no {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control-state {
+  padding: 0;
+}
+
+/* Cool: interpretazione leggera dei mockup, senza cambiare la struttura dell'app. */
+html[data-interface-family="cool"] {
+  --cool-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  --cool-confirmed-soft: color-mix(in srgb, var(--confirmed) 15%, var(--surface));
+  --cool-affirmative-soft: color-mix(in srgb, var(--affirmative) 15%, var(--surface));
+  --cool-bad-soft: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --cool-faint: color-mix(in srgb, var(--muted) 34%, var(--surface));
+  --view-surface: color-mix(in srgb, var(--primary) 1.5%, var(--surface));
+  --view-control: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  --view-control-strong: var(--cool-primary-soft);
+  --view-border: color-mix(in srgb, var(--primary) 16%, var(--line));
+}
+
+html[data-interface-family="cool"] body {
+  background: var(--bg);
+}
+
+html[data-interface-family="cool"] .topbar {
+  padding: 12px 16px;
+  border-radius: 0 0 18px 18px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-family="cool"] .topbar h1,
+html[data-interface-family="cool"] .topbar [data-title-center],
+html[data-interface-family="cool"] .topbar [data-session-role] {
+  color: inherit;
+}
+
+html[data-interface-family="cool"] .topbar-context-action {
+  border-color: color-mix(in srgb, var(--surface) 42%, transparent);
+  background: color-mix(in srgb, var(--surface) 13%, transparent);
+  color: var(--surface);
+}
+
+html[data-interface-family="cool"] .topbar-context-action small {
+  color: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+/* Originale usa la stessa testata istituzionale delle altre viste. La banda
+   appartiene alla navigazione comune e non deve dipendere dalla matrice scelta. */
+html[data-interface-family="original"] .topbar {
+  padding: 12px 16px;
+  border-radius: 0 0 18px 18px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-family="original"] .topbar h1,
+html[data-interface-family="original"] .topbar [data-title-center],
+html[data-interface-family="original"] .topbar [data-session-role] {
+  color: inherit;
+}
+
+html[data-interface-family="original"] .topbar-context-action {
+  border-color: color-mix(in srgb, var(--surface) 42%, transparent);
+  background: color-mix(in srgb, var(--surface) 13%, transparent);
+  color: var(--surface);
+}
+
+html[data-interface-family="original"] .topbar-context-action small {
+  color: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+html[data-interface-family="cool"] h1,
+html[data-interface-family="cool"] h2,
+html[data-interface-family="cool"] h3,
+html[data-interface-family="cool"] .topbar h1,
+html[data-interface-family="cool"] .participant-status-name,
+html[data-interface-family="cool"] .week-status-name,
+html[data-interface-family="cool"] .summary-status-name,
+html[data-interface-family="cool"] .summary-matrix-caption,
+html[data-interface-family="cool"] .summary-international-title {
+  font-family: Fraunces, Georgia, "Times New Roman", serif;
+  font-weight: 600;
+}
+
+.meal-line-icon {
+  display: inline-block;
+  width: 1.18em;
+  height: 1.18em;
+  vertical-align: -0.2em;
+}
+
+html[data-interface-family="cool"] .week-heading-icon,
+html[data-interface-family="cool"] .meal-icon,
+html[data-interface-family="cool"] .summary-matrix-meal-icon,
+html[data-interface-family="cool"] .summary-international-meal-icon,
+html[data-interface-family="cool"] .month-scope-label > span:first-child,
+html[data-interface-family="cool"] .month-scope-glyph {
+  color: var(--primary);
+}
+
+html[data-interface-family="cool"] .meal-view-segment,
+html[data-interface-family="cool"] .summary-day-segment,
+html[data-interface-family="cool"] .today-card,
+html[data-interface-family="cool"] .summary-international-card,
+html[data-interface-family="cool"] .summary-matrix-track,
+html[data-interface-family="cool"] .week-matrix,
+html[data-interface-family="cool"] .admin-layout-settings-card,
+html[data-interface-family="cool"] .admin-theme-picker,
+html[data-interface-family="cool"] .admin-interface-style-picker {
+  border-color: var(--view-border);
+  border-radius: 12px;
+  background: var(--view-surface);
+  box-shadow: none;
+}
+
+html[data-interface-family="cool"] .month-flag-present,
+html[data-interface-family="cool"] .week-meal-button.meal-state-present {
+  border-color: color-mix(in srgb, var(--confirmed) 45%, var(--view-border));
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-family="cool"] .month-flag-present.month-flag-locked {
+  opacity: 0.78;
+}
+
+html[data-interface-family="cool"] .month-day-today,
+html[data-interface-family="cool"] .week-matrix-row-today {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+html[data-interface-family="cool"] .month-day-number-today .month-day-number-value,
+html[data-interface-family="cool"] .week-matrix-row-today .week-day-button strong {
+  display: inline-grid;
+  min-width: 1.75em;
+  min-height: 1.75em;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--surface);
+}
+
+html[data-interface-family="cool"] .month-week-action-row {
+  overflow: hidden;
+  border: 1px solid var(--view-border);
+  border-radius: 10px;
+  background: var(--view-surface);
+}
+
+html[data-interface-family="cool"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-family="cool"] .month-week-action-row .month-scope-toggle-selected {
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+}
+
+html[data-interface-family="cool"] .month-week-action-row.month-week-complete {
+  border-color: color-mix(in srgb, var(--confirmed) 35%, var(--view-border));
+  background: var(--cool-confirmed-soft);
+}
+
+/* In Cool la matrice settimanale e' volutamente piu ariosa. L'Agenda centro
+   resta in fondo, dopo la matrice e il riepilogo, come nelle altre viste. */
+html[data-interface-style="cool"] [data-week-panel] {
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .participant-status-row {
+  order: 0;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .meal-view-nav {
+  order: 1;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-toolbar {
+  order: 2;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-operations {
+  order: 6;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > .week-grid {
+  order: 4;
+}
+
+html[data-interface-style="cool"] [data-week-panel] > [data-participant-summary] {
+  order: 5;
+}
+
+html[data-interface-family="cool"] .summary-matrix-mass-yes,
+html[data-interface-family="cool"] .week-mass-button-yes strong {
+  background: var(--cool-affirmative-soft);
+  color: var(--affirmative);
+}
+
+html[data-interface-family="cool"] .summary-matrix-mass-no,
+html[data-interface-family="cool"] .week-mass-button-no strong {
+  background: var(--cool-bad-soft);
+  color: var(--danger);
+}
+
+/* Urban riusa integralmente tipografia e icone Cool, ma trasforma le matrici
+   in tabelle aperte: niente riquadri ripetuti, salvo il giorno corrente. */
+html[data-interface-style="urban"] .week-scope-button,
+html[data-interface-style="urban"] .week-meal-heading,
+html[data-interface-style="urban"] .week-mass-heading,
+html[data-interface-style="urban"] .week-day-button,
+html[data-interface-style="urban"] .week-meal-button,
+html[data-interface-style="urban"] .week-mass-button,
+html[data-interface-style="urban"] .month-weekday-cell,
+html[data-interface-style="urban"] .month-week-mobile-header .month-day-number,
+html[data-interface-style="urban"] .month-week-mobile-header .month-scope-button,
+html[data-interface-style="urban"] .month-toggle-button,
+html[data-interface-style="urban"] .month-day,
+html[data-interface-style="urban"] .month-flag,
+html[data-interface-style="urban"] .month-week-action-row,
+html[data-interface-style="urban"] .month-week-action-row .month-scope-button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-day,
+html[data-interface-style="urban"] .month-week-action-row {
+  border-radius: 0;
+}
+
+html[data-interface-style="urban"] .month-flag-present {
+  border-color: transparent;
+  background: transparent;
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-meal-button.meal-state-present {
+  border-color: transparent;
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-scope-toggle-selected,
+html[data-interface-style="urban"] .month-toggle-button-selected,
+html[data-interface-style="urban"] .week-scope-button-complete,
+html[data-interface-style="urban"] .week-meal-heading-complete,
+html[data-interface-style="urban"] .week-mass-heading-complete,
+html[data-interface-style="urban"] .week-day-button-complete {
+  border-color: transparent;
+  background: transparent;
+  color: var(--confirmed);
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-mass-button-yes,
+html[data-interface-style="urban"] .week-mass-button-no {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .month-day-today,
+html[data-interface-style="urban"] .week-matrix-row-today {
+  border-color: var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+html[data-interface-style="urban"] .week-matrix-row-today .week-day-button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-interface-style="urban"] .week-meal-button.meal-state-absent .week-meal-mark,
+html[data-interface-style="urban"] .month-flag.month-flag-absent .month-flag-mark {
+  color: color-mix(in srgb, var(--muted) 32%, var(--surface));
+  opacity: 0.42;
+}
+
+html[data-interface-style="urban"] .week-matrix button:focus-visible,
+html[data-interface-style="urban"] .month-grid button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  html[data-interface-style="urban"] .week-matrix button:not(:disabled):hover,
+  html[data-interface-style="urban"] .month-grid button:not(:disabled):hover {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    box-shadow: none;
+  }
+}
+
+/* Essenziale più eredita integralmente Essenziale. L'unica differenza è il
+   ritorno dei riquadri dei singoli pasti nella sola griglia mensile. */
+html[data-interface-variant="urban-plus"] .month-flag,
+html[data-interface-variant="urban-plus"] .month-flag-absent {
+  border-color: var(--view-border);
+  border-radius: 8px;
+  background: var(--view-control);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+html[data-interface-variant="urban-plus"] .month-flag-present {
+  border-color: color-mix(in srgb, var(--confirmed) 45%, var(--view-border));
+  background: var(--cool-confirmed-soft);
+  color: var(--confirmed);
+}
+
+@media (max-width: 620px) {
+  /* Nel mobile il numero vive nella testata separata della settimana. Le due
+     metà condividono il bordo affinché oggi formi una sola colonna continua. */
+  html[data-interface-variant="urban-plus"] .month-week-mobile-header
+    .month-day-number-today {
+    border: 1px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+
+  html[data-interface-variant="urban-plus"] .month-day-today {
+    border: 1px solid var(--primary);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 620px) {
+  html[data-interface-family="cool"] .topbar,
+  html[data-interface-family="original"] .topbar {
+    margin-inline: -1px;
+    border-radius: 0 0 16px 16px;
+  }
+}
+
 [data-summary-panel] .summary-date-tabs > .operational-view-switch {
   box-sizing: border-box;
   height: 42px !important;
@@ -1055,6 +1483,10 @@
   font-size: 1.3rem;
 }
 
+.summary-international-mobile-guests {
+  display: none;
+}
+
 .summary-international-card header strong,
 .summary-international-card header time {
   display: block;
@@ -1068,6 +1500,56 @@
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.summary-mass-metadata {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.summary-mass-metadata-dot {
+  width: 0.58rem;
+  height: 0.58rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.summary-mass-metadata strong {
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+}
+
+.summary-mass-metadata-yes {
+  color: var(--affirmative);
+}
+
+.summary-mass-metadata-no {
+  color: var(--danger);
+}
+
+.summary-future-card-head > div {
+  min-width: 0;
+}
+
+.summary-future-card-head > div strong,
+.summary-future-card-head > div time {
+  display: block;
+}
+
+.summary-future-card-head .summary-mass-metadata {
+  margin-inline-start: auto;
 }
 
 .summary-international-card dl {
@@ -1106,6 +1588,20 @@
 
 .summary-international-card .summary-matrix-total {
   font-size: 2.25rem;
+}
+
+.summary-contact-hint {
+  display: block;
+  max-width: 19ch;
+  margin: 4px auto 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 450;
+  line-height: 1.25;
+}
+
+.summary-future-meal > .summary-contact-hint {
+  margin-inline-start: 32px;
 }
 
 .summary-international-names {
@@ -1223,6 +1719,19 @@
   background: var(--mass-no-bg);
 }
 
+/* Cucina Classic: come nel riepilogo, Sì/No sono testo nella fascia, non
+   pillole con un secondo contorno interno. */
+.summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-no {
+  display: inline;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .kitchen-notes {
   margin-top: 14px;
   padding: 15px 16px;
@@ -1247,6 +1756,19 @@
 .kitchen-notes ul {
   margin: 8px 0 0;
   padding-left: 22px;
+}
+
+.week-invited-saved-meal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-inline-start: 7px;
+  white-space: nowrap;
+}
+
+.week-invited-saved-meal .meal-line-icon {
+  width: 1.05em;
+  height: 1.05em;
 }
 
 .admin-calendar-extension {
@@ -1374,6 +1896,24 @@
     justify-content: flex-start;
   }
 
+  .summary-international-mobile-guests {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: baseline;
+    gap: 4px;
+    margin-left: auto;
+    padding: 4px 7px;
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--view-border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+    color: var(--primary);
+    font-size: 0.72rem;
+  }
+
+  .summary-international-guest-row {
+    display: none !important;
+  }
+
   [data-kitchen-panel] .summary-international-card > header {
     justify-content: center;
   }
@@ -1447,6 +1987,14 @@
   letter-spacing: -0.015em;
 }
 
+/* International: keep the long Dopodomani label inside the compact control. */
+.summary-layout-international .summary-day-tone-2 .summary-mass-control-day {
+  padding-inline: 1px;
+  font-size: clamp(0.42rem, 1.25vw, 0.58rem);
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
 .summary-mass-control-state {
   display: grid;
   min-height: 0;
@@ -1518,4 +2066,255 @@
   .admin-calendar-extension > .section-title > .admin-option-help {
     grid-column: 1 / -1;
   }
+}
+
+/* Manutenzione: scadenza sotto il titolo, azioni leggibili e centrate. */
+.admin-calendar-extension {
+  grid-template-columns: minmax(132px, 0.72fr) minmax(190px, 1.28fr) auto;
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.admin-calendar-extension > .section-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+}
+
+.admin-calendar-extension > .section-title > h2,
+.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+  margin: 0;
+}
+
+.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.admin-calendar-extension > .admin-option-help {
+  grid-column: auto;
+  margin: 0;
+}
+
+.admin-audit-disclosure > summary {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+
+.admin-audit-disclosure > summary .disclosure-caret {
+  position: absolute;
+  right: 14px;
+}
+
+.admin-tools-row[data-admin-tools] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.admin-tools-row[data-admin-tools] .admin-export-copy {
+  width: auto;
+  text-align: center;
+}
+
+.admin-tools-row[data-admin-tools] .admin-download-action {
+  width: auto;
+}
+
+/* Originale: Sì/No usa un piccolo disco pieno, senza il vecchio anello. */
+.summary-layout-diners.summary-layout-classic .summary-mass-control-state,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control-state {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-no,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-no {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-yes {
+  background: var(--affirmative);
+}
+
+.summary-layout-diners.summary-layout-classic .summary-mass-control .summary-matrix-mass-no,
+.summary-layout-kitchen.summary-layout-classic .summary-mass-control .summary-matrix-mass-no {
+  background: var(--danger);
+}
+
+/* Originale: il tono di stato riempie l'intera cella; il disco centrale
+   conserva il contrasto forte e la scritta bianca. */
+.summary-layout-diners.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-yes,
+.summary-layout-kitchen.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-yes {
+  background: var(--mass-yes-bg);
+}
+
+.summary-layout-diners.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-no,
+.summary-layout-kitchen.summary-layout-classic td.summary-matrix-mass-band.summary-mass-state-no {
+  background: var(--mass-no-bg);
+}
+
+/* Internazionale: il quadratino di stato cresce senza allargare la fascia. */
+.summary-layout-international .summary-mass-control .summary-matrix-mass-yes,
+.summary-layout-international .summary-mass-control .summary-matrix-mass-no {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.summary-layout-international .summary-mass-state-yes .summary-matrix-mass-yes {
+  background: color-mix(in srgb, var(--affirmative) 18%, var(--surface));
+}
+
+.summary-layout-international .summary-mass-state-no .summary-matrix-mass-no {
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+}
+
+/* Elegante ed Essenziale: una sottile intercapedine impedisce ai controlli
+   interni di coprire il contorno continuo della giornata corrente. */
+html[data-interface-style="cool"] .week-matrix-row-today,
+html[data-interface-style="urban"] .week-matrix-row-today {
+  box-sizing: border-box;
+  padding: 2px;
+  border: 1px solid var(--primary);
+  box-shadow: none;
+}
+
+html[data-interface-style="cool"] .week-matrix-row-today > button,
+html[data-interface-style="urban"] .week-matrix-row-today > button {
+  min-height: calc(var(--week-cell-height) - 4px);
+}
+
+@media (max-width: 620px) {
+  .admin-calendar-extension {
+    grid-template-columns: minmax(108px, 0.62fr) minmax(0, 1.38fr);
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .admin-calendar-extension > .section-title {
+    grid-row: 1 / span 2;
+  }
+
+  .admin-calendar-extension > .admin-option-help {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admin-calendar-extension [data-bootstrap-button] {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: stretch;
+  }
+
+  .admin-tools-row[data-admin-tools] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .admin-tools-row[data-admin-tools] .admin-export-copy,
+  .admin-tools-row[data-admin-tools] .admin-download-action {
+    width: auto;
+  }
+
+  /* Il pieno si riduce; numero e sfondo azzurro esterno restano invariati. */
+  html[data-interface-style="original"] .month-week-mobile-header
+    .month-day-number-today {
+    border-color: var(--today-line);
+    background: var(--today-surface);
+  }
+
+  html[data-interface-style="original"] .month-week-mobile-header
+    .month-day-number-today .month-day-number-value {
+    width: 21px;
+    height: 21px;
+  }
+
+  html[data-interface-style="cool"] .month-week-mobile-header
+    .month-day-number-today .month-day-number-value {
+    width: 21px;
+    height: 21px;
+    min-width: 21px;
+    min-height: 21px;
+  }
+
+  html[data-interface-style="cool"] .month-week-mobile-header
+    .month-day-number-today {
+    border: 1px solid var(--primary);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+
+  html[data-interface-style="cool"] .month-day-today {
+    border: 1px solid var(--primary);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 370px) {
+  .admin-calendar-extension {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-calendar-extension > .section-title,
+  .admin-calendar-extension > .admin-option-help,
+  .admin-calendar-extension [data-bootstrap-button] {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+.participant-panel.meal-snap-forward,
+.participant-panel.meal-snap-backward {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(.2, .7, .2, 1);
+}
+
+.participant-panel.meal-snap-forward { animation-name: meal-snap-forward; }
+.participant-panel.meal-snap-backward { animation-name: meal-snap-backward; }
+
+@keyframes meal-snap-forward {
+  50% { transform: translateX(-18px); opacity: .82; }
+}
+
+@keyframes meal-snap-backward {
+  50% { transform: translateX(18px); opacity: .82; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .participant-panel.meal-snap-forward,
+  .participant-panel.meal-snap-backward { animation: none; }
 }

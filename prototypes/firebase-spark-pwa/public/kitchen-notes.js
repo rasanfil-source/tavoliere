@@ -4,7 +4,7 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260816g';
+import { db } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 
@@ -57,7 +57,8 @@ export async function loadKitchenNote(date = new Date(), options = {}) {
   }
 
   const mealDate = formatDateId(date);
-  const cached = noteCache.get(mealDate);
+  const cacheKey = `${getActiveCenterId()}:${mealDate}`;
+  const cached = noteCache.get(cacheKey);
   if (!options.forceRefresh && cached && Date.now() - cached.loadedAt < NOTE_CACHE_MS) {
     return cached.value;
   }
@@ -66,12 +67,12 @@ export async function loadKitchenNote(date = new Date(), options = {}) {
 
   if (!noteSnap.exists()) {
     const value = { mealDate, messages: [], text: '', updatedAt: null };
-    noteCache.set(mealDate, { loadedAt: Date.now(), value });
+    noteCache.set(cacheKey, { loadedAt: Date.now(), value });
     return value;
   }
 
   const value = noteValue(mealDate, noteSnap.data());
-  noteCache.set(mealDate, { loadedAt: Date.now(), value });
+  noteCache.set(cacheKey, { loadedAt: Date.now(), value });
   return value;
 }
 
@@ -110,7 +111,7 @@ export async function saveKitchenNote(date, text) {
   });
 
   const value = noteValue(mealDate, { messages: savedMessages, updatedAt: new Date() });
-  noteCache.set(mealDate, { loadedAt: Date.now(), value });
+  noteCache.set(`${getActiveCenterId()}:${mealDate}`, { loadedAt: Date.now(), value });
   return value;
 }
 
@@ -129,7 +130,7 @@ export async function removeKitchenNoteMessage(date, messageId) {
     transaction.set(noteRef, buildStoredNote(mealDate, savedMessages));
   });
   const value = noteValue(mealDate, { messages: savedMessages, updatedAt: new Date() });
-  noteCache.set(mealDate, { loadedAt: Date.now(), value });
+  noteCache.set(`${getActiveCenterId()}:${mealDate}`, { loadedAt: Date.now(), value });
   return value;
 }
 

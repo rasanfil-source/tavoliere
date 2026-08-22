@@ -17,6 +17,16 @@ const index = readFileSync(
   'utf8'
 );
 
+const appManifest = JSON.parse(readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/manifest.webmanifest', import.meta.url),
+  'utf8'
+));
+
+const kitchenManifest = JSON.parse(readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest', import.meta.url),
+  'utf8'
+));
+
 test('il service worker separa il nucleo iniziale dai moduli caricati per vista', () => {
   assert.match(serviceWorker, /'\/firebase-client\.js'/);
   assert.match(serviceWorker, /'\/center-settings\.js'/);
@@ -45,6 +55,20 @@ test('la vista cucina usa un manifest installabile distinto', () => {
   assert.match(index, /manifest-kitchen\.webmanifest/);
 });
 
+test('il desktop mobile presenta l app principale come Oggi a tavola', () => {
+  assert.equal(appManifest.name, 'Oggi a tavola');
+  assert.equal(appManifest.short_name, 'Oggi a tavola');
+  assert.equal(kitchenManifest.short_name, 'Cucina');
+});
+
+test('Android riceve icone maskable a fondo pieno senza cornice bianca automatica', () => {
+  for (const manifest of [appManifest, kitchenManifest]) {
+    const maskableIcons = manifest.icons.filter((icon) => icon.purpose === 'maskable');
+    assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
+    assert.ok(maskableIcons.every((icon) => /\/icons\/launcher-(192|512)-maskable\.png\?v=20260822a/.test(icon.src)));
+  }
+});
+
 test('service worker handles only navigation, app resources, and Firebase SDK requests', () => {
   assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin && isAppResourcePath\(url\.pathname\)/);
@@ -68,14 +92,16 @@ test('versioned app shell files load the exact release with an offline fallback'
 });
 
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
-  assert.match(index, /styles\.css\?v=20260817b/);
-  assert.match(index, /summary-matrix-refinements\.css\?v=20260817a/);
-  assert.match(index, /app\.js\?v=20260817a/);
-  assert.match(index, /manifest\.webmanifest\?v=20260816a/);
-  assert.match(index, /launcher-192\.png\?v=20260816a/);
-  assert.match(app, /center-settings\.js\?v=20260816j/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v295'/);
-  assert.match(serviceWorker, /launcher-512\.png\?v=20260816a/);
+  assert.match(index, /styles\.css\?v=20260822l/);
+  assert.match(index, /summary-matrix-refinements\.css\?v=20260822c/);
+  assert.match(index, /app\.js\?v=20260822q/);
+  assert.match(index, /manifest\.webmanifest\?v=20260822b/);
+  assert.match(index, /launcher-192\.png\?v=20260821a/);
+  assert.match(app, /center-settings\.js\?v=20260822d/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v396'/);
+  assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
+  assert.match(serviceWorker, /launcher-512\.png\?v=20260821a/);
+  assert.match(serviceWorker, /launcher-512-maskable\.png\?v=20260822a/);
 });
 
 test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {

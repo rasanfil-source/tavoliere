@@ -58,18 +58,27 @@ test('the common password can mint only bounded personal tokens', () => {
     rules,
     /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\)[\s\S]*scope == 'PERSONAL'[\s\S]*targetType == 'PARTICIPANT'[\s\S]*duration\.value\(9001, 'd'\)/
   );
-  assert.match(participantData, /getResidentTechnicalEmail\(getActiveCenterId\(\)\)/);
+  assert.match(participantData, /withResidentTechnicalSession\(/);
+  assert.match(participantData, /async \(\{ db: technicalDb \}\) =>/);
+  assert.match(participantData, /createPersonalTokenForParticipant\([\s\S]*technicalDb/);
   assert.match(participantData, /PERSONAL_TOKEN_LIFETIME_DAYS = 9000/);
 });
 
-test('l autoiscrizione dei vice usa uno schema chiuso e non concede la gestione Messe', () => {
+test('gli inviti Firebase creano soltanto amministratori mentre il vice usa viceSessions', () => {
   const adminCreate = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
   const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
+  const invitationRules = rules.match(/match \/adminInvitations\/\{invitationId\}[\s\S]*?match \/centers/)?.[0] || '';
   assert.match(adminCreate, /keys\(\)\.hasOnly\(\[/);
   assert.match(adminCreate, /invitationMembershipClaimIsValid\(centerId, adminUid\)/);
   assert.match(invitationClaim, /request\.resource\.data\.centerId == centerId/);
-  assert.match(invitationClaim, /request\.resource\.data\.massPermission == \(request\.resource\.data\.role == 'ADMIN'\)/);
-  assert.match(invitationClaim, /request\.resource\.data\.role == 'MANAGER'[\s\S]*viceAdminRole/);
+  assert.match(invitationClaim, /request\.resource\.data\.role == 'ADMIN'/);
+  assert.match(invitationClaim, /request\.resource\.data\.massPermission == true/);
+  assert.doesNotMatch(invitationClaim, /request\.resource\.data\.role == 'MANAGER'/);
+  assert.match(invitationRules, /allow create: if request\.resource\.data\.role == 'ADMIN'/);
+  assert.doesNotMatch(invitationRules, /request\.resource\.data\.role == 'MANAGER'/);
+  assert.match(rules, /function activeViceParticipant\(centerId, participantId\)[\s\S]*viceAdminRole/);
+  assert.match(rules, /function administratorAuthenticationMatches\(centerId\)[\s\S]*sign_in_provider/);
+  assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorPasswordRequired[\s\S]*activeViceParticipant\(centerId, participantId\)/);
 });
 
 test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {
@@ -83,6 +92,7 @@ test('un amministratore revocato può riaccettare soltanto con un nuovo invito v
 
 test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insieme', () => {
   assert.match(rules, /function isCoordinatedOwnershipTransfer\(centerId\)/);
+  assert.match(rules, /invitationConsumedBy'[\s\S]*== nextOwnerUid[\s\S]*invitationAcceptedAt'[\s\S]*is timestamp/);
   assert.match(rules, /nextOwnerUid[\s\S]*role == 'OWNER'[\s\S]*request\.auth\.uid[\s\S]*status == 'REVOKED'/);
   assert.match(rules, /function isOwnershipRoleChange\(centerId, adminUid\)/);
   assert.match(rules, /function isOwnershipRevocation\(centerId, adminUid\)/);
@@ -94,11 +104,15 @@ test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insi
 test('public sessions are read only for participant reservations', () => {
   const validator = rules.match(/function overrideValuesAreValid\(centerId\)[\s\S]*?\n    \}/)?.[0] || '';
   const personalSession = rules.match(/function personalOverrideSessionIsValid\(centerId, participantId\)[\s\S]*?\n    \}/)?.[0] || '';
+  const personalSessionGate = rules.match(/function personalSessionIsUsable\(centerId\)[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(validator, /personalOverrideSessionIsValid\(centerId, request\.resource\.data\.participantId\)/);
+  assert.match(personalSession, /personalSessionIsUsable\(centerId\)/);
   assert.match(personalSession, /session\.scope == 'PERSONAL'/);
   assert.match(personalSession, /session\.participantId == participantId/);
-  assert.match(personalSession, /token\.status == 'ACTIVE'/);
-  assert.match(personalSession, /request\.time < token\.expiresAt/);
+  assert.match(personalSessionGate, /session\.tokenId is string/);
+  assert.match(personalSessionGate, /request\.time < session\.expiresAt/);
+  assert.doesNotMatch(personalSessionGate, /tokenIsUsable|tokenData|participantIsActive/);
+  assert.match(personalSession, /participantIsActive\(centerId, participantId\)/);
   assert.doesNotMatch(validator, /hasSessionScope\(centerId, 'PUBLIC'\)/);
 });
 
@@ -152,21 +166,26 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
   assert.match(
     rules,
-    /function canManageMass\(centerId\)[\s\S]*adminCanManageMass\(centerId\)[\s\S]*residentIsCenterAdministrator\(centerId\)[\s\S]*get\('liturgicalRole', false\) == true/
+    /function canManageMass\(centerId\)[\s\S]*adminCanManageMass\(centerId\)[\s\S]*publicParticipants[\s\S]*get\('liturgicalRole', false\) == true/
   );
   assert.match(
     rules,
-    /function adminCanManageMass\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN'\][\s\S]*massPermission/
+    /function adminHasLiturgicalRole\(centerId\)[\s\S]*participantId[\s\S]*publicParticipants[\s\S]*get\('liturgicalRole', false\) == true[\s\S]*function adminCanManageMass\(centerId\)[\s\S]*adminHasLiturgicalRole\(centerId\)/
   );
   assert.match(
     rules,
-    /match \/admins\/\{adminUid\}[\s\S]*allow update: if canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
+    /function viceParticipantUpdateDoesNotChangeRoles\(centerId, participantId\)[\s\S]*participantId == sessionParticipantId\(centerId\)[\s\S]*liturgicalRole/
+  );
+  assert.match(
+    rules,
+    /match \/admins\/\{adminUid\}[\s\S]*canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*allow delete: if canDeleteCenterAdministrator\(centerId\)/
   );
 });
 
-test('responsabile amministratore e vice hanno confini di scrittura distinti', () => {
+test('il vice usa la configurazione ma non amministra il passaggio di consegne', () => {
   assert.match(rules, /function isCenterOwner\(centerId\)[\s\S]*adminRole\(centerId\) == 'OWNER'/);
   assert.match(rules, /function canManageCenterConfiguration\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
+  assert.match(rules, /function canManageAdministrativeRoles\(centerId\)[\s\S]*\['OWNER', 'ADMIN'\]/);
   assert.match(rules, /function canUpdateCenterAdministrator\(centerId, adminUid\)[\s\S]*resource\.data\.get\('role', ''\) != 'OWNER'/);
   assert.match(rules, /adminUid != request\.auth\.uid[\s\S]*resource\.data\.get\('role', ''\) == 'OWNER'[\s\S]*request\.resource\.data\.get\('status', ''\) == 'REVOKED'/);
   assert.match(rules, /match \/centers\/\{centerId\}[\s\S]*allow update: if canManageCenterConfiguration\(centerId\)/);
@@ -174,14 +193,26 @@ test('responsabile amministratore e vice hanno confini di scrittura distinti', (
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);
 });
 
-test('l avatar del centro e leggibile dalle sessioni ma modificabile solo dagli amministratori principali', () => {
+test('solo il responsabile unico cambia titolo e seconda riga iniziali', () => {
+  assert.match(rules, /'appDisplayName', 'appDisplaySubtitle', 'updatedAt'/);
+  assert.match(rules, /appDisplayName\.size\(\) > 0/);
+  assert.match(rules, /appDisplayName\.size\(\) <= 60/);
+  assert.match(rules, /appDisplaySubtitle\.size\(\) > 0/);
+  assert.match(rules, /appDisplaySubtitle\.size\(\) <= 100/);
+  assert.match(
+    rules,
+    /allow update: if settingsId == 'current'[\s\S]*affectedKeys\(\)[\s\S]*hasAny\(\['appDisplayName', 'appDisplaySubtitle'\]\)[\s\S]*isCenterOwner\(centerId\)/
+  );
+});
+
+test('l avatar del centro e leggibile dalle sessioni e modificabile dai ruoli del pannello', () => {
   assert.match(
     rules,
     /match \/assets\/\{assetId\}[\s\S]*allow read: if isAdmin\(centerId\) \|\| hasSession\(centerId\)/
   );
   assert.match(
     rules,
-    /match \/assets\/\{assetId\}[\s\S]*allow create, update: if canManageAdministrativeRoles\(centerId\)[\s\S]*dataUrl\.size\(\) <= 300000/
+    /match \/assets\/\{assetId\}[\s\S]*allow create, update: if canManageCenterConfiguration\(centerId\)[\s\S]*dataUrl\.size\(\) <= 300000/
   );
   assert.match(participantData, /'assets'/);
 });
@@ -202,7 +233,6 @@ test('session update keeps immutable session fields unchanged', () => {
     'centerId',
     'scope',
     'targetType',
-    'tokenId',
     'status',
     'expiresAt',
     'createdAt'
@@ -212,11 +242,15 @@ test('session update keeps immutable session fields unchanged', () => {
       new RegExp(`request\\.resource\\.data\\.${field} == resource\\.data\\.${field}`)
     );
   }
+  assert.match(
+    rules,
+    /request\.resource\.data\.get\('tokenId', ''\) == resource\.data\.get\('tokenId', ''\)/
+  );
   assert.match(rules, /diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['updatedAt'\]\)/);
   assert.doesNotMatch(rules, /diff\(resource\.data\)\.changedKeys\(\)/);
 });
 
-test('kitchen and public summary sessions can read reservation rules for counts', () => {
+test('kitchen, public, and personal summary sessions can read reservation rules for counts', () => {
   assert.match(
     rules,
     /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'KITCHEN'\)/
@@ -225,11 +259,15 @@ test('kitchen and public summary sessions can read reservation rules for counts'
     rules,
     /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'PUBLIC'\)/
   );
+  assert.match(
+    rules,
+    /match \/reservationRules\/\{ruleId\}[\s\S]*hasSessionScope\(centerId, 'PERSONAL'\)/
+  );
 });
 
 test('participant changes invalidate the kitchen rules cache', () => {
-  assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
-  assert.match(centerSettings, /participantDataVersion:\s*timestampVersion/);
+  assert.match(participantData, /participantMetadata', 'current'[\s\S]*updatedAt: serverTimestamp\(\)/);
+  assert.match(centerSettings, /participantDataVersion:\s*timestampVersion\([\s\S]*participantMetadata\.updatedAt/);
 });
 
 test('participant overrides are queried by participant and date range', () => {
@@ -280,23 +318,77 @@ test('admin participant list keeps disabled people available for reactivation', 
 
 test('l amministratore puo eliminare una persona e i dati operativi collegati', () => {
   assert.match(participantData, /export async function deleteAdminParticipant/);
-  assert.match(participantData, /\['reservationRules', 'reservationOverrides', 'accessSessions'\]/);
+  assert.match(participantData, /const ruleRef = doc\(db, 'centers', centerId, 'reservationRules'/);
+  assert.match(participantData, /\['reservationOverrides', 'accessSessions', 'viceSessions'\]/);
   assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
   assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
   assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
-  assert.match(participantData, /const \[ruleSnapshot, overrideSnapshot, sessionSnapshot\] = relatedSnapshots/);
+  assert.match(participantData, /const \[overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = await Promise\.all/);
   assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);
-  assert.match(participantData, /participantDataUpdatedAt:\s*serverTimestamp\(\)/);
-  assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow delete: if isAdmin\(centerId\)/);
+  assert.match(participantData, /participantMetadata', 'current'[\s\S]*updatedAt: serverTimestamp\(\)/);
+  assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*viceMayCleanDisabledParticipant/);
   assert.match(rules, /function tokenIsUsable\(centerId, tokenId\)[\s\S]*scope != 'PERSONAL'[\s\S]*participantIsActive/);
+});
+
+test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () => {
+  assert.match(rules, /function canUseViceAdministratorTools\(centerId\)/);
+  assert.match(rules, /function viceAdaptationUpdateIsValid\(centerId\)[\s\S]*affectedKeys\(\)\.hasOnly/);
+  assert.match(rules, /function viceParticipantWriteDoesNotAssignRoles[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
+  assert.match(rules, /function viceParticipantUpdateDoesNotChangeRoles[\s\S]*hasAny\(\[[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
+  assert.match(rules, /function viceMayCleanDisabledParticipant[\s\S]*status == 'DISABLED'/);
+  assert.match(
+    rules,
+    /match \/privateSettings\/\{settingsId\}[\s\S]*adminRole\(centerId\) == 'MANAGER'[\s\S]*settingsId == 'operationalLinks'/
+  );
+  assert.doesNotMatch(
+    rules,
+    /allow create, update: if isAdmin\(centerId\)[\s\S]*adminRole\(centerId\) == 'MANAGER'/
+  );
+});
+
+test('la password amministratori può leggere soltanto i link operativi durante il login', () => {
+  assert.match(
+    rules,
+    /match \/privateSettings\/\{settingsId\}[\s\S]*isAdministratorTechnicalUser\(centerId\)[\s\S]*settingsId == 'operationalLinks'/
+  );
+});
+
+test('le regole conservano urban-plus come valore tecnico della nuova Essenziale', () => {
+  assert.equal(
+    (rules.match(/interfaceStyle in \['original', 'cool', 'urban', 'urban-plus', 'future'\]/g) || []).length,
+    2
+  );
 });
 
 test('il ruolo vice comprende sempre la gestione quotidiana', () => {
   assert.match(rules, /function adminCanManageDailyOperations\(centerId\)[\s\S]*adminRole\(centerId\) in \['OWNER', 'ADMIN', 'MANAGER'\]/);
-  assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*residentIsCenterAdministrator\(centerId\)[\s\S]*viceAdminRole/);
+  assert.match(rules, /function canManageDailyOperations\(centerId\)[\s\S]*hasAuthorizedResidentAdministratorSession\(centerId\)/);
+  assert.match(rules, /match \/viceSessions\/\{authUid\}[\s\S]*isAdministratorTechnicalUser\(centerId\)[\s\S]*passwordVersion/);
+  assert.match(rules, /match \/publicParticipants\/\{participantId\}[\s\S]*isAdministratorTechnicalUser\(centerId\)/);
+  assert.match(rules, /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\) \|\| isAdministratorTechnicalUser\(centerId\)/);
+  assert.match(rules, /residentMayAdminister\(centerId, request\.resource\.data\.participantId\)/);
   assert.match(rules, /match \/dailyHealth\/\{dateId\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
   assert.match(rules, /match \/kitchenNotes\/\{mealDate\}[\s\S]*allow create, update: if canManageDailyOperations\(centerId\)/);
+  assert.match(
+    rules,
+    /match \/reservationRules\/\{ruleId\}[\s\S]*allow read: if !isAdmin\(centerId\)[\s\S]*canUseViceAdministratorTools\(centerId\)/
+  );
+  assert.match(
+    rules,
+    /match \/reservationOverrides\/\{overrideId\}[\s\S]*allow read: if !isAdmin\(centerId\)[\s\S]*canUseViceAdministratorTools\(centerId\)/
+  );
+});
+
+test('la rotazione della password amministratori revoca la precedente identità tecnica', () => {
+  assert.match(
+    rules,
+    /function isAdministratorTechnicalUser\(centerId\)[\s\S]*adminTechnicalUid[\s\S]*request\.auth\.uid/
+  );
+  assert.match(
+    rules,
+    /match \/viceSessions\/\{authUid\}[\s\S]*allow create: if isAdministratorTechnicalUser\(centerId\)/
+  );
 });
 
 test('un account amministratore può appartenere a più centri senza duplicare l identità', () => {

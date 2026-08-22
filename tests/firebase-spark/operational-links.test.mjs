@@ -15,13 +15,8 @@ test('i collegamenti mancanti vengono creati insieme e una sola volta', () => {
   assert.match(source, /transaction\.set\(configurationRef/);
 });
 
-test('la rotazione non tenta di revocare un token inesistente', () => {
-  assert.match(source, /if \(previousTokenId\) \{\s*transaction\.update\(previousTokenRef/);
-});
-
-test('la rotazione elimina le sessioni create con il collegamento precedente', () => {
-  assert.match(source, /await deleteSessionsForToken\(centerId, previousTokenId\)/);
-  assert.match(source, /collection\(db, 'centers', centerId, 'accessSessions'\)/);
-  assert.match(source, /where\('tokenId', '==', tokenId\)/);
-  assert.match(source, /sessionSnapshot\.docs\.slice[\s\S]*batch\.delete\(snapshot\.ref\)/);
+test('i collegamenti già attivi non vengono rigenerati né revocati', () => {
+  assert.match(source, /if \(currentLinks\.publicTokenId && currentLinks\.kitchenTokenId\) \{\s*return currentLinks/);
+  assert.doesNotMatch(source, /export async function rotateOperationalLink/);
+  assert.doesNotMatch(source, /deleteSessionsForToken/);
 });

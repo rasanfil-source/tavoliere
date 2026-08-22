@@ -51,7 +51,7 @@ test('hover e focus seguono la palette selezionata', () => {
 test('stati positivi e settimana completa si armonizzano con ogni palette', () => {
   assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--good: #4f7049/);
   assert.match(styles, /html\[data-theme="confetto"\][\s\S]*--good: #47785f/);
-  assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--good\)/);
+  assert.match(styles, /--complete-surface: color-mix\(in srgb, var\(--confirmed\)/);
   assert.match(summaryStyles, /--week-complete-surface: color-mix\(in srgb, var\(--primary\)/);
   assert.match(summaryStyles, /\.month-week-action-row\.month-week-complete \{[\s\S]*border-color: var\(--week-complete-line\);[\s\S]*background: var\(--week-complete-surface\)/);
   assert.match(styles, /html\[data-theme="terracotta"\][\s\S]*--calendar-heading-bg: #f3e3d7/);
@@ -61,6 +61,34 @@ test('la presenza ai pasti non viene comunicata soltanto dal colore', () => {
   assert.match(app, /const visibleMark = isPresent \? '✓'/);
   assert.match(app, /aria-pressed="\$\{isPresent\}"/);
   assert.match(app, /stateLabel = getMealStateLabel\(isPresent\)/);
+});
+
+test('Cool usa icone a tratto e conferme leggere lasciando il pieno alle selezioni', () => {
+  assert.match(app, /function getInterfaceIcon\(kind, fallback/);
+  assert.match(app, /meal-line-icon meal-line-icon-\$\{kind\}/);
+  assert.match(summaryStyles, /html\[data-interface-family="cool"\][\s\S]*--cool-confirmed-soft/);
+  assert.match(summaryStyles, /html\[data-interface-family="cool"\] \.month-flag-present,[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.week-meal-button,[\s\S]*border-color: transparent/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\][\s\S]*\.month-flag-mark \{[\s\S]*opacity: 0\.42/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.month-day,[\s\S]*border-color: transparent;[\s\S]*background: transparent/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.month-flag-present \{[\s\S]*border-color: transparent;[\s\S]*background: transparent/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.week-meal-button\.meal-state-present \{[\s\S]*border-color: transparent;[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-style="urban"\] \.month-day-today,[\s\S]*border-color: var\(--primary\)/);
+  assert.match(app, /dataset\.interfaceStyle = style === 'urban-plus' \? 'urban' : style/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-flag,[\s\S]*border-color: var\(--view-border\);[\s\S]*background: var\(--view-control\)/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-flag-present \{[\s\S]*background: var\(--cool-confirmed-soft\)/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-week-mobile-header[\s\S]*\.month-day-number-today \{[\s\S]*border-bottom: 0;[\s\S]*border-radius: 10px 10px 0 0/);
+  assert.match(summaryStyles, /html\[data-interface-variant="urban-plus"\] \.month-day-today \{[\s\S]*border-top: 0;[\s\S]*border-radius: 0 0 10px 10px/);
+  assert.match(summaryStyles, /html\[data-interface-style="original"\] \.month-week-mobile-header[\s\S]*\.month-day-number-today \.month-day-number-value \{[\s\S]*width: 21px;[\s\S]*height: 21px/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-week-mobile-header[\s\S]*\.month-day-number-today \{[\s\S]*border-bottom: 0;[\s\S]*border-radius: 10px 10px 0 0/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-week-mobile-header[\s\S]*\.month-day-number-today \.month-day-number-value \{[\s\S]*width: 21px;[\s\S]*height: 21px;[\s\S]*min-width: 21px;[\s\S]*min-height: 21px/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \.month-day-today \{[\s\S]*border-top: 0;[\s\S]*border-radius: 0 0 10px 10px/);
+  assert.match(app, /getInterfaceIcon\('church', '⛪'\)/);
+  assert.match(summaryStyles, /--mass-yes-bg: color-mix\(in srgb, var\(--affirmative\)/);
+  assert.match(summaryStyles, /font-family: Fraunces, Georgia/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\][\s\S]*display: flex;[\s\S]*flex-direction: column/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\] > \.week-operations \{[\s\S]*order: 6/);
+  assert.match(summaryStyles, /html\[data-interface-style="cool"\] \[data-week-panel\] > \.week-grid \{[\s\S]*order: 4/);
 });
 
 function readColorTokens(css) {

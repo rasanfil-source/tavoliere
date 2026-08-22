@@ -4,24 +4,36 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260816g';
+import { db } from './firebase-client.js?v=20260820u';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
+export const DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola';
+export const DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
-const ALLOWED_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
+const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
+const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
+const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
+const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
 const CENTER_AVATAR_MAX_LENGTH = 300000;
 const ALLOWED_THEME_PALETTES = new Set([
   'smeraldo',
   'terracotta',
-  'confetto'
+  'confetto',
+  'salvia',
+  'oliva',
+  'inchiostro',
+  'neutro'
 ]);
+const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
+let centerContactSettingsRevision = 0;
 
 export function loadCachedCenterContactSettings() {
   try {
@@ -31,22 +43,34 @@ export function loadCachedCenterContactSettings() {
     if (!cached || typeof cached !== 'object') return null;
     return {
       name: normalizeCenterName(cached.name),
+      appDisplayName: normalizeAppDisplayName(cached.appDisplayName),
+      appDisplaySubtitle: normalizeAppDisplaySubtitle(cached.appDisplaySubtitle),
       timezone: typeof cached.timezone === 'string' ? cached.timezone : 'Europe/Rome',
       reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
       participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
       themePalette: normalizeThemePalette(cached.themePalette),
+      interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
-      summaryLayout: normalizeLayout(cached.summaryLayout, 'international'),
-      kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic'),
+      summaryLayout: normalizeLayout(cached.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
+      kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+      monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+      monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+      summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel, 'name'),
       language: normalizeCenterLanguage(cached.language),
       administratorName: typeof cached.administratorName === 'string' ? cached.administratorName.trim() : '',
       administratorSignature: typeof cached.administratorSignature === 'string' ? cached.administratorSignature.trim() : '',
+      administratorParticipantId: typeof cached.administratorParticipantId === 'string' ? cached.administratorParticipantId.trim() : '',
       adminEmail: typeof cached.adminEmail === 'string' ? cached.adminEmail.trim() : '',
       administratorProfileRequired: cached.administratorProfileRequired === true,
       administratorProfileComplete: cached.administratorProfileComplete !== false,
       administratorPasswordRequired: cached.administratorPasswordRequired === true,
       adminPasswordSet: cached.adminPasswordSet === true,
       commonPasswordSet: cached.commonPasswordSet === true,
+      adminSharedPasswordSet: cached.adminSharedPasswordSet === true,
+      adminPasswordVersion: Number(cached.adminPasswordVersion || 0),
+      adminTechnicalEmail: typeof cached.adminTechnicalEmail === 'string' ? cached.adminTechnicalEmail : '',
+      adminTechnicalUid: typeof cached.adminTechnicalUid === 'string' ? cached.adminTechnicalUid : '',
+      adminPasswordRotationRequired: cached.adminPasswordRotationRequired === true,
       participantDataVersion: typeof cached.participantDataVersion === 'string' ? cached.participantDataVersion : '0',
       avatarVersion: typeof cached.avatarVersion === 'string' ? cached.avatarVersion : '',
       avatarDataUrl: loadCachedCenterAvatar()
@@ -92,7 +116,11 @@ export function cacheDefaultView(value) {
 }
 
 export function invalidateCenterContactSettingsCache() {
+  centerContactSettingsRevision += 1;
   centerContactSettingsCache = null;
+  // Do not let a read started before a save remain the shared promise for a
+  // later caller. Its completion is guarded by the revision below.
+  centerContactSettingsLoad = null;
 }
 
 export async function synchronizeCenterOwnerEmail(email) {
@@ -134,18 +162,27 @@ export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
 
 export async function updateCenterSettings({
   name,
+  appDisplayName,
+  appDisplaySubtitle,
   timezone,
   reservationCutoffs,
   participantContactSharingEnabled,
   themePalette,
+  interfaceStyle,
   defaultView,
   summaryLayout,
   kitchenLayout,
+  monthLayout,
+  monthControlsSide,
+  summaryResidentLabel,
   language,
   commonPassword,
+  administratorSharedPassword,
+  currentAdministratorSharedPassword,
   administratorName,
   administratorSignature,
   adminEmail,
+  adaptationsOnly = false,
   onProgress
 }) {
   const normalizedName = String(name || '').trim();
@@ -177,22 +214,45 @@ export async function updateCenterSettings({
   if (trimmedPassword !== '' && (trimmedPassword.length < 4 || trimmedPassword.length > 32)) {
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
   }
+  const trimmedAdministratorSharedPassword = typeof administratorSharedPassword === 'string'
+    ? administratorSharedPassword.trim()
+    : '';
+  if (trimmedAdministratorSharedPassword !== ''
+      && (trimmedAdministratorSharedPassword.length < 6
+        || trimmedAdministratorSharedPassword.length > 64)) {
+    throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
+  }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260816g');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260822a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
+    ...(appDisplayName === undefined
+      ? {}
+      : { appDisplayName: normalizeAppDisplayName(appDisplayName) }),
+    ...(appDisplaySubtitle === undefined
+      ? {}
+      : { appDisplaySubtitle: normalizeAppDisplaySubtitle(appDisplaySubtitle) }),
     timezone,
     reservationCutoffs: normalizedCutoffs,
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: normalizeThemePalette(themePalette),
+    interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
-    summaryLayout: normalizeLayout(summaryLayout, 'international'),
-    kitchenLayout: normalizeLayout(kitchenLayout, 'classic'),
-    language: language || 'it',
+    summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+    monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+    monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'name'),
+    language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
+    administratorSharedPassword: trimmedAdministratorSharedPassword,
+    currentAdministratorSharedPassword: typeof currentAdministratorSharedPassword === 'string'
+      ? currentAdministratorSharedPassword
+      : '',
     administratorName: normalizedAdministratorName,
     administratorSignature: normalizedAdministratorSignature,
     adminEmail: normalizedAdministratorEmail,
+    adaptationsOnly: adaptationsOnly === true,
     onProgress
   });
   invalidateCenterContactSettingsCache();
@@ -251,24 +311,50 @@ function refreshCenterContactSettings() {
   if (centerContactSettingsLoad) {
     return centerContactSettingsLoad;
   }
-  centerContactSettingsLoad = getDoc(doc(db, 'centers', getActiveCenterId()))
-    .then(async (snapshot) => {
-      const data = snapshot.exists() ? snapshot.data() : {};
+  const requestRevision = centerContactSettingsRevision;
+  let request;
+  const centerId = getActiveCenterId();
+  request = Promise.all([
+    getDoc(doc(db, 'centers', centerId)),
+    getDoc(doc(db, 'centers', centerId, 'presentationSettings', 'current')).catch(() => null),
+    getDoc(doc(db, 'centers', centerId, 'participantMetadata', 'current')).catch(() => null)
+  ])
+    .then(async ([snapshot, presentationSnapshot, participantMetadataSnapshot]) => {
+      // A save may have invalidated this request while Firestore was still
+      // resolving. Re-read authoritative settings instead of publishing the
+      // stale snapshot into memory or localStorage.
+      if (requestRevision !== centerContactSettingsRevision) {
+        if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
+        return refreshCenterContactSettings();
+      }
+      const centerData = snapshot.exists() ? snapshot.data() : {};
+      const presentationData = presentationSnapshot?.exists() ? presentationSnapshot.data() : {};
+      const participantMetadata = participantMetadataSnapshot?.exists()
+        ? participantMetadataSnapshot.data()
+        : {};
+      const data = { ...centerData, ...presentationData };
       const avatarVersion = typeof data.avatarVersion === 'string' ? data.avatarVersion : '';
       const avatarDataUrl = await resolveCenterAvatar(avatarVersion)
         .catch(() => loadCachedCenterAvatar());
       const value = {
         name: normalizeCenterName(data.name),
+        appDisplayName: normalizeAppDisplayName(data.appDisplayName),
+        appDisplaySubtitle: normalizeAppDisplaySubtitle(data.appDisplaySubtitle),
         timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
         reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
         themePalette: normalizeThemePalette(data.themePalette),
+        interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
-        summaryLayout: normalizeLayout(data.summaryLayout, 'international'),
-        kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic'),
+        summaryLayout: normalizeLayout(data.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
+        kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+        monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
+        monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'name'),
         language: normalizeCenterLanguage(data.language),
         administratorName: typeof data.administratorName === 'string' ? data.administratorName.trim() : '',
         administratorSignature: typeof data.administratorSignature === 'string' ? data.administratorSignature.trim() : '',
+        administratorParticipantId: typeof data.administratorParticipantId === 'string' ? data.administratorParticipantId.trim() : '',
         adminEmail: typeof data.adminEmail === 'string' ? data.adminEmail.trim() : '',
         administratorProfileRequired: data.administratorProfileRequired === true,
         administratorProfileComplete: data.administratorProfileRequired !== true
@@ -276,7 +362,14 @@ function refreshCenterContactSettings() {
         administratorPasswordRequired: data.administratorPasswordRequired === true,
         adminPasswordSet: data.administratorPasswordRequired === true,
         commonPasswordSet: typeof data.commonPassword === 'string' && data.commonPassword.length >= 4,
-        participantDataVersion: timestampVersion(data.participantDataUpdatedAt),
+        adminSharedPasswordSet: data.adminSharedPasswordSet === true,
+        adminPasswordVersion: Number(data.adminPasswordVersion || 0),
+        adminTechnicalEmail: typeof data.adminTechnicalEmail === 'string' ? data.adminTechnicalEmail : '',
+        adminTechnicalUid: typeof data.adminTechnicalUid === 'string' ? data.adminTechnicalUid : '',
+        adminPasswordRotationRequired: data.adminPasswordRotationRequired === true,
+        participantDataVersion: timestampVersion(
+          participantMetadata.updatedAt || centerData.participantDataUpdatedAt
+        ),
         avatarVersion,
         avatarDataUrl
       };
@@ -286,9 +379,10 @@ function refreshCenterContactSettings() {
       return value;
     })
     .finally(() => {
-      centerContactSettingsLoad = null;
+      if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
     });
-  return centerContactSettingsLoad;
+  centerContactSettingsLoad = request;
+  return request;
 }
 
 function normalizeCenterName(value) {
@@ -297,11 +391,38 @@ function normalizeCenterName(value) {
 }
 
 function normalizeThemePalette(value) {
-  return ALLOWED_THEME_PALETTES.has(value) ? value : 'smeraldo';
+  return ALLOWED_THEME_PALETTES.has(value) ? value : 'inchiostro';
 }
 
-function normalizeLayout(value, fallback) {
-  return ALLOWED_LAYOUT_VALUES.has(value) ? value : fallback;
+function normalizeAppDisplayName(value) {
+  const normalized = typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ')
+    : '';
+  return normalized && normalized.length <= 60
+    ? normalized
+    : DEFAULT_APP_DISPLAY_NAME;
+}
+
+function normalizeAppDisplaySubtitle(value) {
+  const normalized = typeof value === 'string'
+    ? value.trim().replace(/\s+/g, ' ')
+    : '';
+  return normalized && normalized.length <= 100
+    ? normalized
+    : DEFAULT_APP_DISPLAY_SUBTITLE;
+}
+
+function normalizeInterfaceStyle(value) {
+  const migratedValue = value === 'urban' ? 'urban-plus' : value;
+  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'urban-plus';
+}
+
+function normalizeLayout(value, fallback, allowedValues) {
+  return allowedValues.has(value) ? value : fallback;
+}
+
+function normalizeResidentLabel(value, fallback = 'name') {
+  return ALLOWED_RESIDENT_LABEL_VALUES.has(value) ? value : fallback;
 }
 
 async function resolveCenterAvatar(avatarVersion) {
