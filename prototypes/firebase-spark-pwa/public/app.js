@@ -300,6 +300,7 @@ const BASE_ADMIN_DIET_NUMBERS = Object.freeze([1, 2, 3, 4]);
 const RESIDENT_PREFERENCES_STORAGE_KEY = 'tavolaComune.residentPreferences';
 const MEAL_REMINDER_PREFERENCE_STORAGE_KEY = 'tavolaComune.mealRemindersEnabled';
 const MEAL_REMINDER_HISTORY_STORAGE_KEY = 'tavolaComune.mealReminderHistory';
+const MEAL_REMINDER_RECONCILE_MS = 60 * 1000;
 const INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let mealViewSwipeStart = null;
 let mealViewSwipeTimer = 0;
@@ -1301,9 +1302,17 @@ document.addEventListener('visibilitychange', () => {
   }
   if (!document.hidden) scheduleMealRemindersFromCurrentCalendar();
 });
+// I timer delle PWA possono essere sospesi dal sistema operativo. Quando la
+// pagina resta visibile riconciliamo il piano senza nuove letture Firebase;
+// al ritorno in primo piano visibilitychange/focus recuperano l'eventuale
+// promemoria ancora utile prima della chiusura delle prenotazioni.
+window.setInterval(() => {
+  if (!document.hidden) scheduleMealRemindersFromCurrentCalendar();
+}, MEAL_REMINDER_RECONCILE_MS);
 window.addEventListener('online', handleConnectivityChange);
 window.addEventListener('offline', handleConnectivityChange);
 window.addEventListener('focus', refreshAdminRolesWhenVisible);
+window.addEventListener('focus', scheduleMealRemindersFromCurrentCalendar);
 document.addEventListener('visibilitychange', refreshAdminRolesWhenVisible);
 
 function handleSummaryPanelClick(event) {
@@ -4995,43 +5004,46 @@ function syncAdminCenterSettingsForm() {
 function syncAdaptationsContextCopy() {
   const residentDeviceMode = state.residentSettingsMode;
   if (elements.adminSectionNav) elements.adminSectionNav.hidden = residentDeviceMode;
-  if (elements.adminAdaptationsTitle) {
-    elements.adminAdaptationsTitle.textContent = residentDeviceMode
-      ? t('resident.preferences.title')
-      : t('admin.adaptations.title');
-  }
-  if (elements.adminAdaptationsDescription) {
-    elements.adminAdaptationsDescription.textContent = residentDeviceMode
-      ? t('resident.preferences.description')
-      : t('admin.adaptations.description');
-  }
+  setContextualTranslation(
+    elements.adminAdaptationsTitle,
+    residentDeviceMode ? 'resident.preferences.title' : 'admin.adaptations.title'
+  );
+  setContextualTranslation(
+    elements.adminAdaptationsDescription,
+    residentDeviceMode ? 'resident.preferences.description' : 'admin.adaptations.description'
+  );
   if (elements.residentDevicePreferencesIntro) {
     elements.residentDevicePreferencesIntro.hidden = !residentDeviceMode;
     elements.residentDevicePreferencesIntro.textContent = t('resident.preferences.intro');
   }
-  if (elements.viewPreferenceHelp) {
-    elements.viewPreferenceHelp.textContent = residentDeviceMode
-      ? t('resident.preferences.defaultViewHelp')
-      : t('viewPreference.help');
-  }
+  setContextualTranslation(
+    elements.viewPreferenceHelp,
+    residentDeviceMode ? 'resident.preferences.defaultViewHelp' : 'viewPreference.help'
+  );
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.setAttribute('aria-label', residentDeviceMode
       ? t('resident.preferences.defaultViewAria')
       : t('viewPreference.label'));
   }
-  if (elements.adminLayoutsHelp) {
-    elements.adminLayoutsHelp.textContent = residentDeviceMode
-      ? t('resident.preferences.layoutsHelp')
-      : t('admin.adaptations.layouts.help');
-  }
+  setContextualTranslation(
+    elements.adminLayoutsHelp,
+    residentDeviceMode ? 'resident.preferences.layoutsHelp' : 'admin.adaptations.layouts.help'
+  );
   if (elements.adminKitchenLayoutPicker) {
     elements.adminKitchenLayoutPicker.hidden = residentDeviceMode;
   }
-  if (elements.adminAdaptationsSave) {
-    elements.adminAdaptationsSave.textContent = residentDeviceMode
-      ? t('resident.preferences.save')
-      : t('admin.adaptations.save');
-  }
+  setContextualTranslation(
+    elements.adminAdaptationsSave,
+    residentDeviceMode ? 'resident.preferences.save' : 'admin.adaptations.save'
+  );
+}
+
+function setContextualTranslation(element, key) {
+  if (!element) return;
+  // Anche una successiva applyTranslations() deve conservare il testo adatto
+  // al perimetro corrente (dispositivo residente oppure centro).
+  element.dataset.i18n = key;
+  element.textContent = t(key);
 }
 
 function syncAdminAdaptationsForm() {
@@ -6850,12 +6862,13 @@ function renderMonthScopeButtons(label, weekStart, mealTypeId) {
     ? getMealIcon(mealTypeId)
     : getInterfaceIcon('calendar', '▦');
   const effect = getMonthScopeEffect(weekStart, mealTypeId);
+  const editableMeals = getMonthScopeMeals(weekStart, mealTypeId);
   const action = effect === 'PRESENT' ? 'prenota' : 'libera';
   const selectedClass = effect === 'ABSENT' ? ' month-scope-toggle-selected' : '';
   return `
     <span class="month-scope-group">
       <span class="month-scope-label"><span aria-hidden="true">${icon}</span><span>${label}</span></span>
-      <button type="button" class="month-scope-button month-scope-toggle${selectedClass}" data-month-scope="${scope}" data-week-start="${weekStart}" data-meal-type="${mealTypeId || ''}" data-month-effect="${effect}" aria-pressed="${effect === 'ABSENT'}" aria-label="${label}: ${action}" title="${label}: ${action}"><span class="month-scope-glyph" aria-hidden="true">${icon}</span></button>
+      <button type="button" class="month-scope-button month-scope-toggle${selectedClass}" data-month-scope="${scope}" data-week-start="${weekStart}" data-meal-type="${mealTypeId || ''}" data-month-effect="${effect}" aria-pressed="${effect === 'ABSENT'}" aria-label="${label}: ${action}" title="${label}: ${action}"${editableMeals.length > 0 ? '' : ' disabled'}><span class="month-scope-glyph" aria-hidden="true">${icon}</span></button>
     </span>
   `;
 }

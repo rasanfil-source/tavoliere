@@ -651,6 +651,13 @@ test('le griglie usano listener delegati invece di ricrearli a ogni render', () 
   assert.doesNotMatch(app, /elements\.monthGrid\.querySelectorAll\([^\n]+\)\.forEach\([^\n]+addEventListener/);
 });
 
+test('i controlli multipli delle settimane senza pasti modificabili nascono disabilitati', () => {
+  assert.match(
+    app,
+    /function renderMonthScopeButtons[\s\S]*const editableMeals = getMonthScopeMeals\(weekStart, mealTypeId\)[\s\S]*editableMeals\.length > 0 \? '' : ' disabled'/
+  );
+});
+
 test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipare le letture protette', () => {
   assert.match(participantData, /const SESSION_RECHECK_MS = 5 \* 60 \* 1000/);
   assert.match(participantData, /if \(canReuseCurrentSession\(user, 'PUBLIC'\)\)/);
@@ -838,6 +845,15 @@ test('il residente trova sempre il ritorno alle prenotazioni nel pannello Aspett
     app,
     /function renderResidentSettingsPanel\(\)[\s\S]*?elements\.topbarContextNav\.hidden = false;[\s\S]*?elements\.mealsReturnEntry\.hidden = false;/
   );
+});
+
+test('le traduzioni contestuali del pannello residente non vengono sovrascritte da i18n', () => {
+  const contextualCopy = app.match(/function syncAdaptationsContextCopy\(\)[\s\S]*?function setContextualTranslation[\s\S]*?\n}/)?.[0] || '';
+  assert.match(contextualCopy, /element\.dataset\.i18n = key/);
+  assert.match(contextualCopy, /resident\.preferences\.title/);
+  assert.match(contextualCopy, /resident\.preferences\.description/);
+  assert.match(contextualCopy, /resident\.preferences\.layoutsHelp/);
+  assert.match(contextualCopy, /resident\.preferences\.save/);
 });
 
 test('la scheda Aspetto usa tutta la larghezza disponibile sul tablet', () => {

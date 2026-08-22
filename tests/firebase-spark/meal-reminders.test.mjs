@@ -66,6 +66,9 @@ test('permesso, preferenza e disattivazione restano gesti espliciti del disposit
   assert.match(app, /addEventListener\('change', handleMealReminderPreferenceChange\)/);
   assert.match(app, /Notification\.requestPermission\(\)/);
   assert.match(app, /registration\.showNotification/);
+  assert.match(app, /const MEAL_REMINDER_RECONCILE_MS = 60 \* 1000/);
+  assert.match(app, /window\.setInterval\([\s\S]*scheduleMealRemindersFromCurrentCalendar\(\)[\s\S]*MEAL_REMINDER_RECONCILE_MS/);
+  assert.match(app, /window\.addEventListener\('focus', scheduleMealRemindersFromCurrentCalendar\)/);
   assert.match(worker, /addEventListener\('notificationclick'/);
   assert.match(worker, /searchParams\.set\('mealReminders', 'off'\)/);
   assert.match(worker, /'\/meal-reminders\.mjs'/);
