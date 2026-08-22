@@ -160,6 +160,7 @@ test('technical resident auth uses local Firebase persistence', () => {
   assert.match(firebaseClient, /signInWithEmailAndPassword/);
   assert.match(firebaseClient, /signInResidentTechnicalUser/);
   assert.match(firebaseClient, /withResidentTechnicalSession[\s\S]*getFirestore\(maintenanceAuth\.app\)/);
+  assert.match(firebaseClient, /async function runAuthMutation\(operation\)[\s\S]*await authPersistenceReady;[\s\S]*return await operation\(\)/);
   assert.match(firebaseClient, /waitForStableAuth/);
   assert.match(firebaseClient, /watchAuth[\s\S]*revision === eventRevision/);
 });

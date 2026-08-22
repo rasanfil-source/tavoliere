@@ -59,7 +59,7 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
   for (const manifest of [appManifest, kitchenManifest]) {
     const maskableIcons = manifest.icons.filter((icon) => icon.purpose === 'maskable');
     assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
-    assert.ok(maskableIcons.every((icon) => /\/icons\/icon-(192|512)\.png\?v=20260821b/.test(icon.src)));
+    assert.ok(maskableIcons.every((icon) => /\/icons\/launcher-(192|512)-maskable\.png\?v=20260822a/.test(icon.src)));
   }
 });
 
@@ -89,12 +89,13 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /styles\.css\?v=20260821c/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260821g/);
   assert.match(index, /app\.js\?v=20260821r/);
-  assert.match(index, /manifest\.webmanifest\?v=20260821c/);
+  assert.match(index, /manifest\.webmanifest\?v=20260822a/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260821e/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v374'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v375'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
   assert.match(serviceWorker, /launcher-512\.png\?v=20260821a/);
+  assert.match(serviceWorker, /launcher-512-maskable\.png\?v=20260822a/);
 });
 
 test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {

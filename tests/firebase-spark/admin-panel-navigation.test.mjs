@@ -140,7 +140,8 @@ test('il nome di presentazione appartiene al solo responsabile e non modifica lo
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
   assert.match(splash, /<img src="\/icons\/splash-512\.png/);
-  assert.doesNotMatch(splash, /Oggi a tavola|data-title/);
+  assert.match(splash, /startup-splash-title[\s\S]*Oggi a Tavola[\s\S]*Per prenotarsi sempre in tempo!/);
+  assert.doesNotMatch(splash, /data-title/);
 });
 
 test('la configurazione permette di impostare o sostituire la password amministratori', () => {

@@ -19,7 +19,7 @@
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
-    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260821c">
+    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260822a">
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
@@ -27,7 +27,7 @@
           return;
         }
 
-        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260821b';
+        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260822a';
         document.title = 'Prenotazione pasti - Cucina';
         document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
       }());
@@ -39,6 +39,10 @@
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
       <img src="/icons/splash-512.png?v=20260807a" alt="">
+      <p class="startup-splash-title">
+        <strong>Oggi a Tavola</strong>
+        <span>Per prenotarsi sempre in tempo!</span>
+      </p>
     </div>
     <main class="app-shell">
       <header class="topbar">
@@ -520,11 +524,6 @@
                     <span data-i18n="admin.centerSettings.name.label">Nome centro</span>
                     <input type="text" data-admin-center-name maxlength="120" placeholder="Nome della sede" data-i18n-placeholder="admin.centerSettings.name.placeholder">
                   </label>
-                  <label class="field-label admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
-                    <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
-                    <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
-                    <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Nome mostrato nella schermata del primo accesso. Può modificarlo soltanto il responsabile del centro.</small>
-                  </label>
                   <label class="field-label">
                     <span data-i18n="admin.centerSettings.timezone.label">Fuso orario</span>
                     <select data-admin-center-timezone>
@@ -635,6 +634,11 @@
                     <p data-admin-center-avatar-status aria-live="polite" data-i18n="admin.avatar.none">Nessuna icona inserita.</p>
                   </div>
                 </section>
+                <label class="field-label admin-app-display-name-picker" data-admin-app-display-name-picker hidden>
+                  <span data-i18n="admin.adaptations.appDisplayName.label">Nome di presentazione</span>
+                  <input type="text" data-admin-app-display-name maxlength="60" autocomplete="off" value="Oggi a tavola">
+                  <small class="field-help" data-i18n="admin.adaptations.appDisplayName.help">Nome mostrato nella schermata del primo accesso. Può modificarlo soltanto il responsabile del centro.</small>
+                </label>
               </section>
 
               <div class="admin-role-stack" id="admin-adaptations-section" data-admin-mobile-section="adaptations" tabindex="-1">

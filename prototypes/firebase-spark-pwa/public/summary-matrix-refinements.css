@@ -1982,6 +1982,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 .admin-calendar-extension {
   grid-template-columns: minmax(132px, 0.72fr) minmax(190px, 1.28fr) auto;
   align-items: center;
+  padding: 10px 12px;
 }
 
 .admin-calendar-extension > .section-title {
