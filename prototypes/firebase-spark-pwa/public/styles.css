@@ -60,12 +60,6 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--good) 30%, transparent);
 }
 
-.operational-link-meta {
-  margin: -2px 0 2px;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
 .admin-option-help {
   grid-column: 1 / -1;
   margin: -4px 0 4px 30px;
@@ -1287,63 +1281,6 @@ body[data-center-activation="true"] .admin-shell-body {
 
 .admin-shell[open] .admin-shell-caret {
   transform: rotate(180deg);
-}
-
-.operational-links {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
-}
-
-.operational-link-group {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  min-width: 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-
-.operational-link-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.link-active-status {
-  color: var(--good);
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
-.operational-link-group > span:not(.link-active-status) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.operational-links a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.operational-links button {
-  min-height: 44px;
-  padding: 0 10px;
-}
-
-.rotate-link-action {
-  justify-self: start;
 }
 
 .operational-links-status {
@@ -2827,14 +2764,6 @@ body[data-resident-login-visible="true"] .account-footer {
   .admin-shell-body {
     gap: 12px;
     padding: 0 12px 12px;
-  }
-
-  .operational-links {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .operational-links a {
-    justify-content: flex-start;
   }
 
   .owner-invitation-panel {
@@ -5885,10 +5814,6 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 }
 
 /* === Link per accedere === */
-
-.operational-links-legacy {
-  display: none !important;
-}
 
 .access-links-explanation {
   display: grid;

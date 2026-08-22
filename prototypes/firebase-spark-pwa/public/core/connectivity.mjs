@@ -6,7 +6,6 @@ export const NETWORK_ACTION_SELECTOR = [
   '[data-owner-invitation-generate]',
   '[data-bootstrap-button]',
   '[data-center-initializer-button]',
-  '[data-rotate-operational-link]',
   '[data-admin-center-settings-save]',
   '[data-admin-center-avatar-save]',
   '[data-admin-center-avatar-remove]',

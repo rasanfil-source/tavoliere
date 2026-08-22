@@ -160,7 +160,6 @@ const listAuditEvents = callDomain('audit', 'listAuditEvents');
 const transferCenterOwnership = callDomain('admin', 'transferCenterOwnership');
 const loadOperationalLinks = callDomain('accessLinks', 'loadOperationalLinks');
 const ensureOperationalLinks = callDomain('accessLinks', 'ensureOperationalLinks');
-const rotateOperationalLink = callDomain('accessLinks', 'rotateOperationalLink');
 const ensureKitchenDemoSession = callDomain('kitchen', 'ensureKitchenDemoSession');
 const loadKitchenCounts = callDomain('kitchen', 'loadKitchenCounts');
 const loadKitchenNote = callDomain('notes', 'loadKitchenNote');
@@ -969,16 +968,7 @@ const elements = {
   participantSummary: document.querySelector('[data-participant-summary]'),
   weekPrev: document.querySelector('[data-week-prev]'),
   weekNext: document.querySelector('[data-week-next]'),
-  operationalLinks: document.querySelector('[data-operational-links]'),
-  publicLink: document.querySelector('[data-public-link]'),
-  summaryLink: document.querySelector('[data-summary-link]'),
-  kitchenLink: document.querySelector('[data-kitchen-link]'),
-  publicLinkStatus: document.querySelector('[data-public-link-status]'),
-  publicLinkMeta: document.querySelector('[data-public-link-meta]'),
-  kitchenLinkStatus: document.querySelector('[data-kitchen-link-status]'),
-  kitchenLinkMeta: document.querySelector('[data-kitchen-link-meta]'),
   operationalLinksStatus: document.querySelector('[data-operational-links-status]'),
-  rotateLinkButtons: document.querySelectorAll('[data-rotate-operational-link]'),
   summaryNavLinks: document.querySelectorAll('[data-summary-nav-link]'),
   participantWeekNavLinks: document.querySelectorAll('[data-participant-week-nav-link]'),
   monthNavLinks: document.querySelectorAll('[data-month-nav-link]'),
@@ -1295,7 +1285,6 @@ elements.weekKitchenNoteSave.addEventListener('click', handleWeekKitchenNoteSave
 elements.weekKitchenNoteList.addEventListener('click', handleWeekKitchenNoteListClick);
 elements.adminPhoneConsent.addEventListener('change', syncAdminCheckboxes);
 elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
-elements.operationalLinks.addEventListener('click', handleOperationalLinksClick);
 [
   ...elements.summaryNavLinks,
   ...elements.participantWeekNavLinks,
@@ -1750,17 +1739,9 @@ function initializeOperationalLinks() {
   const publicToken = state.adminRole
     ? state.operationalLinks.publicTokenId
     : requestedToken || state.operationalLinks.publicTokenId;
-  const kitchenToken = state.adminRole
-    ? state.operationalLinks.kitchenTokenId
-    : state.mode === 'kitchen' && requestedToken
-      ? requestedToken
-      : state.operationalLinks.kitchenTokenId;
   const centerId = getActiveCenterId();
   const personalAccess = 'friendly';
   const monthHref = buildOperationalLink('participant', publicToken, centerId, personalAccess);
-  elements.publicLink.href = monthHref;
-  elements.summaryLink.href = buildOperationalLink('summary', publicToken, centerId);
-  elements.kitchenLink.href = buildOperationalLink('kitchen', kitchenToken, centerId);
   elements.summaryNavLinks.forEach((link) => {
     link.href = buildOperationalLink('summary', publicToken, centerId, personalAccess);
   });
@@ -1783,7 +1764,6 @@ function initializeOperationalLinks() {
     personalAccess
   );
   syncOperationalLinkActionState();
-  renderOperationalLinkMetadata();
 }
 
 function normalizeOperationalLinksFromAuthorizedLogin(data) {
@@ -1818,13 +1798,6 @@ function syncOperationalLinkActionState(
       : Boolean(state.operationalLinks.publicTokenId);
     button.disabled = !canView || !tokenReady;
   });
-  document.querySelectorAll('[data-copy-link]').forEach((button) => {
-    const kitchen = button.dataset.copyLink === '[data-kitchen-link]';
-    const tokenReady = kitchen
-      ? Boolean(state.operationalLinks.kitchenTokenId)
-      : Boolean(state.operationalLinks.publicTokenId);
-    button.disabled = !canView || !tokenReady;
-  });
 }
 
 function buildOperationalLink(view, token, centerId, access = '') {
@@ -1832,20 +1805,6 @@ function buildOperationalLink(view, token, centerId, access = '') {
   if (token) params.set('t', token);
   if (access) params.set('access', access);
   return `${window.location.origin}/?${params.toString()}`;
-}
-
-function renderOperationalLinkMetadata() {
-  const linkRows = [
-    [elements.publicLinkStatus, elements.publicLinkMeta, state.operationalLinks.publicCreatedAt, state.operationalLinks.publicTokenId],
-    [elements.kitchenLinkStatus, elements.kitchenLinkMeta, state.operationalLinks.kitchenCreatedAt, state.operationalLinks.kitchenTokenId]
-  ];
-  linkRows.forEach(([status, metadata, createdAt, tokenId]) => {
-    status.textContent = tokenId ? t('admin.access.active') : t('admin.access.notReady');
-    const date = normalizeClientDate(createdAt);
-    metadata.textContent = tokenId && date
-      ? t('admin.access.activatedOn', { date: new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' }).format(date) })
-      : tokenId ? t('admin.access.noActivationDate') : t('admin.access.reloadRequired');
-  });
 }
 
 function handleAdminSectionNavigation(event) {
@@ -2191,7 +2150,6 @@ function beginAdminAuthorizationCheck() {
   elements.authActions.hidden = true;
   elements.adminEmailAuth.hidden = true;
   elements.adminPanel.hidden = true;
-  elements.operationalLinks.hidden = true;
   elements.authStatus.textContent = t('app.header.verifyingAuth', {}, {
     fallback: 'Accesso al pannello in corso…'
   });
@@ -2410,10 +2368,8 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   elements.authUid.textContent = '';
   elements.centerInitializer.hidden = !access.needsInitialization;
   elements.bootstrapButton.hidden = !hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR);
-  elements.operationalLinks.hidden = !hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
   if (isPlatformOwner) {
     elements.bootstrapButton.hidden = true;
-    elements.operationalLinks.hidden = true;
   }
   // Keep the complete panel atomic: participants, roles and operational links
   // must be ready before any actionable control becomes visible.
@@ -2568,7 +2524,6 @@ function setSignedOutState() {
   elements.adminCenterSelect.replaceChildren();
   elements.bootstrapButton.hidden = true;
   elements.centerInitializer.hidden = true;
-  elements.operationalLinks.hidden = true;
   elements.adminPanel.hidden = true;
   elements.ownerInvitationPanel.hidden = true;
   applyAdminCapabilityVisibility();
@@ -2755,7 +2710,6 @@ async function handleOwnerExit() {
   state.adminAuthorizationPending = true;
   elements.adminShell.setAttribute('aria-busy', 'true');
   elements.adminPanel.hidden = true;
-  elements.operationalLinks.hidden = true;
   elements.authStatus.textContent = t('auth.signingOut', {}, { fallback: 'Uscita in corso…' });
   try {
     await signOutCurrentUser();
@@ -3409,59 +3363,6 @@ async function handleCenterInitialization() {
     setBootstrapProgress(false);
     elements.centerInitializerButton.disabled = false;
   }
-}
-
-async function handleCopyLink(event) {
-  const target = document.querySelector(event.currentTarget.dataset.copyLink || '');
-  if (!target?.href) return;
-  try {
-    await navigator.clipboard.writeText(target.href);
-    event.currentTarget.textContent = t('status.copied');
-    window.setTimeout(() => { event.currentTarget.textContent = t('common.actions.copy'); }, 1400);
-  } catch {
-    openAccessShareDialog('Collegamento', target.href);
-  }
-}
-
-function handleOperationalLinksClick(event) {
-  const copyButton = event.target.closest('[data-copy-link]');
-  if (copyButton) {
-    handleCopyLink({ currentTarget: copyButton });
-    return;
-  }
-  const rotateButton = event.target.closest('[data-rotate-operational-link]');
-  if (rotateButton) {
-    handleOperationalLinkRotation(rotateButton);
-  }
-}
-
-function handleOperationalLinkRotation(button) {
-  const scope = button.dataset.rotateOperationalLink;
-  return operationGuard.run(`admin:rotate-link:${scope}`, async () => {
-    if (!hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) return;
-    const label = scope === 'KITCHEN' ? 'della cucina' : 'dei residenti e del riepilogo';
-    const decision = await showActionDialog({
-      title: t('dialog.rotateLink.title'),
-      message: t('dialog.rotateLink.message', { label }),
-      confirmLabel: t('common.actions.reset')
-    });
-    if (!decision.confirmed) return;
-
-    button.disabled = true;
-    button.setAttribute('aria-busy', 'true');
-    elements.operationalLinksStatus.textContent = 'Rigenero il collegamento...';
-    try {
-      state.operationalLinks = await rotateOperationalLink(scope);
-      initializeOperationalLinks();
-      renderAdminOverview();
-      elements.operationalLinksStatus.textContent = 'Nuovo collegamento attivo. Ora puoi copiarlo e inviarlo.';
-    } catch (error) {
-      elements.operationalLinksStatus.textContent = friendlyErrorMessage(error, 'Collegamento non rigenerato');
-    } finally {
-      button.disabled = false;
-      button.removeAttribute('aria-busy');
-    }
-  });
 }
 
 async function refreshNow(source) {
@@ -6105,7 +6006,6 @@ function applyAdminCapabilityVisibility() {
     if (elements.adminAdministratorPasswordRow) elements.adminAdministratorPasswordRow.hidden = true;
     if (elements.bootstrapButton) elements.bootstrapButton.hidden = true;
     elements.adminRoleOptions.forEach((option) => { option.hidden = true; });
-    elements.rotateLinkButtons.forEach((button) => { button.hidden = true; });
     syncOperationalLinkActionState(false);
     mountAdminSection('adaptations');
     renderAdminMobileSection();
@@ -6114,7 +6014,6 @@ function applyAdminCapabilityVisibility() {
   const canConfigureCenter = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   const canManageAdaptations = state.residentSettingsMode
     || hasCurrentCapability(CAPABILITIES.MANAGE_ADAPTATIONS);
-  const canManageOperationalLinks = hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS);
   const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
   const canManagePeople = hasCurrentCapability(CAPABILITIES.MANAGE_PARTICIPANTS);
   const canManageAccess = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
@@ -6181,9 +6080,6 @@ function applyAdminCapabilityVisibility() {
   if (elements.bootstrapButton) {
     elements.bootstrapButton.hidden = !profileComplete || !canManageCalendar;
   }
-  elements.rotateLinkButtons.forEach((button) => {
-    button.hidden = !canManageOperationalLinks;
-  });
   syncOperationalLinkActionState(canViewOperationalLinks);
   renderAdminMobileSection();
 }

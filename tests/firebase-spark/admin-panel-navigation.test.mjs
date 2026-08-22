@@ -123,7 +123,7 @@ test('i link operativi non sono utilizzabili senza token e viaggiano con il logi
   assert.match(participantData, /administratorAuthorized: true,[\s\S]*operationalLinks/);
   assert.match(app, /normalizeOperationalLinksFromAuthorizedLogin\(result\.operationalLinks\)/);
   assert.match(app, /button\.disabled = !canView \|\| !tokenReady/);
-  assert.match(app, /status\.textContent = tokenId \? t\('admin\.access\.active'\) : t\('admin\.access\.notReady'\)/);
+  assert.match(app, /document\.querySelectorAll\('\[data-access-link\], \[data-share-access-link\]'\)/);
 });
 
 test('il nome di presentazione appartiene al solo responsabile e non modifica lo splash successivo', () => {

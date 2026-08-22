@@ -468,28 +468,6 @@
               <a data-admin-nav-activity data-admin-section-id="activity" href="#admin-activity-section" role="tab" aria-controls="admin-activity-section" data-i18n="admin.activity.title">Manutenzione</a>
             </nav>
             <div class="admin-overview-content" data-admin-mobile-section="overview">
-              <div class="operational-links operational-links-legacy" data-operational-links hidden aria-hidden="true">
-                <section class="operational-link-group" aria-labelledby="resident-links-title">
-                  <div class="operational-link-head">
-                    <strong id="resident-links-title" data-i18n="role.resident">Residenti</strong>
-                    <span class="link-active-status" data-public-link-status>Attivo</span>
-                  </div>
-                  <p class="operational-link-meta" data-public-link-meta>Data di attivazione non disponibile</p>
-                  <span><a data-public-link href="/?view=participant" data-i18n="app.header.pasti">Prenotazioni</a><button type="button" class="tertiary-action" data-copy-link="[data-public-link]" data-i18n="common.actions.copy">Copia</button></span>
-                  <span><a data-summary-link href="/?view=summary" data-i18n="summary.view.todayTitle">Oggi a tavola</a><button type="button" class="tertiary-action" data-copy-link="[data-summary-link]" data-i18n="common.actions.copy">Copia</button></span>
-                  <button type="button" class="secondary-action rotate-link-action" data-rotate-operational-link="PUBLIC" data-i18n="admin.access.links.rotate">Rigenera link residenti</button>
-                </section>
-                <section class="operational-link-group" aria-labelledby="kitchen-links-title">
-                  <div class="operational-link-head">
-                    <strong id="kitchen-links-title" data-i18n="role.kitchen">Cucina</strong>
-                    <span class="link-active-status" data-kitchen-link-status>Attivo</span>
-                  </div>
-                  <p class="operational-link-meta" data-kitchen-link-meta>Data di attivazione non disponibile</p>
-                  <span><a data-kitchen-link href="/?view=kitchen" data-i18n="kitchen.view.title">Pannello cucina</a><button type="button" class="tertiary-action" data-copy-link="[data-kitchen-link]" data-i18n="common.actions.copy">Copia</button></span>
-                  <button type="button" class="secondary-action rotate-link-action" data-rotate-operational-link="KITCHEN" data-i18n="admin.access.links.rotate">Rigenera link cucina</button>
-                </section>
-                <p class="operational-links-status" data-operational-links-status aria-live="polite">Collegamenti attivi</p>
-              </div>
               <section class="admin-overview-band" id="admin-overview-section" tabindex="-1" aria-labelledby="admin-overview-title">
                 <div class="section-title admin-overview-heading">
                   <h2 id="admin-overview-title" data-i18n="admin.overview.links">Link per accedere</h2>
@@ -511,7 +489,7 @@
                     </span>
                   </p>
                 </div>
-
+                <p class="operational-links-status" data-operational-links-status aria-live="polite"></p>
               </section>
             </div>
             <div class="admin-dashboard-grid">

@@ -107,18 +107,19 @@ test('le password degli amministratori restano esclusivamente in Firebase Authen
 test('ogni centro genera collegamenti distinti per residenti riepilogo e cucina', () => {
   assert.match(app, /buildOperationalLink\('participant', publicToken, centerId/);
   assert.match(app, /buildOperationalLink\('summary', publicToken, centerId/);
-  assert.match(app, /buildOperationalLink\('kitchen', kitchenToken, centerId/);
-  assert.match(index, /data-copy-link="\[data-public-link\]"/);
-  assert.match(index, /data-copy-link="\[data-kitchen-link\]"/);
+  assert.match(app, /buildOperationalLink\('kitchen', links\.kitchenTokenId, centerId\)/);
+  assert.match(index, /data-access-link="pasti"/);
+  assert.match(index, /data-access-link="cucina"/);
+  assert.match(index, /data-share-access-link="pasti"/);
+  assert.match(index, /data-share-access-link="cucina"/);
   assert.match(index, /data-owner-invitation-generate/);
   assert.match(index, /data-owner-invitation-link/);
   assert.match(app, /createCenterInvitation/);
   assert.match(app, /url\.searchParams\.set\('invite', invitation\.invitationId\)/);
   assert.match(accessLinks, /privateSettings', SETTINGS_DOCUMENT_ID/);
-  assert.match(accessLinks, /transaction\.update\(previousTokenRef/);
+  assert.match(accessLinks, /if \(currentLinks\.publicTokenId && currentLinks\.kitchenTokenId\)/);
   assert.match(accessLinks, /AUDIT_ACTIONS\.ROTATE_OPERATIONAL_LINK/);
-  assert.match(index, /data-rotate-operational-link="PUBLIC"/);
-  assert.match(index, /data-rotate-operational-link="KITCHEN"/);
+  assert.doesNotMatch(index, /data-rotate-operational-link/);
 });
 
 test('la PWA cucina ha identita propria e si apre direttamente sui conteggi', () => {

@@ -22,7 +22,6 @@ import {
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { loadOperationalLinks, rotateOperationalLink } from './access-links.js?v=20260816h';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
 const CENTER_INVITATION_COLLECTION = 'centerInvitations';

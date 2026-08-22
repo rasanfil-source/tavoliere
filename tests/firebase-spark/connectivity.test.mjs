@@ -35,8 +35,7 @@ test('la policy copre tutte le famiglie di modifica quotidiana e amministrativa'
     'data-week-diet-save',
     'data-week-kitchen-note-save',
     'data-admin-save-button',
-    'data-admin-transfer-ownership',
-    'data-rotate-operational-link'
+    'data-admin-transfer-ownership'
   ]) {
     assert.match(NETWORK_ACTION_SELECTOR, new RegExp(`\\[${marker}\\]`));
   }
