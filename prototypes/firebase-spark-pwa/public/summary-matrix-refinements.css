@@ -1502,6 +1502,56 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   font-size: 0.78rem;
 }
 
+.summary-mass-metadata {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.summary-mass-metadata-dot {
+  width: 0.58rem;
+  height: 0.58rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.summary-mass-metadata strong {
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+}
+
+.summary-mass-metadata-yes {
+  color: var(--affirmative);
+}
+
+.summary-mass-metadata-no {
+  color: var(--danger);
+}
+
+.summary-future-card-head > div {
+  min-width: 0;
+}
+
+.summary-future-card-head > div strong,
+.summary-future-card-head > div time {
+  display: block;
+}
+
+.summary-future-card-head .summary-mass-metadata {
+  margin-inline-start: auto;
+}
+
 .summary-international-card dl {
   margin: 0;
 }

@@ -69,13 +69,12 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
       ${screens.map((screen) => `
         <article class="summary-future-card" data-summary-future-screen="${screen.index}" aria-hidden="${screen.index !== activeIndex}">
           <header class="summary-future-card-head">
-            <strong>${escapeHtml(t(screen.labelKey))}</strong>
-            <time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time>
+            <div><strong>${escapeHtml(t(screen.labelKey))}</strong><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></div>
+            ${renderFutureMass(screen)}
           </header>
           <div class="summary-future-meals">
             ${screen.columns.map((column) => renderFutureMeal(column, residentLabel)).join("")}
           </div>
-          ${renderFutureMass(screen)}
         </article>
       `).join("")}
     </div>
@@ -156,9 +155,12 @@ function renderFuturePerson(person, residentLabel) {
 function renderFutureMass(screen) {
   const status = screen.columns.find((column) => column.dayIndex === screen.index)?.dayMassStatus;
   if (!status || status === "UNKNOWN") return "";
+  return renderMassMetadata(status);
+}
+
+function renderMassMetadata(status) {
   const yes = status === "YES";
-  const massDayLabel = relativeDayLabel(Math.min(2, Number(screen.index || 0) + 1));
-  return `<div class="summary-future-mass"><span>${escapeHtml(t("summary.mass"))}</span><strong class="summary-future-mass-${yes ? "yes" : "no"}">${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}<small>(${escapeHtml(massDayLabel)})</small></strong></div>`;
+  return `<span class="summary-mass-metadata summary-mass-metadata-${yes ? "yes" : "no"}"><span>${escapeHtml(t("summary.mass"))}:</span><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong></span>`;
 }
 
 export function scrollSummaryMatrix(
@@ -494,9 +496,13 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
     <section class="summary-matrix-screen summary-international-screen${densityClass}" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
       ${kitchen ? `<h2 class="sr-only">${escapeHtml(`${t("kitchen.view.title")}: ${t(screen.labelKey)}`)}</h2>` : `<header class="summary-international-title"><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></header>`}
       <div class="summary-international-grid">
-        ${screen.columns.map((column) => renderInternationalCard(column, { kitchen, residentLabel })).join("")}
+        ${screen.columns.map((column, index, columns) => renderInternationalCard(column, {
+          kitchen,
+          residentLabel,
+          showMassMetadata: !kitchen && (index === 0 || columns[index - 1]?.dateId !== column.dateId)
+        })).join("")}
       </div>
-      ${screen.hasMassInformation ? renderInternationalMass(screen, kitchen) : ""}
+      ${kitchen && screen.hasMassInformation ? renderInternationalMass(screen, true) : ""}
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
@@ -511,13 +517,14 @@ function hasSpecialOperationalContent(screen) {
   ) || screen.notesByDate.length > 0;
 }
 
-function renderInternationalCard(column, { kitchen, residentLabel = "name" }) {
+function renderInternationalCard(column, { kitchen, residentLabel = "name", showMassMetadata = false }) {
   const diets = kitchen ? renderKitchenDietCell(column) : renderDietCell(column);
   return `
     <article class="summary-international-card summary-day-tone-${normalizeDayTone(column.dayIndex)}${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
         <div><strong>${escapeHtml(localizedMealLabel(column, { breakfastTomorrow: true }))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
+        ${showMassMetadata && column.dayMassStatus !== "UNKNOWN" ? renderMassMetadata(column.dayMassStatus) : ""}
         ${column.guestCount > 0 ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>` : ""}
       </header>
       <dl>

@@ -61,6 +61,18 @@ test('il mobile usa la stessa struttura per le due schermate anche senza situazi
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-row-meals td \{\s*height: 62px/);
 });
 
+test('Internazionale e Futura integrano la Messa nell intestazione ma Cucina conserva la fascia', () => {
+  assert.match(view, /function renderMassMetadata\(status\)/);
+  assert.match(view, /summary-mass-metadata-dot/);
+  assert.match(view, /showMassMetadata: !kitchen/);
+  assert.match(view, /index === 0 \|\| columns\[index - 1\]\?\.dateId !== column\.dateId/);
+  assert.match(view, /\$\{renderFutureMass\(screen\)\}[\s\S]*<\/header>/);
+  assert.match(view, /\$\{kitchen && screen\.hasMassInformation \? renderInternationalMass\(screen, true\) : ""\}/);
+  assert.match(styles, /\.summary-mass-metadata \{[\s\S]*border-radius: 999px/);
+  assert.match(styles, /\.summary-mass-metadata-yes \{[\s\S]*var\(--affirmative\)/);
+  assert.match(styles, /\.summary-mass-metadata-no \{[\s\S]*var\(--danger\)/);
+});
+
 test('Originale conserva la banda colorata comune in prenotazioni riepilogo e pannello', () => {
   assert.match(styles, /html\[data-interface-family="original"\] \.topbar \{[\s\S]*background: var\(--primary\)[\s\S]*color: var\(--surface\)/);
   assert.match(styles, /html\[data-interface-family="original"\] \.topbar h1,[\s\S]*\[data-title-center\][\s\S]*color: inherit/);
