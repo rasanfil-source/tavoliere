@@ -1032,10 +1032,20 @@ service cloud.firestore {
             'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.keys().hasOnly([
-            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+            'centerId', 'actorUid', 'actorLabel', 'actorParticipantId',
+            'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.centerId == centerId
           && request.resource.data.actorUid == request.auth.uid
+          && (!request.resource.data.keys().hasAny(['actorLabel']) || (
+            request.resource.data.actorLabel is string
+            && request.resource.data.actorLabel.size() > 0
+            && request.resource.data.actorLabel.size() <= 120
+          ))
+          && (!request.resource.data.keys().hasAny(['actorParticipantId']) || (
+            request.resource.data.actorParticipantId is string
+            && request.resource.data.actorParticipantId.size() <= 160
+          ))
           && request.resource.data.action in [
             'DELETE_PARTICIPANT', 'TRANSFER_OWNERSHIP',
             'UPDATE_ADMIN_PERMISSIONS', 'UPSERT_PARTICIPANT',
@@ -1061,10 +1071,20 @@ service cloud.firestore {
             'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.keys().hasOnly([
-            'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+            'centerId', 'actorUid', 'actorLabel', 'actorParticipantId',
+            'action', 'targetType', 'targetId', 'summary', 'createdAt'
           ])
           && request.resource.data.centerId == centerId
           && request.resource.data.actorUid == request.auth.uid
+          && (!request.resource.data.keys().hasAny(['actorLabel']) || (
+            request.resource.data.actorLabel is string
+            && request.resource.data.actorLabel.size() > 0
+            && request.resource.data.actorLabel.size() <= 120
+          ))
+          && (!request.resource.data.keys().hasAny(['actorParticipantId']) || (
+            request.resource.data.actorParticipantId is string
+            && request.resource.data.actorParticipantId.size() <= 160
+          ))
           && request.resource.data.action in [
             'DELETE_PARTICIPANT', 'UPSERT_PARTICIPANT', 'UPDATE_CENTER_SETTINGS'
           ]

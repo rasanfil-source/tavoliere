@@ -102,7 +102,7 @@ const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
   admin: './admin-center.js?v=20260822a',
-  audit: './audit-log.js?v=20260816g',
+  audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260821b',
@@ -856,6 +856,7 @@ const elements = {
   adminAuditDateFilter: document.querySelector('[data-admin-audit-date-filter]'),
   adminAuditUserFilter: document.querySelector('[data-admin-audit-user-filter]'),
   adminAuditTableWrap: document.querySelector('[data-admin-audit-table-wrap]'),
+  adminAuditMore: document.querySelector('[data-admin-audit-more]'),
   adminCalendarExtension: document.querySelector('[data-admin-calendar-extension]'),
   adminCalendarExtensionStatus: document.querySelector('[data-admin-calendar-extension-status]'),
   adminPersonEditor: document.querySelector('#admin-person-editor'),
@@ -1182,6 +1183,7 @@ elements.adminAuditLoad.addEventListener('click', handleAuditDialogOpen);
 elements.adminAuditClose.addEventListener('click', () => elements.adminAuditDialog.close());
 elements.adminAuditDateFilter.addEventListener('input', renderFilteredAuditEvents);
 elements.adminAuditUserFilter.addEventListener('input', renderFilteredAuditEvents);
+elements.adminAuditMore.addEventListener('click', handleAuditLoad);
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
 elements.adminExportButton.addEventListener('click', handleAdminExport);
@@ -4388,10 +4390,22 @@ function handleAuditDialogOpen() {
 async function performAuditLoad() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
   elements.adminAuditLoad.disabled = true;
+  elements.adminAuditMore.disabled = true;
   elements.adminAuditLoad.setAttribute('aria-busy', 'true');
   elements.adminAuditStatus.textContent = t('admin.activity.loading');
   try {
-    state.adminAuditEvents = await listAuditEvents(50);
+    const page = await listAuditEvents({
+      maximum: 20,
+      cursors: state.adminAuditCursors || {}
+    });
+    const currentEvents = state.adminAuditEvents || [];
+    const knownIds = new Set(currentEvents.map((event) => event.eventId));
+    state.adminAuditEvents = [
+      ...currentEvents,
+      ...page.events.filter((event) => !knownIds.has(event.eventId))
+    ].sort((left, right) => auditTimestampValue(right.createdAt) - auditTimestampValue(left.createdAt));
+    state.adminAuditCursors = page.cursors;
+    state.adminAuditHasMore = page.hasMore;
     renderFilteredAuditEvents();
     elements.adminAuditLoad.dataset.loaded = 'true';
   } catch (error) {
@@ -4399,6 +4413,7 @@ async function performAuditLoad() {
     elements.adminAuditTableWrap.hidden = true;
   } finally {
     elements.adminAuditLoad.disabled = false;
+    elements.adminAuditMore.disabled = false;
     elements.adminAuditLoad.setAttribute('aria-busy', 'false');
   }
 }
@@ -4414,37 +4429,63 @@ function renderFilteredAuditEvents() {
   });
   renderAuditEvents(events);
   elements.adminAuditTableWrap.hidden = events.length === 0;
+  elements.adminAuditMore.hidden = state.adminAuditHasMore !== true;
   elements.adminAuditStatus.textContent = events.length === 0
     ? t('admin.activity.noEvents')
     : t('admin.activity.eventCount', { count: events.length });
 }
 
 function renderAuditEvents(events) {
-  const actionLabels = {
-    DELETE_PARTICIPANT: 'Persona eliminata',
-    REVOKE_ADMIN: 'Amministratore revocato',
-    REVOKE_ADMIN_INVITATION: 'Invito revocato',
-    ROTATE_OPERATIONAL_LINK: 'Collegamento rigenerato',
-    TRANSFER_OWNERSHIP: 'Responsabilità trasferita',
-    UPDATE_ADMIN_PERMISSIONS: 'Autorizzazioni aggiornate',
-    UPDATE_CENTER_SETTINGS: 'Impostazioni centro aggiornate',
-    UPSERT_PARTICIPANT: 'Anagrafica aggiornata'
-  };
   elements.adminAuditList.innerHTML = events.map((event) => {
     const date = event.createdAt?.toDate?.();
     const dateLabel = date instanceof Date
-      ? formatDateTime(date, { dateStyle: 'short', timeStyle: 'short' }, getLocale())
+      ? formatAuditDateTime(date)
       : '';
-    const actorLabel = event.actorName || event.actorEmail || event.actorUid || '—';
+    const actorLabel = resolveAuditActorLabel(event);
+    const actionLabel = event.summary || event.action;
     return `
       <tr>
-        <td><time>${escapeHtml(dateLabel)}</time></td>
-        <td>${escapeHtml(actorLabel)}</td>
-        <td><strong>${escapeHtml(actionLabels[event.action] || event.action)}</strong></td>
-        <td>${escapeHtml(event.summary || event.targetId)}</td>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whenColumn'))}"><time>${escapeHtml(dateLabel)}</time></td>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whoColumn'))}">${escapeHtml(actorLabel)}</td>
+        <td data-audit-label="${escapeHtml(t('admin.activity.whatColumn'))}"><strong>${escapeHtml(actionLabel)}</strong></td>
       </tr>
     `;
   }).join('');
+}
+
+function resolveAuditActorLabel(event) {
+  const account = (state.adminAccounts || []).find((item) => item.adminUid === event.actorUid);
+  const participantId = event.actorParticipantId || account?.participantId || '';
+  const participant = (state.adminParticipants || []).find((item) => item.participantId === participantId);
+  return participant?.displayName
+    || participant?.signature
+    || event.actorLabel
+    || account?.email
+    || event.actorUid
+    || t('admin.activity.unknownUser');
+}
+
+function formatAuditDateTime(date) {
+  const now = new Date();
+  const todayId = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateId = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDifference = Math.round((todayId - dateId) / 86400000);
+  const time = formatDateTime(date, { hour: '2-digit', minute: '2-digit' }, getLocale());
+  if (dayDifference === 0) return t('admin.activity.todayAt', { time });
+  if (dayDifference === 1) return t('admin.activity.yesterdayAt', { time });
+  return formatDateTime(date, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }, getLocale());
+}
+
+function auditTimestampValue(value) {
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return 0;
 }
 
 async function refreshAdminInvitationList() {

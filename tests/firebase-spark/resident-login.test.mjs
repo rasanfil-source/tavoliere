@@ -1076,10 +1076,12 @@ test('il registro essenziale viene caricato solo su richiesta e accompagna le sc
   assert.match(index, /data-admin-audit-section/);
   assert.match(index, /data-admin-audit-load/);
   assert.match(app, /function handleAuditLoad/);
-  assert.match(app, /handleAuditDialogOpen[\s\S]*listAuditEvents\(50\)/);
+  assert.match(app, /handleAuditDialogOpen[\s\S]*listAuditEvents\(\{[\s\S]*maximum: 20/);
   assert.doesNotMatch(app, /Promise\.all\(\[[^\]]*listAuditEvents/s);
   assert.match(auditLog, /export function appendAuditEvent/);
   assert.match(auditLog, /export async function listAuditEvents/);
+  assert.match(auditLog, /startAfter\(cursor\)/);
+  assert.match(auditLog, /actorLabel[\s\S]*actorParticipantId/);
   assert.match(participantData, /AUDIT_ACTIONS\.UPSERT_PARTICIPANT/);
   assert.match(participantData, /AUDIT_ACTIONS\.DELETE_PARTICIPANT/);
   assert.match(adminCenter, /AUDIT_ACTIONS\.TRANSFER_OWNERSHIP/);

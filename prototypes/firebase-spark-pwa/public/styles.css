@@ -6135,6 +6135,11 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   white-space: nowrap;
 }
 
+.admin-audit-more {
+  justify-self: center;
+  min-height: 44px;
+}
+
 .button-spinner {
   width: 16px;
   height: 16px;
@@ -6160,6 +6165,71 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   .admin-audit-table th,
   .admin-audit-table td {
     padding: 10px;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-audit-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .admin-audit-table,
+  .admin-audit-table tbody,
+  .admin-audit-table tr,
+  .admin-audit-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-audit-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-audit-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .admin-audit-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--surface);
+  }
+
+  .admin-audit-table td {
+    padding: 0;
+    border: 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+
+  .admin-audit-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .admin-audit-table td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+
+  .admin-audit-table td:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    color: var(--ink);
+    font-size: 0.96rem;
   }
 }
 

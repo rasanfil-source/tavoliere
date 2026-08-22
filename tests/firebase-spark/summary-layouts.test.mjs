@@ -174,10 +174,18 @@ test('la manutenzione usa righe uniformi, registro in dialogo e backup con avanz
   assert.match(index, /data-admin-audit-load[^>]*>Visualizza registro<\/button>/);
   assert.match(index, /data-admin-audit-dialog[\s\S]*data-admin-audit-date-filter[\s\S]*data-admin-audit-user-filter[\s\S]*<table/);
   assert.match(index, /data-admin-export-button[\s\S]*data-admin-export-spinner[^>]*hidden/);
-  assert.match(app, /listAuditEvents\(50\)[\s\S]*renderFilteredAuditEvents/);
+  assert.match(app, /listAuditEvents\(\{[\s\S]*maximum: 20[\s\S]*renderFilteredAuditEvents/);
   assert.match(app, /adminExportButton\.disabled = true[\s\S]*adminExportSpinner\.hidden = false/);
   assert.match(appStyles, /\.admin-maintenance-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(appStyles, /\.admin-maintenance-action,[\s\S]*min-height: 44px/);
+});
+
+test('il registro mostra Quando Chi Cosa e diventa una lista di schede su mobile', () => {
+  assert.match(index, />Quando<\/th>[\s\S]*>Chi<\/th>[\s\S]*>Cosa<\/th>/);
+  assert.match(index, /data-admin-audit-more[^>]*>Carica versioni precedenti<\/button>/);
+  assert.match(app, /function resolveAuditActorLabel[\s\S]*participant\?\.displayName/);
+  assert.match(app, /function formatAuditDateTime[\s\S]*admin\.activity\.todayAt[\s\S]*admin\.activity\.yesterdayAt/);
+  assert.match(appStyles, /@media \(max-width: 767px\)[\s\S]*\.admin-audit-table tr \{[\s\S]*display: grid/);
 });
 
 test('le note non sopravvivono al cambio di giorno e quelle passate non vengono mostrate', () => {
