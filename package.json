@@ -14,8 +14,8 @@
     "release:verify": "node tools/verify-hosting-release.mjs",
     "predeploy:gate": "node tools/predeploy-gate.mjs",
     "firebase": "node tools/firebase-cli.mjs",
-    "emulate:firebase-rules": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-rules emulators:exec --only firestore \"npm run test:firebase-rules\"",
-    "test:backup-restore-emulator": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-restore emulators:exec --only firestore \"node tools/restore-center-backup-emulator.mjs tests/fixtures/center-backup-valid.json center_restore_test --apply-emulator\"",
+    "emulate:firebase-rules": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-rules emulators:exec --only firestore \"npm --prefix ../.. run test:firebase-rules\"",
+    "test:backup-restore-emulator": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-restore emulators:exec --only firestore \"node ../../tools/restore-center-backup-emulator.mjs ../../tests/fixtures/center-backup-valid.json center_restore_test --apply-emulator\"",
     "deploy:firebase": "npm run predeploy:gate && node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting,firestore",
     "test:gate": "node --test tests/milestone1/*.test.mjs"
   },
