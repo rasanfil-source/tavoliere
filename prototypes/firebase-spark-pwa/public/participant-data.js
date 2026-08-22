@@ -37,7 +37,7 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260819b';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260818b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260822a';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
@@ -814,6 +814,7 @@ export async function listCenterAdministrators() {
       email: String(item.data().email || ''),
       role: String(item.data().role || ''),
       status: String(item.data().status || ''),
+      invitationId: String(item.data().invitationId || ''),
       massPermission: item.data().massPermission === true,
       dailyOperationsPermission: item.data().dailyOperationsPermission === true,
       passwordSetupRequired: item.data().passwordSetupRequired === true

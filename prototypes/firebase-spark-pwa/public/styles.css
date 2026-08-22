@@ -2355,14 +2355,27 @@ html[data-theme="neutro"] {
 
 .admin-inline-action {
   margin-top: 14px;
+  justify-self: start;
+}
+
+.admin-access-step-title {
+  margin: 20px 0 0;
+  font-size: 1rem;
 }
 
 .admin-succession-fields {
   display: grid;
   gap: 10px;
   margin-top: 18px;
-  padding-top: 16px;
+  padding: 16px;
   border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--surface) 94%, var(--primary));
+}
+
+.admin-succession-fields .admin-access-step-title {
+  margin-top: 0;
 }
 
 .admin-succession-fields .danger-action {
@@ -2371,8 +2384,10 @@ html[data-theme="neutro"] {
 
 .admin-candidate-fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 10px;
 }
 
 .admin-candidate-fields .secondary-action {
@@ -2846,6 +2861,15 @@ body[data-resident-login-visible="true"] .account-footer {
   }
 
   .admin-succession-fields .danger-action {
+    width: 100%;
+  }
+
+  .admin-candidate-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-candidate-fields .secondary-action,
+  .admin-inline-action {
     width: 100%;
   }
 

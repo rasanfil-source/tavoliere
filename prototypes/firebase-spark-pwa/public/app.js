@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260821ae';
+} from './i18n/i18n.mjs?v=20260822a';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -63,7 +63,7 @@ import {
   reduceAuthState,
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20260820a';
-import { toUserMessage } from './core/user-error.mjs?v=20260818b';
+import { toUserMessage } from './core/user-error.mjs?v=20260822a';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -101,13 +101,13 @@ const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPen
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260820v',
+  admin: './admin-center.js?v=20260822a',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260821b',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260821e'
+  participant: './participant-data.js?v=20260822a'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -4066,38 +4066,52 @@ async function refreshAdminParticipants() {
 function renderAdminLeadershipForm() {
   const canManageAdministrators = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
   const canTransferOwnership = hasCurrentCapability(CAPABILITIES.TRANSFER_OWNERSHIP);
+  const currentUid = getCurrentUser()?.uid || '';
   const activeParticipantIds = new Set(
     state.adminParticipants
       .filter((participant) => participant.status === 'ACTIVE')
       .map((participant) => participant.participantId)
   );
+  const acceptedInvitationByUid = new Map(state.adminInvitations
+    .filter((invitation) => (
+      invitation.role === 'ADMIN'
+      && invitation.status === 'USED'
+      && invitation.consumedBy
+    ))
+    .map((invitation) => [invitation.consumedBy, invitation]));
   const successors = state.adminAccounts.filter((admin) => (
     admin.role === 'ADMIN'
     && admin.status === 'ACTIVE'
     && admin.participantId
     && admin.passwordSetupRequired !== true
     && activeParticipantIds.has(admin.participantId)
+    && acceptedInvitationByUid.get(admin.adminUid)?.invitationId === admin.invitationId
   ));
 
   elements.adminLeadership.hidden = !canManageAdministrators;
   elements.adminInvitationGenerate.disabled = !canManageAdministrators;
 
-  elements.adminSuccessorSelect.innerHTML = successors.map((admin) => (
-    `<option value="${escapeHtml(admin.adminUid)}">${escapeHtml(admin.email || admin.adminUid)}</option>`
-  )).join('');
+  elements.adminSuccessorSelect.innerHTML = successors.length > 0
+    ? successors.map((admin) => {
+      const participant = state.adminParticipants.find((item) => item.participantId === admin.participantId);
+      const label = participant?.displayName || admin.email || admin.adminUid;
+      return `<option value="${escapeHtml(admin.adminUid)}">${escapeHtml(label)}</option>`;
+    }).join('')
+    : `<option value="">${escapeHtml(t('admin.succession.noAccepted'))}</option>`;
   elements.adminSuccessorSelect.disabled = !canTransferOwnership || successors.length === 0;
   elements.adminTransferOwnership.disabled = !canTransferOwnership || successors.length === 0;
   const successionFields = elements.adminSuccessorSelect.closest('.admin-succession-fields');
   if (successionFields) successionFields.hidden = false;
 
-  const currentUid = getCurrentUser()?.uid || '';
   const acceptedInvitation = state.adminRole === 'OWNER'
     ? state.adminInvitations.find((invitation) => (
       invitation.status === 'USED'
-      && invitation.createdBy === currentUid
       && invitation.consumedBy
       && invitation.consumedBy !== currentUid
-      && successors.some((admin) => admin.adminUid === invitation.consumedBy)
+      && successors.some((admin) => (
+        admin.adminUid === invitation.consumedBy
+        && admin.invitationId === invitation.invitationId
+      ))
     ))
     : null;
   const acceptedSuccessor = acceptedInvitation
@@ -4124,14 +4138,19 @@ function renderAdminLeadershipForm() {
   }
 
   if (canManageAdministrators && !acceptedInvitation && successors.length === 0) {
-    elements.adminLeadershipStatus.textContent = t('admin.succession.inviteAnother');
+    elements.adminLeadershipStatus.textContent = t('admin.succession.noAcceptedHelp');
   }
 
   // Selettore candidato amministratore
   const configuredAdministratorId = getConfiguredAdministratorParticipantId();
+  const administratorParticipantIds = new Set(state.adminAccounts
+    .filter((admin) => admin.status === 'ACTIVE')
+    .map((admin) => admin.participantId)
+    .filter(Boolean));
   const candidates = (state.adminParticipants || []).filter((participant) => (
     participant.status === 'ACTIVE'
       && participant.participantId !== configuredAdministratorId
+      && !administratorParticipantIds.has(participant.participantId)
   ));
   if (elements.adminCandidateSelect) {
     const placeholder = `<option value="" selected disabled>${escapeHtml(t('admin.invitations.choosePerson'))}</option>`;
@@ -4539,7 +4558,7 @@ function renderAdminInvitationList() {
     const canRevoke = active && (state.adminRole === 'OWNER' || invitation.role === 'MANAGER');
     return `
       <article class="admin-invitation-row">
-        <span><strong>${escapeHtml(roleLabel)}</strong><small>${escapeHtml(targetLabel)}</small></span>
+        <span><strong>${escapeHtml(targetLabel)}</strong><small>${escapeHtml(roleLabel)}</small></span>
         <span class="admin-invitation-state ${active ? 'admin-invitation-active' : invitation.status === 'USED' ? 'admin-invitation-accepted' : ''}">${escapeHtml(statusLabel)}</span>
         <span class="admin-invitation-dates">
           ${createdLabel ? `<time datetime="${escapeHtml(createdAt.toISOString())}">${escapeHtml(t('admin.invitations.sentOn', { date: createdLabel }))}</time>` : ''}

@@ -597,6 +597,22 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   if (!successor.participantId) {
     throw new Error('Il successore deve essere collegato a una Persona del centro');
   }
+  const successorInvitationId = normalizeInvitationId(successor.invitationId);
+  if (!successorInvitationId) {
+    throw new Error('Il successore deve avere accettato un invito come amministratore');
+  }
+  const successorInvitationSnapshot = await getDoc(
+    doc(db, ADMIN_INVITATION_COLLECTION, successorInvitationId)
+  );
+  const successorInvitation = successorInvitationSnapshot.exists()
+    ? successorInvitationSnapshot.data()
+    : {};
+  if (successorInvitation.centerId !== centerId
+      || successorInvitation.role !== 'ADMIN'
+      || successorInvitation.status !== 'USED'
+      || successorInvitation.consumedBy !== normalizedSuccessorUid) {
+    throw new Error('Il successore deve avere accettato un invito come amministratore');
+  }
   const successorParticipantSnapshot = await getDoc(
     doc(db, 'centers', centerId, 'publicParticipants', successor.participantId)
   );
@@ -847,6 +863,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     centerId: invitation.centerId,
     participantId: invitation.participantId || '',
     invitationId,
+    invitationConsumedBy: user.uid,
+    invitationAcceptedAt: now,
     status: 'ACTIVE',
     email: user.email || '',
     role,

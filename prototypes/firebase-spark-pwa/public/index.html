@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822i">
+    <link rel="stylesheet" href="/styles.css?v=20260822j">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -790,15 +790,16 @@
               <div class="admin-role-stack" id="admin-access-section" data-admin-mobile-section="access" tabindex="-1">
                 <section class="admin-control-section" data-admin-leadership hidden>
                   <div class="section-title">
-                    <h2 data-i18n="admin.access.handoverTitle">Responsabile del centro</h2>
+                    <h2 data-i18n="admin.access.managementTitle">Responsabile e amministratori</h2>
                   </div>
                   <p data-admin-leadership-status aria-live="polite" data-i18n="admin.access.leadershipHelp">
-                    Scegli la Persona e inviale il collegamento. Quando si sarà identificata, completa qui il passaggio: diventerà responsabile e il tuo incarico terminerà.
+                    Il responsabile ha il controllo completo. Invita prima una persona come amministratore; dopo che avrà accettato potrai trasferirle la responsabilità.
                   </p>
 
+                  <h3 class="admin-access-step-title" data-i18n="admin.invitations.stepTitle">1. Invita un amministratore</h3>
                   <div class="admin-candidate-fields">
                     <label class="field-label">
-                      <span data-i18n="admin.invitations.newAdminTarget">Nuovo amministratore</span>
+                      <span data-i18n="admin.invitations.candidateLabel">Persona da invitare</span>
                       <select data-admin-candidate-select>
                         <option value="" selected disabled data-i18n="admin.invitations.choosePerson">Scegli una persona</option>
                       </select>
@@ -806,7 +807,7 @@
                     <button type="button" class="secondary-action" data-admin-candidate-new-person data-i18n="admin.people.newPerson">Nuova persona</button>
                   </div>
 
-                    <button type="button" class="secondary-action admin-inline-action" data-admin-invitation-generate data-i18n="admin.invitations.generate">Prepara il passaggio</button>
+                    <button type="button" class="secondary-action admin-inline-action" data-admin-invitation-generate data-i18n="admin.invitations.generate">Crea invito amministratore</button>
 
                   <p class="admin-invitation-status" data-admin-invitation-status aria-live="polite" hidden></p>
                   <div class="admin-invitation-result" data-admin-invitation-result hidden>
@@ -836,8 +837,12 @@
                   </section>
 
                   <div class="admin-succession-fields">
+                    <div>
+                      <h3 class="admin-access-step-title" data-i18n="admin.succession.stepTitle">2. Completa il trasferimento</h3>
+                      <p class="field-help" data-i18n="admin.succession.stepHelp">Puoi scegliere soltanto un amministratore che abbia già accettato l'invito.</p>
+                    </div>
                     <label class="field-label">
-                      <span data-i18n="admin.succession.newOwner">Nuovo responsabile</span>
+                      <span data-i18n="admin.succession.successorLabel">Amministratore che diventerà responsabile</span>
                       <select data-admin-successor-select></select>
                     </label>
                     <button type="button" class="danger-action" data-admin-transfer-ownership data-i18n="admin.succession.transfer">Trasferisci responsabilità</button>
@@ -1054,6 +1059,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822i"></script>
+  <script type="module" src="/app.js?v=20260822j"></script>
   </body>
 </html>

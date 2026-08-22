@@ -237,10 +237,6 @@ service cloud.firestore {
         );
     }
 
-    function canCreateCenterAdministrator(centerId, role) {
-      return isCenterOwner(centerId) && role == 'ADMIN';
-    }
-
     function canUpdateCenterAdministrator(centerId, adminUid) {
       return resource.data.get('role', '') != 'OWNER'
           && (
@@ -287,6 +283,8 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid))
         && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
         && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'ADMIN'
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationConsumedBy', '') == nextOwnerUid
+        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationAcceptedAt', null) is timestamp
         && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
         && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'OWNER'
         && (
@@ -723,6 +721,8 @@ service cloud.firestore {
         && request.resource.data.status == 'ACTIVE'
         && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == true
+        && request.resource.data.invitationConsumedBy == adminUid
+        && request.resource.data.invitationAcceptedAt == request.time
         && request.resource.data.get('administratorPasswordRequired', false)
           == (request.auth.token.firebase.sign_in_provider == 'password')
         && request.resource.data.get('passwordSetupRequired', false)
@@ -974,6 +974,7 @@ service cloud.firestore {
               'centerId', 'participantId', 'invitationId', 'status', 'email',
               'role', 'massPermission', 'dailyOperationsPermission',
               'administratorPasswordRequired', 'passwordSetupRequired',
+              'invitationConsumedBy', 'invitationAcceptedAt',
               'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'
             ])
           ;
@@ -985,10 +986,10 @@ service cloud.firestore {
             'centerId', 'participantId', 'invitationId', 'status', 'email',
             'role', 'massPermission', 'dailyOperationsPermission',
             'administratorPasswordRequired', 'passwordSetupRequired',
+            'invitationConsumedBy', 'invitationAcceptedAt',
             'createdAt', 'updatedAt'
           ])
           && (invitationMembershipClaimIsValid(centerId, adminUid)
-          || canCreateCenterAdministrator(centerId, request.resource.data.role)
           || (
             isBootstrapOwner()
             && adminUid == request.auth.uid

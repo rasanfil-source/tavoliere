@@ -19,6 +19,7 @@ const CENTER_ADMIN_UID = 'admin_secondary';
 const VICE_ADMIN_UID = 'admin_vice';
 const BOOTSTRAP_OWNER_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 const INVITATION_ID = 'a'.repeat(64);
+const ACCEPTED_ADMIN_INVITATION_ID = 'f'.repeat(64);
 const MARIO_ID = 'participant_mario';
 const LUCA_ID = 'participant_luca';
 const OPEN_WINDOW_ID = '2026-08-05_lunch';
@@ -51,7 +52,7 @@ test('anonymous users cannot read center data', async () => {
   await assertFails(db.doc(centerPath()).get());
 });
 
-test('registered admin can update center and manage admin docs', async () => {
+test('registered admin can update center but cannot bypass administrator invitations', async () => {
   const db = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
 
   await assertSucceeds(db.doc(adminPath(ADMIN_UID)).get());
@@ -62,7 +63,7 @@ test('registered admin can update center and manage admin docs', async () => {
     status: 'ACTIVE',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }));
-  await assertSucceeds(db.doc(adminPath('second_admin')).set({
+  await assertFails(db.doc(adminPath('second_admin')).set({
     status: 'ACTIVE',
     email: 'second@example.test',
     role: 'MANAGER',
@@ -510,6 +511,8 @@ test('il responsabile invita un amministratore associandolo alla Persona scelta'
     centerId: CENTER_ID,
     participantId: MARIO_ID,
     invitationId,
+    invitationConsumedBy: uid,
+    invitationAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(),
     status: 'ACTIVE',
     email: 'nuovo.admin@example.test',
     role: 'ADMIN',
@@ -603,6 +606,8 @@ test('un profilo di un centro precedente accetta un nuovo invito amministratore'
     centerId: CENTER_ID,
     participantId: '',
     invitationId,
+    invitationConsumedBy: uid,
+    invitationAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(),
     status: 'ACTIVE',
     email: 'amministratore.ritorno@example.test',
     role: 'ADMIN',
@@ -680,6 +685,8 @@ test('un amministratore può accettare un nuovo centro senza perdere quello già
     centerId: CENTER_ID,
     participantId: '',
     invitationId,
+    invitationConsumedBy: uid,
+    invitationAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(),
     status: 'ACTIVE',
     email: 'amministratore.attivo@example.test',
     role: 'ADMIN',
@@ -713,7 +720,35 @@ test('un amministratore può accettare un nuovo centro senza perdere quello già
   });
 });
 
-test('la responsabilita passa atomicamente a un amministratore attivo', async () => {
+test('un amministratore attivo senza invito accettato non può diventare responsabile', async () => {
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const batch = ownerDb.batch();
+  batch.set(ownerDb.doc(centerPath()), {
+    ownerUid: CENTER_ADMIN_UID,
+    administratorName: 'Luca',
+    administratorSignature: 'LU',
+    adminEmail: 'admin@example.test',
+    administratorProfileComplete: true,
+    administratorPasswordRequired: false,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(adminPath(ADMIN_UID)), {
+    role: 'ADMIN',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(adminPath(CENTER_ADMIN_UID)), {
+    role: 'OWNER',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  await assertFails(batch.commit());
+});
+
+test('la responsabilita passa atomicamente a un amministratore attivo con invito accettato', async () => {
+  await seedAcceptedAdministratorInvitation();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await db.doc(adminPath(CENTER_ADMIN_UID)).set({ participantId: LUCA_ID }, { merge: true });
@@ -778,6 +813,7 @@ test('la responsabilita passa atomicamente a un amministratore attivo', async ()
 });
 
 test('il precedente responsabile può revocarsi nella stessa transazione di successione', async () => {
+  await seedAcceptedAdministratorInvitation();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await db.doc(`adminProfiles/${ADMIN_UID}`).set({
@@ -1559,11 +1595,11 @@ test('il responsabile collega il proprio account alla Persona attiva', async () 
   }, { merge: true }));
 });
 
-test('solo il responsabile gestisce gli amministratori e nessuno rimuove direttamente l owner', async () => {
+test('gli amministratori richiedono un invito e nessuno rimuove direttamente l owner', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const adminDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
 
-  await assertSucceeds(ownerDb.doc(adminPath('new_admin')).set({
+  await assertFails(ownerDb.doc(adminPath('new_admin')).set({
     centerId: CENTER_ID,
     status: 'ACTIVE',
     email: 'new.admin@example.test',
@@ -2342,6 +2378,30 @@ async function seedInvitation(invitationId) {
       createdAt: firebase.firestore.Timestamp.fromDate(new Date('2026-08-09T00:00:00Z')),
       updatedAt: firebase.firestore.Timestamp.fromDate(new Date('2026-08-09T00:00:00Z'))
     });
+  });
+}
+
+async function seedAcceptedAdministratorInvitation() {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const acceptedAt = firebase.firestore.Timestamp.fromDate(new Date('2026-08-10T10:00:00Z'));
+    await db.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`).set({
+      centerId: CENTER_ID,
+      participantId: LUCA_ID,
+      role: 'ADMIN',
+      status: 'USED',
+      createdBy: ADMIN_UID,
+      consumedBy: CENTER_ADMIN_UID,
+      expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2027-01-01T00:00:00Z')),
+      createdAt: acceptedAt,
+      consumedAt: acceptedAt,
+      updatedAt: acceptedAt
+    });
+    await db.doc(adminPath(CENTER_ADMIN_UID)).set({
+      invitationId: ACCEPTED_ADMIN_INVITATION_ID,
+      invitationConsumedBy: CENTER_ADMIN_UID,
+      invitationAcceptedAt: acceptedAt
+    }, { merge: true });
   });
 }
 

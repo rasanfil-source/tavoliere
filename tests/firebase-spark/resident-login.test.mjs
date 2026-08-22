@@ -1047,6 +1047,10 @@ test('il ruolo vice usa direttamente sigla e password amministratori nel login r
 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {
   assert.match(index, /data-admin-leadership/);
+  assert.match(index, /admin\.access\.managementTitle/);
+  assert.match(index, /admin\.invitations\.stepTitle/);
+  assert.match(index, /admin\.succession\.stepTitle/);
+  assert.doesNotMatch(index, /Prepara il passaggio/);
   assert.match(index, /data-admin-invitation-generate/);
   assert.doesNotMatch(index, /data-admin-vice-invitation-generate/);
   assert.match(index, /data-admin-successor-select/);
@@ -1054,6 +1058,8 @@ test('il responsabile invita amministratori e trasferisce la responsabilita con 
   assert.match(adminCenter, /export async function createAdministratorInvitation/);
   assert.doesNotMatch(adminCenter, /export async function createViceInvitation/);
   assert.match(adminCenter, /export async function transferCenterOwnership/);
+  assert.match(adminCenter, /successorInvitation\.status !== 'USED'/);
+  assert.match(adminCenter, /successorInvitation\.consumedBy !== normalizedSuccessorUid/);
   assert.match(adminCenter, /role: 'ADMIN'/);
   assert.match(adminCenter, /if \(invitation\.role !== 'ADMIN'\)/);
   assert.match(adminCenter, /const role = 'ADMIN';/);

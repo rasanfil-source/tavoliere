@@ -440,7 +440,7 @@ test('un amministratore può recuperare la password senza perdere il link di inv
 test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona associata', () => {
   assert.doesNotMatch(html, /data-admin-role-badge/);
   assert.doesNotMatch(app, /adminRoleBadge/);
-  assert.match(html, /Scegli la Persona[\s\S]*completa qui il passaggio[\s\S]*il tuo incarico terminerà/);
+  assert.match(html, /Invita prima una persona come amministratore[\s\S]*trasferirle la responsabilità/);
   assert.match(html, /data-admin-invitation-result/);
   assert.doesNotMatch(html, /data-admin-vice-invitation-generate/);
   assert.match(html, /data-admin-invitation-link/);
@@ -454,6 +454,8 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.match(app, /admin\.participantId[\s\S]*activeParticipantIds\.has\(admin\.participantId\)/);
   assert.match(app, /const successors = state\.adminAccounts\.filter/);
   assert.doesNotMatch(app, /const successors = state\.adminInvitations/);
+  assert.match(app, /acceptedInvitationByUid\.get\(admin\.adminUid\)\?\.invitationId === admin\.invitationId/);
+  assert.match(participantData, /invitationId: String\(item\.data\(\)\.invitationId \|\| ''\)/);
   assert.match(adminCenter, /administratorName: String\(successorParticipant\.displayName/);
   assert.match(adminCenter, /administratorSignature: String\(successorParticipant\.signature/);
   assert.match(adminCenter, /adminEmail: successorEmail/);
@@ -464,7 +466,7 @@ test('l’accettazione dell’invito accende una spia senza listener permanente'
   assert.match(app, /admin\.succession\.acceptanceReady/);
   assert.match(app, /admin-nav-attention/);
   assert.match(app, /invitation\.status === 'USED'/);
-  assert.match(app, /invitation\.createdBy === currentUid/);
+  assert.match(app, /admin\.invitationId === invitation\.invitationId/);
   assert.match(app, /queueMicrotask\(refreshAdminRolesWhenVisible\)/);
   assert.doesNotMatch(adminCenter, /\bonSnapshot\s*\(/);
   assert.match(css, /\.admin-section-nav a\.admin-nav-attention::after/);
