@@ -1,6 +1,6 @@
 {
-  "name": "Prenotazione pasti",
-  "short_name": "Pasti",
+  "name": "Oggi a tavola",
+  "short_name": "Oggi a tavola",
   "description": "Prenotazioni pasti per piccoli gruppi.",
   "start_url": "/?view=participant&access=friendly",
   "scope": "/",
