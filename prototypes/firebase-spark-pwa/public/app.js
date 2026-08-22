@@ -945,6 +945,7 @@ const elements = {
   adminAdministratorPasswordToggle: document.querySelector('[data-password-toggle="admin-owner"]'),
   startupSplashTitle: document.querySelector('[data-startup-splash-title]'),
   startupSplashSubtitle: document.querySelector('[data-startup-splash-subtitle]'),
+  startupSplashCopy: document.querySelector('[data-startup-splash-copy]'),
   title: document.querySelector('[data-title]'),
   titleCenter: document.querySelector('[data-title-center]'),
   adminRoleChip: document.querySelector('[data-admin-role-chip]'),
@@ -1408,7 +1409,10 @@ bootstrapApp().catch(console.error);
 function syncStartupSplashPresentation() {
   const splash = document.querySelector('[data-startup-splash]');
   if (splash) {
-    splash.hidden = state.centerContactSettings.startupPresentationEnabled !== true;
+    splash.hidden = false;
+  }
+  if (elements.startupSplashCopy) {
+    elements.startupSplashCopy.hidden = state.centerContactSettings.startupPresentationEnabled !== true;
   }
   if (elements.startupSplashTitle) {
     elements.startupSplashTitle.textContent = state.centerContactSettings.appDisplayName
@@ -1421,10 +1425,10 @@ function syncStartupSplashPresentation() {
 }
 
 function hideStartupSplash() {
-  const splash = document.querySelector('[data-startup-splash]');
-  if (splash) {
-    splash.classList.add('startup-splash-hidden');
-    window.setTimeout(() => splash.remove(), 180);
+  const gate = document.querySelector('[data-startup-gate]');
+  if (gate) {
+    gate.classList.add('startup-splash-hidden');
+    window.setTimeout(() => gate.remove(), 180);
   }
 }
 

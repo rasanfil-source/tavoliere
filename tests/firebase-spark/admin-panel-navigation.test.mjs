@@ -163,14 +163,18 @@ test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   assert.match(app, /showResidentLogin[\s\S]*?\? appDisplayName/);
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!'/);
+  assert.match(html, /<div class="startup-gate"[^>]*data-startup-gate/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
-  assert.match(splash, /data-startup-splash[^>]*hidden/);
+  assert.match(splash, /<div class="startup-splash" data-startup-splash>/);
   assert.match(splash, /<img src="\/icons\/splash-512-blended\.png/);
+  assert.match(splash, /data-startup-splash-copy[^>]*hidden/);
   assert.match(splash, /data-startup-splash-title[\s\S]*Oggi a tavola/);
   assert.doesNotMatch(splash, /Oggi a Tavola/);
   assert.match(splash, /data-startup-splash-subtitle[\s\S]*Per prenotarsi sempre in tempo!/);
   assert.match(app, /function syncStartupSplashPresentation\(\)[\s\S]*appDisplaySubtitle/);
-  assert.match(app, /startupPresentationEnabled !== true/);
+  assert.match(app, /startupSplashCopy\.hidden = state\.centerContactSettings\.startupPresentationEnabled !== true/);
+  assert.match(app, /function hideStartupSplash\(\)[\s\S]*?\[data-startup-gate\]/);
+  assert.doesNotMatch(app, /function hideStartupSplash\(\)[\s\S]{0,160}?querySelector\('\[data-startup-splash\]'\)/);
   assert.doesNotMatch(splash, /data-title/);
 });
 
