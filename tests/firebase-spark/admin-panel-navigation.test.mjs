@@ -191,9 +191,11 @@ test('swipe mese e settimana cambia il periodo e applica uno snap leggero', () =
   assert.match(refinements, /prefers-reduced-motion:\s*reduce/);
 });
 
-test('Aspetto presenta testi compatti e la scelta del tema subito dopo la vista preferita', () => {
+test('Aspetto elimina il falso riferimento a tutte le persone e descrive le viste operative corrette', () => {
   assert.match(html, /admin\.adaptations\.description">Personalizzazioni dell'aspetto e del comportamento dell'app\./);
-  assert.match(html, /viewPreference\.help">La vista con cui si apre l'app per tutte le persone\./);
+  assert.match(html, /data-view-preference-help[^>]*>Vista di apertura predefinita del centro\./);
+  assert.match(html, /data-admin-layouts-help[^>]*>Scegli l'aspetto del riepilogo e della cucina\./);
+  assert.doesNotMatch(html, /per tutte le persone/i);
   assert.match(html, /admin\.adaptations\.theme\.help">Scegli la combinazione di colori dell'app\. L'anteprima si applica subito\./);
   const viewPosition = html.indexOf('data-admin-default-view-picker');
   const stylePosition = html.indexOf('data-admin-interface-style-picker');
@@ -298,6 +300,12 @@ test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?renderResidentSettingsPanel\(\);[\s\S]*?reconcileAdminAccessWithoutStrongUser\(\);[\s\S]*?return;/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?elements\.adminNavConfiguration\.hidden = true;[\s\S]*?elements\.adminNavAdaptations\.hidden = false;[\s\S]*?elements\.adminNavAccess\.hidden = true;[\s\S]*?mountAdminSection\('adaptations'\);[\s\S]*?return;/);
   assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?if \(state\.residentSettingsMode\) \{[\s\S]*?storeResidentPreferences\(preferences\)/);
+  assert.match(app, /function syncAdaptationsContextCopy\(\)[\s\S]*?adminSectionNav\.hidden = residentDeviceMode/);
+  assert.match(app, /resident\.preferences\.defaultViewHelp/);
+  assert.match(app, /resident\.preferences\.layoutsHelp/);
+  assert.match(app, /adminKitchenLayoutPicker\.hidden = residentDeviceMode/);
+  assert.match(app, /summaryResidentLabel: elements\.adminSummaryResidentLabelSelect\?\.value/);
+  assert.match(app, /preferences\.summaryResidentLabel \? \{ summaryResidentLabel: preferences\.summaryResidentLabel \}/);
 });
 
 test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {

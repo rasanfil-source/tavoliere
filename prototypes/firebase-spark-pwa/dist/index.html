@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822h">
+    <link rel="stylesheet" href="/styles.css?v=20260822i">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -655,9 +655,10 @@
               <div class="admin-role-stack" id="admin-adaptations-section" data-admin-mobile-section="adaptations" tabindex="-1">
                 <section class="admin-control-section" data-admin-adaptations>
                   <div class="section-title">
-                    <h2 data-i18n="admin.adaptations.title">Aspetto</h2>
-                    <p class="admin-option-help" data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app.</p>
+                    <h2 data-admin-adaptations-title data-i18n="admin.adaptations.title">Aspetto</h2>
+                    <p class="admin-option-help" data-admin-adaptations-description data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app.</p>
                   </div>
+                  <p class="admin-option-help resident-device-preferences-intro" data-resident-device-preferences-intro hidden>Queste preferenze restano su questo dispositivo.</p>
                   <aside class="admin-password-rotation-warning" data-admin-password-rotation-warning hidden role="status">
                     <strong data-i18n="admin.sharedPassword.warningTitle">Password amministratori da cambiare</strong>
                     <span data-i18n="admin.sharedPassword.warning">Hai revocato il ruolo di vice amministratore. Per favore cambia la password amministratori.</span>
@@ -679,11 +680,11 @@
 
                   <label class="field-label admin-default-view-picker" data-admin-default-view-picker>
                     <span data-i18n="viewPreference.label">Vista di apertura preferita</span>
-                    <select data-admin-default-view-select aria-label="Vista di apertura preferita del centro">
+                    <select data-admin-default-view-select aria-label="Vista di apertura preferita">
                       <option value="month" data-i18n="viewPreference.option.month">Vista mese</option>
                       <option value="week" data-i18n="viewPreference.option.week">Vista settimana</option>
                     </select>
-                    <small class="field-help" data-i18n="viewPreference.help">La vista con cui si apre l'app per tutte le persone.</small>
+                    <small class="field-help" data-view-preference-help data-i18n="viewPreference.help">Vista di apertura predefinita del centro.</small>
                   </label>
 
                   <fieldset class="admin-interface-style-picker" data-admin-interface-style-picker>
@@ -699,7 +700,7 @@
 
                   <fieldset class="admin-layout-settings-card" data-admin-layout-pickers>
                     <legend data-i18n="admin.adaptations.layouts.title">Viste operative</legend>
-                    <p class="field-help" data-i18n="admin.adaptations.layouts.help">Scegli separatamente l'aspetto del riepilogo e quello della cucina.</p>
+                    <p class="field-help" data-admin-layouts-help data-i18n="admin.adaptations.layouts.help">Scegli l'aspetto del riepilogo e della cucina.</p>
                     <div class="admin-layout-settings-grid">
                       <label class="field-label admin-layout-setting" for="admin-summary-layout-select">
                         <span data-i18n="admin.adaptations.summaryLayout.label">Vista del riepilogo</span>
@@ -709,7 +710,7 @@
                           <option value="future" data-i18n="admin.adaptations.layout.future">Futura</option>
                         </select>
                       </label>
-                      <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select">
+                      <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select" data-admin-kitchen-layout-picker>
                         <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Originale</option>
@@ -1053,6 +1054,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822h"></script>
+  <script type="module" src="/app.js?v=20260822i"></script>
   </body>
 </html>

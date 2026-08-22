@@ -407,6 +407,7 @@ function applyResidentPreferences(settings) {
     ...(preferences.interfaceStyle ? { interfaceStyle: preferences.interfaceStyle } : {}),
     ...(preferences.defaultView ? { defaultView: preferences.defaultView } : {}),
     ...(preferences.summaryLayout ? { summaryLayout: preferences.summaryLayout } : {}),
+    ...(preferences.summaryResidentLabel ? { summaryResidentLabel: preferences.summaryResidentLabel } : {}),
     ...(preferences.monthControlsSide ? { monthControlsSide: preferences.monthControlsSide } : {}),
     ...(preferences.language ? { language: preferences.language } : {})
   };
@@ -779,6 +780,12 @@ const elements = {
   adminMonthLayoutSelect: document.querySelector('[data-admin-month-layout-select]'),
   adminMonthControlsSideSelect: document.querySelector('[data-admin-month-controls-side-select]'),
   adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
+  adminAdaptationsTitle: document.querySelector('[data-admin-adaptations-title]'),
+  adminAdaptationsDescription: document.querySelector('[data-admin-adaptations-description]'),
+  residentDevicePreferencesIntro: document.querySelector('[data-resident-device-preferences-intro]'),
+  viewPreferenceHelp: document.querySelector('[data-view-preference-help]'),
+  adminLayoutsHelp: document.querySelector('[data-admin-layouts-help]'),
+  adminKitchenLayoutPicker: document.querySelector('[data-admin-kitchen-layout-picker]'),
   adminThemeSelect: document.querySelector('[data-admin-theme-select]'),
   adminInterfaceStyleSelect: document.querySelector('[data-admin-interface-style-select]'),
   adminAppDisplayNamePicker: document.querySelector('[data-admin-app-display-name-picker]'),
@@ -4884,7 +4891,50 @@ function syncAdminCenterSettingsForm() {
   syncAdminAdaptationsForm();
 }
 
+function syncAdaptationsContextCopy() {
+  const residentDeviceMode = state.residentSettingsMode;
+  if (elements.adminSectionNav) elements.adminSectionNav.hidden = residentDeviceMode;
+  if (elements.adminAdaptationsTitle) {
+    elements.adminAdaptationsTitle.textContent = residentDeviceMode
+      ? t('resident.preferences.title')
+      : t('admin.adaptations.title');
+  }
+  if (elements.adminAdaptationsDescription) {
+    elements.adminAdaptationsDescription.textContent = residentDeviceMode
+      ? t('resident.preferences.description')
+      : t('admin.adaptations.description');
+  }
+  if (elements.residentDevicePreferencesIntro) {
+    elements.residentDevicePreferencesIntro.hidden = !residentDeviceMode;
+    elements.residentDevicePreferencesIntro.textContent = t('resident.preferences.intro');
+  }
+  if (elements.viewPreferenceHelp) {
+    elements.viewPreferenceHelp.textContent = residentDeviceMode
+      ? t('resident.preferences.defaultViewHelp')
+      : t('viewPreference.help');
+  }
+  if (elements.adminDefaultViewSelect) {
+    elements.adminDefaultViewSelect.setAttribute('aria-label', residentDeviceMode
+      ? t('resident.preferences.defaultViewAria')
+      : t('viewPreference.label'));
+  }
+  if (elements.adminLayoutsHelp) {
+    elements.adminLayoutsHelp.textContent = residentDeviceMode
+      ? t('resident.preferences.layoutsHelp')
+      : t('admin.adaptations.layouts.help');
+  }
+  if (elements.adminKitchenLayoutPicker) {
+    elements.adminKitchenLayoutPicker.hidden = residentDeviceMode;
+  }
+  if (elements.adminAdaptationsSave) {
+    elements.adminAdaptationsSave.textContent = residentDeviceMode
+      ? t('resident.preferences.save')
+      : t('admin.adaptations.save');
+  }
+}
+
 function syncAdminAdaptationsForm() {
+  syncAdaptationsContextCopy();
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
   const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'future';
   document.documentElement.dataset.theme = currentPalette;
@@ -5012,6 +5062,7 @@ async function handleAdminAdaptationsSave() {
         interfaceStyle: interfaceStyleToSave,
         defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
         summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
         monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
         language: languageToSave
       };
@@ -5061,6 +5112,7 @@ async function handleAdminAdaptationsSave() {
         interfaceStyle: settings.interfaceStyle || interfaceStyleToSave,
         defaultView: settings.defaultView || elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
         summaryLayout: settings.summaryLayout || elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+        summaryResidentLabel: settings.summaryResidentLabel || elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
         monthControlsSide: settings.monthControlsSide || elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
         language: languageToSave
       });
@@ -5312,7 +5364,9 @@ function renderMode() {
         ? mealTitle
         : `Cucina${centerName ? ' - ' + centerName : ''}`;
   elements.titleCenter.textContent = isAdminView
-    ? t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    ? state.residentSettingsMode
+      ? t('resident.preferences.title')
+      : t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
     : centerName;
   elements.titleCenter.hidden = (!isSummary && !isAdminView) || (!centerName && !isAdminView);
   elements.sessionRole.textContent = isAdminView && authenticatedAdministrator
@@ -5321,7 +5375,9 @@ function renderMode() {
   elements.sessionRole.hidden = !elements.sessionRole.textContent;
   renderCenterAvatar(isParticipant || isWeek || isSummary || isKitchen, centerName);
   const browserTitle = isAdminView
-    ? t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
+    ? state.residentSettingsMode
+      ? t('resident.preferences.title')
+      : t('app.header.controlPanel', {}, { fallback: 'Pannello di controllo' })
     : isSummary && centerName
       ? `${elements.title.textContent} - ${centerName}`
       : elements.title.textContent;
@@ -5892,6 +5948,7 @@ function hasCurrentCapability(capability, options = {}) {
 }
 
 function applyAdminCapabilityVisibility() {
+  syncAdaptationsContextCopy();
   if (!state.adminActiveSection) {
     state.adminActiveSection = resolveInitialAdminSection();
     state.adminMobileSection = state.adminActiveSection;
