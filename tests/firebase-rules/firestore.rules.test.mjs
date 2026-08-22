@@ -403,12 +403,11 @@ test('un indirizzo email non verificato non puo consumare l invito del centro', 
   await assertFails(batch.commit());
 });
 
-test('un residente invitato e autenticato diventa vice soltanto nel proprio centro', async () => {
+test('il ruolo vice non passa più dagli inviti Firebase amministrativi', async () => {
   const invitationId = 'b'.repeat(64);
-  const uid = 'new_vice';
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   await ownerDb.doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
-  await assertSucceeds(ownerDb.doc(`adminInvitations/${invitationId}`).set({
+  await assertFails(ownerDb.doc(`adminInvitations/${invitationId}`).set({
     centerId: CENTER_ID,
     participantId: MARIO_ID,
     role: 'MANAGER',
@@ -417,70 +416,6 @@ test('un residente invitato e autenticato diventa vice soltanto nel proprio cent
     expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2027-01-01T00:00:00Z')),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }));
-
-  const viceDb = testEnv.authenticatedContext(uid, emailAdminToken()).firestore();
-  const createViceClaimAttempt = (extraAdminData = {}) => {
-    const attempt = viceDb.batch();
-    attempt.set(viceDb.doc(`adminInvitations/${invitationId}`), {
-      status: 'USED',
-      consumedBy: uid,
-      consumedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    attempt.set(viceDb.doc(adminPath(uid)), {
-      centerId: CENTER_ID,
-      participantId: MARIO_ID,
-      invitationId,
-      status: 'ACTIVE',
-      email: 'vice.nuovo@example.test',
-      role: 'MANAGER',
-      massPermission: false,
-      dailyOperationsPermission: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      ...extraAdminData
-    });
-    return attempt;
-  };
-  await assertFails(createViceClaimAttempt({ massPermission: true }).commit());
-  await assertFails(createViceClaimAttempt({ dailyOperationsPermission: false }).commit());
-  await assertFails(createViceClaimAttempt({ platformOwner: true }).commit());
-
-  const batch = viceDb.batch();
-  batch.set(viceDb.doc(`adminInvitations/${invitationId}`), {
-    status: 'USED',
-    consumedBy: uid,
-    consumedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-  batch.set(viceDb.doc(adminPath(uid)), {
-    centerId: CENTER_ID,
-    participantId: MARIO_ID,
-    invitationId,
-    status: 'ACTIVE',
-    email: 'vice.nuovo@example.test',
-    role: 'MANAGER',
-    massPermission: false,
-    dailyOperationsPermission: true,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  batch.set(viceDb.doc(`adminProfiles/${uid}`), {
-    centerId: CENTER_ID,
-    participantId: MARIO_ID,
-    status: 'ACTIVE',
-    email: 'vice.nuovo@example.test',
-    role: 'MANAGER',
-    massPermission: false,
-    dailyOperationsPermission: true,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  await assertSucceeds(batch.commit());
-  await assertFails(viceDb.doc(adminPath('another_vice')).set({
-    status: 'ACTIVE',
-    role: 'MANAGER'
   }));
 });
 
@@ -734,7 +669,7 @@ test('un amministratore attivo senza invito accettato non può diventare respons
   }, { merge: true });
   batch.set(ownerDb.doc(adminPath(ADMIN_UID)), {
     role: 'ADMIN',
-    massPermission: true,
+    massPermission: false,
     dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
@@ -776,7 +711,7 @@ test('la responsabilita passa atomicamente a un amministratore attivo con invito
   }, { merge: true });
   batch.set(ownerDb.doc(adminPath(ADMIN_UID)), {
     role: 'ADMIN',
-    massPermission: true,
+    massPermission: false,
     dailyOperationsPermission: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
@@ -1064,9 +999,9 @@ test('i collegamenti operativi sono privati e si rigenerano in modo coordinato',
 test('gli inviti amministrativi mostrano il ciclo di vita e rispettano la gerarchia', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const adminDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
-  const viceDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
+  const publicDb = testEnv.authenticatedContext(PUBLIC_UID, anonymousToken()).firestore();
   const adminInvitationId = 'c'.repeat(64);
-  const viceInvitationId = 'd'.repeat(64);
+  const rejectedViceInvitationId = 'd'.repeat(64);
   const expiresAt = firebase.firestore.Timestamp.fromDate(new Date('2027-01-01T00:00:00Z'));
 
   await assertSucceeds(ownerDb.doc(publicParticipantPath(MARIO_ID)).set({
@@ -1082,7 +1017,7 @@ test('gli inviti amministrativi mostrano il ciclo di vita e rispettano la gerarc
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
-  await assertSucceeds(adminDb.doc(`adminInvitations/${viceInvitationId}`).set({
+  await assertFails(adminDb.doc(`adminInvitations/${rejectedViceInvitationId}`).set({
     centerId: CENTER_ID,
     participantId: MARIO_ID,
     role: 'MANAGER',
@@ -1093,22 +1028,10 @@ test('gli inviti amministrativi mostrano il ciclo di vita e rispettano la gerarc
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
   await assertSucceeds(adminDb.collection('adminInvitations').where('centerId', '==', CENTER_ID).get());
-  await assertFails(viceDb.collection('adminInvitations').where('centerId', '==', CENTER_ID).get());
-  await assertFails(adminDb.doc(`adminInvitations/${adminInvitationId}`).set({
+  await assertFails(publicDb.collection('adminInvitations').where('centerId', '==', CENTER_ID).get());
+  await assertSucceeds(adminDb.doc(`adminInvitations/${adminInvitationId}`).set({
     status: 'REVOKED',
     revokedBy: CENTER_ADMIN_UID,
-    revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true }));
-  await assertSucceeds(adminDb.doc(`adminInvitations/${viceInvitationId}`).set({
-    status: 'REVOKED',
-    revokedBy: CENTER_ADMIN_UID,
-    revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, { merge: true }));
-  await assertSucceeds(ownerDb.doc(`adminInvitations/${adminInvitationId}`).set({
-    status: 'REVOKED',
-    revokedBy: ADMIN_UID,
     revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }));
@@ -2061,11 +1984,13 @@ test('a first-time personal session can load its complete reservation calendar',
     .where('mealDate', '<=', '2026-08-31')
     .get());
   await assertSucceeds(db.doc(rulePath(MARIO_ID)).get());
-  await assertFails(db.doc(rulePath(LUCA_ID)).get());
+  // Il riepilogo personale calcola i pasti dell'intero centro: le regole di
+  // prenotazione non contengono dati privati e sono leggibili dalla sessione.
+  await assertSucceeds(db.doc(rulePath(LUCA_ID)).get());
   await assertSucceeds(db.collection(`${centerPath()}/reservationOverrides`)
     .where('participantId', '==', MARIO_ID)
     .get());
-  await assertFails(db.collection(`${centerPath()}/reservationOverrides`)
+  await assertSucceeds(db.collection(`${centerPath()}/reservationOverrides`)
     .where('participantId', '==', LUCA_ID)
     .get());
 });

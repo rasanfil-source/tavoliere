@@ -305,15 +305,16 @@ service cloud.firestore {
           'role', 'massPermission', 'dailyOperationsPermission', 'updatedAt'
         ])
         && request.resource.data.status == 'ACTIVE'
-        && request.resource.data.massPermission == true
         && request.resource.data.dailyOperationsPermission == true
         && (
           adminUid == request.auth.uid
             && resource.data.role == 'OWNER'
             && request.resource.data.role == 'ADMIN'
+            && request.resource.data.massPermission == false
           || adminUid == nextOwnerUid
             && resource.data.role == 'ADMIN'
             && request.resource.data.role == 'OWNER'
+            && request.resource.data.massPermission == true
         );
     }
 
@@ -324,7 +325,7 @@ service cloud.firestore {
         && resource.data.role == 'OWNER'
         && request.resource.data.status == 'REVOKED'
         && request.resource.data.role == 'ADMIN'
-        && request.resource.data.massPermission == true
+        && request.resource.data.massPermission == false
         && request.resource.data.dailyOperationsPermission == false
         && request.resource.data.revokedBy == request.auth.uid
         && request.resource.data.revokedAt == request.time
