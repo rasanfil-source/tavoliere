@@ -499,10 +499,9 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
         ${screen.columns.map((column, index, columns) => renderInternationalCard(column, {
           kitchen,
           residentLabel,
-          showMassMetadata: !kitchen && (index === 0 || columns[index - 1]?.dateId !== column.dateId)
+          showMassMetadata: index === 0 || columns[index - 1]?.dateId !== column.dateId
         })).join("")}
       </div>
-      ${kitchen && screen.hasMassInformation ? renderInternationalMass(screen, true) : ""}
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
@@ -537,27 +536,6 @@ function renderInternationalCard(column, { kitchen, residentLabel = "name", show
       ${kitchen ? "" : `<section class="summary-international-names"><h3>${escapeHtml(t("summary.names"))}</h3>${renderNamesCell(column, { compactActions: true, residentLabel })}</section>`}
     </article>
   `;
-}
-
-function renderInternationalMass(screen, kitchen) {
-  const groups = getMassDateGroups(screen);
-  if (groups.length === 0) return "";
-  return `
-    <section class="summary-international-mass${kitchen ? " summary-international-mass-kitchen" : ""}">
-      <div class="summary-international-mass-segments">
-        ${groups
-          .map(
-            (group, index) => `
-          <div class="summary-international-mass-group${index === 0 ? " summary-international-mass-group-first" : ""}${dateClasses(group, screen)}${massStateClass(group.massStatus)}" style="--mass-segment-span:${group.span}">
-            ${index === 0 ? `<strong class="summary-international-mass-title">${escapeHtml(t("summary.mass"))}</strong>` : ""}
-            <div class="summary-international-mass-segment">
-              ${renderMassControl(group)}
-            </div>
-          </div>`,
-          )
-          .join("")}
-      </div>
-    </section>`;
 }
 
 function getMassDateGroups(screen) {
