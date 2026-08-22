@@ -697,6 +697,20 @@ test('mese e settimana condividono la domenica come primo giorno', () => {
   assert.match(app, /gridStart\.setDate\(firstDay\.getDate\(\) - firstDay\.getDay\(\)\)/);
 });
 
+test('mese e settimana tornano al periodo corrente al cambio vista e avanzano oltre mezzanotte', () => {
+  const viewEntry = app.match(/function prepareMonthAutoScrollEntry\(previousMode, nextMode\)[\s\S]*?\n}/)?.[0] || '';
+  const anchor = app.match(/function anchorCalendarToCenterToday\(\)[\s\S]*?\n}/)?.[0] || '';
+
+  assert.match(viewEntry, /nextMode === 'participant' \|\| nextMode === 'week'/);
+  assert.match(viewEntry, /const today = getCenterToday\(\)/);
+  assert.match(viewEntry, /state\.weekStartDate = startOfWeek\(today\)/);
+  assert.match(viewEntry, /state\.monthDate = startOfMonth\(today\)/);
+  assert.match(anchor, /state\.calendarAnchorDateId === todayId/);
+  assert.match(anchor, /wasCurrentWeek[\s\S]*state\.weekStartDate = startOfWeek\(today\)/);
+  assert.match(anchor, /wasCurrentMonth[\s\S]*state\.monthDate = startOfMonth\(today\)/);
+  assert.match(anchor, /state\.calendarAnchorDateId = todayId/);
+});
+
 test('i numeri di telefono vengono normalizzati prima del salvataggio', () => {
   assert.match(app, /normalizePhoneNumber\(value\)/);
   assert.match(participantProfile, /digits\.length < 6 \|\| digits\.length > 15/);

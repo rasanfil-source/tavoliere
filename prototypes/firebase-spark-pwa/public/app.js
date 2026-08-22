@@ -567,6 +567,7 @@ const state = {
   participantMonth: [],
   participantSummary: null,
   calendarAnchoredToCenter: false,
+  calendarAnchorDateId: '',
   todayOverview: [],
   summaryDays: [],
   summaryOperations: [],
@@ -1436,6 +1437,16 @@ function scheduleBackgroundRefresh(source) {
 
 function prepareMonthAutoScrollEntry(previousMode, nextMode) {
   if (previousMode === nextMode) return;
+  if (nextMode === 'participant' || nextMode === 'week') {
+    // Mese e Settimana sono due consultazioni distinte: quando si passa da
+    // una vista all'altra si riparte sempre dal periodo che contiene oggi,
+    // nel fuso orario del centro. I periodi sfogliati restano validi soltanto
+    // finché si rimane nella vista corrente.
+    const today = getCenterToday();
+    state.selectedSummaryDate = formatDateId(today);
+    state.weekStartDate = startOfWeek(today);
+    state.monthDate = startOfMonth(today);
+  }
   if (nextMode === 'summary') {
     // Ogni nuovo ingresso nel riepilogo parte da Oggi. La scelta Domani vale
     // soltanto durante la consultazione corrente.
@@ -5641,13 +5652,36 @@ function getCenterToday() {
 }
 
 function anchorCalendarToCenterToday() {
-  if (state.calendarAnchoredToCenter) {
+  const today = getCenterToday();
+  const todayId = formatDateId(today);
+  if (!state.calendarAnchoredToCenter) {
+    state.selectedSummaryDate = todayId;
+    state.weekStartDate = startOfWeek(today);
+    state.monthDate = startOfMonth(today);
+    state.calendarAnchorDateId = todayId;
+    state.calendarAnchoredToCenter = true;
+    return true;
+  }
+  if (state.calendarAnchorDateId === todayId) {
     return false;
   }
-  const today = getCenterToday();
-  state.selectedSummaryDate = formatDateId(today);
-  state.weekStartDate = startOfWeek(today);
-  state.monthDate = startOfMonth(today);
+
+  // Se l'app rimane aperta oltre mezzanotte, sposta automaticamente il
+  // calendario quando il nuovo giorno appartiene a una nuova settimana o a
+  // un nuovo mese. Una consultazione volontaria di un periodo storico resta
+  // invece dov'è: avanziamo soltanto la vista che mostrava il periodo
+  // corrente prima del cambio di data.
+  const previousToday = state.calendarAnchorDateId
+    ? parseDateId(state.calendarAnchorDateId)
+    : today;
+  const wasCurrentWeek = state.weekStartDate.getTime() === startOfWeek(previousToday).getTime();
+  const wasCurrentMonth = state.monthDate.getTime() === startOfMonth(previousToday).getTime();
+  if (wasCurrentWeek) state.weekStartDate = startOfWeek(today);
+  if (wasCurrentMonth) state.monthDate = startOfMonth(today);
+  if (!state.selectedSummaryDate || state.selectedSummaryDate === state.calendarAnchorDateId) {
+    state.selectedSummaryDate = todayId;
+  }
+  state.calendarAnchorDateId = todayId;
   state.calendarAnchoredToCenter = true;
   return true;
 }
