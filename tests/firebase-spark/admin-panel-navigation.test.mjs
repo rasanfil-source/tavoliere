@@ -163,7 +163,7 @@ test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola'/);
   assert.match(centerSettings, /DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!'/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
-  assert.match(splash, /<img src="\/icons\/splash-512\.png/);
+  assert.match(splash, /<img src="\/icons\/splash-512-blended\.png/);
   assert.match(splash, /data-startup-splash-title[\s\S]*Oggi a tavola/);
   assert.doesNotMatch(splash, /Oggi a Tavola/);
   assert.match(splash, /data-startup-splash-subtitle[\s\S]*Per prenotarsi sempre in tempo!/);

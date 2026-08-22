@@ -19,7 +19,8 @@
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
-    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260822b">
+    <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260822c">
+    <link rel="preload" as="image" href="/icons/splash-512-blended.png?v=20260822a" fetchpriority="high">
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
@@ -27,7 +28,7 @@
           return;
         }
 
-        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260822b';
+        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260822c';
         document.title = 'Prenotazione pasti - Cucina';
         document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
       }());
@@ -38,7 +39,7 @@
   </head>
   <body>
     <div class="startup-splash" data-startup-splash aria-hidden="true">
-      <img src="/icons/splash-512.png?v=20260807a" alt="">
+      <img src="/icons/splash-512-blended.png?v=20260822a" width="512" height="512" fetchpriority="high" alt="">
       <p class="startup-splash-title">
         <strong data-startup-splash-title>Oggi a tavola</strong>
         <span data-startup-splash-subtitle>Per prenotarsi sempre in tempo!</span>

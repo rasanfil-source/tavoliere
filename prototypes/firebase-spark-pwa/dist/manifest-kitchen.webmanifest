@@ -6,7 +6,7 @@
   "start_url": "/?view=kitchen",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f2ed",
+  "background_color": "#f7f5ef",
   "theme_color": "#233142",
   "icons": [
     {

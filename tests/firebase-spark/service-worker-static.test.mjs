@@ -69,6 +69,13 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
   }
 });
 
+test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () => {
+  assert.equal(appManifest.background_color, '#f7f5ef');
+  assert.equal(kitchenManifest.background_color, '#f7f5ef');
+  assert.match(index, /splash-512-blended\.png\?v=20260822a/);
+  assert.match(index, /fetchpriority="high"/);
+});
+
 test('service worker handles only navigation, app resources, and Firebase SDK requests', () => {
   assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin && isAppResourcePath\(url\.pathname\)/);
@@ -95,13 +102,14 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /styles\.css\?v=20260822l/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260822c/);
   assert.match(index, /app\.js\?v=20260822s/);
-  assert.match(index, /manifest\.webmanifest\?v=20260822b/);
+  assert.match(index, /manifest\.webmanifest\?v=20260822c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260822d/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v399'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v400'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
   assert.match(serviceWorker, /launcher-512\.png\?v=20260821a/);
   assert.match(serviceWorker, /launcher-512-maskable\.png\?v=20260822a/);
+  assert.match(serviceWorker, /splash-512-blended\.png\?v=20260822a/);
 });
 
 test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {
