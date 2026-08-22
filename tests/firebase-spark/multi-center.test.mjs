@@ -101,7 +101,7 @@ test('le password degli amministratori restano esclusivamente in Firebase Authen
   });
   assert.match(app, /data-platform-reset-password/);
   assert.match(app, /sendAdminPasswordResetEmail/);
-  assert.match(app, /Accesso:.*email e password.*Google/s);
+  assert.match(app, /Accesso: Google o email e password/);
 });
 
 test('ogni centro genera collegamenti distinti per residenti riepilogo e cucina', () => {

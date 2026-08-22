@@ -96,12 +96,6 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/adminInvitations/$(invitationId)).data.consumedBy == adminUid;
     }
 
-    function administratorAuthenticationMatches(centerId) {
-      let membership = get(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data;
-      let passwordSignIn = request.auth.token.firebase.sign_in_provider == 'password';
-      return membership.get('administratorPasswordRequired', passwordSignIn) == passwordSignIn;
-    }
-
     function activeViceParticipant(centerId, participantId) {
       let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
       let participant = get(participantPath);
@@ -115,14 +109,12 @@ service cloud.firestore {
       let membershipPath = /databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid);
       let center = get(centerPath);
       let membership = get(membershipPath);
-      let passwordSignIn = request.auth.token.firebase.sign_in_provider == 'password';
       let participantId = membership.data.get('participantId', '');
       return hasVerifiedAdministratorIdentity()
         && exists(centerPath)
         && center.data.status == 'ACTIVE'
         && exists(membershipPath)
         && membership.data.status == 'ACTIVE'
-        && membership.data.get('administratorPasswordRequired', passwordSignIn) == passwordSignIn
         && (
           membership.data.get('role', '') != 'MANAGER'
           || participantId is string

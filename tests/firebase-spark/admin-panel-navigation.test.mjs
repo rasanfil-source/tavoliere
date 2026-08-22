@@ -376,7 +376,7 @@ test('il primo accesso richiede i dati del responsabile e riusa la email autenti
   assert.match(app, /!isAdministratorProfileComplete\(\) && section !== 'configuration'/);
 });
 
-test('Google non mostra e non richiede la password amministratore', () => {
+test('Google non richiede la password ma il responsabile può aggiungerla per l accesso email', () => {
   const googleUser = { providerData: [{ providerId: 'google.com' }] };
   const linkedUser = { providerData: [{ providerId: 'password' }, { providerId: 'google.com' }] };
   const passwordUser = { providerData: [{ providerId: 'password' }] };
@@ -384,7 +384,9 @@ test('Google non mostra e non richiede la password amministratore', () => {
   assert.equal(administratorAuth.requiresAdministratorPassword(googleUser), false);
   assert.equal(administratorAuth.requiresAdministratorPassword(linkedUser), false);
   assert.equal(administratorAuth.requiresAdministratorPassword(passwordUser), true);
-  assert.match(app, /adminAdministratorPasswordRow\.hidden = state\.adminRole !== 'OWNER'[\s\S]*!requiresAdministratorPassword\(getCurrentUser\(\)\)/);
+  assert.match(app, /adminAdministratorPasswordRow\.hidden = state\.adminRole !== 'OWNER'/);
+  assert.match(app, /adminAdministratorPassword\.required = false/);
+  assert.match(firebaseClient, /hasPasswordProvider[\s\S]*updatePassword\(user, password\)[\s\S]*linkWithCredential\(user, EmailAuthProvider\.credential\(user\.email, password\)\)/);
   assert.doesNotMatch(app, /administratorPasswordRequired === true\s*\|\|/);
 });
 

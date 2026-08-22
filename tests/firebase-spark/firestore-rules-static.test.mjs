@@ -77,8 +77,10 @@ test('gli inviti Firebase creano soltanto amministratori mentre il vice usa vice
   assert.match(invitationRules, /allow create: if request\.resource\.data\.role == 'ADMIN'/);
   assert.doesNotMatch(invitationRules, /request\.resource\.data\.role == 'MANAGER'/);
   assert.match(rules, /function activeViceParticipant\(centerId, participantId\)[\s\S]*viceAdminRole/);
-  assert.match(rules, /function administratorAuthenticationMatches\(centerId\)[\s\S]*sign_in_provider/);
-  assert.match(rules, /function isAdmin\(centerId\)[\s\S]*administratorPasswordRequired[\s\S]*activeViceParticipant\(centerId, participantId\)/);
+  const adminAuthorization = rules.match(/function isAdmin\(centerId\)[\s\S]*?\n    \}/)?.[0] || '';
+  assert.doesNotMatch(rules, /function administratorAuthenticationMatches\(/);
+  assert.doesNotMatch(adminAuthorization, /administratorPasswordRequired|sign_in_provider/);
+  assert.match(adminAuthorization, /activeViceParticipant\(centerId, participantId\)/);
 });
 
 test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {

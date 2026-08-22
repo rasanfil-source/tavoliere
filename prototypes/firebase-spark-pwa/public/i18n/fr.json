@@ -114,6 +114,7 @@
   "admin.administrator.help": "Le nom, le sigle et l’adresse e-mail sont obligatoires.",
   "admin.administrator.signature.help": "Code personnel utilisé pour se connecter comme résident.",
   "admin.administrator.password.label": "Mot de passe administrateur",
+  "admin.administrator.password.help": "Identifiant personnel Firebase Auth permettant aussi l’accès par e-mail. Il n’est pas enregistré dans les données du centre.",
   "admin.administrator.password.placeholder": "Laisser vide pour ne pas modifier",
   "admin.avatar.active": "Icône active et disponible sur les appareils.",
   "admin.avatar.altCenter": "Icône du centre",

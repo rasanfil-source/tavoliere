@@ -72,6 +72,29 @@ test('registered admin can update center but cannot bypass administrator invitat
   }));
 });
 
+test('lo stesso amministratore può alternare Google ed email senza perdere il ruolo', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(adminPath(ADMIN_UID)).set({
+      administratorPasswordRequired: false
+    }, { merge: true });
+  });
+
+  const passwordDb = testEnv.authenticatedContext(ADMIN_UID, {
+    email: 'owner@example.test',
+    email_verified: true,
+    firebase: { sign_in_provider: 'password' }
+  }).firestore();
+  await assertSucceeds(passwordDb.doc(centerPath()).get());
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(adminPath(ADMIN_UID)).set({
+      administratorPasswordRequired: true
+    }, { merge: true });
+  });
+  const googleDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  await assertSucceeds(googleDb.doc(centerPath()).get());
+});
+
 test('solo il responsabile unico modifica il nome di presentazione dell app', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const administratorDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();

@@ -114,6 +114,7 @@
   "admin.administrator.help": "El nombre, el código y el correo electrónico son obligatorios.",
   "admin.administrator.signature.help": "Código personal usado para acceder como residente.",
   "admin.administrator.password.label": "Contraseña del administrador",
+  "admin.administrator.password.help": "Credencial personal de Firebase Auth para acceder también con correo electrónico. No se guarda en los datos del centro.",
   "admin.administrator.password.placeholder": "Dejar vacío para no cambiar",
   "admin.avatar.active": "Icono activo y disponible en los dispositivos.",
   "admin.avatar.altCenter": "Icono del centro",

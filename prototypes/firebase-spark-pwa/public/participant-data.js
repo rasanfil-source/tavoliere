@@ -25,7 +25,7 @@ import {
   waitForAuthReady,
   withResidentTechnicalSession,
   withAdministratorTechnicalSession
-} from './firebase-client.js?v=20260820u';
+} from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260816g';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';

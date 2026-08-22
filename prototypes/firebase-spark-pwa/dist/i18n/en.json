@@ -114,6 +114,7 @@
   "admin.administrator.help": "Name, code and email are required.",
   "admin.administrator.signature.help": "Personal code used to sign in as a resident.",
   "admin.administrator.password.label": "Administrator password",
+  "admin.administrator.password.help": "Personal Firebase Auth credential for signing in with email too. It is not stored in the center data.",
   "admin.administrator.password.placeholder": "Leave empty to keep unchanged",
   "admin.avatar.active": "Icon active and available on devices.",
   "admin.avatar.altCenter": "Center icon",

@@ -114,6 +114,7 @@
   "admin.administrator.help": "Name, Kürzel und E-Mail-Adresse sind erforderlich.",
   "admin.administrator.signature.help": "Persönliches Kürzel für die Anmeldung als Bewohner.",
   "admin.administrator.password.label": "Administrator-Passwort",
+  "admin.administrator.password.help": "Persönlicher Firebase-Auth-Zugang für die Anmeldung auch per E-Mail. Er wird nicht in den Daten des Zentrums gespeichert.",
   "admin.administrator.password.placeholder": "Leer lassen, um nicht zu ändern",
   "admin.avatar.active": "Symbol aktiv und auf Geräten verfügbar.",
   "admin.avatar.altCenter": "Zentrumssymbol",

@@ -28,7 +28,7 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260820u';
+} from './firebase-client.js?v=20260822a';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
@@ -3160,13 +3160,13 @@ async function refreshPlatformCenterList() {
           <strong>${escapeHtml(center.name)}</strong>
           <span>Responsabile: ${escapeHtml(center.administratorName || 'da completare')}</span>
           <span>Email: ${escapeHtml(center.adminEmail || 'non disponibile')}</span>
-          <span>Accesso: ${center.administratorPasswordRequired ? 'email e password' : 'Google'}</span>
+          <span>Accesso: Google o email e password</span>
           <span data-platform-center-account-status>Account: ${center.adminEmail ? 'configurato' : 'da completare'}</span>
         </div>
         <span class="platform-center-status">${center.status === 'ACTIVE' ? 'Attivo' : escapeHtml(center.status)}</span>
         <div class="platform-center-actions">
           <button type="button" class="secondary-action" data-platform-invite-center="${escapeHtml(center.centerId)}">Nomina / cambia amministratore</button>
-          ${center.administratorPasswordRequired && center.adminEmail
+          ${center.adminEmail
             ? `<button type="button" class="secondary-action" data-platform-reset-password="${escapeHtml(center.adminEmail)}">Invia recupero password</button>`
             : ''}
           <button type="button" class="danger-action" data-platform-deactivate-center="${escapeHtml(center.centerId)}" aria-label="Disattiva ${escapeHtml(center.name)}">Disattiva</button>
@@ -4979,7 +4979,10 @@ function syncAdminCenterSettingsForm() {
   }
   if (elements.adminAdministratorPassword) {
     elements.adminAdministratorPassword.value = '';
-    elements.adminAdministratorPassword.placeholder = state.centerContactSettings.adminPasswordSet
+    const passwordProviderSet = getCurrentUser()?.providerData?.some(
+      (provider) => provider.providerId === 'password'
+    );
+    elements.adminAdministratorPassword.placeholder = state.centerContactSettings.adminPasswordSet || passwordProviderSet
       ? 'Password già impostata'
       : 'Minimo 6 caratteri';
     if (elements.adminAdministratorPassword.type !== 'password') {
@@ -6184,11 +6187,11 @@ function applyAdminCapabilityVisibility() {
     });
   }
   if (elements.adminAdministratorPasswordRow) {
-    elements.adminAdministratorPasswordRow.hidden = state.adminRole !== 'OWNER'
-      || !requiresAdministratorPassword(getCurrentUser());
+    elements.adminAdministratorPasswordRow.hidden = state.adminRole !== 'OWNER';
     if (elements.adminAdministratorPassword) {
-      elements.adminAdministratorPassword.required = !elements.adminAdministratorPasswordRow.hidden
-        && !state.centerContactSettings.adminPasswordSet;
+      // È una credenziale personale Firebase facoltativa: non deve bloccare il
+      // salvataggio delle altre impostazioni del centro.
+      elements.adminAdministratorPassword.required = false;
     }
   }
   if (elements.bootstrapButton) {

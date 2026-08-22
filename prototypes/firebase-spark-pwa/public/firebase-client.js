@@ -572,7 +572,21 @@ export async function authorizeResidentAdministratorSession({
 export async function updateAdministratorPassword(newPassword) {
   const user = getCurrentUser();
   if (!user) throw new Error('Nessun utente autenticato');
-  await updatePassword(user, String(newPassword));
+  const password = String(newPassword || '');
+  if (password.length < 6) {
+    throw new Error('La password deve contenere almeno 6 caratteri');
+  }
+  const hasPasswordProvider = user.providerData?.some(
+    (provider) => provider.providerId === 'password'
+  );
+  if (hasPasswordProvider) {
+    await updatePassword(user, password);
+    return;
+  }
+  if (!user.email) {
+    throw new Error('L’account non ha un indirizzo email utilizzabile');
+  }
+  await linkWithCredential(user, EmailAuthProvider.credential(user.email, password));
 }
 
 export async function sendAdminPasswordResetEmail(email) {
