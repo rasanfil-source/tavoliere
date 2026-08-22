@@ -107,7 +107,7 @@
   "resident.preferences.defaultViewHelp": "The default opening view on this device.",
   "resident.preferences.description": "Customize the app on this device.",
   "resident.preferences.intro": "These preferences remain on this device.",
-  "resident.preferences.layoutsHelp": "Choose the summary appearance on this device.",
+  "resident.preferences.layoutsHelp": "Choose the appearance of each function separately.",
   "resident.preferences.save": "Save preferences",
   "resident.preferences.title": "Preferences on this device",
   "admin.administrator.email.label": "Administrator email",

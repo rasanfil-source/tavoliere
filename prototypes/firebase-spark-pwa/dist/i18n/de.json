@@ -107,7 +107,7 @@
   "resident.preferences.defaultViewHelp": "Die Standard-Startansicht auf diesem Gerät.",
   "resident.preferences.description": "Passen Sie die App auf diesem Gerät an.",
   "resident.preferences.intro": "Diese Einstellungen bleiben auf diesem Gerät.",
-  "resident.preferences.layoutsHelp": "Wählen Sie die Darstellung der Zusammenfassung auf diesem Gerät.",
+  "resident.preferences.layoutsHelp": "Wählen Sie das Erscheinungsbild der verschiedenen Funktionen jeweils separat.",
   "resident.preferences.save": "Einstellungen speichern",
   "resident.preferences.title": "Einstellungen auf diesem Gerät",
   "admin.administrator.email.label": "E-Mail des Administrators",

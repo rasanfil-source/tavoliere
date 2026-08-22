@@ -107,7 +107,7 @@
   "resident.preferences.defaultViewHelp": "La vista di apertura predefinita su questo dispositivo.",
   "resident.preferences.description": "Personalizza l'app su questo dispositivo.",
   "resident.preferences.intro": "Queste preferenze restano su questo dispositivo.",
-  "resident.preferences.layoutsHelp": "Scegli l'aspetto del riepilogo su questo dispositivo.",
+  "resident.preferences.layoutsHelp": "Scegli separatamente l'aspetto delle diverse funzioni.",
   "resident.preferences.save": "Salva preferenze",
   "resident.preferences.title": "Preferenze su questo dispositivo",
   "admin.administrator.email.label": "Email dell'amministratore",

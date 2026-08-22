@@ -81,3 +81,24 @@ test('il selettore multi-centro traduce testo visibile ed etichetta accessibile'
     assert.ok(loadCatalog(locale)['admin.centerSwitcher.label']);
   }
 });
+
+test('le preferenze residente parlano solo del dispositivo e delle diverse funzioni', () => {
+  const italian = loadCatalog('it');
+  assert.equal(
+    italian['resident.preferences.layoutsHelp'],
+    "Scegli separatamente l'aspetto delle diverse funzioni."
+  );
+  for (const locale of LOCALES) {
+    const catalog = loadCatalog(locale);
+    for (const key of [
+      'resident.preferences.title',
+      'resident.preferences.description',
+      'resident.preferences.intro',
+      'resident.preferences.layoutsHelp',
+    ]) {
+      assert.ok(catalog[key], `${key} deve essere tradotta in ${locale}`);
+      assert.notEqual(catalog[key], key);
+    }
+  }
+  assert.doesNotMatch(italian['resident.preferences.layoutsHelp'], /cucina|tutte le persone/i);
+});
