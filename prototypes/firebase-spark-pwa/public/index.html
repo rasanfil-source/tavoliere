@@ -33,7 +33,7 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260822j">
+    <link rel="stylesheet" href="/styles.css?v=20260822k">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260821g">
   </head>
   <body>
@@ -939,33 +939,26 @@
                 <div class="admin-people-list" data-admin-people-list></div>
               </section>
 
-              <section class="admin-control-section admin-calendar-extension" id="admin-activity-section" data-admin-mobile-section="activity" tabindex="-1" data-admin-calendar-extension hidden aria-labelledby="admin-calendar-extension-title">
-                <div class="section-title">
+              <section class="admin-control-section admin-calendar-extension admin-maintenance-row" id="admin-activity-section" data-admin-mobile-section="activity" tabindex="-1" data-admin-calendar-extension hidden aria-labelledby="admin-calendar-extension-title">
+                <div class="admin-maintenance-copy">
                   <h2 id="admin-calendar-extension-title" data-i18n="admin.overview.calendar">Calendario prenotazioni</h2>
                   <p data-admin-calendar-extension-status aria-live="polite">Verifico la copertura disponibile.</p>
                 </div>
-                <p class="admin-option-help" data-i18n="admin.calendar.extensionHelp">Calendario annuale. Prima della scadenza, usa questo comando per aggiungere un altro anno.</p>
-                <button type="button" class="secondary-action" data-bootstrap-button data-i18n="admin.calendar.extendAction">Estendi calendario prenotazioni</button>
+                <button type="button" class="secondary-action admin-maintenance-action" data-bootstrap-button data-i18n="admin.calendar.extendAction">Estendi calendario prenotazioni</button>
               </section>
 
-              <section class="admin-control-section admin-audit-section" data-admin-mobile-section="activity" data-admin-audit-section hidden aria-labelledby="admin-audit-title">
-                <div class="section-title">
+              <section class="admin-control-section admin-audit-section admin-maintenance-row" data-admin-mobile-section="activity" data-admin-audit-section hidden aria-labelledby="admin-audit-title">
+                <div class="admin-maintenance-copy">
                   <h2 id="admin-audit-title" data-i18n="admin.activity.audit">Attività recenti</h2>
+                  <p data-i18n="admin.activity.description">Consulta e filtra le modifiche registrate.</p>
                 </div>
-                <details class="admin-audit-disclosure" data-admin-audit-load>
-                  <summary>
-                    <span data-i18n="common.actions.view">Vedi</span>
-                    <span class="disclosure-caret" aria-hidden="true">⌄</span>
-                  </summary>
-                  <p data-admin-audit-status aria-live="polite"></p>
-                  <div class="admin-audit-list" data-admin-audit-list></div>
-                </details>
+                <button type="button" class="secondary-action admin-maintenance-action" data-admin-audit-load data-i18n="admin.activity.viewAction">Visualizza registro</button>
               </section>
 
-              <div class="admin-tools-row" data-admin-mobile-section="activity" data-admin-tools>
-                <div class="admin-export-copy">
+              <div class="admin-control-section admin-tools-row admin-maintenance-row" data-admin-mobile-section="activity" data-admin-tools>
+                <div class="admin-export-copy admin-maintenance-copy">
                   <strong data-i18n="admin.backup.title">Archivio di sicurezza</strong>
-                  <p data-i18n="admin.backup.description">Copia dei dati del centro per il ripristino.</p>
+                  <p data-i18n="admin.backup.description">Scarica un backup completo (JSON) per ripristinare il sistema in caso di necessità.</p>
                 </div>
                 <button type="button" class="secondary-action admin-download-action" data-admin-export-button aria-label="Scarica copia dei dati del centro" data-i18n-aria-label="admin.backup.ariaLabel">
                   <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -973,7 +966,8 @@
                     <polyline points="7 10 12 15 17 10"></polyline>
                     <path d="M5 21h14"></path>
                   </svg>
-                  <span data-i18n="admin.backup.downloadAction">Scarica</span>
+                  <span class="button-spinner" data-admin-export-spinner hidden aria-hidden="true"></span>
+                  <span data-admin-export-label data-i18n="admin.backup.downloadAction">Scarica</span>
                 </button>
               </div>
             </div>
@@ -1026,6 +1020,37 @@
       </form>
     </dialog>
 
+    <dialog class="admin-audit-dialog" data-admin-audit-dialog aria-labelledby="admin-audit-dialog-title">
+      <div class="admin-audit-dialog-content">
+        <header class="section-title admin-audit-dialog-header">
+          <h2 id="admin-audit-dialog-title" data-i18n="admin.activity.dialogTitle">Registro attività</h2>
+          <button type="button" class="icon-button" data-admin-audit-close aria-label="Chiudi" data-i18n-aria-label="common.actions.close">×</button>
+        </header>
+        <div class="admin-audit-filters" aria-label="Filtri registro" data-i18n-aria-label="admin.activity.filtersLabel">
+          <label class="field-label">
+            <span data-i18n="admin.activity.dateFilter">Data</span>
+            <input type="date" data-admin-audit-date-filter>
+          </label>
+          <label class="field-label">
+            <span data-i18n="admin.activity.userFilter">Utente</span>
+            <input type="search" data-admin-audit-user-filter data-i18n-placeholder="admin.activity.userPlaceholder" placeholder="Nome o identificativo">
+          </label>
+        </div>
+        <p data-admin-audit-status aria-live="polite"></p>
+        <div class="admin-audit-table-wrap" data-admin-audit-table-wrap hidden>
+          <table class="admin-audit-table">
+            <thead><tr>
+              <th scope="col" data-i18n="admin.activity.dateColumn">Data</th>
+              <th scope="col" data-i18n="admin.activity.userColumn">Utente</th>
+              <th scope="col" data-i18n="admin.activity.actionColumn">Attività</th>
+              <th scope="col" data-i18n="admin.activity.detailsColumn">Dettagli</th>
+            </tr></thead>
+            <tbody data-admin-audit-list></tbody>
+          </table>
+        </div>
+      </div>
+    </dialog>
+
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
@@ -1059,6 +1084,6 @@
       }());
     </script>
 
-  <script type="module" src="/app.js?v=20260822j"></script>
+  <script type="module" src="/app.js?v=20260822k"></script>
   </body>
 </html>

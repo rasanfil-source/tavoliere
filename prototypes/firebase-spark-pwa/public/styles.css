@@ -83,10 +83,7 @@
 }
 
 .admin-tools-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
 }
 
 .admin-download-action {
@@ -2048,29 +2045,35 @@ html[data-theme="neutro"] {
   grid-column: 1 / -1;
 }
 
-.admin-audit-list {
+.admin-maintenance-row {
   display: grid;
-  margin-top: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
 }
 
-.admin-audit-row {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.5fr) auto;
-  gap: 12px;
-  align-items: baseline;
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
-}
-
-.admin-audit-row span {
+.admin-maintenance-copy {
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 
-.admin-audit-row time {
+.admin-maintenance-copy h2,
+.admin-maintenance-copy strong,
+.admin-maintenance-copy p {
+  margin: 0;
+}
+
+.admin-maintenance-copy p {
+  margin-top: 5px;
   color: var(--muted);
-  font-size: 0.86rem;
-  white-space: nowrap;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.admin-maintenance-action,
+.admin-download-action {
+  min-width: 190px;
+  min-height: 44px;
 }
 
 .admin-invitation-list {
@@ -2421,10 +2424,8 @@ html[data-theme="neutro"] {
 }
 
 .admin-tools-row {
-  display: flex;
-  justify-content: flex-start;
-  padding: 14px 0 2px;
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
 .admin-panel .field-label input,
@@ -2873,15 +2874,6 @@ body[data-resident-login-visible="true"] .account-footer {
     width: 100%;
   }
 
-  .admin-audit-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 4px 10px;
-  }
-
-  .admin-audit-row span {
-    grid-column: 1 / -1;
-  }
-
   .admin-control-section .section-title {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -2914,6 +2906,17 @@ body[data-resident-login-visible="true"] .account-footer {
 
   .admin-download-action {
     min-height: 48px;
+  }
+
+  .admin-maintenance-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .admin-maintenance-action,
+  .admin-download-action {
+    width: 100%;
+    min-width: 0;
   }
 
   .admin-form-grid,
@@ -6051,6 +6054,113 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
 
 .action-dialog-actions button {
   min-width: 110px;
+}
+
+.admin-audit-dialog {
+  width: min(94vw, 920px);
+  max-height: min(88vh, 760px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 22%);
+}
+
+.admin-audit-dialog::backdrop {
+  background: rgb(0 0 0 / 48%);
+}
+
+.admin-audit-dialog-content {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.admin-audit-dialog-header {
+  align-items: center;
+}
+
+.admin-audit-dialog-header h2,
+.admin-audit-dialog-content p {
+  margin: 0;
+}
+
+.admin-audit-dialog-header .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.5rem;
+}
+
+.admin-audit-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(220px, 1fr);
+  gap: 12px;
+}
+
+.admin-audit-filters input {
+  min-height: 44px;
+}
+
+.admin-audit-table-wrap {
+  max-height: min(56vh, 480px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.admin-audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-audit-table th,
+.admin-audit-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-audit-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-soft);
+}
+
+.admin-audit-table td:nth-child(1),
+.admin-audit-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 0.7s linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 620px) {
+  .admin-audit-dialog-content {
+    padding: 16px;
+  }
+
+  .admin-audit-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-audit-table th,
+  .admin-audit-table td {
+    padding: 10px;
+  }
 }
 
 .password-setup-content {

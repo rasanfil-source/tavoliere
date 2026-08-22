@@ -851,6 +851,11 @@ const elements = {
   adminAuditStatus: document.querySelector('[data-admin-audit-status]'),
   adminAuditLoad: document.querySelector('[data-admin-audit-load]'),
   adminAuditList: document.querySelector('[data-admin-audit-list]'),
+  adminAuditDialog: document.querySelector('[data-admin-audit-dialog]'),
+  adminAuditClose: document.querySelector('[data-admin-audit-close]'),
+  adminAuditDateFilter: document.querySelector('[data-admin-audit-date-filter]'),
+  adminAuditUserFilter: document.querySelector('[data-admin-audit-user-filter]'),
+  adminAuditTableWrap: document.querySelector('[data-admin-audit-table-wrap]'),
   adminCalendarExtension: document.querySelector('[data-admin-calendar-extension]'),
   adminCalendarExtensionStatus: document.querySelector('[data-admin-calendar-extension-status]'),
   adminPersonEditor: document.querySelector('#admin-person-editor'),
@@ -907,6 +912,8 @@ const elements = {
   platformOwnerExitButton: document.querySelector('[data-platform-owner-exit]'),
   forgetDeviceButton: document.querySelector('[data-forget-device]'),
   adminExportButton: document.querySelector('[data-admin-export-button]'),
+  adminExportSpinner: document.querySelector('[data-admin-export-spinner]'),
+  adminExportLabel: document.querySelector('[data-admin-export-label]'),
   adminTools: document.querySelector('[data-admin-tools]'),
   adminContactSharingRow: document.querySelector('[data-admin-contact-sharing-row]'),
   adminCommonPasswordRow: document.querySelector('[data-admin-common-password-row]'),
@@ -1171,11 +1178,10 @@ elements.adminPanel?.addEventListener('touchcancel', cancelAdminSectionSwipe, { 
 if (elements.activationChecklistList) {
   elements.activationChecklistList.addEventListener('click', handleAdminSectionNavigation);
 }
-elements.adminAuditLoad.addEventListener('toggle', () => {
-  if (elements.adminAuditLoad.open && elements.adminAuditLoad.dataset.loaded !== 'true') {
-    handleAuditLoad();
-  }
-});
+elements.adminAuditLoad.addEventListener('click', handleAuditDialogOpen);
+elements.adminAuditClose.addEventListener('click', () => elements.adminAuditDialog.close());
+elements.adminAuditDateFilter.addEventListener('input', renderFilteredAuditEvents);
+elements.adminAuditUserFilter.addEventListener('input', renderFilteredAuditEvents);
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
 elements.adminExportButton.addEventListener('click', handleAdminExport);
@@ -4373,22 +4379,44 @@ function handleAuditLoad() {
   return operationGuard.run('admin:audit-load', performAuditLoad);
 }
 
+function handleAuditDialogOpen() {
+  if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
+  if (!elements.adminAuditDialog.open) elements.adminAuditDialog.showModal();
+  if (elements.adminAuditLoad.dataset.loaded !== 'true') handleAuditLoad();
+}
+
 async function performAuditLoad() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
+  elements.adminAuditLoad.disabled = true;
   elements.adminAuditLoad.setAttribute('aria-busy', 'true');
-  elements.adminAuditStatus.textContent = 'Carico le attività...';
+  elements.adminAuditStatus.textContent = t('admin.activity.loading');
   try {
-    const events = await listAuditEvents(20);
-    renderAuditEvents(events);
+    state.adminAuditEvents = await listAuditEvents(50);
+    renderFilteredAuditEvents();
     elements.adminAuditLoad.dataset.loaded = 'true';
-    elements.adminAuditStatus.textContent = events.length === 0
-      ? 'Nessuna modifica registrata'
-      : `Ultime ${events.length} modifiche`;
   } catch (error) {
     elements.adminAuditStatus.textContent = friendlyErrorMessage(error, 'Attività non disponibili');
+    elements.adminAuditTableWrap.hidden = true;
   } finally {
+    elements.adminAuditLoad.disabled = false;
     elements.adminAuditLoad.setAttribute('aria-busy', 'false');
   }
+}
+
+function renderFilteredAuditEvents() {
+  const dateFilter = elements.adminAuditDateFilter.value;
+  const userFilter = elements.adminAuditUserFilter.value.trim().toLocaleLowerCase(getLocale());
+  const events = (state.adminAuditEvents || []).filter((event) => {
+    const date = event.createdAt?.toDate?.();
+    const eventDate = date instanceof Date ? formatDateId(date) : '';
+    const actor = String(event.actorName || event.actorEmail || event.actorUid || '').toLocaleLowerCase(getLocale());
+    return (!dateFilter || eventDate === dateFilter) && (!userFilter || actor.includes(userFilter));
+  });
+  renderAuditEvents(events);
+  elements.adminAuditTableWrap.hidden = events.length === 0;
+  elements.adminAuditStatus.textContent = events.length === 0
+    ? t('admin.activity.noEvents')
+    : t('admin.activity.eventCount', { count: events.length });
 }
 
 function renderAuditEvents(events) {
@@ -4407,12 +4435,14 @@ function renderAuditEvents(events) {
     const dateLabel = date instanceof Date
       ? formatDateTime(date, { dateStyle: 'short', timeStyle: 'short' }, getLocale())
       : '';
+    const actorLabel = event.actorName || event.actorEmail || event.actorUid || '—';
     return `
-      <article class="admin-audit-row">
-        <strong>${escapeHtml(actionLabels[event.action] || event.action)}</strong>
-        <span>${escapeHtml(event.summary || event.targetId)}</span>
-        <time>${escapeHtml(dateLabel)}</time>
-      </article>
+      <tr>
+        <td><time>${escapeHtml(dateLabel)}</time></td>
+        <td>${escapeHtml(actorLabel)}</td>
+        <td><strong>${escapeHtml(actionLabels[event.action] || event.action)}</strong></td>
+        <td>${escapeHtml(event.summary || event.targetId)}</td>
+      </tr>
     `;
   }).join('');
 }
@@ -7922,6 +7952,9 @@ async function handleWeekKitchenNoteListClick(event) {
 async function handleAdminExport() {
   if (!hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA)) return;
   elements.adminExportButton.disabled = true;
+  elements.adminExportButton.setAttribute('aria-busy', 'true');
+  elements.adminExportSpinner.hidden = false;
+  elements.adminExportLabel.textContent = t('admin.export.preparing');
   elements.adminStatus.textContent = t('admin.export.preparing');
   try {
     const backup = await exportCenterData();
@@ -7937,6 +7970,9 @@ async function handleAdminExport() {
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Esportazione non riuscita');
   } finally {
     elements.adminExportButton.disabled = false;
+    elements.adminExportButton.setAttribute('aria-busy', 'false');
+    elements.adminExportSpinner.hidden = true;
+    elements.adminExportLabel.textContent = t('admin.backup.downloadAction');
   }
 }
 

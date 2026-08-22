@@ -7,6 +7,7 @@ const index = readFileSync(new URL('index.html', root), 'utf8');
 const app = readFileSync(new URL('app.js', root), 'utf8');
 const view = readFileSync(new URL('summary-matrix-view.js', root), 'utf8');
 const styles = readFileSync(new URL('summary-matrix-refinements.css', root), 'utf8');
+const appStyles = readFileSync(new URL('styles.css', root), 'utf8');
 
 test('riepilogo e cucina conservano Originale e Internazionale come viste distinte', () => {
   assert.match(view, /summary-layout-\$\{layout\}/);
@@ -136,7 +137,7 @@ test('il selettore Oggi Domani scorre con la stessa animazione nelle due direzio
 
 test('impostazioni e manutenzione presentano controlli graficamente raggruppati', () => {
   assert.match(index, /fieldset class="admin-layout-settings-card"/);
-  assert.match(index, /details class="admin-audit-disclosure" data-admin-audit-load/);
+  assert.match(index, /admin-audit-section admin-maintenance-row[\s\S]*<button[^>]*data-admin-audit-load/);
   assert.doesNotMatch(index, /Caricate solo quando servono\./);
 });
 
@@ -168,12 +169,15 @@ test('il contorno di oggi conserva spazio interno in Elegante ed Essenziale', ()
   assert.match(styles, /week-matrix-row-today > button \{[\s\S]*min-height: calc\(var\(--week-cell-height\) - 4px\)/);
 });
 
-test('la manutenzione incolonna la scadenza e centra registro e archivio', () => {
-  assert.match(index, /admin-calendar-extension[\s\S]*section-title[\s\S]*data-admin-calendar-extension-status[\s\S]*<\/div>[\s\S]*admin-option-help/);
-  assert.match(styles, /\.admin-calendar-extension \{[\s\S]*grid-template-columns: minmax\(132px, 0\.72fr\) minmax\(190px, 1\.28fr\) auto/);
-  assert.match(styles, /\.admin-calendar-extension > \.section-title \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(styles, /\.admin-audit-disclosure > summary \{[\s\S]*justify-content: center/);
-  assert.match(styles, /\.admin-tools-row\[data-admin-tools\] \{[\s\S]*justify-content: center/);
+test('la manutenzione usa righe uniformi, registro in dialogo e backup con avanzamento', () => {
+  assert.match(index, /admin-calendar-extension admin-maintenance-row[\s\S]*data-admin-calendar-extension-status[\s\S]*admin-maintenance-action/);
+  assert.match(index, /data-admin-audit-load[^>]*>Visualizza registro<\/button>/);
+  assert.match(index, /data-admin-audit-dialog[\s\S]*data-admin-audit-date-filter[\s\S]*data-admin-audit-user-filter[\s\S]*<table/);
+  assert.match(index, /data-admin-export-button[\s\S]*data-admin-export-spinner[^>]*hidden/);
+  assert.match(app, /listAuditEvents\(50\)[\s\S]*renderFilteredAuditEvents/);
+  assert.match(app, /adminExportButton\.disabled = true[\s\S]*adminExportSpinner\.hidden = false/);
+  assert.match(appStyles, /\.admin-maintenance-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.match(appStyles, /\.admin-maintenance-action,[\s\S]*min-height: 44px/);
 });
 
 test('le note non sopravvivono al cambio di giorno e quelle passate non vengono mostrate', () => {

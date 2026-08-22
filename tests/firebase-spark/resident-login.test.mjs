@@ -127,7 +127,8 @@ test('la preparazione del centro comunica chiaramente l attesa e impedisce azion
 test('il calendario copre un anno e si estende manualmente dalla scheda Attività', () => {
   assert.match(scheduleUtils, /CALENDAR_COVERAGE_DAYS = 365/);
   assert.match(index, /data-admin-calendar-extension[\s\S]*Estendi calendario prenotazioni/);
-  assert.match(index, /Prima della scadenza[\s\S]*aggiungere un altro anno/);
+  assert.match(app, /admin\.calendar\.availableUntil/);
+  assert.match(index, /data-admin-calendar-extension-status[^>]*aria-live="polite"/);
   assert.doesNotMatch(app, /function maybeAutoExtendCalendar/);
   assert.doesNotMatch(app, /automaticCalendarExtensionAttempted/);
 });
@@ -1075,7 +1076,7 @@ test('il registro essenziale viene caricato solo su richiesta e accompagna le sc
   assert.match(index, /data-admin-audit-section/);
   assert.match(index, /data-admin-audit-load/);
   assert.match(app, /function handleAuditLoad/);
-  assert.match(app, /listAuditEvents\(20\)/);
+  assert.match(app, /handleAuditDialogOpen[\s\S]*listAuditEvents\(50\)/);
   assert.doesNotMatch(app, /Promise\.all\(\[[^\]]*listAuditEvents/s);
   assert.match(auditLog, /export function appendAuditEvent/);
   assert.match(auditLog, /export async function listAuditEvents/);
