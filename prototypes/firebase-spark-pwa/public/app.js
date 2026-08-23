@@ -1474,21 +1474,26 @@ async function bootstrapApp() {
   // route paint. Complete catalogs are reconciled immediately afterwards,
   // but they no longer hold Firebase Auth or the basic resident entry gate.
   renderMode();
+  const isDirectMealRoute = ['participant', 'week'].includes(state.mode);
   const isPlainResidentLogin = state.friendlyAccess
-    && ['participant', 'week'].includes(state.mode)
+    && isDirectMealRoute
     && !state.residentRestorePending
     && !loadStoredResidentSignature()
     && !(state.mode === 'week' && canUseWeekWithoutParticipant());
   if (isPlainResidentLogin) {
     setParticipantStatus(t('auth.resident.status'));
-    hideStartupSplash();
-    markPerformance('first-usable-frame');
   }
 
   await i18nPromise;
   markPerformance('translations-ready');
   renderAllViews();
-  const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
+  // Su un accesso diretto a Mese o Settimana Firebase Auth non ha ancora
+  // ripristinato l'eventuale account amministratore. Non mostrare per un
+  // istante il login residenti: refreshParticipant attende Auth, ricostruisce
+  // la Persona collegata e solo allora rimuove lo splash.
+  const keepStartupGate = state.mode === 'admin'
+    || state.residentRestorePending
+    || isDirectMealRoute;
   if (!keepStartupGate && !isPlainResidentLogin) {
     hideStartupSplash();
     markPerformance('first-usable-frame');
@@ -1505,8 +1510,9 @@ async function bootstrapApp() {
     markPerformance('settings-reconciled');
   });
 
-  if (!isPlainResidentLogin) {
-    refreshNow('avvio');
+  const initialRefresh = refreshNow(isPlainResidentLogin ? 'ripristino-accesso' : 'avvio');
+  if (isDirectMealRoute) {
+    void initialRefresh.finally(() => markPerformance('first-usable-frame'));
   }
   markPerformance('bootstrap-scheduled');
 }
@@ -3910,7 +3916,10 @@ async function refreshParticipant(source, options = {}) {
         if (restored.strongAdministrator === true) {
           state.residentEntryKind = 'strong-admin';
         }
-        if (applyResidentEntryView()) {
+        // La vista predefinita si applica soltanto a un nuovo ingresso. Un
+        // refresh di un URL esplicito view=participant o view=week deve
+        // ricostruire esattamente la schermata che l'utente stava usando.
+        if (options.loginHandshake && applyResidentEntryView()) {
           request = beginParticipantRequest();
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {

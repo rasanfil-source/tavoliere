@@ -791,6 +791,23 @@ test('la sessione amministrativa forte sopravvive alle viste Pasti e Riepilogo',
   assert.match(app, /elements\.controlPanelEntry\.hidden = !isOrdinaryView\s*\|\| \(!needsResidentLogin && !canOpenControlPanel\)/);
 });
 
+test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostrare il login residente', () => {
+  const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
+  const participantRefresh = app.match(/async function refreshParticipant\([\s\S]*?\n}/)?.[0] || '';
+  assert.match(bootstrap, /const isDirectMealRoute = \['participant', 'week'\]\.includes\(state\.mode\)/);
+  assert.match(bootstrap, /const keepStartupGate =[\s\S]*isDirectMealRoute/);
+  assert.match(bootstrap, /refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
+  const plainLoginBranch = bootstrap.match(/if \(isPlainResidentLogin\) \{[\s\S]*?\n  }/)?.[0] || '';
+  assert.match(plainLoginBranch, /setParticipantStatus/);
+  assert.doesNotMatch(plainLoginBranch, /hideStartupSplash\(\)/);
+  assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
+  assert.match(participantRefresh, /await refreshStrongAdministratorOperationalAuthorization\(\)/);
+  assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
+  assert.match(index, /\['participant', 'week', 'summary', 'kitchen'\]\.includes\(view\)/);
+  assert.match(summaryStyles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
+  assert.match(summaryStyles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
+});
+
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
   assert.equal((index.match(/data-operational-view-switch/g) || []).length, 3);
   assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.action\.book">Prenota/);

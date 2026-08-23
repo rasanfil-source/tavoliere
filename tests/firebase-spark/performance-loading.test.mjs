@@ -46,9 +46,11 @@ test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impost
   assert.match(bootstrap, /const i18nPromise = initI18n/);
   assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*await i18nPromise/);
   assert.match(bootstrap, /void settingsPromise\.then\(async \(centerSettings\)/);
-  assert.match(bootstrap, /renderMode\(\);[\s\S]*isPlainResidentLogin[\s\S]*hideStartupSplash\(\)/);
+  assert.match(bootstrap, /const isDirectMealRoute = \['participant', 'week'\]\.includes\(state\.mode\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
-  assert.match(bootstrap, /if \(!isPlainResidentLogin\) \{\s*refreshNow\('avvio'\)/);
+  assert.match(bootstrap, /const keepStartupGate =[\s\S]*isDirectMealRoute/);
+  assert.match(bootstrap, /const initialRefresh = refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
+  assert.doesNotMatch(bootstrap, /if \(!isPlainResidentLogin\)/);
 });
 
 test('la shell PWA e i CSS pesanti restano legati alla vista che li usa', () => {
@@ -57,7 +59,7 @@ test('la shell PWA e i CSS pesanti restano legati alla vista che li usa', () => 
   assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|launcher-512/);
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
-  assert.match(index, /view !== 'summary' && view !== 'kitchen'/);
+  assert.match(index, /\['participant', 'week', 'summary', 'kitchen'\]\.includes\(view\)/);
   assert.match(app, /function ensureSummaryStyles\(\)/);
   assert.match(app, /if \(targetMode === 'summary'\) await ensureSummaryStyles\(\)/);
   assert.match(app, /if \(nextMode === 'summary'\) await ensureSummaryStyles\(\)/);

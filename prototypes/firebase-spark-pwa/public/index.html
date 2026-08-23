@@ -37,8 +37,8 @@
     <link rel="stylesheet" href="/styles.css?v=20260824a">
     <script>
       (function () {
-        var view = new URLSearchParams(window.location.search).get('view');
-        if (view !== 'summary' && view !== 'kitchen') return;
+        var view = new URLSearchParams(window.location.search).get('view') || 'participant';
+        if (!['participant', 'week', 'summary', 'kitchen'].includes(view)) return;
         var stylesheet = document.createElement('link');
         stylesheet.rel = 'stylesheet';
         stylesheet.href = '/summary-matrix-refinements.css?v=20260823i';
@@ -1147,6 +1147,6 @@
       }());
     </script>
 
-    <script type="module" src="/app.js?v=20260824a"></script>
+    <script type="module" src="/app.js?v=20260824c"></script>
   </body>
 </html>
