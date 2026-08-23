@@ -17,7 +17,7 @@ import {
 } from './reservation-state.mjs?v=20260823a';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { formatDietLabel } from './diet-utils.mjs?v=20260823b';
-import { t } from './i18n/i18n.mjs?v=20260823b';
+import { t } from './i18n/i18n.mjs?v=20260823c';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
 const SESSION_LIFETIME_DAYS = 30;

@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260823b';
+} from './i18n/i18n.mjs?v=20260823c';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -69,7 +69,7 @@ import {
   reduceAuthState,
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20260820a';
-import { toUserMessage } from './core/user-error.mjs?v=20260823a';
+import { toUserMessage } from './core/user-error.mjs?v=20260823b';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -88,7 +88,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823e';
+} from './summary-matrix-view.js?v=20260823f';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
@@ -124,7 +124,7 @@ const domainModulePaths = {
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
-  kitchen: './kitchen-data.js?v=20260823b',
+  kitchen: './kitchen-data.js?v=20260823c',
   notes: './kitchen-notes.js?v=20260821a',
   participant: './participant-data.js?v=20260823c'
 };

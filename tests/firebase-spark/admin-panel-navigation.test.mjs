@@ -64,6 +64,15 @@ test('la configurazione raggruppa identita e orari e termina con un solo salvata
   assert.doesNotMatch(configuration, /data-bootstrap-button/);
 });
 
+test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
+  assert.equal((html.match(/href="https:\/\/github\.com\/rasanfil-source\/tavoliere#readme"/g) || []).length, 2);
+  assert.match(html, /data-admin-mobile-section="activity"[\s\S]*data-i18n="project\.info\.title">Info/);
+  assert.match(html, /href="mailto:rasanfil@gmail\.com"[\s\S]*rasanfil@gmail\.com/);
+  assert.match(html, /class="project-readme-footer"[\s\S]*data-i18n="project\.footer">Progetto Tutti a tavola 2026/);
+  assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
+});
+
 test('agenda centro vive nella vista settimana e sostituisce il vecchio collegamento', () => {
   assert.doesNotMatch(html, /data-admin-week-link|>Settimana operativa<\/a>/);
   assert.match(html, /<details class="week-operations"[\s\S]*class="agenda-center-toggle"[\s\S]*Agenda centro/);

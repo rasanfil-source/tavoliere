@@ -1,66 +1,80 @@
-# Tavola Comune: istruzioni operative
+# Esercizio, rilascio e ripristino
 
-## Accesso residente
+## Gestione operativa delle sessioni
 
-- Sintomo: compare il modulo di accesso. Controllare sigla e password comune, quindi riprovare.
-- Sintomo: la sigla non viene riconosciuta. L'amministratore deve verificare che il campo `signature` sia valorizzato e che lo stato del partecipante sia `ACTIVE`.
-- Sintomo: l'accesso salvato non viene ripristinato. Controllare che il browser non abbia cancellato i dati del sito e usare nuovamente sigla e password.
-- Per cambiare persona o cancellare l'accesso locale usare `Esci`.
-- La password comune non viene salvata nel browser.
-
-## Prenotazioni e rete
-
-- Una modifica diventa definitiva soltanto dopo la conferma del server.
-- In assenza di rete la modifica viene rifiutata e non viene accodata in modo invisibile.
-- Se il dato è stato modificato da un altro dispositivo, aggiornare la schermata e ripetere consapevolmente l'operazione.
-- I comandi mese, settimana e singolo pasto rispettano le finestre di chiusura definite per il pasto.
-
-## Revoca
-
-- Nell'elenco `Persone` togliere la spunta `Attiva` per sospendere la persona.
-- La revoca aggiorna insieme i documenti privati e la proiezione pubblica.
-- La sospensione disabilita la regola ricorrente e cancella token e sessioni personali della persona.
-- Le Security Rules controllano nuovamente lo stato della persona e del token al momento di ogni richiesta.
-- Per revocare un amministratore, il responsabile usa `Cambio gestore > Amministratori attivi > Revoca accesso`.
-- Per annullare un invito non ancora accettato, usare `Cambio gestore > Inviti recenti > Revoca`.
+Entrare e uscire dal pannello è navigazione e non distrugge la sessione. Il comando **Esci** termina invece deliberatamente l’accesso del dispositivo.
 
 ### Telefono smarrito o dispositivo non più disponibile
 
-- Il modello gratuito non identifica separatamente i diversi dispositivi della stessa persona.
-- Per bloccare subito un telefono smarrito, sospendere temporaneamente la persona dall'elenco `Persone`.
-- La sospensione blocca tutti i suoi dispositivi. Dopo aver verificato la situazione, riattivare la persona: dovrà accedere nuovamente con sigla e password comune.
-- Non cambiare la password comune salvo compromissione generale, perché il cambio coinvolge tutti i residenti.
+La revoca del singolo dispositivo richiede il relativo token, che normalmente non è disponibile a distanza. In caso di rischio, l’amministratore deve **sospendere temporaneamente la persona**: l’operazione revoca le credenziali operative note e **blocca tutti i suoi dispositivi**. Dopo la verifica, la persona può essere riattivata e accedere nuovamente.
 
-## Disattivazione centro
+La disattivazione di un centro conserva i dati: **l'azione non è presentata come cancellazione definitiva** e deve indicare chiaramente che le informazioni resteranno conservate.
 
-- `Disattiva centro` rende immediatamente inutilizzabili amministrazione, collegamenti e sessioni perché le regole richiedono un centro `ACTIVE`.
-- I dati restano conservati in Firestore per un eventuale recupero amministrativo: l'azione non è presentata come cancellazione definitiva.
+I link operativi vanno rigenerati quando si sospetta che siano stati distribuiti a destinatari non previsti.
 
-## Export e recupero
+## Controlli prima del rilascio
 
-- L'amministratore può usare `Esporta dati` per scaricare un JSON con schema, project ID, data e conteggi.
-- Conservare l'esportazione fuori dal browser e non condividerla pubblicamente.
-- Prima di introdurre un ripristino, validare schema, duplicati e anteprima sull'emulatore.
-- Non sono attivi backup automatici, TTL, scheduler o Cloud Functions.
+1. Verificare che il worktree contenga soltanto le modifiche previste.
+2. Eseguire test, validazione i18n e test delle regole.
+3. Eseguire la build e controllare `git diff --check`.
+4. Provare nel browser i percorsi modificati su mobile e desktop.
+5. Creare un commit descrittivo che costituisca il punto di ritorno.
+6. Pubblicare Hosting; includere Firestore soltanto se regole o indici sono cambiati.
+7. Verificare gli hash serviti dal sito pubblico.
 
-## Deploy e rollback
+## Deploy
 
-- Eseguire `npm run predeploy:gate`.
-- Controllare account Firebase e project ID `tavola-comune`.
-- Pubblicare con `npm run deploy:firebase`.
-- Verificare calendario, riepilogo e cucina nel browser.
-- In caso di errore Hosting, ripristinare la versione precedente dalla cronologia Hosting e ripetere lo smoke test.
-- Le modifiche già scritte su Firestore non vengono annullate da un rollback Hosting.
+Hosting e regole:
 
-## Quote
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "npm run deploy:firebase"
+```
 
-- Controllare letture, scritture, eliminazioni, spazio e traffico con frequenza settimanale nella fase iniziale.
-- Prestare attenzione al 60%, 80% e 90% della quota prevista.
-- In caso di anomalia, ridurre refresh e letture prima di aggiungere servizi esterni.
+Solo Hosting:
 
-## Continuita' calendario
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting"
+```
 
-- Il pannello amministratore mostra l'ultimo giorno per cui esistono finestre pasto.
-- Sotto 45 giorni residui l'indicazione diventa un avviso `da estendere`.
-- `Prepara / estendi centro` aggiunge le finestre mancanti fino al quinquennio approvato, in blocchi da 400; non modifica finestre già esistenti.
-- I collegamenti del prototipo sono validi fino al 31 dicembre 2031. Dopo il deploy, il proprietario deve eseguire una volta `Prepara / estendi centro` per aggiornare il centro gia' esistente.
+Il wrapper esegue la build prima del deploy e usa la configurazione contenuta in `prototypes/firebase-spark-pwa`.
+
+Verifica della release:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "npm run release:verify"
+```
+
+## Backup
+
+Dal pannello **Manutenzione** il responsabile può scaricare un backup JSON completo del centro. Il file contiene dati personali e operativi:
+
+- conservarlo cifrato o in uno spazio ad accesso ristretto;
+- non inviarlo per posta elettronica non protetta;
+- non aggiungerlo a Git;
+- verificare che il file sia leggibile prima di considerarlo una copia valida.
+
+Ispezione locale senza scritture:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "npm run backup:inspect -- <percorso-backup.json>"
+```
+
+## Prova di ripristino
+
+Il ripristino va provato prima nell’emulatore:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "npm run test:backup-restore-emulator -- <percorso-backup.json>"
+```
+
+Un ripristino reale modifica dati: richiede autorizzazione esplicita, backup preventivo, identificazione esatta del centro e verifica successiva. Non cancellare né sovrascrivere dati di produzione per diagnosticare un problema di interfaccia.
+
+## Ritorno a una versione precedente
+
+1. Individuare il commit stabile precedente.
+2. Creare una modifica di ripristino tracciabile, senza cancellare la cronologia.
+3. Rieseguire test e build.
+4. Pubblicare nuovamente Hosting e, se necessario, le regole compatibili.
+5. Verificare la release pubblica.
+
+Firebase Hosting conserva anche la cronologia delle release, ma il commit Git resta la fonte che permette di ricostruire esattamente codice, test e documentazione.

@@ -2081,6 +2081,64 @@ html[data-theme="neutro"] {
   min-height: 44px;
 }
 
+.project-info-card {
+  padding: 16px;
+}
+
+.project-info-card .admin-maintenance-copy {
+  width: 100%;
+}
+
+.project-info-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.project-contact-link,
+.project-readme-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.project-contact-link:hover,
+.project-readme-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.project-contact-link:focus-visible,
+.project-readme-link:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--primary));
+  outline-offset: 4px;
+  border-radius: 5px;
+}
+
+.github-mark {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.project-readme-footer {
+  margin-top: 18px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+.project-readme-footer .project-readme-link {
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .admin-invitation-list {
   display: grid;
   margin-top: 10px;

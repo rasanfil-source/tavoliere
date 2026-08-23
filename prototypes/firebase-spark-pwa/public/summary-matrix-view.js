@@ -1,4 +1,4 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260823b";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260823c";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
 import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20260823b";
 import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823b";
