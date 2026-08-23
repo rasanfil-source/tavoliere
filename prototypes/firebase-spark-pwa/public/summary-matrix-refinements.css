@@ -654,7 +654,6 @@
 
   .summary-matrix-diets li {
     overflow-wrap: anywhere;
-    font-size: 0.68rem;
     line-height: 1.15;
     word-break: normal;
   }
@@ -1267,6 +1266,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 
 /* Classic: un'unica griglia, con righe che compaiono solo quando servono. */
 .summary-layout-classic .summary-matrix {
+  --classic-diet-code-size: 1.12rem;
   width: 100%;
   overflow: hidden;
   border: 1px solid var(--view-border);
@@ -1275,6 +1275,18 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   border-spacing: 0;
   background: var(--surface);
   color: var(--ink);
+}
+
+.summary-layout-classic .summary-matrix-optional-rows-1 {
+  --classic-diet-code-size: 1.02rem;
+}
+
+.summary-layout-classic .summary-matrix-optional-rows-2 {
+  --classic-diet-code-size: 0.94rem;
+}
+
+.summary-layout-classic .summary-matrix-optional-rows-3 {
+  --classic-diet-code-size: 0.88rem;
 }
 
 .summary-layout-classic .summary-matrix caption {
@@ -1416,6 +1428,11 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 
 .summary-matrix-diets li {
   line-height: 1.25;
+}
+
+.summary-layout-classic .summary-matrix-diets li {
+  font-size: var(--classic-diet-code-size);
+  font-weight: 650;
 }
 
 .summary-matrix-empty {
@@ -1846,6 +1863,22 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   .summary-layout-classic .summary-matrix th,
   .summary-layout-classic .summary-matrix td {
     padding: 6px 5px;
+  }
+
+  .summary-layout-classic .summary-matrix {
+    --classic-diet-code-size: 0.9rem;
+  }
+
+  .summary-layout-classic .summary-matrix-optional-rows-1 {
+    --classic-diet-code-size: 0.8rem;
+  }
+
+  .summary-layout-classic .summary-matrix-optional-rows-2 {
+    --classic-diet-code-size: 0.73rem;
+  }
+
+  .summary-layout-classic .summary-matrix-optional-rows-3 {
+    --classic-diet-code-size: 0.68rem;
   }
 
   .summary-layout-classic .summary-matrix-meal-heading {

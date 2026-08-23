@@ -82,7 +82,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823b';
+} from './summary-matrix-view.js?v=20260823c';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint

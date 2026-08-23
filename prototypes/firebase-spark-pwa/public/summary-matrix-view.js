@@ -204,6 +204,7 @@ export function scrollSummaryMatrix(
 function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", showContactHint = true }) {
   const prefix = kitchen ? "kitchen" : "summary";
   const isActive = screen.index === activeIndex;
+  const optionalRowCount = countClassicOptionalRows(screen);
   if (screen.columns.length === 0) {
     return `
       <section class="summary-matrix-screen" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
@@ -214,7 +215,7 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", sh
 
   return `
     <section class="summary-matrix-screen" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${!isActive}">
-      <table class="summary-matrix">
+      <table class="summary-matrix summary-matrix-optional-rows-${optionalRowCount}">
         ${renderCaption(screen, kitchen)}
         <colgroup>
           <col class="summary-matrix-label-column">
@@ -257,6 +258,12 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", sh
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
+}
+
+function countClassicOptionalRows(screen) {
+  return [screen.hasGuestGroup, screen.hasSickMeals, screen.hasSickDiets]
+    .filter(Boolean)
+    .length;
 }
 
 function renderCaption(screen, kitchen) {
