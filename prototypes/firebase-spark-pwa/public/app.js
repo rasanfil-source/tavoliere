@@ -120,7 +120,7 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823d',
+  admin: './admin-center.js?v=20260823e',
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
@@ -856,6 +856,7 @@ const elements = {
   adminCandidateNewPerson: document.querySelector('[data-admin-candidate-new-person]'),
   adminInviteAcceptPanel: document.querySelector('[data-admin-invite-accept-panel]'),
   adminInviteAcceptText: document.querySelector('[data-admin-invite-accept-text]'),
+  adminInviteResponseStatus: document.querySelector('[data-admin-invite-response-status]'),
   inviteAccept: document.querySelector('[data-invite-accept]'),
   inviteReject: document.querySelector('[data-invite-reject]'),
   inviteAcceptActions: document.querySelector('[data-admin-invite-accept-actions]'),
@@ -2378,17 +2379,17 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   const emailVerificationPending = requiresAdministratorPassword(user)
     && user.emailVerified !== true;
   if (storedDecision === 'ACCEPT' && emailVerificationPending) {
-    elements.adminEmailStatus.textContent = state.adminAuthNotice
-      || 'Ti abbiamo inviato un’email di verifica. Conferma il tuo indirizzo per completare l’attivazione.';
+    setAdminInvitationResponseStatus(state.adminAuthNotice
+      || 'Ti abbiamo inviato un’email di verifica. Conferma il tuo indirizzo per completare l’attivazione.');
   } else if (storedDecision === 'ACCEPT') {
     try {
-      elements.adminEmailStatus.textContent = 'Attivazione in corso...';
+      setAdminInvitationResponseStatus(t('admin.invitations.accepting'));
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
       clearAdminInvitationDecision(roleInvitationId);
       if (result.role === 'ADMIN') {
         storePendingAdminSuccession(result.centerId, user.uid);
       }
-      elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
+      setAdminInvitationResponseStatus(t('admin.invitations.accepted'));
       await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
@@ -2399,7 +2400,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     } catch (error) {
       invitationAcceptanceFailed = true;
       clearAdminInvitationDecision(roleInvitationId);
-      elements.adminEmailStatus.textContent = friendlyErrorMessage(error, 'Accettazione fallita');
+      setAdminInvitationResponseStatus(friendlyErrorMessage(error, t('admin.invitations.acceptFailed')));
     }
   } else if (storedDecision === 'REJECT') {
     try {
@@ -2411,7 +2412,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       access = { ...access, invitationPending: false, invitationError: false };
       invitationResponse = 'REJECTED';
     } catch (error) {
-      elements.adminEmailStatus.textContent = friendlyErrorMessage(error, 'Rifiuto fallito');
+      setAdminInvitationResponseStatus(friendlyErrorMessage(error, 'Rifiuto fallito'));
     }
   }
 
@@ -4295,13 +4296,30 @@ function handleAdminCandidateNewPersonClick() {
   handleAdminNewParticipant();
 }
 
+function setAdminInvitationResponseStatus(message = '') {
+  const normalizedMessage = String(message || '').trim();
+  if (elements.adminInviteResponseStatus) {
+    elements.adminInviteResponseStatus.textContent = normalizedMessage;
+    elements.adminInviteResponseStatus.hidden = !normalizedMessage;
+  }
+  // Mantiene il messaggio anche nel modulo email quando quel modulo è visibile.
+  if (elements.adminEmailStatus) {
+    elements.adminEmailStatus.textContent = normalizedMessage;
+  }
+}
+
 function handleInviteAccept() {
   return operationGuard.run('admin:invite-accept', async () => {
     try {
+      const invitationId = getAdminRoleInvitationId();
+      if (!invitationId) {
+        setAdminInvitationResponseStatus('Nessun invito attivo trovato.');
+        return;
+      }
       const user = getCurrentUser();
       if (!user || user.isAnonymous) {
         if (!storeAdminInvitationDecision('ACCEPT')) {
-          elements.adminEmailStatus.textContent = 'Non riesco a conservare la risposta in questo browser.';
+          setAdminInvitationResponseStatus('Non riesco a conservare la risposta in questo browser.');
           return;
         }
         state.adminInviteEmailExpanded = false;
@@ -4310,13 +4328,13 @@ function handleInviteAccept() {
       }
       elements.inviteAccept.disabled = true;
       elements.inviteReject.disabled = true;
-      elements.adminEmailStatus.textContent = 'Accettazione in corso...';
-      const result = await acceptAdministratorInvitation();
-      clearAdminInvitationDecision(getAdminRoleInvitationId());
+      setAdminInvitationResponseStatus(t('admin.invitations.accepting'));
+      const result = await acceptAdministratorInvitation(invitationId, user);
+      clearAdminInvitationDecision(invitationId);
       if (result.role === 'ADMIN') {
         storePendingAdminSuccession(result.centerId, user.uid);
       }
-      elements.adminEmailStatus.textContent = t('admin.invitations.accepted');
+      setAdminInvitationResponseStatus(t('admin.invitations.accepted'));
       await showRoleInvitationAccepted(result.role);
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
@@ -4324,7 +4342,7 @@ function handleInviteAccept() {
       window.history.replaceState({}, '', acceptedUrl.pathname + acceptedUrl.search);
       window.location.reload();
     } catch (error) {
-      elements.adminEmailStatus.textContent = friendlyErrorMessage(error, 'Accettazione fallita');
+      setAdminInvitationResponseStatus(friendlyErrorMessage(error, t('admin.invitations.acceptFailed')));
       elements.inviteAccept.disabled = false;
       elements.inviteReject.disabled = false;
     }
@@ -4334,16 +4352,16 @@ function handleInviteAccept() {
 function handleInviteReject() {
   return operationGuard.run('admin:invite-reject', async () => {
     try {
-      elements.adminEmailStatus.textContent = 'Rifiuto invito...';
+      setAdminInvitationResponseStatus('Rifiuto invito...');
       const invitationId = getAdminRoleInvitationId();
       if (!invitationId) {
-        elements.adminEmailStatus.textContent = 'Nessun invito attivo trovato.';
+        setAdminInvitationResponseStatus('Nessun invito attivo trovato.');
         return;
       }
       const user = getCurrentUser();
       if (!user || user.isAnonymous) {
         if (!storeAdminInvitationDecision('REJECT')) {
-          elements.adminEmailStatus.textContent = 'Non riesco a conservare la risposta in questo browser.';
+          setAdminInvitationResponseStatus('Non riesco a conservare la risposta in questo browser.');
           return;
         }
         state.adminInviteEmailExpanded = false;
@@ -4357,12 +4375,12 @@ function handleInviteReject() {
       const rejectedUrl = new URL(window.location.href);
       rejectedUrl.searchParams.delete('adminInvite');
       window.history.replaceState({}, '', rejectedUrl.pathname + rejectedUrl.search);
-      elements.adminEmailStatus.textContent = 'Invito rifiutato. Il responsabile vedrà la tua risposta.';
+      setAdminInvitationResponseStatus('Invito rifiutato. Il responsabile vedrà la tua risposta.');
       if (elements.adminInviteAcceptPanel) {
         elements.adminInviteAcceptText.textContent = 'Hai rifiutato questo invito.';
       }
     } catch (error) {
-      elements.adminEmailStatus.textContent = friendlyErrorMessage(error, 'Rifiuto fallito');
+      setAdminInvitationResponseStatus(friendlyErrorMessage(error, 'Rifiuto fallito'));
       elements.inviteAccept.disabled = false;
       elements.inviteReject.disabled = false;
     }

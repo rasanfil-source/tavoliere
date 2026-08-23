@@ -183,6 +183,8 @@
   "admin.invitations.acceptPrompt": "Sie wurden als Zentrums-Administrator eingeladen. Möchten Sie annehmen?",
   "admin.viceAuth.help": "Melden Sie sich mit Ihrem persönlichen Konto an, um die Stellvertreterfunktionen zu verwenden.",
   "admin.invitations.acceptAction": "Ja, annehmen",
+  "admin.invitations.accepting": "Annahme läuft...",
+  "admin.invitations.acceptFailed": "Annahme fehlgeschlagen",
   "admin.invitations.accepted": "Angenommen",
   "admin.invitations.transferred": "Übertragen",
   "admin.invitations.acceptedWaitTitle": "Aufgabe angenommen",

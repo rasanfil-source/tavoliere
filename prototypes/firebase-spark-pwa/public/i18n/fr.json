@@ -183,6 +183,8 @@
   "admin.invitations.acceptPrompt": "Vous avez été invité comme administrateur du centre. Voulez-vous accepter ?",
   "admin.viceAuth.help": "Pour utiliser les fonctions de vice-administrateur, connectez-vous avec votre compte personnel.",
   "admin.invitations.acceptAction": "Oui, accepter",
+  "admin.invitations.accepting": "Acceptation en cours...",
+  "admin.invitations.acceptFailed": "Échec de l’acceptation",
   "admin.invitations.accepted": "Accepte",
   "admin.invitations.transferred": "Transfere",
   "admin.invitations.acceptedWaitTitle": "Fonction acceptée",

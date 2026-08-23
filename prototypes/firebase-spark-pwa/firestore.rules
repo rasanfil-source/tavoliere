@@ -968,7 +968,20 @@ service cloud.firestore {
           || isAdmin(centerId)
             && adminRole(centerId) == 'MANAGER'
             && resource.data.get('role', '') == 'MANAGER';
-        allow update: if adminUid == request.auth.uid
+        // L'accettazione va valutata per prima: sui documenti amministratore
+        // già esistenti le verifiche generali sottostanti possono raggiungere
+        // il limite di espressioni prima di arrivare al ramo dell'invito.
+        allow update: if (resource.data.status == 'REVOKED'
+              || resource.data.status == 'ACTIVE' && resource.data.role == 'ADMIN')
+            && invitationMembershipClaimIsValid(centerId, adminUid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'centerId', 'participantId', 'invitationId', 'status', 'email',
+              'role', 'massPermission', 'dailyOperationsPermission',
+              'administratorPasswordRequired', 'passwordSetupRequired',
+              'invitationConsumedBy', 'invitationAcceptedAt',
+              'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'
+            ])
+          || adminUid == request.auth.uid
             && resource.data.status == 'ACTIVE'
             && request.resource.data.status == resource.data.status
             && request.resource.data.role == resource.data.role
@@ -993,15 +1006,6 @@ service cloud.firestore {
               'participantId', 'status', 'email', 'role', 'massPermission',
               'dailyOperationsPermission', 'administratorPasswordRequired',
               'passwordSetupRequired', 'revokedBy', 'revokedAt', 'updatedAt'
-            ])
-          || resource.data.status == 'REVOKED'
-            && invitationMembershipClaimIsValid(centerId, adminUid)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'centerId', 'participantId', 'invitationId', 'status', 'email',
-              'role', 'massPermission', 'dailyOperationsPermission',
-              'administratorPasswordRequired', 'passwordSetupRequired',
-              'invitationConsumedBy', 'invitationAcceptedAt',
-              'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'
             ])
           ;
         allow delete: if canDeleteCenterAdministrator(centerId)

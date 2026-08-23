@@ -439,12 +439,13 @@ test('l invito di successione separa decisione e identificazione senza percorsi 
   assert.match(html, /data-admin-auth-methods/);
   assert.match(html, /data-admin-email-choice/);
   assert.match(html, /data-admin-invite-accept-actions/);
+  assert.match(html, /data-admin-invite-response-status[^>]*aria-live="polite"/);
   assert.doesNotMatch(html, /data-admin-email-mode-toggle/);
   assert.match(app, /adminInviteEmailExpanded: false/);
   assert.match(app, /const invitationNeedsDecision = hasRoleInvitation && !storedDecision/);
   assert.match(app, /elements\.adminAuthMethods\.hidden = invitationNeedsDecision/);
   assert.match(app, /elements\.inviteAcceptActions\.hidden = Boolean\(storedDecision\)/);
-  assert.match(app, /clearAdminInvitationDecision\(roleInvitationId\)[\s\S]*Accettazione fallita/);
+  assert.match(app, /clearAdminInvitationDecision\(roleInvitationId\)[\s\S]*admin\.invitations\.acceptFailed/);
   assert.match(app, /elements\.inviteAcceptActions\.hidden = !invitationPending/);
   assert.match(app, /invitationAcceptanceFailed[\s\S]*elements\.inviteAccept\.focus/);
   assert.match(app, /t\('admin\.invitations\.acceptedIdentify'\)/);
@@ -542,7 +543,8 @@ test('l autenticazione del candidato non accetta automaticamente l invito', () =
   assert.match(adminCenter, /invitationPending: true/);
   assert.doesNotMatch(pendingBranch, /claimRoleInvitation/);
   assert.match(adminCenter, /export async function acceptAdministratorInvitation/);
-  assert.match(app, /await acceptAdministratorInvitation\(\)/);
+  assert.match(app, /await acceptAdministratorInvitation\(invitationId, user\)/);
+  assert.match(app, /setAdminInvitationResponseStatus\(friendlyErrorMessage/);
   assert.match(app, /showRoleInvitationAccepted/);
   assert.match(app, /acceptedWaitMessage/);
   assert.doesNotMatch(app, /viceActivatedMessage/);

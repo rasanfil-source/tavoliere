@@ -877,7 +877,7 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     passwordSetupRequired: false,
     createdAt: now,
     updatedAt: now
-  });
+  }, { merge: true });
   batch.set(doc(db, ADMIN_PROFILE_COLLECTION, user.uid), {
     centerId: invitation.centerId,
     centerIds: arrayUnion(invitation.centerId),

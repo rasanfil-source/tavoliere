@@ -183,6 +183,8 @@
   "admin.invitations.acceptPrompt": "You were invited as center administrator. Would you like to accept?",
   "admin.viceAuth.help": "To use deputy administrator functions, sign in with your personal account.",
   "admin.invitations.acceptAction": "Yes, accept",
+  "admin.invitations.accepting": "Accepting...",
+  "admin.invitations.acceptFailed": "Acceptance failed",
   "admin.invitations.accepted": "Accepted",
   "admin.invitations.transferred": "Transferred",
   "admin.invitations.acceptedWaitTitle": "Role accepted",

@@ -83,12 +83,12 @@ test('gli inviti Firebase creano soltanto amministratori mentre il vice usa vice
   assert.match(adminAuthorization, /activeViceParticipant\(centerId, participantId\)/);
 });
 
-test('un amministratore revocato può riaccettare soltanto con un nuovo invito valido', () => {
+test('un amministratore già noto può riaccettare soltanto con un nuovo invito valido', () => {
   const invitationClaim = rules.match(/function invitationMembershipClaimIsValid\(centerId, adminUid\)[\s\S]*?\n    \}/)?.[0] || '';
   const adminRules = rules.match(/match \/admins\/\{adminUid\}[\s\S]*?match \/groups/)?.[0] || '';
   assert.match(invitationClaim, /adminUid == request\.auth\.uid/);
   assert.match(invitationClaim, /adminInvitationClaimsRole\(/);
-  assert.match(adminRules, /resource\.data\.status == 'REVOKED'[\s\S]*invitationMembershipClaimIsValid\(centerId, adminUid\)/);
+  assert.match(adminRules, /resource\.data\.status == 'REVOKED'[\s\S]*resource\.data\.status == 'ACTIVE'[\s\S]*resource\.data\.role == 'ADMIN'[\s\S]*invitationMembershipClaimIsValid\(centerId, adminUid\)/);
   assert.match(adminRules, /'createdAt', 'updatedAt', 'revokedBy', 'revokedAt'/);
 });
 

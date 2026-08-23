@@ -529,6 +529,92 @@ test('il responsabile invita un amministratore associandolo alla Persona scelta'
   }
 });
 
+test('un amministratore già attivo completa un nuovo invito rimasto in sospeso', async () => {
+  const invitationId = 'b'.repeat(64);
+  const uid = 'existing_center_admin';
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(adminPath(uid)).set({
+      centerId: CENTER_ID,
+      participantId: MARIO_ID,
+      invitationId: '1'.repeat(64),
+      invitationConsumedBy: uid,
+      invitationAcceptedAt: firebase.firestore.Timestamp.fromDate(new Date('2026-08-01T00:00:00Z')),
+      status: 'ACTIVE',
+      email: 'director@example.test',
+      role: 'ADMIN',
+      massPermission: true,
+      dailyOperationsPermission: true,
+      administratorPasswordRequired: true,
+      passwordSetupRequired: false,
+      createdAt: firebase.firestore.Timestamp.fromDate(new Date('2026-08-01T00:00:00Z')),
+      updatedAt: firebase.firestore.Timestamp.fromDate(new Date('2026-08-01T00:00:00Z'))
+    });
+    await db.doc(`adminProfiles/${uid}`).set({
+      centerId: CENTER_ID,
+      centerIds: [CENTER_ID],
+      participantId: MARIO_ID,
+      status: 'ACTIVE',
+      email: 'director@example.test',
+      role: 'ADMIN',
+      massPermission: true,
+      dailyOperationsPermission: true
+    });
+  });
+
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  await assertSucceeds(ownerDb.doc(`adminInvitations/${invitationId}`).set({
+    centerId: CENTER_ID,
+    participantId: MARIO_ID,
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    createdBy: ADMIN_UID,
+    expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2027-01-01T00:00:00Z')),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+
+  const invitedDb = testEnv.authenticatedContext(uid, emailAdminToken()).firestore();
+  const batch = invitedDb.batch();
+  batch.set(invitedDb.doc(adminPath(uid)), {
+    centerId: CENTER_ID,
+    participantId: MARIO_ID,
+    invitationId,
+    invitationConsumedBy: uid,
+    invitationAcceptedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    status: 'ACTIVE',
+    email: 'director@example.test',
+    role: 'ADMIN',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    administratorPasswordRequired: true,
+    passwordSetupRequired: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(invitedDb.doc(`adminProfiles/${uid}`), {
+    centerId: CENTER_ID,
+    centerIds: firebase.firestore.FieldValue.arrayUnion(CENTER_ID),
+    participantId: MARIO_ID,
+    status: 'ACTIVE',
+    email: 'director@example.test',
+    role: 'ADMIN',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(invitedDb.doc(`adminInvitations/${invitationId}`), {
+    status: 'USED',
+    consumedBy: uid,
+    acceptedEmail: 'director@example.test',
+    consumedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  await assertSucceeds(batch.commit());
+});
+
 test('il candidato può rifiutare l invito senza diventare amministratore', async () => {
   const invitationId = '9'.repeat(64);
   const uid = 'declining_center_admin';

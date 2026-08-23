@@ -183,6 +183,8 @@
   "admin.invitations.acceptPrompt": "Sei stato invitato come amministratore del centro. Vuoi accettare questo incarico?",
   "admin.viceAuth.help": "Per usare le funzioni da vice amministratore, autenticati con il tuo account personale.",
   "admin.invitations.acceptAction": "Sì, accetto",
+  "admin.invitations.accepting": "Accettazione in corso...",
+  "admin.invitations.acceptFailed": "Accettazione fallita",
   "admin.invitations.accepted": "Accettato",
   "admin.invitations.transferred": "Trasferito",
   "admin.invitations.acceptedWaitTitle": "Incarico accettato",
