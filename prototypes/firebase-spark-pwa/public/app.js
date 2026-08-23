@@ -69,6 +69,7 @@ import {
 } from './core/auth-state-machine.mjs?v=20260820a';
 import { toUserMessage } from './core/user-error.mjs?v=20260823c';
 import {
+  shouldBlockResidentEntryRestore,
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
 } from './core/auth-session-policy.mjs?v=20260818a';
@@ -1800,7 +1801,7 @@ async function handleInAppNavigation(event) {
   }
 
   event.preventDefault();
-  if (targetMode === 'summary') await ensureSummaryStyles();
+  if (isOperationalTarget) await ensureSummaryStyles();
   if (isOperationalTarget) {
     state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
@@ -3894,7 +3895,15 @@ async function refreshParticipant(source, options = {}) {
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
-      if (isResidentEntryGateClosed()) {
+      // Attendere Firebase prima di interpretare la porta residente: una
+      // precedente uscita con sigla può averla lasciata chiusa, ma una
+      // sessione Gmail/email forte persistente deve poter ricostruire Mese o
+      // Settimana senza essere scambiata per un nuovo accesso residente.
+      await waitForAuthReady();
+      if (shouldBlockResidentEntryRestore({
+        entryGateClosed: isResidentEntryGateClosed(),
+        strongAuthUser: hasStrongAdministratorIdentity()
+      })) {
         state.residentRestorePending = false;
         renderResidentAccess(true);
         hideStartupSplash();

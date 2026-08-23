@@ -53,15 +53,16 @@ test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impost
   assert.doesNotMatch(bootstrap, /if \(!isPlainResidentLogin\)/);
 });
 
-test('la shell PWA e i CSS pesanti restano legati alla vista che li usa', () => {
+test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo condiviso', () => {
   const appShell = serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '';
   const lazy = serviceWorker.match(/const LAZY_MODULES = \[[\s\S]*?\n\];/)?.[0] || '';
   assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|launcher-512/);
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
-  assert.match(index, /\['participant', 'week', 'summary', 'kitchen'\]\.includes\(view\)/);
+  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260823i">/);
+  assert.doesNotMatch(index, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
   assert.match(app, /function ensureSummaryStyles\(\)/);
-  assert.match(app, /if \(targetMode === 'summary'\) await ensureSummaryStyles\(\)/);
+  assert.match(app, /if \(isOperationalTarget\) await ensureSummaryStyles\(\)/);
   assert.match(app, /if \(nextMode === 'summary'\) await ensureSummaryStyles\(\)/);
   assert.match(index, /happyduck[^>]*[\s\S]*loading="lazy" decoding="async"/);
 });

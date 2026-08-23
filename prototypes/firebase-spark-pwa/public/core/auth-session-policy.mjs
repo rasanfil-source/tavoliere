@@ -17,3 +17,13 @@ export function shouldPreserveResidentViewAfterRefreshError({
 } = {}) {
   return friendlyAccess && residentReady && hasParticipant && permissionDenied;
 }
+
+export function shouldBlockResidentEntryRestore({
+  entryGateClosed = false,
+  strongAuthUser = false
+} = {}) {
+  // La porta grafica chiusa da "Esci" riguarda soltanto un successivo
+  // accesso con sigla. Non deve prevalere su una sessione Firebase forte che
+  // il browser ha già ripristinato e che Firestore autorizzerà separatamente.
+  return entryGateClosed && !strongAuthUser;
+}

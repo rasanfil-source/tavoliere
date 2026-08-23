@@ -483,6 +483,21 @@ test('una richiesta residente superata non può rimontare il login dopo l access
   assert.match(logout, /state\.residentAuthTransition = 'signing-out'[\s\S]*invalidateViewRequests\(\)/);
 });
 
+test('il refresh pasti attende Firebase e lascia passare l amministratore forte anche con porta residente chiusa', () => {
+  const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(refresh, /await waitForAuthReady\(\)[\s\S]*shouldBlockResidentEntryRestore/);
+  assert.match(refresh, /entryGateClosed: isResidentEntryGateClosed\(\)/);
+  assert.match(refresh, /strongAuthUser: hasStrongAdministratorIdentity\(\)/);
+  assert.match(refresh, /restoreFriendlyResidentSession\(\)/);
+});
+
+test('il ritorno dal pannello carica gli stili moderni per mese settimana e riepilogo', () => {
+  const navigation = app.match(/async function handleInAppNavigation\(event\)[\s\S]*?\n}/)?.[0] || '';
+  assert.match(navigation, /const isOperationalTarget = \['participant', 'week', 'summary'\]\.includes\(targetMode\)/);
+  assert.match(navigation, /if \(isOperationalTarget\) await ensureSummaryStyles\(\)/);
+  assert.doesNotMatch(navigation, /targetMode === 'summary'\) await ensureSummaryStyles/);
+});
+
 test('l uscita residente chiude soltanto il modulo mentre il pannello privilegiato termina Firebase Auth', () => {
   const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n\}/)?.[0] || '';
   const softExit = logout.match(/if \(!leavingPrivilegedControlPanel\) \{[\s\S]*?\n  \}/)?.[0] || '';
@@ -803,7 +818,7 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
   assert.match(participantRefresh, /await refreshStrongAdministratorOperationalAuthorization\(\)/);
   assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
-  assert.match(index, /\['participant', 'week', 'summary', 'kitchen'\]\.includes\(view\)/);
+  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260823i">/);
   assert.match(summaryStyles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
   assert.match(summaryStyles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
 });
