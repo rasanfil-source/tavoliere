@@ -76,6 +76,13 @@ test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
   assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
 });
 
+test('Info mostra soltanto il marchio GitHub e il nome Tavoliere', () => {
+  const info = html.match(/id="project-info-title"[\s\S]*?<\/section>/)?.[0] || '';
+  assert.match(info, /class="github-mark"[\s\S]*data-i18n="project\.github\.label">Tavoliere/);
+  assert.match(info, /data-i18n-aria-label="project\.github\.repositoryAriaLabel"/);
+  assert.doesNotMatch(info, /data-i18n="project\.info\.more"|Per saperne|README del progetto/);
+});
+
 test('agenda centro vive nella vista settimana e sostituisce il vecchio collegamento', () => {
   assert.doesNotMatch(html, /data-admin-week-link|>Settimana operativa<\/a>/);
   assert.match(html, /<details class="week-operations"[\s\S]*class="agenda-center-toggle"[\s\S]*Agenda centro/);
