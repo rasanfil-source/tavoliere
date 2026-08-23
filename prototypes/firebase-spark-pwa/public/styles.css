@@ -297,10 +297,6 @@
   border: 0;
 }
 
-.month-sheet-body {
-  gap: 10px;
-}
-
 .month-week-row {
   gap: 8px;
 }
@@ -5224,29 +5220,6 @@ body[data-resident-login-visible="true"] .account-footer {
 }
 
 /* La vista mobile aderisce a un'unica griglia ottica. */
-.month-sheet-body {
-  gap: 10px;
-}
-
-.month-week-row {
-  gap: 8px;
-}
-
-.month-day,
-.month-week-action-row,
-.month-week-mobile-header .month-day-number,
-.month-week-mobile-header .month-scope-button {
-  border-radius: 8px;
-}
-
-.month-flag,
-.month-scope-button {
-  transition: background-color 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
-}
-
-.month-flag:focus-visible,
-.month-scope-button:focus-visible,
-.month-day-number:focus-visible,
 .month-toggle-button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;

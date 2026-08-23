@@ -755,7 +755,7 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(app, /elements\.refreshButtons\.forEach/);
   assert.match(app, /loadCachedCenterAvatar\(\)/);
   assert.match(app, /renderCenterAvatar\(isParticipant \|\| isWeek \|\| isSummary \|\| isKitchen, centerName\)/);
-  assert.match(app, /!state\.adminCenterDirty && !state\.pendingCenterAvatarDataUrl/);
+  assert.match(app, /!state\.adminCenterDirty[\s\S]*?!state\.pendingCenterAvatarDataUrl[\s\S]*?!hasPendingAdminAdaptationChanges\(\)/);
   assert.match(app, /await ensureKitchenDemoSession\(\)[\s\S]*?const centerSettings = await loadCenterContactSettings[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenCounts/);
   assert.match(centerSettings, /CENTER_AVATAR_STORAGE_KEY/);
   assert.match(centerSettings, /cached\?\.version === avatarVersion/);

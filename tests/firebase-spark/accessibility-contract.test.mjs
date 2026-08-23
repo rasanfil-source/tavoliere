@@ -93,7 +93,8 @@ test('la scheda persona conserva le modifiche e offre annullamento esplicito', (
   assert.match(app, /if \(!state\.adminPersonDirty\) syncAdminContactForm\(\)/);
   assert.match(app, /async function requestAdminSectionChange/);
   assert.match(app, /section !== state\.adminActiveSection && !await confirmAdminSectionTransition\(\)/);
-  assert.match(app, /async function confirmAdminSectionTransition[\s\S]*state\.adminPersonDirty[\s\S]*state\.adminCenterDirty/);
+  assert.match(app, /async function confirmAdminSectionTransition[\s\S]*state\.adminPersonDirty[\s\S]*state\.adminCenterDirty[\s\S]*state\.pendingThemePalette[\s\S]*state\.pendingInterfaceStyle/);
+  assert.match(app, /if \(hasAdaptationChanges\) handleAdminAdaptationsCancel\(\)/);
   assert.doesNotMatch(app, /if \(section === 'people'\) \{\s*state\.adminParticipantId = '';\s*state\.adminPersonDirty = false/);
 });
 

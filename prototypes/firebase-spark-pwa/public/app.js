@@ -45,7 +45,7 @@ import {
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
   loadCachedDefaultView
-} from './center-settings.js?v=20260823c';
+} from './center-settings.js?v=20260823d';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -100,6 +100,8 @@ function transitionAuthLifecycle(type, data = {}) {
   authLifecycle = reduceAuthState(authLifecycle, { type, ...data });
   return selectAuthSurface(authLifecycle);
 }
+// Copia sincrona intenzionale: deve restare allineata al modulo partecipanti,
+// che viene caricato in modo lazy soltanto dopo il ripristino iniziale.
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
 const RESIDENT_ENTRY_GATE_STORAGE_KEY = 'tavolaComune.residentEntryGateClosed';
 const RESIDENT_SETTINGS_ACCESS = 'resident-settings';
@@ -119,8 +121,8 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823g',
-  audit: './audit-log.js?v=20260822a',
+  admin: './admin-center.js?v=20260823h',
+  audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260823c',
@@ -2164,10 +2166,21 @@ async function requestAdminSectionChange(section, options = {}) {
   return true;
 }
 
+function hasPendingAdminAdaptationChanges() {
+  return Boolean(
+    state.pendingThemePalette
+      && state.pendingThemePalette !== (state.centerContactSettings.themePalette || 'inchiostro')
+  ) || Boolean(
+    state.pendingInterfaceStyle
+      && state.pendingInterfaceStyle !== (state.centerContactSettings.interfaceStyle || 'urban-plus')
+  );
+}
+
 async function confirmAdminSectionTransition() {
   const hasPersonChanges = state.adminPersonDirty;
   const hasCenterChanges = state.adminCenterDirty || Boolean(state.pendingCenterAvatarDataUrl);
-  if (!hasPersonChanges && !hasCenterChanges) return true;
+  const hasAdaptationChanges = hasPendingAdminAdaptationChanges();
+  if (!hasPersonChanges && !hasCenterChanges && !hasAdaptationChanges) return true;
 
   const decision = await showActionDialog({
     title: t('dialog.discardChanges.title'),
@@ -2189,6 +2202,7 @@ async function confirmAdminSectionTransition() {
     syncAdminCenterSettingsForm();
     renderAdminCenterAvatarEditor();
   }
+  if (hasAdaptationChanges) handleAdminAdaptationsCancel();
   return true;
 }
 
@@ -5539,7 +5553,12 @@ function handleAdminAdaptationsReset() {
 }
 
 function handleBeforeUnload(event) {
-  if (!state.adminPersonDirty && !state.adminCenterDirty && !state.pendingCenterAvatarDataUrl) return;
+  if (
+    !state.adminPersonDirty
+    && !state.adminCenterDirty
+    && !state.pendingCenterAvatarDataUrl
+    && !hasPendingAdminAdaptationChanges()
+  ) return;
   event.preventDefault();
   event.returnValue = '';
 }

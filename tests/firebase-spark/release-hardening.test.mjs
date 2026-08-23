@@ -14,6 +14,8 @@ const participantData = fs.readFileSync(path.join(publicDir, 'participant-data.j
 const kitchenData = fs.readFileSync(path.join(publicDir, 'kitchen-data.js'), 'utf8');
 const bootstrap = fs.readFileSync(path.join(publicDir, 'bootstrap-demo.js'), 'utf8');
 const accessLinks = fs.readFileSync(path.join(publicDir, 'access-links.js'), 'utf8');
+const auditLog = fs.readFileSync(path.join(publicDir, 'audit-log.js'), 'utf8');
+const centerRestore = fs.readFileSync(path.join(publicDir, 'domain/center-restore.mjs'), 'utf8');
 const rules = read('prototypes/firebase-spark-pwa/firestore.rules');
 const operations = read('docs/OPERATIONS.md');
 
@@ -54,6 +56,17 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
   assert.match(accessLinks, /LEGACY_OPERATIONAL_TOKENS/);
   assert.match(accessLinks, /legacyTokenId[\s\S]*status: 'REVOKED'/);
   assert.match(accessLinks, /!LEGACY_OPERATIONAL_TOKENS\.has\(normalized\)/);
+});
+
+test('cache busting e chiavi sincrone non caricano copie divergenti dei moduli', () => {
+  assert.match(app, /audit: '\.\/audit-log\.js\?v=20260816g'/);
+  assert.match(adminCenter, /audit-log\.js\?v=20260816g/);
+  assert.match(participantData, /audit-log\.js\?v=20260816g/);
+  assert.match(accessLinks, /audit-log\.js\?v=20260816g/);
+  assert.match(centerRestore, /center-backup\.mjs\?v=20260823a/);
+  for (const source of [app, participantData, auditLog]) {
+    assert.match(source, /RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune\.residentSignature'/);
+  }
 });
 
 test('la sessione personale ricontrolla la Persona ma non il token per ogni cella', () => {

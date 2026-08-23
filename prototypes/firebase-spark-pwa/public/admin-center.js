@@ -29,6 +29,12 @@ const ADMIN_INVITATION_COLLECTION = 'adminInvitations';
 const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const INVITATION_LIFETIME_DAYS = 30;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
+
+function isPermissionDeniedError(error) {
+  return error?.code === 'permission-denied'
+    || error?.code === 'firestore/permission-denied';
+}
+
 export const PLATFORM_OWNER_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 export const PLATFORM_OWNER_EMAIL = 'donraimondo@parrocchiasanteugenio.it';
 const ALLOWED_TIMEZONES = new Set([
@@ -395,7 +401,7 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
     if (membership.role !== 'MANAGER' || membership.status !== 'ACTIVE') return;
     batch.set(item.ref, {
       status: 'REVOKED',
-      massPermission: true,
+      massPermission: false,
       dailyOperationsPermission: false,
       revokedBy: user.uid,
       revokedAt: now,
@@ -717,7 +723,7 @@ async function readCenterAdmin(user, centerId) {
       redirectCenterId: ''
     };
   } catch (error) {
-    if (error?.code === 'permission-denied') {
+    if (isPermissionDeniedError(error)) {
       return { ...emptyAccess(), centerId };
     }
     throw error;
@@ -778,7 +784,7 @@ async function listAccessibleAdminCenters(user, profileData = null) {
         role: access.role
       };
     } catch (error) {
-      if (error?.code === 'permission-denied') return null;
+      if (isPermissionDeniedError(error)) return null;
       throw error;
     }
   }));
@@ -829,7 +835,7 @@ async function loadRoleInvitation(invitationId) {
       expiresAt
     };
   } catch (error) {
-    if (error?.code === 'permission-denied') {
+    if (isPermissionDeniedError(error)) {
       return { active: false };
     }
     throw error;
@@ -915,7 +921,7 @@ async function loadCenterInvitation(invitationId) {
       expiresAt
     };
   } catch (error) {
-    if (error?.code === 'permission-denied') {
+    if (isPermissionDeniedError(error)) {
       return { active: false };
     }
     throw error;

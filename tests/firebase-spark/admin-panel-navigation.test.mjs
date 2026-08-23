@@ -638,7 +638,17 @@ test('la revoca del vice non consulta più i vecchi inviti Firebase di ruolo MAN
   assert.match(revokeVice, /viceSessions/);
   assert.doesNotMatch(revokeVice, /ADMIN_INVITATION_COLLECTION/);
   assert.doesNotMatch(revokeVice, /invitationsSnapshot/);
+  assert.match(revokeVice, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
+  assert.doesNotMatch(revokeVice, /massPermission: true/);
   assert.doesNotMatch(renderInvitations, /role\.vice|role === 'MANAGER'/);
+});
+
+test('i controlli amministrativi riconoscono entrambe le forme di permission denied', () => {
+  assert.match(
+    adminCenter,
+    /function isPermissionDeniedError\(error\)[\s\S]*permission-denied[\s\S]*firestore\/permission-denied/
+  );
+  assert.equal((adminCenter.match(/isPermissionDeniedError\(error\)/g) || []).length, 5);
 });
 
 test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {
