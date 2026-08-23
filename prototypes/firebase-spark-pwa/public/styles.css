@@ -2096,7 +2096,6 @@ html[data-theme="neutro"] {
   gap: 6px 10px;
 }
 
-.project-contact-link,
 .project-readme-link {
   display: inline-flex;
   align-items: center;
@@ -2107,16 +2106,115 @@ html[data-theme="neutro"] {
   text-underline-offset: 3px;
 }
 
-.project-contact-link:hover,
 .project-readme-link:hover {
   text-decoration-thickness: 2px;
 }
 
-.project-contact-link:focus-visible,
+.happyduck-contact:focus-visible,
 .project-readme-link:focus-visible {
   outline: 3px solid var(--focus-ring, var(--primary));
   outline-offset: 4px;
   border-radius: 5px;
+}
+
+.happyduck-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 3px 7px 3px 4px;
+  border: 1.5px solid #dba900;
+  border-radius: 12px;
+  color: #17263b;
+  background: linear-gradient(135deg, #fffbea 0%, #ffffff 62%);
+  box-shadow: 0 2px 8px rgb(23 38 59 / 10%);
+  font-size: 0.94rem;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.happyduck-contact:hover {
+  border-color: #b98800;
+  box-shadow: 0 4px 12px rgb(23 38 59 / 16%);
+  transform: translateY(-1px);
+}
+
+.happyduck-contact:active {
+  box-shadow: 0 1px 4px rgb(23 38 59 / 12%);
+  transform: translateY(0);
+}
+
+.happyduck-duck {
+  width: 48px;
+  height: 38px;
+  flex: 0 0 48px;
+  overflow: visible;
+}
+
+.happyduck-water {
+  fill: #3aaed8;
+}
+
+.happyduck-body,
+.happyduck-head,
+.happyduck-wing {
+  fill: #ffd21f;
+  stroke: #c88d00;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.happyduck-wing {
+  fill: #ffe362;
+}
+
+.happyduck-beak {
+  fill: #f47b20;
+  stroke: #ca4d0b;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.happyduck-eye {
+  fill: none;
+  stroke: #17263b;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.happyduck-name {
+  display: inline-flex;
+  align-items: baseline;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.happyduck-name strong {
+  color: #c78d00;
+  font-weight: 800;
+}
+
+.happyduck-action {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.happyduck-action svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .github-mark {

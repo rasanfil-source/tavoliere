@@ -554,6 +554,7 @@
   "project.github.ariaLabel": "Projet Tutti a tavola 2026 sur GitHub",
   "project.github.label": "GitHub",
   "project.info.contact": "Pour toute information ou suggestion au développeur :",
+  "project.contact.ariaLabel": "Écrire à HappyDuck",
   "project.info.more": "Pour en savoir plus, consultez le README du projet :",
   "project.info.title": "Informations",
   "role.admin": "Administrateur",
