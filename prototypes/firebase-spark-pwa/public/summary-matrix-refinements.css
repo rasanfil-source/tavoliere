@@ -314,6 +314,7 @@
 
 .summary-layout-classic .summary-matrix-names > li {
   display: block;
+  text-align: left;
 }
 
 .summary-matrix-person-trigger {

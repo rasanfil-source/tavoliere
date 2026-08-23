@@ -106,6 +106,7 @@ test('Originale e Internazionale aprono i contatti dal nome del commensale', () 
   assert.match(styles, /\.summary-international-names \.summary-matrix-names > li \{[\s\S]*flex: 0 1 auto/);
   assert.match(styles, /\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 30px;[\s\S]*line-height: 1\.05/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.summary-international-names \.summary-matrix-person-trigger \{[\s\S]*min-height: 34px/);
+  assert.match(styles, /\.summary-layout-classic \.summary-matrix-names > li \{[\s\S]*display: block;[\s\S]*text-align: left;/);
 });
 
 test('le diete operative mostrano solo identificatore e molteplicità', () => {
