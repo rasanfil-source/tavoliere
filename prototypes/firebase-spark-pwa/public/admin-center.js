@@ -584,11 +584,9 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   }
   const successorRef = doc(db, 'centers', centerId, 'admins', normalizedSuccessorUid);
   const successorProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedSuccessorUid);
-  const currentProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
-  const [successorSnapshot, successorProfileSnapshot, currentProfileSnapshot] = await Promise.all([
+  const [successorSnapshot, successorProfileSnapshot] = await Promise.all([
     getDoc(successorRef),
-    getDoc(successorProfileRef),
-    getDoc(currentProfileRef)
+    getDoc(successorProfileRef)
   ]);
   const successor = successorSnapshot.exists() ? successorSnapshot.data() : {};
   if (successor.status !== 'ACTIVE' || successor.role !== 'ADMIN') {
@@ -678,27 +676,12 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     transferredAt: now,
     updatedAt: now
   }, { merge: true });
-  // adminProfiles e' soltanto un indice di navigazione. I permessi effettivi
-  // dipendono sempre dalla membership del centro, per supportare più centri
-  // senza riattivare accidentalmente un ruolo revocato.
-  if (successorProfileSnapshot.data()?.centerId === centerId) {
-    batch.set(successorProfileRef, {
-      status: 'ACTIVE',
-      role: 'OWNER',
-      massPermission: true,
-      dailyOperationsPermission: true,
-      updatedAt: now
-    }, { merge: true });
-  }
-  if (revokePrevious && currentProfileSnapshot.data()?.centerId === centerId) {
-    batch.set(currentProfileRef, {
-      status: 'REVOKED',
-      role: 'ADMIN',
-      massPermission: false,
-      dailyOperationsPermission: false,
-      updatedAt: now
-    }, { merge: true });
-  }
+  // adminProfiles e' soltanto un indice di navigazione e non attribuisce
+  // permessi. Non va incluso nel batch critico: sui documenti completi di
+  // produzione le regole delle sette scritture superavano il limite di
+  // valutazione e annullavano l'intero passaggio. La membership del centro e'
+  // la fonte autorevole; il nuovo responsabile riallinea automaticamente il
+  // proprio profilo al primo caricamento tramite saveAdminProfile().
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.TRANSFER_OWNERSHIP,
     targetType: 'ADMIN',

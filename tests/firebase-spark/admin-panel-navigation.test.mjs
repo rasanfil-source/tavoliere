@@ -585,10 +585,12 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(app, /classList\.remove\('admin-nav-attention'\)/);
   assert.match(transfer, /const revokePrevious = options\?\.revokePrevious === true/);
   assert.match(transfer, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
-  assert.match(transfer, /batch\.set\(currentProfileRef,[\s\S]*status: 'REVOKED'/);
   assert.match(transfer, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
+  assert.doesNotMatch(transfer, /batch\.set\([^\n]*ProfileRef/);
+  assert.match(transfer, /Non va incluso nel batch critico/);
   assert.doesNotMatch(transfer, /batch\.delete\(currentMembershipRef\)/);
   assert.doesNotMatch(transfer, /publicParticipants[\s\S]*batch\.delete/);
+  assert.match(app, /friendlyErrorMessage\(error, 'Trasferimento non riuscito'\)[\s\S]*showActionDialog/);
 });
 
 test('il nuovo responsabile sincronizza la propria email e può ripulire un vecchio OWNER', () => {

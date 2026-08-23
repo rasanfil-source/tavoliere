@@ -120,7 +120,7 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823c',
+  admin: './admin-center.js?v=20260823d',
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
@@ -4486,7 +4486,14 @@ async function performOwnershipTransfer() {
       await applyAdminAuthState(getCurrentUser());
     }
   } catch (error) {
-    elements.adminLeadershipStatus.textContent = friendlyErrorMessage(error, 'Trasferimento non riuscito');
+    const message = friendlyErrorMessage(error, 'Trasferimento non riuscito');
+    elements.adminLeadershipStatus.textContent = message;
+    await showActionDialog({
+      title: t('errors.saveFailed'),
+      message,
+      confirmLabel: t('common.actions.close'),
+      hideCancel: true
+    });
   } finally {
     elements.adminTransferOwnership.disabled = false;
   }

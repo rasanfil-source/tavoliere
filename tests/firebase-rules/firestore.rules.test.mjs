@@ -908,6 +908,122 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
   });
 });
 
+test('un invito storico senza acceptedEmail completa il passaggio sui dati reali senza aggiornare gli indici', async () => {
+  await seedAcceptedAdministratorInvitation();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`).update({
+      acceptedEmail: firebase.firestore.FieldValue.delete()
+    });
+    await db.doc(centerPath()).set({
+      ownerUid: ADMIN_UID,
+      administratorName: 'Responsabile uscente',
+      administratorSignature: '202',
+      adminEmail: 'owner@example.test',
+      administratorProfileRequired: true,
+      administratorProfileComplete: true,
+      administratorPasswordRequired: false
+    }, { merge: true });
+    await db.doc(adminPath(ADMIN_UID)).set({
+      centerId: CENTER_ID,
+      participantId: MARIO_ID,
+      massPermission: true,
+      dailyOperationsPermission: true
+    }, { merge: true });
+    await db.doc(`adminProfiles/${ADMIN_UID}`).set({
+      centerId: CENTER_ID,
+      centerIds: [CENTER_ID],
+      status: 'ACTIVE',
+      role: 'OWNER',
+      email: 'owner@example.test'
+    });
+    await db.doc(`adminProfiles/${CENTER_ADMIN_UID}`).set({
+      centerId: CENTER_ID,
+      centerIds: [CENTER_ID],
+      status: 'ACTIVE',
+      role: 'ADMIN',
+      email: 'admin@example.test'
+    });
+  });
+
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const batch = ownerDb.batch();
+  batch.set(ownerDb.doc(centerPath()), {
+    ownerUid: CENTER_ADMIN_UID,
+    administratorName: 'Luca',
+    administratorSignature: 'LU',
+    adminEmail: 'admin@example.test',
+    administratorProfileComplete: true,
+    administratorPasswordRequired: false,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(adminPath(ADMIN_UID)), {
+    status: 'REVOKED',
+    role: 'ADMIN',
+    massPermission: false,
+    dailyOperationsPermission: false,
+    revokedBy: ADMIN_UID,
+    revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(adminPath(CENTER_ADMIN_UID)), {
+    role: 'OWNER',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`), {
+    status: 'TRANSFERRED',
+    transferredBy: ADMIN_UID,
+    transferredTo: CENTER_ADMIN_UID,
+    transferredAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(`${centerPath()}/auditEvents/transfer_legacy`), {
+    centerId: CENTER_ID,
+    actorUid: ADMIN_UID,
+    actorLabel: 'Responsabile uscente',
+    actorParticipantId: '',
+    action: 'TRANSFER_OWNERSHIP',
+    targetType: 'ADMIN',
+    targetId: CENTER_ADMIN_UID,
+    summary: 'Responsabilità trasferita al successore storico',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await assertSucceeds(batch.commit());
+
+  const previousOwnerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const nextOwnerDb = testEnv.authenticatedContext(CENTER_ADMIN_UID, adminToken()).firestore();
+  await assertFails(previousOwnerDb.doc(centerPath()).get());
+  await assertSucceeds(nextOwnerDb.doc(centerPath()).get());
+  await assertSucceeds(nextOwnerDb.doc(`adminProfiles/${CENTER_ADMIN_UID}`).set({
+    centerId: CENTER_ID,
+    centerIds: [CENTER_ID],
+    status: 'ACTIVE',
+    role: 'OWNER',
+    email: 'admin@example.test',
+    massPermission: true,
+    dailyOperationsPermission: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const center = (await db.doc(centerPath()).get()).data();
+    const invitation = (await db.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`).get()).data();
+    const oldProfile = (await db.doc(`adminProfiles/${ADMIN_UID}`).get()).data();
+    const nextProfile = (await db.doc(`adminProfiles/${CENTER_ADMIN_UID}`).get()).data();
+    if (center.ownerUid !== CENTER_ADMIN_UID
+        || center.adminEmail !== 'admin@example.test'
+        || center.administratorName !== 'Luca'
+        || invitation.status !== 'TRANSFERRED'
+        || oldProfile.status !== 'ACTIVE'
+        || nextProfile.role !== 'OWNER') {
+      throw new Error('Il recupero della successione storica non ha riallineato gli stati autorevoli');
+    }
+  });
+});
+
 test('il nuovo responsabile può revocare un vecchio OWNER rimasto nei dati storici', async () => {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();

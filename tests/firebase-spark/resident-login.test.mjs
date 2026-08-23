@@ -600,8 +600,10 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.ok(requestedCenterCheck >= 0 && requestedCenterCheck < profileFallback);
   assert.doesNotMatch(adminCenter, /Questo account gestisce già il centro/);
   assert.match(adminCenter, /saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
-  assert.match(adminCenter, /revokePrevious && currentProfileSnapshot\.data\(\)\?\.centerId === centerId[\s\S]*batch\.set\(currentProfileRef/);
-  assert.match(adminCenter, /successorProfileSnapshot\.data\(\)\?\.centerId === centerId/);
+  const ownershipTransfer = adminCenter.match(/export async function transferCenterOwnership\([\s\S]*?\n}\n/)?.[0] || '';
+  assert.doesNotMatch(ownershipTransfer, /batch\.set\([^\n]*ProfileRef/);
+  assert.match(ownershipTransfer, /successorProfileSnapshot\.data\(\)\?\.email/);
+  assert.match(ownershipTransfer, /La membership del centro e'\s*\/\/ la fonte autorevole/);
 });
 
 test('il salvataggio settimanale non provoca una seconda lettura completa', () => {
