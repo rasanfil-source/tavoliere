@@ -81,8 +81,8 @@ test('admin can create and fully edit participant profiles', () => {
   assert.match(app, /populateDietSelect\(elements\.weekDietType, 'Nessuna dieta occasionale', elements\.weekDietNumber\)/);
   assert.match(app, /adminParticipantDiets\.value = 'STANDARD'/);
   assert.match(index, /data-admin-participant-diet-number/);
-  assert.match(dietUtils, /value: 'CUSTOM', label: 'Altro numero\.\.\.'/);
-  assert.match(dietUtils, /Inserisci un numero di dieta compreso tra 5 e 999/);
+  assert.match(dietUtils, /function isNumericDietCode\(value\)/);
+  assert.doesNotMatch(dietUtils, /getDietOptions|isCustomDietNumber|resolveDietSelection|BIANCO|DIAB|IPO|CARDIO/);
   assert.match(app, /BASE_ADMIN_DIET_NUMBERS = Object\.freeze\(\[1, 2, 3, 4\]\)/);
   assert.match(app, /function getAdminDietNumbers\(\)/);
   assert.match(app, /addOption\.textContent = t\('diet\.option\.ADD_HIGHER'\)/);

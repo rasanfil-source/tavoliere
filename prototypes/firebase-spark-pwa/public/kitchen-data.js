@@ -15,10 +15,10 @@ import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20260823a';
+} from './reservation-state.mjs?v=20260823b';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { formatDietLabel } from './diet-utils.mjs?v=20260823b';
-import { t } from './i18n/i18n.mjs?v=20260823e';
+import { formatDietLabel } from './diet-utils.mjs?v=20260823c';
+import { t } from './i18n/i18n.mjs?v=20260823f';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
 const SESSION_LIFETIME_DAYS = 30;

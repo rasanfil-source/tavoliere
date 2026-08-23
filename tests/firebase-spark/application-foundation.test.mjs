@@ -73,7 +73,7 @@ test('il profilo persona viene normalizzato in un solo punto', () => {
     displayName: '  Mario Rossi ',
     signature: ' mr ',
     phone: '+39 333-1234567',
-    dietTags: ['2L'],
+    dietTags: ['3'],
     viceAdminRole: true
   });
 

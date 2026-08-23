@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260823e';
+} from './i18n/i18n.mjs?v=20260823f';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -45,18 +45,18 @@ import {
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
   loadCachedDefaultView
-} from './center-settings.js?v=20260823d';
+} from './center-settings.js?v=20260823e';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260823b';
+} from './diet-utils.mjs?v=20260823c';
 import {
   isValidKitchenDietLabel,
   kitchenDietLabelForCode,
   normalizeKitchenDietLabel,
   updateKitchenDietLegendEntry
-} from './diet-legend.mjs?v=20260823b';
+} from './diet-legend.mjs?v=20260823c';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
@@ -67,7 +67,7 @@ import {
   reduceAuthState,
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20260820a';
-import { toUserMessage } from './core/user-error.mjs?v=20260823b';
+import { toUserMessage } from './core/user-error.mjs?v=20260823c';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -80,14 +80,14 @@ import {
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816g';
+} from './domain/participant-profile.mjs?v=20260816h';
 import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260823a';
 import { inspectCenterBackup } from './domain/center-backup.mjs?v=20260823a';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823g';
+} from './summary-matrix-view.js?v=20260823h';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
@@ -124,10 +124,10 @@ const domainModulePaths = {
   admin: './admin-center.js?v=20260823h',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
-  daily: './daily-operations.js?v=20260817c',
-  kitchen: './kitchen-data.js?v=20260823c',
+  daily: './daily-operations.js?v=20260817d',
+  kitchen: './kitchen-data.js?v=20260823d',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260823d'
+  participant: './participant-data.js?v=20260823e'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();

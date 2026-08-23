@@ -7,7 +7,7 @@ import {
 import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
 import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20260823b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';

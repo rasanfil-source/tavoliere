@@ -28,18 +28,18 @@ import {
   withAdministratorTechnicalSession
 } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823a';
+import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823b';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260823b';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823b';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260823c';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816g';
+} from './domain/participant-profile.mjs?v=20260816h';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823c';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   CENTER_BACKUP_SCHEMA_VERSION,
@@ -48,7 +48,7 @@ import {
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260823d';
+} from './center-settings.js?v=20260823e';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -57,7 +57,7 @@ export {
   restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260823d';
+} from './center-settings.js?v=20260823e';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

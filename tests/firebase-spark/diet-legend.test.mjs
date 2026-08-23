@@ -17,11 +17,11 @@ const styles = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/
 test('la legenda cucina conserva solo codici numerici ed etichette di una o due parole', () => {
   assert.deepEqual(normalizeKitchenDietLegend([
     { code: '3', label: '  senza   lattosio ' },
-    { code: '2L', label: 'Senza glutine' },
+    { code: 'GLUTEN', label: 'Senza glutine' },
     { code: '4', label: 'tre parole qui' },
     { code: '0', label: 'Non valida' }
   ]), [
-    { code: '3', label: 'Senza glutine' }
+    { code: '3', label: 'senza lattosio' }
   ]);
   assert.equal(isValidKitchenDietLabel('In bianco'), true);
   assert.equal(isValidKitchenDietLabel('Troppe parole qui'), false);

@@ -71,11 +71,11 @@ test('un override senza regola non crea una presenza', () => {
 test('la dieta fotografata nella prenotazione prevale sulla dieta anagrafica successiva', () => {
   assert.deepEqual(
     resolveEffectiveDietTags(
-      { dietTags: ['DIABETE'] },
+      { dietTags: ['7'] },
       { dietTags: ['STANDARD'] }
     ),
     ['STANDARD']
   );
-  assert.deepEqual(resolveEffectiveDietTags({ dietTags: ['2L'] }, null), ['3']);
+  assert.deepEqual(resolveEffectiveDietTags({ dietTags: ['7'] }, null), ['7']);
   assert.deepEqual(resolveEffectiveDietTags(null, null), ['STANDARD']);
 });
