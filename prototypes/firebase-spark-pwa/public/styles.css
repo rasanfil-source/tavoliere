@@ -1090,7 +1090,7 @@ h1,
 
 .participant-status-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: auto minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
 }
@@ -1103,7 +1103,7 @@ h1,
 
 .summary-status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
 }
@@ -1117,7 +1117,7 @@ h1,
 
 .kitchen-status-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
 }
@@ -1140,8 +1140,8 @@ h1,
 
 .status-refresh-button {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   place-items: center;
   border: 1px solid var(--line);
@@ -6632,24 +6632,6 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   padding: 0;
   margin: 0;
   align-self: center;
-}
-
-.auth-switch-wrap {
-  margin: 12px 0 6px;
-  font-size: 0.88rem;
-  color: var(--today-ink);
-  text-align: center;
-}
-
-.auth-switch-wrap button {
-  font-size: 0.88rem;
-  min-height: auto;
-  padding: 0;
-  text-decoration: underline;
-  color: var(--primary);
-  background: none;
-  border: none;
-  cursor: pointer;
 }
 
 /* -------------------------------------------------------------------

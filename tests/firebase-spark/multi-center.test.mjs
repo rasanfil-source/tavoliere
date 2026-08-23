@@ -119,7 +119,8 @@ test('ogni centro genera collegamenti distinti per residenti riepilogo e cucina'
   assert.match(app, /createCenterInvitation/);
   assert.match(app, /url\.searchParams\.set\('invite', invitation\.invitationId\)/);
   assert.match(accessLinks, /privateSettings', SETTINGS_DOCUMENT_ID/);
-  assert.match(accessLinks, /if \(currentLinks\.publicTokenId && currentLinks\.kitchenTokenId\)/);
+  assert.match(accessLinks, /tokenIsUsable\(currentPublicSnapshot, 'PUBLIC'\)/);
+  assert.match(accessLinks, /tokenIsUsable\(currentKitchenSnapshot, 'KITCHEN'\)/);
   assert.match(accessLinks, /AUDIT_ACTIONS\.ROTATE_OPERATIONAL_LINK/);
   assert.doesNotMatch(index, /data-rotate-operational-link/);
 });

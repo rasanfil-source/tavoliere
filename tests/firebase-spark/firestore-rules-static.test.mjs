@@ -60,8 +60,10 @@ test('the common password can mint only bounded personal tokens', () => {
   );
   assert.match(
     rules,
-    /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\)[\s\S]*scope == 'PERSONAL'[\s\S]*targetType == 'PARTICIPANT'[\s\S]*duration\.value\(9001, 'd'\)/
+    /function personalTokenCreateIsValid\(centerId, tokenId\)[\s\S]*scope == 'PERSONAL'[\s\S]*targetType == 'PARTICIPANT'[\s\S]*participantIsActive[\s\S]*duration\.value\(9001, 'd'\)/
   );
+  assert.match(rules, /canCreatePersonalTokenForManager\(centerId, tokenId\)[\s\S]*personalTokenCreateIsValid\(centerId, tokenId\)/);
+  assert.match(rules, /match \/linkTokens\/\{tokenId\}[\s\S]*isResidentTechnicalUser\(centerId\)[\s\S]*personalTokenCreateIsValid\(centerId, tokenId\)/);
   assert.match(participantData, /withResidentTechnicalSession\(/);
   assert.match(participantData, /async \(\{ db: technicalDb \}\) =>/);
   assert.match(participantData, /createPersonalTokenForParticipant\([\s\S]*technicalDb/);
@@ -119,7 +121,8 @@ test('public sessions are read only for participant reservations', () => {
   assert.match(personalSession, /session\.participantId == participantId/);
   assert.match(personalSessionGate, /session\.tokenId is string/);
   assert.match(personalSessionGate, /request\.time < session\.expiresAt/);
-  assert.doesNotMatch(personalSessionGate, /tokenIsUsable|tokenData|participantIsActive/);
+  assert.match(personalSessionGate, /participantIsActive\(centerId, session\.participantId\)/);
+  assert.doesNotMatch(personalSessionGate, /tokenIsUsable|tokenData/);
   assert.match(personalSession, /participantIsActive\(centerId, participantId\)/);
   assert.doesNotMatch(validator, /hasSessionScope\(centerId, 'PUBLIC'\)/);
 });
@@ -199,6 +202,19 @@ test('il vice usa la configurazione ma non amministra il passaggio di consegne',
   assert.match(rules, /match \/centers\/\{centerId\}[\s\S]*allow update: if canManageCenterConfiguration\(centerId\)/);
   assert.match(rules, /match \/participants\/\{participantId\}[\s\S]*allow delete: if canManageCenterConfiguration\(centerId\)/);
   assert.match(rules, /affectedKeys\(\)\.hasAny\(\['viceAdminRole', 'liturgicalRole'\]\)/);
+});
+
+test('il ruolo vice non può essere ottenuto o conservato copiando una sigla', () => {
+  const residentAuthorization = rules.match(/function residentMayAdminister\(centerId, participantId\)[\s\S]*?\n    }/)?.[0] || '';
+  const sessionAuthorization = rules.match(/function existingViceSessionAuthorizes\(centerId, viceSessionPath\)[\s\S]*?\n    }/)?.[0] || '';
+  const viceParticipantUpdate = rules.match(/function viceParticipantUpdateDoesNotChangeRoles\(centerId, participantId\)[\s\S]*?\n    }/)?.[0] || '';
+  assert.match(residentAuthorization, /viceAdminRole/);
+  assert.doesNotMatch(residentAuthorization, /administratorSignature/);
+  assert.match(sessionAuthorization, /passwordVersion/);
+  assert.match(sessionAuthorization, /viceAdminRole/);
+  assert.doesNotMatch(sessionAuthorization, /administratorSignature/);
+  assert.match(viceParticipantUpdate, /'viceAdminRole', 'signature'/);
+  assert.match(viceParticipantUpdate, /affectedKeys\(\)\.hasAny\(\['status'\]\)/);
 });
 
 test('solo il responsabile unico cambia titolo e seconda riga iniziali', () => {
@@ -421,7 +437,8 @@ test('bootstrap extends access and calendar coverage without shortening the safe
     new URL('../../prototypes/firebase-spark-pwa/public/bootstrap-demo.js', import.meta.url),
     'utf8'
   );
-  assert.match(bootstrap, /DEFAULT_ACCESS_EXPIRES_AT/);
+  assert.match(bootstrap, /createOperationalAccessExpiry\(\)/);
+  assert.doesNotMatch(bootstrap, /DEFAULT_ACCESS_EXPIRES_AT/);
   assert.match(bootstrap, /CALENDAR_COVERAGE_DAYS/);
   assert.match(bootstrap, /calendarCoveredThrough/);
   assert.match(bootstrap, /orderBy\('mealDate', 'desc'\)/);

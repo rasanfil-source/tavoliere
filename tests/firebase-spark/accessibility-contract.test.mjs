@@ -90,7 +90,11 @@ test('la scheda persona conserva le modifiche e offre annullamento esplicito', (
   assert.match(app, /function markAdminPersonDirty/);
   assert.match(app, /function confirmAdminPersonTransition/);
   assert.match(app, /function handleAdminCancelParticipant/);
-  assert.match(app, /if \(!state\.adminPersonDirty\) \{\s*syncAdminContactForm\(\)/);
+  assert.match(app, /if \(!state\.adminPersonDirty\) syncAdminContactForm\(\)/);
+  assert.match(app, /async function requestAdminSectionChange/);
+  assert.match(app, /section !== state\.adminActiveSection && !await confirmAdminSectionTransition\(\)/);
+  assert.match(app, /async function confirmAdminSectionTransition[\s\S]*state\.adminPersonDirty[\s\S]*state\.adminCenterDirty/);
+  assert.doesNotMatch(app, /if \(section === 'people'\) \{\s*state\.adminParticipantId = '';\s*state\.adminPersonDirty = false/);
 });
 
 test('la scheda persona assegna larghezze coerenti ai campi brevi', () => {

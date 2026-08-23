@@ -323,10 +323,11 @@ test('un amministratore forte ripristina la propria persona anche senza una vecc
   const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
   const restoreAdmin = participantData.match(/export async function restoreResidentIdentityForAuthorizedAdministrator\([\s\S]*?\n}/)?.[0] || '';
   assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\);/);
-  assert.match(restoreAdmin, /const storedParticipantId = loadStoredResidentParticipantId\(\);/);
-  assert.match(restoreAdmin, /const storedSignature = loadStoredResidentSignature\(\);/);
+  assert.match(restoreAdmin, /membershipSnapshot\.exists\(\)[\s\S]*membershipSnapshot\.data\(\)\.status !== 'ACTIVE'/);
   assert.match(restoreAdmin, /const membershipParticipantId = String\(/);
+  assert.match(restoreAdmin, /!membershipParticipantId && membershipRole !== 'OWNER'/);
   assert.match(restoreAdmin, /loadCenterContactSettings\(\{ forceRefresh: false \}\)/);
+  assert.doesNotMatch(restoreAdmin, /loadStoredResidentParticipantId|loadStoredResidentSignature/);
   assert.match(restoreAdmin, /return \{\s*participant,\s*participants: \[participant\],\s*strongAdministrator: true\s*\};/);
 });
 
@@ -673,8 +674,8 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
   assert.match(app, /function scheduleBackgroundRefresh\(source\)/);
   assert.match(app, /window\.clearTimeout\(state\.backgroundRefreshTimerId\)/);
   assert.match(app, /sessionPromise = ensurePublicDemoSession\(\)/);
-  assert.match(app, /const \[, centerSettings\] = await Promise\.all\(\[sessionPromise, settingsPromise\]\)/);
-  assert.match(app, /const sessionPromise = ensureKitchenDemoSession\(\)/);
+  assert.match(app, /await sessionPromise;[\s\S]*const centerSettings = await loadCenterContactSettings/);
+  assert.match(app, /await ensureKitchenDemoSession\(\)[\s\S]*const centerSettings = await loadCenterContactSettings/);
   assert.match(centerSettings, /refreshCenterContactSettings\(\)\.catch\(\(\) => undefined\);\s*}\s*return centerContactSettingsCache\.value/);
 });
 
@@ -755,7 +756,7 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(app, /loadCachedCenterAvatar\(\)/);
   assert.match(app, /renderCenterAvatar\(isParticipant \|\| isWeek \|\| isSummary \|\| isKitchen, centerName\)/);
   assert.match(app, /!state\.adminCenterDirty && !state\.pendingCenterAvatarDataUrl/);
-  assert.match(app, /const \[, centerSettings\] = await Promise\.all\(\[sessionPromise, settingsPromise\]\)[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenCounts/);
+  assert.match(app, /await ensureKitchenDemoSession\(\)[\s\S]*?const centerSettings = await loadCenterContactSettings[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenCounts/);
   assert.match(centerSettings, /CENTER_AVATAR_STORAGE_KEY/);
   assert.match(centerSettings, /cached\?\.version === avatarVersion/);
   assert.match(app, /admin\.avatar\.readyNeedsPassword/);
@@ -999,7 +1000,6 @@ test('la messa si programma nella vista settimana per i ruoli autorizzati', () =
   assert.match(adminCenter, /canManageDailyOperations: hasCapability\(role, CAPABILITIES\.MANAGE_DAILY_OPERATIONS\)/);
   assert.match(participantProfile, /viceAdminRole: profile\.viceAdminRole === true/);
   assert.match(participantData, /export async function listCenterAdministrators/);
-  assert.match(app, /selectedParticipantIsCenterAdministrator\(\)/);
   assert.match(app, /listPublicParticipants\(\{/);
   assert.match(app, /viceAdminRole: options\.viceAdminRole === true/);
   assert.match(app, /function canEditParticipantLiturgy\(participant\)/);

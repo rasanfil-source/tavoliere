@@ -7,9 +7,9 @@ import {
 import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
+import { createOperationalAccessExpiry } from './schedule-utils.mjs?v=20260816g';
 
 const SETTINGS_DOCUMENT_ID = 'operationalLinks';
-const LINK_LIFETIME_DAYS = 9000;
 const LEGACY_OPERATIONAL_TOKENS = new Set(['public_demo', 'kitchen_demo']);
 const LINK_SCOPES = Object.freeze({
   PUBLIC: {
@@ -34,7 +34,10 @@ export async function loadOperationalLinks({ forceRefresh = false } = {}) {
     return cachedLinksByCenter.get(centerId);
   }
   const snapshot = await getDoc(settingsRef(centerId));
-  const links = normalizeOperationalLinks(snapshot.exists() ? snapshot.data() : {});
+  const links = await resolveOperationalLinkStatuses(
+    centerId,
+    normalizeOperationalLinks(snapshot.exists() ? snapshot.data() : {})
+  );
   cachedLinksByCenter.set(centerId, links);
   return links;
 }
@@ -49,16 +52,37 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
   const result = await runTransaction(db, async (transaction) => {
     const configurationSnapshot = await transaction.get(configurationRef);
     const storedLinks = configurationSnapshot.exists() ? configurationSnapshot.data() : {};
-    const currentLinks = normalizeOperationalLinks(
-      storedLinks
-    );
-    if (currentLinks.publicTokenId && currentLinks.kitchenTokenId) {
-      return currentLinks;
+    const currentLinks = normalizeOperationalLinks(storedLinks);
+    const currentPublicRef = currentLinks.publicTokenId
+      ? tokenRef(centerId, currentLinks.publicTokenId)
+      : null;
+    const currentKitchenRef = currentLinks.kitchenTokenId
+      ? tokenRef(centerId, currentLinks.kitchenTokenId)
+      : null;
+    // Firestore transactions require every read before the first write.
+    const currentPublicSnapshot = currentPublicRef
+      ? await transaction.get(currentPublicRef)
+      : null;
+    const currentKitchenSnapshot = currentKitchenRef
+      ? await transaction.get(currentKitchenRef)
+      : null;
+    const publicUsable = tokenIsUsable(currentPublicSnapshot, 'PUBLIC');
+    const kitchenUsable = tokenIsUsable(currentKitchenSnapshot, 'KITCHEN');
+    if (publicUsable && kitchenUsable) {
+      return {
+        ...currentLinks,
+        publicStatus: 'ACTIVE',
+        kitchenStatus: 'ACTIVE'
+      };
     }
 
-    const publicTokenId = currentLinks.publicTokenId || LINK_SCOPES.PUBLIC.prefix + createRandomToken();
-    const kitchenTokenId = currentLinks.kitchenTokenId || LINK_SCOPES.KITCHEN.prefix + createRandomToken();
-    const expiresAt = new Date(Date.now() + LINK_LIFETIME_DAYS * 24 * 60 * 60 * 1000);
+    const publicTokenId = publicUsable
+      ? currentLinks.publicTokenId
+      : LINK_SCOPES.PUBLIC.prefix + createRandomToken();
+    const kitchenTokenId = kitchenUsable
+      ? currentLinks.kitchenTokenId
+      : LINK_SCOPES.KITCHEN.prefix + createRandomToken();
+    const expiresAt = createOperationalAccessExpiry();
     const createdAt = new Date();
     const now = serverTimestamp();
 
@@ -73,8 +97,15 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
         }, { merge: true });
       });
 
-    if (!currentLinks.publicTokenId) {
-      transaction.set(doc(db, 'centers', centerId, 'linkTokens', publicTokenId), {
+    if (!publicUsable) {
+      if (currentPublicSnapshot?.exists()) {
+        transaction.set(currentPublicRef, {
+          status: 'REVOKED',
+          revokedAt: now,
+          updatedAt: now
+        }, { merge: true });
+      }
+      transaction.set(tokenRef(centerId, publicTokenId), {
         status: 'ACTIVE',
         scope: 'PUBLIC',
         targetType: LINK_SCOPES.PUBLIC.targetType,
@@ -83,8 +114,15 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
         updatedAt: now
       });
     }
-    if (!currentLinks.kitchenTokenId) {
-      transaction.set(doc(db, 'centers', centerId, 'linkTokens', kitchenTokenId), {
+    if (!kitchenUsable) {
+      if (currentKitchenSnapshot?.exists()) {
+        transaction.set(currentKitchenRef, {
+          status: 'REVOKED',
+          revokedAt: now,
+          updatedAt: now
+        }, { merge: true });
+      }
+      transaction.set(tokenRef(centerId, kitchenTokenId), {
         status: 'ACTIVE',
         scope: 'KITCHEN',
         targetType: LINK_SCOPES.KITCHEN.targetType,
@@ -98,15 +136,21 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
       centerId,
       publicTokenId,
       kitchenTokenId,
-      publicCreatedAt: currentLinks.publicCreatedAt || now,
-      kitchenCreatedAt: currentLinks.kitchenCreatedAt || now,
+      publicCreatedAt: publicUsable && currentLinks.publicCreatedAt
+        ? currentLinks.publicCreatedAt
+        : now,
+      kitchenCreatedAt: kitchenUsable && currentLinks.kitchenCreatedAt
+        ? currentLinks.kitchenCreatedAt
+        : now,
       updatedAt: now
     });
     appendAuditEvent(transaction, {
       action: AUDIT_ACTIONS.ROTATE_OPERATIONAL_LINK,
       targetType: 'OPERATIONAL_LINK',
-      targetId: 'INITIAL',
-      summary: 'Collegamenti operativi attivati'
+      targetId: publicUsable || kitchenUsable ? 'REPAIR' : 'INITIAL',
+      summary: publicUsable || kitchenUsable
+        ? 'Collegamenti operativi riparati'
+        : 'Collegamenti operativi attivati'
     }, user);
 
     return {
@@ -114,8 +158,12 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
       kitchenTokenId,
       publicStatus: 'ACTIVE',
       kitchenStatus: 'ACTIVE',
-      publicCreatedAt: currentLinks.publicCreatedAt || createdAt,
-      kitchenCreatedAt: currentLinks.kitchenCreatedAt || createdAt
+      publicCreatedAt: publicUsable && currentLinks.publicCreatedAt
+        ? currentLinks.publicCreatedAt
+        : createdAt,
+      kitchenCreatedAt: kitchenUsable && currentLinks.kitchenCreatedAt
+        ? currentLinks.kitchenCreatedAt
+        : createdAt
     };
   });
 
@@ -125,6 +173,33 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
 
 export function invalidateOperationalLinksCache() {
   cachedLinksByCenter.clear();
+}
+
+async function resolveOperationalLinkStatuses(centerId, links) {
+  const [publicSnapshot, kitchenSnapshot] = await Promise.all([
+    links.publicTokenId ? getDoc(tokenRef(centerId, links.publicTokenId)) : Promise.resolve(null),
+    links.kitchenTokenId ? getDoc(tokenRef(centerId, links.kitchenTokenId)) : Promise.resolve(null)
+  ]);
+  return {
+    ...links,
+    publicStatus: tokenIsUsable(publicSnapshot, 'PUBLIC') ? 'ACTIVE' : 'INACTIVE',
+    kitchenStatus: tokenIsUsable(kitchenSnapshot, 'KITCHEN') ? 'ACTIVE' : 'INACTIVE'
+  };
+}
+
+function tokenIsUsable(snapshot, expectedScope, now = new Date()) {
+  if (!snapshot?.exists()) return false;
+  const data = snapshot.data();
+  const expiresAt = normalizeDate(data.expiresAt);
+  return data.status === 'ACTIVE'
+    && data.scope === expectedScope
+    && data.targetType === 'CENTER'
+    && expiresAt instanceof Date
+    && expiresAt > now;
+}
+
+function tokenRef(centerId, tokenId) {
+  return doc(db, 'centers', centerId, 'linkTokens', tokenId);
 }
 
 function settingsRef(centerId) {

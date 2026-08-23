@@ -78,13 +78,19 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
   }
 
   const invitationId = getAdminInvitationId();
-  if (invitationId && !isPlatformOwnerUser(user)) {
-    const invitation = await loadCenterInvitation(invitationId);
+  const explicitInvitationId = normalizeInvitationId(
+    new URLSearchParams(window.location.search).get('invite')
+  );
+  // Solo il link aperto esplicitamente prevale sulla membership. Un invito
+  // rimasto nello storage non deve riportare ogni volta un amministratore
+  // già attivo alla creazione di un nuovo centro.
+  if (explicitInvitationId && !isPlatformOwnerUser(user)) {
+    const invitation = await loadCenterInvitation(explicitInvitationId);
     if (invitation.active) {
       return {
         ...emptyAccess(),
-        centerId: createOwnedCenterId(user.uid, invitationId.slice(0, 16)),
-        invitationId,
+        centerId: createOwnedCenterId(user.uid, explicitInvitationId.slice(0, 16)),
+        invitationId: explicitInvitationId,
         needsInitialization: true
       };
     }

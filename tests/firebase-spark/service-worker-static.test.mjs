@@ -114,10 +114,9 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(serviceWorker, /splash-512-blended\.png\?v=20260822a/);
 });
 
-test('la barra partecipante puo omettere il pulsante di aggiornamento senza bloccare l avvio', () => {
+test('la barra partecipante non conserva il vecchio pulsante di aggiornamento', () => {
   assert.doesNotMatch(index, /data-participant-refresh/);
-  assert.match(app, /participantRefreshButton\?\.addEventListener/);
-  assert.match(app, /if \(elements\.participantRefreshButton\) \{\s*elements\.participantRefreshButton\.hidden = true;/);
+  assert.doesNotMatch(app, /participantRefreshButton/);
 });
 
 test('il pannello amministrativo richiama solo funzioni esistenti durante il primo rendering', () => {

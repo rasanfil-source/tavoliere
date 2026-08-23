@@ -4,11 +4,17 @@ export const DEFAULT_RESERVATION_CUTOFFS = Object.freeze({
   nextDayBreakfast: '15:00'
 });
 
-export const DEFAULT_ACCESS_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');
+export const OPERATIONAL_LINK_LIFETIME_DAYS = 9000;
 export const CALENDAR_COVERAGE_DAYS = 365;
 
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const zonedDateTimeFormatterCache = new Map();
+
+export function createOperationalAccessExpiry(now = new Date()) {
+  const expiresAt = new Date(now);
+  expiresAt.setUTCDate(expiresAt.getUTCDate() + OPERATIONAL_LINK_LIFETIME_DAYS);
+  return expiresAt;
+}
 
 export function normalizeReservationCutoffs(value = {}) {
   const cutoffs = {

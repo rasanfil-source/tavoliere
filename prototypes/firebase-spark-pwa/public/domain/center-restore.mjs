@@ -29,7 +29,6 @@ const RESTORABLE_PRESENTATION_FIELDS = Object.freeze([
   'defaultView',
   'summaryLayout',
   'kitchenLayout',
-  'monthLayout',
   'monthControlsSide',
   'summaryResidentLabel',
   'language'

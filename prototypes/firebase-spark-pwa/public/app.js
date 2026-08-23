@@ -44,8 +44,7 @@ import {
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
-  loadCachedDefaultView,
-  cacheDefaultView
+  loadCachedDefaultView
 } from './center-settings.js?v=20260823c';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
@@ -64,7 +63,6 @@ import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
 import { createStateStore } from './core/state-store.mjs?v=20260816g';
 import {
-  AUTH_STATES,
   createInitialAuthState,
   reduceAuthState,
   selectAuthSurface
@@ -658,11 +656,10 @@ const state = {
     participantContactSharingEnabled: true,
     kitchenDietLegend: [],
     themePalette: 'inchiostro',
-    interfaceStyle: 'future',
+    interfaceStyle: 'urban-plus',
     defaultView: loadCachedDefaultView(),
     summaryLayout: 'classic',
     kitchenLayout: 'classic',
-    monthLayout: 'grid',
     monthControlsSide: 'right',
     summaryResidentLabel: 'name',
     language: 'it',
@@ -746,7 +743,6 @@ const elements = {
   adminPasswordSetupStatus: document.querySelector('[data-admin-password-setup-status]'),
   adminPasswordSetupToggle: document.querySelector('[data-password-toggle="required-admin"]'),
   actionDialog: document.querySelector('[data-action-dialog]'),
-  actionDialogForm: document.querySelector('[data-action-dialog-form]'),
   actionDialogTitle: document.querySelector('[data-action-dialog-title]'),
   actionDialogMessage: document.querySelector('[data-action-dialog-message]'),
   actionDialogTextWrap: document.querySelector('[data-action-dialog-text-wrap]'),
@@ -772,12 +768,6 @@ const elements = {
   initializerPasswordRow: document.querySelector('[data-initializer-password-row]'),
   initializerPassword: document.querySelector('[data-initializer-password]'),
   initializerPasswordToggle: document.querySelector('[data-password-toggle="initializer"]'),
-  authSwitchWrap: document.querySelector('[data-auth-switch-wrap]'),
-  authSwitchToSignin: document.querySelector('[data-auth-switch-to-signin]'),
-  authSwitchToSignup: document.querySelector('[data-auth-switch-to-signup]'),
-  authSwitchTextToSignin: document.querySelector('[data-auth-switch-text-to-signin]'),
-  authSwitchTextToSignup: document.querySelector('[data-auth-switch-text-to-signup]'),
-  adminForgotPassword: document.querySelector('[data-admin-forgot-password]'),
   authStatus: document.querySelector('[data-auth-status]'),
   authUid: document.querySelector('[data-auth-uid]'),
   adminCenterSwitcher: document.querySelector('[data-admin-center-switcher]'),
@@ -804,7 +794,6 @@ const elements = {
   adminDefaultViewSelect: document.querySelector('[data-admin-default-view-select]'),
   adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
   adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
-  adminMonthLayoutSelect: document.querySelector('[data-admin-month-layout-select]'),
   adminMonthControlsSideSelect: document.querySelector('[data-admin-month-controls-side-select]'),
   adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
   adminAdaptationsTitle: document.querySelector('[data-admin-adaptations-title]'),
@@ -939,7 +928,6 @@ const elements = {
   residentLoginButton: document.querySelector('[data-resident-login-button]'),
   residentPasswordToggle: document.querySelector('[data-password-toggle="resident"]'),
   adminPasswordToggle: document.querySelector('[data-password-toggle="admin"]'),
-  participantRefreshButton: document.querySelector('[data-participant-refresh]'),
   ownerExitButton: document.querySelector('[data-owner-exit]'),
   platformOwnerExitButton: document.querySelector('[data-platform-owner-exit]'),
   forgetDeviceButton: document.querySelector('[data-forget-device]'),
@@ -1007,7 +995,6 @@ const elements = {
   weekJumpSelect: document.querySelector('[data-week-jump]'),
   monthPrev: document.querySelector('[data-month-prev]'),
   monthNext: document.querySelector('[data-month-next]'),
-  monthLabel: document.querySelector('[data-month-label]'),
   monthGrid: document.querySelector('[data-month-grid]'),
   todayOverview: document.querySelector('[data-today-overview]'),
   participantMeals: document.querySelector('[data-participant-meals]'),
@@ -1136,7 +1123,6 @@ populateDietSelect(elements.weekDietType, 'Nessuna dieta occasionale', elements.
 document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
-elements.participantRefreshButton?.addEventListener('click', () => refreshNow('manuale'));
 elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
 elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
@@ -1407,7 +1393,16 @@ async function bootstrapApp() {
   initializeOperationalLinks();
   initializeResidentAccess();
 
-  const settingsPromise = loadCenterContactSettings().catch(() => null);
+  // La vista Cucina deve creare prima la propria sessione: un caricamento
+  // anticipato delle impostazioni protette può essere negato e condiviso con
+  // il refresh successivo, facendo fallire proprio la prima apertura.
+  const settingsPromise = state.mode === 'kitchen'
+    ? Promise.resolve(null)
+    : loadCenterContactSettings().catch(() => null);
+  window.setTimeout(hideStartupSplash, 8000);
+  const settingsDeadline = new Promise((resolve) => {
+    window.setTimeout(() => resolve(null), 8000);
+  });
   const i18nPromise = initI18n({
     development: window.location.hostname === 'localhost',
     centerLocale: state.centerContactSettings.language || null
@@ -1419,14 +1414,24 @@ async function bootstrapApp() {
   renderAllViews();
   if (hasAdminInterface) initializeAuthPanel();
   const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
-  if (!keepStartupGate) hideStartupSplash();
-  const [, centerSettings] = await Promise.all([i18nPromise, settingsPromise]);
+  const centerSettings = await Promise.race([settingsPromise, settingsDeadline]);
   if (centerSettings) {
     state.centerContactSettings = applyResidentPreferences(centerSettings);
     syncStartupSplashPresentation();
     await applyCenterDefaultLanguage(centerSettings);
+  } else {
+    // Se Firestore risponde dopo il limite, aggiorna l'interfaccia senza
+    // riaprire il gate né sovrascrivere una richiesta più recente.
+    void settingsPromise.then(async (lateSettings) => {
+      if (!lateSettings) return;
+      state.centerContactSettings = applyResidentPreferences(lateSettings);
+      syncStartupSplashPresentation();
+      await applyCenterDefaultLanguage(lateSettings);
+      renderAllViews();
+    });
   }
   renderAllViews();
+  if (!keepStartupGate) hideStartupSplash();
 
   const isPlainResidentLogin = state.friendlyAccess
     && ['participant', 'week'].includes(state.mode)
@@ -1439,7 +1444,6 @@ async function bootstrapApp() {
     refreshNow('avvio');
   }
 
-  window.setTimeout(hideStartupSplash, 8000);
 }
 
 bootstrapApp().catch(console.error);
@@ -1506,6 +1510,12 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
+  const appShell = document.querySelector('[data-app-shell]');
+  if (appShell) {
+    appShell.inert = false;
+    appShell.removeAttribute('inert');
+    appShell.removeAttribute('aria-busy');
+  }
   const gate = document.querySelector('[data-startup-gate]');
   if (gate) {
     gate.classList.add('startup-splash-hidden');
@@ -1944,7 +1954,7 @@ function buildOperationalLink(view, token, centerId, access = '') {
   return `${window.location.origin}/?${params.toString()}`;
 }
 
-function handleAdminSectionNavigation(event) {
+async function handleAdminSectionNavigation(event) {
   const link = event.target.closest('[data-admin-section-id], [data-admin-checklist-target]');
   if (!link) return;
   const section = link.dataset.adminSectionId
@@ -1952,7 +1962,7 @@ function handleAdminSectionNavigation(event) {
 
   if (!section) return;
   event.preventDefault();
-  selectAdminSection(section, { focus: true, updateHash: true });
+  await requestAdminSectionChange(section, { focus: true, updateHash: true });
 }
 
 let adminSectionSwipe = null;
@@ -1978,7 +1988,7 @@ function handleAdminSectionSwipeStart(event) {
   };
 }
 
-function handleAdminSectionSwipeEnd(event) {
+async function handleAdminSectionSwipeEnd(event) {
   const start = adminSectionSwipe;
   adminSectionSwipe = null;
   if (!start || event.changedTouches.length !== 1) return;
@@ -1999,10 +2009,11 @@ function handleAdminSectionSwipeEnd(event) {
   const nextSection = availableSections[currentIndex + direction];
   if (!nextSection) return;
 
+  if (!await requestAdminSectionChange(nextSection, { updateHash: true })) return;
+
   window.clearTimeout(adminSectionSwipeTimer);
   elements.adminPanel.classList.remove('admin-snap-forward', 'admin-snap-backward');
   elements.adminPanel.classList.add(direction > 0 ? 'admin-snap-forward' : 'admin-snap-backward');
-  selectAdminSection(nextSection, { updateHash: true });
 
   const activeTab = elements.adminSectionNav.querySelector(`[data-admin-section-id="${nextSection}"]`);
   activeTab?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -2115,10 +2126,12 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
   state.adminActiveSection = section;
   state.adminMobileSection = section;
   if (section === 'people') {
-    state.adminParticipantId = '';
-    state.adminPersonDirty = false;
     renderAdminPeopleList();
-    syncAdminContactForm();
+    if (!state.adminPersonDirty) syncAdminContactForm();
+  }
+  if (section === 'configuration' && !state.adminCenterDirty) {
+    syncAdminCenterSettingsForm();
+    renderAdminCenterAvatarEditor();
   }
   if (section === 'access') {
     queueMicrotask(refreshAdminRolesWhenVisible);
@@ -2142,6 +2155,41 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
     target?.focus?.({ preventScroll: true });
     target?.scrollIntoView?.({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }
+}
+
+async function requestAdminSectionChange(section, options = {}) {
+  if (!ADMIN_SECTIONS.includes(section) || !isAdminSectionAllowed(section)) return false;
+  if (section !== state.adminActiveSection && !await confirmAdminSectionTransition()) return false;
+  selectAdminSection(section, options);
+  return true;
+}
+
+async function confirmAdminSectionTransition() {
+  const hasPersonChanges = state.adminPersonDirty;
+  const hasCenterChanges = state.adminCenterDirty || Boolean(state.pendingCenterAvatarDataUrl);
+  if (!hasPersonChanges && !hasCenterChanges) return true;
+
+  const decision = await showActionDialog({
+    title: t('dialog.discardChanges.title'),
+    message: t('dialog.discardChanges.message'),
+    confirmLabel: t('dialog.discardChanges.title'),
+    destructive: true
+  });
+  if (!decision.confirmed) return false;
+
+  if (hasPersonChanges) {
+    state.adminPersonDirty = false;
+    renderAdminPeopleList();
+    syncAdminContactForm();
+  }
+  if (hasCenterChanges) {
+    state.adminCenterDirty = false;
+    state.pendingCenterAvatarDataUrl = '';
+    if (elements.adminCenterAvatarInput) elements.adminCenterAvatarInput.value = '';
+    syncAdminCenterSettingsForm();
+    renderAdminCenterAvatarEditor();
+  }
+  return true;
 }
 
 function renderAdminSectionVisibility() {
@@ -2197,9 +2245,19 @@ function isAdministratorProfileComplete() {
     || state.centerContactSettings.administratorProfileComplete === true;
 }
 
-function handleAdminHashChange() {
+async function handleAdminHashChange() {
   const section = ADMIN_SECTION_BY_TARGET[window.location.hash.replace('#', '')];
-  if (section) selectAdminSection(section, { focus: true });
+  if (!section) return;
+  if (await requestAdminSectionChange(section, { focus: true })) return;
+
+  const currentTarget = ADMIN_SECTION_TARGETS[state.adminActiveSection];
+  if (currentTarget) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${window.location.search}#${currentTarget}`
+    );
+  }
 }
 
 function normalizeClientDate(value) {
@@ -3425,7 +3483,7 @@ async function performBootstrap() {
       markCalendarOnboardingCompleted();
       elements.authStatus.textContent = 'Calendario creato. Ora inserisci le persone che potranno prenotarsi ai pasti.';
       if (isAdminSectionAllowed('people')) {
-        selectAdminSection('people', { focus: true, updateHash: true });
+        await requestAdminSectionChange('people', { focus: true, updateHash: true });
       }
     }
   } catch (error) {
@@ -3559,34 +3617,45 @@ async function performRefresh(source) {
   const kitchenDayOffset = state.kitchenDayOffset;
 
   try {
-    const sessionPromise = ensureKitchenDemoSession().catch((error) => {
+    await ensureKitchenDemoSession().catch((error) => {
       error.refreshStage = 'sessione';
       throw error;
     });
-    const settingsPromise = loadCenterContactSettings({
+    // Le impostazioni del centro sono protette dalla sessione Cucina. Avviare
+    // le due letture in parallelo rendeva casuale il primo accesso su un
+    // dispositivo nuovo.
+    const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    const [, centerSettings] = await Promise.all([sessionPromise, settingsPromise]);
     state.centerContactSettings = centerSettings;
     await applyCenterDefaultLanguage(centerSettings);
     renderMode();
     const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
     const kitchenPayloads = await Promise.all(kitchenDates.map(async (date) => {
+      const dateId = formatDateId(date);
       const [meals, kitchenNote, dailyOperation, dailyHealth] = await Promise.all([
         loadKitchenCounts(date, {
           forceStaticRefresh: source === 'manuale',
           sessionReady: true,
           staticVersion: state.centerContactSettings.participantDataVersion || '0'
         }),
-        loadKitchenNote(date, { forceRefresh: source === 'manuale' }),
-        loadDailyOperation(date, { forceRefresh: source === 'manuale' }),
+        loadKitchenNote(date, { forceRefresh: source === 'manuale' })
+          .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null)),
+        loadDailyOperation(date, { forceRefresh: source === 'manuale' })
+          .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null)),
         loadDailyHealth(date, { forceRefresh: source === 'manuale' })
+          .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
+            dateId,
+            sickPeople: [],
+            dietAssignments: [],
+            invitedMeals: []
+          }))
       ]);
       return {
-        dateId: formatDateId(date),
+        dateId,
         meals: applyDailyDietsToKitchenMeals(meals, dailyHealth.dietAssignments)
           .map((meal) => ({
             ...meal,
@@ -3751,17 +3820,25 @@ async function refreshParticipant(source, options = {}) {
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
       const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
+        const dateId = formatDateId(date);
         const [meals, dailyOperation, dailyHealth] = await Promise.all([
           loadParticipantDaySummaries(date, {
             forceStaticRefresh: source === 'manuale',
             staticVersion: state.centerContactSettings.participantDataVersion || '0',
             includeContacts: state.centerContactSettings.participantContactSharingEnabled
           }),
-          loadDailyOperation(date, { forceRefresh: source === 'manuale' }),
+          loadDailyOperation(date, { forceRefresh: source === 'manuale' })
+            .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null)),
           loadDailyHealth(date, { forceRefresh: source === 'manuale' })
+            .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
+              dateId,
+              sickPeople: [],
+              dietAssignments: [],
+              invitedMeals: []
+            }))
         ]);
         return {
-          dateId: formatDateId(date),
+          dateId,
           meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
           dailyOperation,
           dailyHealth
@@ -3901,6 +3978,15 @@ function clearKitchenDataAfterAccessRevocation() {
   state.kitchenUpdatedAt = null;
 }
 
+function reportOptionalOperationalRead(label, dateId, error, fallback) {
+  console.warn(
+    `Dato accessorio non disponibile (${label}, ${dateId})`,
+    error?.code || '',
+    error?.message || ''
+  );
+  return fallback;
+}
+
 function initializeResidentAccess() {
   renderResidentAccess(state.friendlyAccess && !state.residentReady);
   if (state.friendlyAccess) {
@@ -3934,10 +4020,11 @@ async function handleResidentLogin(event) {
         elements.residentPasswordInput.value,
         state.centerContactSettings
       );
-    } catch {
+    } catch (error) {
       // Lo stesso modulo accetta anche la password amministratori per un
       // residente già qualificato come vice. Se la persona non è un vice o la
       // password non coincide, proseguiamo con il normale accesso residente.
+      if (!canFallbackFromViceLogin(error)) throw error;
       result = await signInFriendlyResident(
         elements.residentSignatureInput.value,
         elements.residentPasswordInput.value
@@ -3999,6 +4086,20 @@ async function handleResidentLogin(event) {
     state.residentAuthTransition = '';
     elements.residentLoginButton.disabled = false;
   }
+}
+
+function canFallbackFromViceLogin(error) {
+  return new Set([
+    'auth/invalid-credential',
+    'auth/wrong-password',
+    'auth/user-not-found',
+    'auth/invalid-email',
+    'resident/credentials-missing',
+    'resident/vice-not-configured',
+    'resident/participant-not-found',
+    'resident/not-vice',
+    'resident/vice-auth-failed'
+  ]).has(error?.code);
 }
 
 function togglePasswordVisibility(input, toggle) {
@@ -4118,13 +4219,17 @@ async function refreshAdminParticipants() {
   try {
     const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
     const canManageRoles = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
+    let operationalLinksError = null;
     const [adminParticipants, adminAccounts, centerSettings, coverage, operationalLinks, adminInvitations] = await Promise.all([
       listAdminParticipants(),
       canManageRoles ? listCenterAdministrators() : Promise.resolve([]),
       loadCenterContactSettings(),
       loadMealWindowCoverage(),
       canViewOperationalLinks
-        ? loadOperationalLinks({ forceRefresh: true }).catch(() => state.operationalLinks)
+        ? loadOperationalLinks({ forceRefresh: true }).catch((error) => {
+          operationalLinksError = error;
+          return state.operationalLinks;
+        })
         : Promise.resolve(state.operationalLinks),
       canManageRoles ? listAdministratorInvitations() : Promise.resolve([])
     ]);
@@ -4173,6 +4278,12 @@ async function refreshAdminParticipants() {
       syncAdminContactForm();
     }
     initializeOperationalLinks();
+    if (operationalLinksError && elements.operationalLinksStatus) {
+      elements.operationalLinksStatus.textContent = friendlyErrorMessage(
+        operationalLinksError,
+        'Link operativi temporaneamente non disponibili. Riprova tra un momento.'
+      );
+    }
     if (hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) {
       void ensureOperationalLinks().then((links) => {
         if (!requestCoordinator.isCurrentRequest(request)) return;
@@ -4296,9 +4407,9 @@ function handleAdministratorInvitationGeneration() {
   return operationGuard.run('admin:administrator-invitation', performAdministratorInvitationGeneration);
 }
 
-function handleAdminCandidateNewPersonClick() {
-  selectAdminSection('people', { focus: true });
-  handleAdminNewParticipant();
+async function handleAdminCandidateNewPersonClick() {
+  if (!await requestAdminSectionChange('people', { focus: true })) return;
+  await handleAdminNewParticipant();
 }
 
 function setAdminInvitationResponseStatus(message = '') {
@@ -4655,11 +4766,19 @@ async function refreshAdminInvitationList() {
 function refreshAdminRolesWhenVisible() {
   if (document.visibilityState === 'hidden'
       || state.mode !== 'admin'
-      || !state.adminRole
-      || state.residentAdministratorAuthorized) {
+      || !state.adminRole) {
     return;
   }
   operationGuard.run('admin:role-state-refresh', async () => {
+    if (state.residentAdministratorAuthorized) {
+      if (await refreshResidentAdministratorAuthorization()) return;
+      clearStrongAdministratorOperationalAuthorization();
+      state.residentSettingsMode = true;
+      renderResidentSettingsPanel();
+      renderMode();
+      elements.authStatus.textContent = t('errors.auth.sessionExpired');
+      return;
+    }
     const user = getCurrentUser();
     if (!user || user.isAnonymous || user.uid !== state.adminAuthUid) return;
     const membership = await loadCurrentAdminMembership(user);
@@ -4959,11 +5078,10 @@ async function performAdminCenterSettingsSave() {
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
       themePalette: state.centerContactSettings.themePalette || 'inchiostro',
-      interfaceStyle: state.centerContactSettings.interfaceStyle || 'future',
+      interfaceStyle: state.centerContactSettings.interfaceStyle || 'urban-plus',
       defaultView: state.centerContactSettings.defaultView || 'month',
       summaryLayout: state.centerContactSettings.summaryLayout || 'classic',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
-      monthLayout: state.centerContactSettings.monthLayout || 'grid',
       monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
       summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       language: state.centerContactSettings.language || 'it',
@@ -5206,7 +5324,7 @@ function setContextualTranslation(element, key) {
 function syncAdminAdaptationsForm() {
   syncAdaptationsContextCopy();
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
-  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'future';
+  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'urban-plus';
   document.documentElement.dataset.theme = currentPalette;
   applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
@@ -5220,9 +5338,6 @@ function syncAdminAdaptationsForm() {
   if (elements.adminKitchenLayoutSelect) {
     elements.adminKitchenLayoutSelect.value = state.centerContactSettings.kitchenLayout || 'classic';
     elements.adminKitchenLayoutSelect.disabled = state.residentSettingsMode;
-  }
-  if (elements.adminMonthLayoutSelect) {
-    elements.adminMonthLayoutSelect.value = state.centerContactSettings.monthLayout || 'grid';
   }
   if (elements.adminMonthControlsSideSelect) {
     elements.adminMonthControlsSideSelect.value = state.centerContactSettings.monthControlsSide || 'right';
@@ -5356,7 +5471,6 @@ async function handleAdminAdaptationsSave() {
       defaultView: elements.adminDefaultViewSelect ? elements.adminDefaultViewSelect.value : state.centerContactSettings.defaultView,
       summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
       kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
-      monthLayout: elements.adminMonthLayoutSelect ? elements.adminMonthLayoutSelect.value : state.centerContactSettings.monthLayout,
       monthControlsSide: elements.adminMonthControlsSideSelect ? elements.adminMonthControlsSideSelect.value : state.centerContactSettings.monthControlsSide,
       summaryResidentLabel: elements.adminSummaryResidentLabelSelect
         ? elements.adminSummaryResidentLabelSelect.value
@@ -5709,9 +5823,6 @@ function renderMode() {
   if (isAdminView) {
     elements.adminShell.open = true;
     if (state.residentSettingsMode) renderResidentSettingsPanel();
-  }
-  if (elements.participantRefreshButton) {
-    elements.participantRefreshButton.hidden = true;
   }
   if (isKitchen) {
     renderKitchenHeading();
@@ -6578,14 +6689,6 @@ function canManageDailyOperations() {
     || state.residentAdministratorAuthorized;
 }
 
-function selectedParticipantIsCenterAdministrator() {
-  const participantSignature = String(state.selectedParticipant?.signature || '').trim().toUpperCase();
-  const administratorSignature = String(
-    state.centerContactSettings.administratorSignature || ''
-  ).trim().toUpperCase();
-  return Boolean(participantSignature && participantSignature === administratorSignature);
-}
-
 function selectedResidentCanOpenControlPanel() {
   return state.residentReady;
 }
@@ -6594,13 +6697,6 @@ function deriveInitials(name) {
   const words = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return '';
   return words.slice(0, 3).map((word) => word[0]).join('').toUpperCase();
-}
-
-function selectedResidentCanUseFullControlPanel() {
-  return Boolean(state.selectedParticipant) && (
-    state.selectedParticipant.viceAdminRole === true
-    || selectedParticipantIsCenterAdministrator()
-  );
 }
 
 function hasStrongAdministratorIdentity() {
@@ -6618,14 +6714,6 @@ function shouldOpenResidentSettingsPanel() {
   if (state.residentEntryKind === 'common') return true;
   if (state.residentEntryKind === 'strong-admin') return false;
   return !state.residentAdministratorAuthorized && !state.adminRole;
-}
-
-function setResidentSettingsAccessBoundary(enabled) {
-  state.residentSettingsMode = enabled;
-  const url = new URL(window.location.href);
-  if (enabled) url.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
-  else if (url.searchParams.get('access') === RESIDENT_SETTINGS_ACCESS) url.searchParams.delete('access');
-  window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
 }
 
 function ensureAuthorizedAdminRoute() {
@@ -6918,14 +7006,15 @@ function formatLastUpdateTime(value) {
 }
 
 function renderCalendarControls() {
-  const currentWeekStart = startOfWeek(new Date());
+  const centerToday = getCenterToday();
+  const currentWeekStart = startOfWeek(centerToday);
   const currentWeekId = formatDateId(currentWeekStart);
   const selectedWeekId = formatDateId(state.weekStartDate);
   elements.calendarStatus.textContent = selectedWeekId === currentWeekId
     ? 'Settimana corrente'
     : formatCalendarWeekLabel(state.weekStartDate);
 
-  const currentMonth = startOfMonth(new Date());
+  const currentMonth = startOfMonth(centerToday);
   const selectedMonth = formatMonthId(state.monthDate);
   elements.monthJumpSelect.innerHTML = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(currentMonth);
@@ -6941,7 +7030,7 @@ function renderCalendarControls() {
 }
 
 function renderWeekControls() {
-  const currentWeekStart = startOfWeek(new Date());
+  const currentWeekStart = startOfWeek(getCenterToday());
   const selectedWeekId = formatDateId(state.weekStartDate);
   const firstWeek = new Date(currentWeekStart);
   firstWeek.setDate(firstWeek.getDate() - (8 * 7));
@@ -8757,7 +8846,8 @@ function friendlyErrorMessage(error, fallback) {
 async function loadCurrentParticipantWeek(options = {}) {
   const participantOptions = {
     ...options,
-    timezone: state.centerContactSettings.timezone
+    timezone: state.centerContactSettings.timezone,
+    locale: getLocale()
   };
   const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(state.weekStartDate, index));
   const emptyWeek = dates.map((date) => ({
@@ -9197,14 +9287,6 @@ function formatMonthLabel(date) {
     year: 'numeric'
   }, getLocale());
   return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function isDateInWeek(dateId, weekStartId) {
-  const date = parseDateId(dateId);
-  const start = parseDateId(weekStartId);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  return date >= start && date <= end;
 }
 
 function parseDateId(value) {

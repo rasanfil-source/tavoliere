@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -80,15 +81,46 @@ export async function ensureKitchenDemoSession() {
   await waitForAuthReady();
   let user = getCurrentUser();
 
-  // BYPASS: se nel browser è già presente una sessione Firebase autenticata
-  // (es. un amministratore/responsabile loggato con Google/email), non la si
-  // tratta MAI come visitatore anonimo "KITCHEN". Si usa direttamente il suo
-  // account, esattamente come fa ensurePublicDemoSession() in
-  // participant-data.js con getAuthorizedAdministratorUser(). Questo evita
-  // il permission-denied su accessSessions quando le regole Firestore
-  // limitano quella collezione ai soli utenti anonimi.
+  // Un account forte è sufficiente soltanto se appartiene davvero al centro.
+  // Un Gmail di un altro centro (o l'ex amministratore dopo un trasferimento)
+  // conserva invece Firebase Auth ma riceve una sessione KITCHEN sullo stesso
+  // UID, senza logout e senza distruggere la persistenza amministrativa.
   if (user && !user.isAnonymous) {
-    return user;
+    const centerId = getActiveCenterId();
+    try {
+      const membership = await getDoc(doc(db, 'centers', centerId, 'admins', user.uid));
+      if (membership.exists() && membership.data().status === 'ACTIVE') {
+        return user;
+      }
+    } catch (error) {
+      const permissionDenied = error?.code === 'permission-denied'
+        || error?.code === 'firestore/permission-denied';
+      if (!permissionDenied) throw error;
+    }
+
+    const sessionRef = doc(db, 'centers', centerId, 'accessSessions', user.uid);
+    const sessionSnap = await getDoc(sessionRef);
+    const sessionData = sessionSnap.exists() ? sessionSnap.data() : null;
+    const expiresAt = sessionData?.expiresAt && typeof sessionData.expiresAt.toDate === 'function'
+      ? sessionData.expiresAt.toDate()
+      : sessionData?.expiresAt ? new Date(sessionData.expiresAt) : null;
+    const reusable = sessionData?.scope === 'KITCHEN'
+      && sessionData.status === 'ACTIVE'
+      && expiresAt instanceof Date
+      && expiresAt > new Date();
+    if (reusable) {
+      rememberKitchenSession(user.uid, expiresAt);
+      return user;
+    }
+    if (sessionSnap.exists()) {
+      if (!isConnectionAvailable()) {
+        const error = new Error('Connessione necessaria per cambiare sessione');
+        error.code = 'unavailable';
+        throw error;
+      }
+      await deleteDoc(sessionRef);
+    }
+    return createKitchenSession(user.uid, false);
   }
 
   if (!user) {

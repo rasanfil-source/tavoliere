@@ -79,6 +79,7 @@ test('il caricamento dal pannello estrae solo configurazione e non identita o da
   assert.equal(restore.settings.name, 'Centro Alfa');
   assert.equal(restore.settings.themePalette, 'inchiostro');
   assert.equal(restore.settings.appDisplayName, 'Oggi a tavola');
+  assert.equal(Object.hasOwn(restore.settings, 'monthLayout'), false);
   assert.equal(Object.hasOwn(restore.settings, 'adminEmail'), false);
   assert.equal(restore.avatarDataUrl, 'data:image/png;base64,AAAA');
   assert.deepEqual(restore.kitchenDietLegend, [{ code: '3', label: 'Senza sale' }]);

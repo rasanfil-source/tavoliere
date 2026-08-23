@@ -1230,7 +1230,11 @@ test('i collegamenti operativi sono privati e si rigenerano in modo coordinato',
     publicTokenId: 'public_token_manomesso'
   }, { merge: true }));
   await assertFails(publicDb.doc(settingsPath).get());
-  await assertFails(ownerDb.doc(previousTokenPath).get());
+  await assertSucceeds(ownerDb.doc(previousTokenPath).get());
+  await assertSucceeds(adminDb.doc(linkTokenPath('kitchen_token')).get());
+  await assertSucceeds(viceDb.doc(previousTokenPath).get());
+  await assertFails(viceDb.doc(linkTokenPath('personal_mario_token')).get());
+  await assertFails(viceDb.collection(`${centerPath()}/linkTokens`).get());
 
   const batch = adminDb.batch();
   batch.set(adminDb.doc(nextTokenPath), {
@@ -1605,6 +1609,42 @@ test('il vice gestisce le persone ed elimina una persona ordinaria senza assegna
   }, { merge: true }));
   await assertSucceeds(viceDb.doc(privateParticipantPath(disposableId)).delete());
   await assertSucceeds(viceDb.doc(publicParticipantPath(disposableId)).delete());
+});
+
+test('vice e manager non possono alterare firma o stato di un altro ruolo operativo', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await db.doc(publicParticipantPath(LUCA_ID)).set({ viceAdminRole: true }, { merge: true });
+    await db.doc(privateParticipantPath(LUCA_ID)).set({
+      centerId: CENTER_ID,
+      groupId: 'group_residenti',
+      displayName: 'Luca',
+      signature: 'LU',
+      viceAdminRole: true,
+      status: 'ACTIVE'
+    }, { merge: true });
+    await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
+  });
+
+  const managerDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
+  await assertFails(managerDb.doc(publicParticipantPath(LUCA_ID)).set({
+    status: 'DISABLED',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(managerDb.doc(privateParticipantPath(LUCA_ID)).set({
+    signature: 'ADMIN',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+
+  const viceDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertFails(viceDb.doc(publicParticipantPath(MARIO_ID)).set({
+    signature: 'ADMIN',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(viceDb.doc(publicParticipantPath(LUCA_ID)).set({
+    status: 'DISABLED',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
 });
 
 test('una sessione vice validata gestisce persone pulizia impostazioni visive e log ma non ruoli o manutenzione', async () => {
@@ -2197,6 +2237,65 @@ test('the technical resident account can mint a bounded personal token', async (
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
   await assertFails(tokenRef.get());
+});
+
+test('a manager can mint only a personal token for the linked active participant', async () => {
+  const db = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
+  const timestamps = {
+    expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2040-01-01T00:00:00Z')),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await assertSucceeds(db.doc(linkTokenPath('personal_manager_device_1234567890')).set({
+    status: 'ACTIVE',
+    scope: 'PERSONAL',
+    targetType: 'PARTICIPANT',
+    participantId: MARIO_ID,
+    ...timestamps
+  }));
+  await assertFails(db.doc(linkTokenPath('public_manager_forged_1234567890')).set({
+    status: 'ACTIVE',
+    scope: 'PUBLIC',
+    targetType: 'CENTER',
+    participantId: MARIO_ID,
+    ...timestamps
+  }));
+  await assertFails(db.doc(linkTokenPath('personal_manager_other_1234567890')).set({
+    status: 'ACTIVE',
+    scope: 'PERSONAL',
+    targetType: 'PARTICIPANT',
+    participantId: LUCA_ID,
+    ...timestamps
+  }));
+});
+
+test('a personal session loses access as soon as its participant is disabled', async () => {
+  const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  await assertSucceeds(personalDb.doc(rulePath(MARIO_ID)).get());
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(privateParticipantPath(MARIO_ID)).set({
+      status: 'DISABLED'
+    }, { merge: true });
+  });
+  await assertFails(personalDb.doc(rulePath(MARIO_ID)).get());
+});
+
+test('a kitchen session cannot be created for an inactive center', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await context.firestore().doc(centerPath()).set({ status: 'INACTIVE' }, { merge: true });
+  });
+  const uid = 'anon_kitchen_inactive';
+  const db = testEnv.authenticatedContext(uid, anonymousToken()).firestore();
+  await assertFails(db.doc(sessionPath(uid)).set({
+    centerId: CENTER_ID,
+    scope: 'KITCHEN',
+    targetType: 'CENTER',
+    tokenId: 'kitchen_token',
+    status: 'ACTIVE',
+    expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2026-09-01T00:00:00Z')),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
 });
 
 test('users without the common password cannot mint personal tokens', async () => {

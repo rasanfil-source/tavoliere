@@ -38,14 +38,17 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
 });
 
-test('la schermata iniziale non attende Firestore prima di diventare visibile', () => {
+test('la schermata iniziale evita stati intermedi e ha un limite di attesa', () => {
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
   const hideIndex = bootstrap.indexOf('hideStartupSplash();');
-  const settingsIndex = bootstrap.indexOf('await Promise.all([i18nPromise, settingsPromise])');
-  assert.ok(hideIndex >= 0 && settingsIndex > hideIndex);
-  assert.match(bootstrap, /const settingsPromise = loadCenterContactSettings\(\)\.catch/);
+  const settingsIndex = bootstrap.indexOf('const centerSettings = await Promise.race');
+  assert.ok(settingsIndex >= 0 && hideIndex > settingsIndex);
+  assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
+  assert.match(bootstrap, /const settingsDeadline = new Promise/);
+  assert.match(bootstrap, /state\.mode === 'kitchen'[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
-  assert.match(bootstrap, /const \[, centerSettings\] = await Promise\.all\(\[i18nPromise, settingsPromise\]\)/);
+  assert.match(bootstrap, /const centerSettings = await Promise\.race\(\[settingsPromise, settingsDeadline\]\)/);
+  assert.match(bootstrap, /void settingsPromise\.then\(async \(lateSettings\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
   assert.match(bootstrap, /if \(isPlainResidentLogin\)[\s\S]*setParticipantStatus[\s\S]*else \{\s*refreshNow\('avvio'\)/);
 });

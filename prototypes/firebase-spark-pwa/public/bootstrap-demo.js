@@ -14,7 +14,7 @@ import { db } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId } from './center-context.js?v=20260816h';
 import {
   buildMealWindowRecords,
-  DEFAULT_ACCESS_EXPIRES_AT,
+  createOperationalAccessExpiry,
   CALENDAR_COVERAGE_DAYS,
   DEFAULT_RESERVATION_CUTOFFS,
   addDaysToDateId,
@@ -53,7 +53,7 @@ export async function bootstrapCenterData(user, { centerId = getActiveCenterId()
   }
 
   const now = serverTimestamp();
-  const expiresAt = DEFAULT_ACCESS_EXPIRES_AT;
+  const expiresAt = createOperationalAccessExpiry();
   const centerRef = doc(db, 'centers', centerId);
   const adminRef = doc(db, 'centers', centerId, 'admins', user.uid);
   const adminSnapshot = await getDoc(adminRef);

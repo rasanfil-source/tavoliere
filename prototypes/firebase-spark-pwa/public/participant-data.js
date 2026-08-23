@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -64,7 +65,6 @@ export const RESIDENT_PARTICIPANT_STORAGE_KEY = 'tavolaComune.residentParticipan
 export const RESIDENT_TOKEN_STORAGE_KEY = 'tavolaComune.residentTokenId';
 export const RESIDENT_TOKEN_EXPIRES_STORAGE_KEY = 'tavolaComune.residentTokenExpiresAt';
 const PUBLIC_TOKEN_STORAGE_KEY = 'tavolaComune.publicToken';
-const PUBLIC_DEMO_EXPIRES_AT = new Date('2031-12-31T22:59:59Z');
 const PERSONAL_TOKEN_LIFETIME_DAYS = 9000;
 const SESSION_LIFETIME_DAYS = 30;
 const SESSION_RECHECK_MS = 5 * 60 * 1000;
@@ -72,11 +72,6 @@ const STATIC_QUERY_CACHE_MS = 10 * 60 * 1000;
 const RESERVATION_BATCH_SIZE = 6;
 const RESERVATION_BATCH_CONCURRENCY = 3;
 const ADMIN_DELETE_BATCH_SIZE = 400;
-const longDateFormatter = new Intl.DateTimeFormat('it-IT', {
-  weekday: 'short',
-  day: '2-digit',
-  month: 'short'
-});
 let currentSession = null;
 let currentSessionAuthUid = '';
 let currentSessionCheckedAt = 0;
@@ -351,20 +346,6 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
   const membershipUser = authorizedUser || getCurrentUser();
   if (!membershipUser || membershipUser.isAnonymous) return null;
 
-  const storedParticipantId = loadStoredResidentParticipantId();
-  const storedSignature = loadStoredResidentSignature();
-  if (storedParticipantId && storedSignature) {
-    const storedParticipant = await loadPublicParticipantById(storedParticipantId);
-    if (storedParticipant
-      && normalizeResidentSignature(storedParticipant.signature) === storedSignature) {
-      return {
-        participant: storedParticipant,
-        participants: [storedParticipant],
-        strongAdministrator: true
-      };
-    }
-  }
-
   // L'identità residente derivata dalla membership forte ha precedenza su
   // qualsiasi residuo locale di un accesso precedente sullo stesso device.
   const membershipSnapshot = await getDoc(doc(
@@ -374,19 +355,20 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
     'admins',
     membershipUser.uid
   ));
+  if (!membershipSnapshot.exists() || membershipSnapshot.data().status !== 'ACTIVE') return null;
+  const membershipRole = String(membershipSnapshot.data().role || '').trim().toUpperCase();
   const membershipParticipantId = String(
     membershipSnapshot.data()?.participantId || ''
   ).trim();
+  if (!membershipParticipantId && membershipRole !== 'OWNER') return null;
   const settings = membershipParticipantId
     ? null
     : await loadCenterContactSettings({ forceRefresh: false });
   const participantId = membershipParticipantId
-    || String(settings?.administratorParticipantId || '').trim()
-    || loadStoredResidentParticipantId();
+    || String(settings?.administratorParticipantId || '').trim();
   const signature = membershipParticipantId
     ? ''
-    : normalizeResidentSignature(settings?.administratorSignature)
-      || loadStoredResidentSignature();
+    : normalizeResidentSignature(settings?.administratorSignature);
 
   const participant = participantId
     ? await loadPublicParticipantById(participantId)
@@ -470,9 +452,18 @@ export async function ensureStoredResidentSession() {
 export async function signInFriendlyViceAdministrator(signature, administratorPassword, knownSettings = null) {
   const normalized = normalizeResidentSignature(signature);
   if (!normalized || !administratorPassword) {
-    throw new Error('Inserisci sigla e password.');
+    throw residentLoginError('Inserisci sigla e password.', 'resident/credentials-missing');
   }
   const centerId = getActiveCenterId();
+  // Su un dispositivo nuovo non esiste ancora alcun permesso per leggere la
+  // versione della password amministratori. Il token del link residenti crea
+  // prima una sessione PUBLIC; l'autenticazione tecnica resta su Auth
+  // secondaria e non sostituisce questa identità.
+  try {
+    await ensurePublicDemoSession();
+  } catch (error) {
+    if (!knownSettings?.adminSharedPasswordSet) throw error;
+  }
   // La lettura di publicParticipants è protetta: prima si valida la password
   // sull'account tecnico amministratori, poi si legge la persona usando quella
   // stessa sessione tecnica. In precedenza la lettura avveniva anonimamente e
@@ -481,10 +472,16 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   // dell'accesso precedente. Per questa operazione rara rileggiamo sempre il
   // documento autorevole, mantenendo il valore noto solo come fallback offline.
   const settings = await loadCenterContactSettings({ forceRefresh: true })
-    .catch(() => knownSettings || {});
+    .catch((error) => {
+      if (knownSettings?.adminSharedPasswordSet) return knownSettings;
+      throw error;
+    });
   const passwordVersion = Number(settings.adminPasswordVersion || 0);
   if (!settings.adminSharedPasswordSet || passwordVersion < 1) {
-    throw new Error('Password amministratori non disponibile.');
+    throw residentLoginError(
+      'Password amministratori non disponibile.',
+      'resident/vice-not-configured'
+    );
   }
   let participant = null;
   let token;
@@ -502,16 +499,20 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
         centerId,
         administratorPassword,
         passwordVersion,
-        async ({ db: technicalDb, email }) => {
-          participant = await loadPublicParticipantBySignature(normalized, technicalDb);
-          if (!participant) {
-            throw new Error('La tua sigla non risulta tra i residenti attivi.');
+      async ({ db: technicalDb, email }) => {
+        participant = await loadPublicParticipantBySignature(normalized, technicalDb);
+        if (!participant) {
+          throw residentLoginError(
+            'La tua sigla non risulta tra i residenti attivi.',
+            'resident/participant-not-found'
+          );
           }
-          const isAuthorizedPerson = participant.viceAdminRole === true
-            || normalizeResidentSignature(participant.signature)
-              === normalizeResidentSignature(settings.administratorSignature);
-          if (!isAuthorizedPerson) {
-            throw new Error('Questa persona non è autorizzata come vice-amministratore.');
+          const isAuthorizedPerson = participant.viceAdminRole === true;
+        if (!isAuthorizedPerson) {
+          throw residentLoginError(
+            'Questa persona non è autorizzata come vice-amministratore.',
+            'resident/not-vice'
+          );
           }
           token = await createPersonalTokenForParticipant(participant.participantId, technicalDb);
           // Recupera i collegamenti mentre la password amministratori è ancora
@@ -544,7 +545,9 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
     }
   }
   if (lastTechnicalError) throw lastTechnicalError;
-  if (!participant || !token) throw new Error('Accesso amministrativo non riuscito.');
+  if (!participant || !token) {
+    throw residentLoginError('Accesso amministrativo non riuscito.', 'resident/vice-auth-failed');
+  }
 
   await createPersonalAnonymousSession(participant.participantId, token);
   rememberResidentIdentity(participant, normalized, token);
@@ -598,23 +601,34 @@ export async function loadResidentAdministratorAuthorization() {
   const user = getCurrentUser();
   const participantId = loadStoredResidentParticipantId();
   if (!user?.isAnonymous || !participantId) return { active: false };
-  const snapshot = await getDoc(doc(
-    db,
-    'centers',
-    getActiveCenterId(),
-    'viceSessions',
-    user.uid
-  ));
+  const centerId = getActiveCenterId();
+  const viceSessionRef = doc(db, 'centers', centerId, 'viceSessions', user.uid);
+  const [snapshot, centerSnapshot, participantSnapshot] = await Promise.all([
+    getDoc(viceSessionRef),
+    getDoc(doc(db, 'centers', centerId)),
+    getDoc(doc(db, 'centers', centerId, 'publicParticipants', participantId))
+  ]);
   if (!snapshot.exists()) return { active: false };
   const data = snapshot.data();
   const expiresAt = data.expiresAt ? toDate(data.expiresAt) : null;
+  const center = sanitizeCenterBackupDocument(centerSnapshot.exists() ? centerSnapshot.data() : {});
+  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
+  const passwordVersion = Number(data.passwordVersion || 0);
+  const isAuthorizedPerson = participant.status === 'ACTIVE'
+    && participant.viceAdminRole === true;
+  const active = data.status === 'ACTIVE'
+    && data.participantId === participantId
+    && passwordVersion === Number(center.adminPasswordVersion || 0)
+    && isAuthorizedPerson
+    && expiresAt instanceof Date
+    && expiresAt > new Date();
+  if (!active && isConnectionAvailable()) {
+    await deleteDoc(viceSessionRef).catch(() => undefined);
+  }
   return {
-    active: data.status === 'ACTIVE'
-      && data.participantId === participantId
-      && expiresAt instanceof Date
-      && expiresAt > new Date(),
+    active,
     participantId: String(data.participantId || ''),
-    passwordVersion: Number(data.passwordVersion || 0),
+    passwordVersion,
     expiresAt
   };
 }
@@ -750,7 +764,7 @@ async function createPublicSession(authUid, sessionExists) {
     targetType: 'CENTER',
     tokenId,
     status: 'ACTIVE',
-    expiresAt: createSessionExpiry(PUBLIC_DEMO_EXPIRES_AT),
+    expiresAt: createSessionExpiry(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
@@ -896,7 +910,7 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
 
     return {
       date: mealDate,
-      label: formatLongDate(date),
+      label: formatLongDate(date, options.locale),
       isToday: isSameDate(date, centerToday),
       meals
     };
@@ -1533,6 +1547,17 @@ export async function exportCenterData() {
   };
 }
 
+function sanitizeCenterBackupDocument(data) {
+  const sanitized = { ...(data || {}) };
+  // I backup servono a ripristinare la configurazione, non le credenziali
+  // tecniche. Evita che un file JSON esportato diventi una copia dei segreti
+  // usati per aprire sessioni residenti o vice.
+  delete sanitized.commonPassword;
+  delete sanitized.adminTechnicalEmail;
+  delete sanitized.adminTechnicalUid;
+  return sanitized;
+}
+
 async function readCollectionInPages(collectionName) {
   const rows = [];
   let cursor = null;
@@ -1608,7 +1633,14 @@ function createRequestId() {
 function createSessionExpiry(tokenExpiresAt) {
   const expiresAt = new Date();
   expiresAt.setUTCDate(expiresAt.getUTCDate() + SESSION_LIFETIME_DAYS);
-  return expiresAt < tokenExpiresAt ? expiresAt : tokenExpiresAt;
+  return tokenExpiresAt instanceof Date && !Number.isNaN(tokenExpiresAt.getTime())
+    && tokenExpiresAt < expiresAt ? tokenExpiresAt : expiresAt;
+}
+
+function residentLoginError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 function assertOnline() {
@@ -1689,8 +1721,12 @@ function clearCurrentSession() {
 }
 
 
-function formatLongDate(date) {
-  return longDateFormatter.format(date);
+function formatLongDate(date, locale = 'it') {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short'
+  }).format(date);
 }
 
 function buildDateRange(startDate, days) {

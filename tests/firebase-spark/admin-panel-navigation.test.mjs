@@ -343,7 +343,6 @@ test('il vice non può aprire la scheda Amministratore neppure con un deep-link'
 });
 
 test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
-  assert.match(app, /function selectedResidentCanUseFullControlPanel\(\)/);
   assert.match(app, /const RESIDENT_SETTINGS_ACCESS = 'resident-settings'/);
   assert.match(app, /function shouldOpenResidentSettingsPanel\(\)[\s\S]*?!state\.residentAdministratorAuthorized[\s\S]*?!state\.adminRole/);
   assert.match(app, /function updateControlPanelEntryHref\(\)[\s\S]*?adminEntryUrl\.searchParams\.set\('access', RESIDENT_SETTINGS_ACCESS\)/);
@@ -375,7 +374,7 @@ test('sul mobile le schede supportano swipe e snap sincronizzato', () => {
   assert.match(app, /addEventListener\('touchstart', handleAdminSectionSwipeStart/);
   assert.match(app, /addEventListener\('touchend', handleAdminSectionSwipeEnd/);
   assert.match(app, /ADMIN_SECTIONS\.filter\(isAdminSectionAllowed\)/);
-  assert.match(app, /selectAdminSection\(nextSection, \{ updateHash: true \}\)/);
+  assert.match(app, /await requestAdminSectionChange\(nextSection, \{ updateHash: true \}\)/);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-section-nav \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(css, /\.admin-section-nav[\s\S]{0,240}scroll-snap-type: inline mandatory/);
   assert.match(css, /body\[data-mode="admin"\] \.admin-panel[\s\S]*touch-action: pan-y/);

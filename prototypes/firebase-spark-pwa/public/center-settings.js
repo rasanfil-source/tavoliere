@@ -18,7 +18,6 @@ export const DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
 const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
-const ALLOWED_MONTH_LAYOUT_VALUES = new Set(['grid', 'future']);
 const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
 const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const CENTER_SETTINGS_CACHE_MS = 60 * 1000;
@@ -57,7 +56,6 @@ export function loadCachedCenterContactSettings() {
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
       summaryLayout: normalizeLayout(cached.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
-      monthLayout: normalizeLayout(cached.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
       monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
       summaryResidentLabel: normalizeResidentLabel(cached.summaryResidentLabel, 'name'),
       language: normalizeCenterLanguage(cached.language),
@@ -177,7 +175,6 @@ export async function updateCenterSettings({
   defaultView,
   summaryLayout,
   kitchenLayout,
-  monthLayout,
   monthControlsSide,
   summaryResidentLabel,
   language,
@@ -248,7 +245,6 @@ export async function updateCenterSettings({
     defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
     summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
-    monthLayout: normalizeLayout(monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
     summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'name'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
@@ -402,7 +398,6 @@ function refreshCenterContactSettings() {
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
         summaryLayout: normalizeLayout(data.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
-        monthLayout: normalizeLayout(data.monthLayout, 'grid', ALLOWED_MONTH_LAYOUT_VALUES),
         monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
         summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'name'),
         language: normalizeCenterLanguage(data.language),

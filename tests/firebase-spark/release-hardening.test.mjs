@@ -56,14 +56,15 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
   assert.match(accessLinks, /!LEGACY_OPERATIONAL_TOKENS\.has\(normalized\)/);
 });
 
-test('la sessione personale usa un handshake iniziale e non ricontrolla il token per ogni cella', () => {
+test('la sessione personale ricontrolla la Persona ma non il token per ogni cella', () => {
   const hasSession = rules.match(/function hasSession\(centerId\) \{[\s\S]*?\n    \}/)?.[0] || '';
   const personalSession = rules.match(/function personalSessionIsUsable\(centerId\) \{[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(hasSession, /tokenIsUsable/);
   assert.match(hasSession, /accessSessions/);
   assert.match(personalSession, /accessSessions/);
   assert.match(personalSession, /session\.scope == 'PERSONAL'/);
-  assert.doesNotMatch(personalSession, /tokenIsUsable|tokenData|participantIsActive/);
+  assert.match(personalSession, /participantIsActive\(centerId, session\.participantId\)/);
+  assert.doesNotMatch(personalSession, /tokenIsUsable|tokenData/);
 });
 
 test('il limite della revoca per singolo dispositivo e documentato', () => {
