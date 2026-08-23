@@ -994,12 +994,16 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
   });
 });
 
-test('un invito storico senza acceptedEmail completa il passaggio sui dati reali senza aggiornare gli indici', async () => {
+test('un invito storico senza campi duplicati completa il passaggio sui dati reali', async () => {
   await seedAcceptedAdministratorInvitation();
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await db.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`).update({
       acceptedEmail: firebase.firestore.FieldValue.delete()
+    });
+    await db.doc(adminPath(CENTER_ADMIN_UID)).update({
+      invitationConsumedBy: firebase.firestore.FieldValue.delete(),
+      invitationAcceptedAt: firebase.firestore.FieldValue.delete()
     });
     await db.doc(centerPath()).set({
       ownerUid: ADMIN_UID,

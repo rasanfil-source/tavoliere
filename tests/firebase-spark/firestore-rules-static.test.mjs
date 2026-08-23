@@ -94,7 +94,7 @@ test('un amministratore già noto può riaccettare soltanto con un nuovo invito 
 
 test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insieme', () => {
   assert.match(rules, /function isCoordinatedOwnershipTransfer\(centerId\)/);
-  assert.match(rules, /invitationConsumedBy'[\s\S]*== nextOwnerUid[\s\S]*invitationAcceptedAt'[\s\S]*is timestamp/);
+  assert.match(rules, /acceptedInvitationId[\s\S]*adminInvitations[\s\S]*status == 'USED'[\s\S]*consumedBy == nextOwnerUid/);
   assert.match(rules, /nextOwnerUid[\s\S]*role == 'OWNER'[\s\S]*request\.auth\.uid[\s\S]*status == 'REVOKED'/);
   assert.match(rules, /function isOwnershipRoleChange\(centerId, adminUid\)/);
   assert.match(rules, /function isOwnershipRevocation\(centerId, adminUid\)/);

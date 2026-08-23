@@ -275,16 +275,27 @@ service cloud.firestore {
 
     function isCoordinatedOwnershipTransfer(centerId) {
       let nextOwnerUid = getAfter(/databases/$(database)/documents/centers/$(centerId)).data.ownerUid;
+      let nextOwnerMembershipPath = /databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid);
+      let acceptedInvitationId = get(nextOwnerMembershipPath).data.get('invitationId', '');
+      let acceptedInvitationPath = /databases/$(database)/documents/adminInvitations/$(acceptedInvitationId);
       return isCenterOwner(centerId)
         && nextOwnerUid is string
         && nextOwnerUid != request.auth.uid
-        && exists(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid))
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'ADMIN'
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationConsumedBy', '') == nextOwnerUid
-        && get(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.get('invitationAcceptedAt', null) is timestamp
-        && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.status == 'ACTIVE'
-        && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(nextOwnerUid)).data.role == 'OWNER'
+        && exists(nextOwnerMembershipPath)
+        && get(nextOwnerMembershipPath).data.status == 'ACTIVE'
+        && get(nextOwnerMembershipPath).data.role == 'ADMIN'
+        // L'invito USED e' la fonte autorevole dell'accettazione. I vecchi
+        // documenti membership possono non contenere i due marcatori duplicati
+        // invitationConsumedBy/invitationAcceptedAt senza essere meno validi.
+        && acceptedInvitationId is string
+        && acceptedInvitationId.matches('^[a-f0-9]{64}$')
+        && exists(acceptedInvitationPath)
+        && get(acceptedInvitationPath).data.centerId == centerId
+        && get(acceptedInvitationPath).data.role == 'ADMIN'
+        && get(acceptedInvitationPath).data.status == 'USED'
+        && get(acceptedInvitationPath).data.consumedBy == nextOwnerUid
+        && getAfter(nextOwnerMembershipPath).data.status == 'ACTIVE'
+        && getAfter(nextOwnerMembershipPath).data.role == 'OWNER'
         && (
           !existsAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid))
           || getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE'
