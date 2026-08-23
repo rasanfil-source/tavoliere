@@ -148,10 +148,6 @@ service cloud.firestore {
       return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN'];
     }
 
-    function canManagePeople(centerId) {
-      return isAdmin(centerId) && adminRole(centerId) in ['OWNER', 'ADMIN', 'MANAGER'];
-    }
-
     function personalTokenCreateIsValid(centerId, tokenId) {
       return tokenId.matches('personal_[A-Za-z0-9_]+')
         && request.resource.data.keys().hasAll([
@@ -458,26 +454,6 @@ service cloud.firestore {
         || request.resource.data.monthLayout in ['grid', 'future'];
     }
 
-    function viceAdaptationUpdateIsValid(centerId) {
-      return canUseViceAdministratorTools(centerId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'participantContactSharingEnabled', 'themePalette', 'interfaceStyle',
-          'defaultView', 'summaryLayout', 'kitchenLayout', 'monthLayout', 'monthControlsSide',
-          'summaryResidentLabel', 'language', 'updatedAt'
-        ])
-        && request.resource.data.participantContactSharingEnabled is bool
-        && request.resource.data.themePalette is string
-        && request.resource.data.interfaceStyle in ['original', 'cool', 'urban', 'urban-plus', 'future']
-        && request.resource.data.defaultView in ['month', 'week']
-        && request.resource.data.summaryLayout in ['classic', 'international', 'future']
-        && request.resource.data.kitchenLayout in ['classic', 'international']
-        && legacyMonthLayoutIsValid()
-        && request.resource.data.monthControlsSide in ['right', 'left']
-        && request.resource.data.summaryResidentLabel in ['name', 'signature', 'initials']
-        && request.resource.data.language is string
-        && request.resource.data.updatedAt == request.time;
-    }
-
     function adaptationDocumentIsValid(centerId) {
       return request.resource.data.keys().hasAll([
           'centerId', 'participantContactSharingEnabled', 'themePalette',
@@ -627,12 +603,6 @@ service cloud.firestore {
         && get(participantPath).data.status == 'ACTIVE';
     }
 
-    function residentIsCenterAdministrator(centerId) {
-      return get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '') != ''
-        && get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(sessionParticipantId(centerId))).data.get('signature', '')
-          == get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
-    }
-
     function centerSharesParticipantContacts(centerId) {
       return get(/databases/$(database)/documents/centers/$(centerId)).data.participantContactSharingEnabled == true;
     }
@@ -679,11 +649,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.scope == scope;
     }
 
-    function hasSelectedParticipant(centerId) {
-      return hasSession(centerId)
-        && get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId is string;
-    }
-
     function sessionParticipantId(centerId) {
       return get(/databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid)).data.participantId;
     }
@@ -727,11 +692,6 @@ service cloud.firestore {
           get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.endsOn == null
           || get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.endsOn >= mealDate
         );
-    }
-
-    function canReadParticipantOverride(centerId) {
-      return personalSessionIsUsable(centerId)
-        && resource.data.participantId == sessionParticipantId(centerId);
     }
 
     function personalOverrideSessionIsValid(centerId, participantId) {

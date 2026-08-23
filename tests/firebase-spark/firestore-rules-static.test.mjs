@@ -358,7 +358,7 @@ test('l amministratore puo eliminare una persona e i dati operativi collegati', 
 
 test('il vice gestisce persone e impostazioni senza poter assegnare ruoli', () => {
   assert.match(rules, /function canUseViceAdministratorTools\(centerId\)/);
-  assert.match(rules, /function viceAdaptationUpdateIsValid\(centerId\)[\s\S]*affectedKeys\(\)\.hasOnly/);
+  assert.match(rules, /match \/privateSettings\/\{settingsId\}[\s\S]*canUseViceAdministratorTools\(centerId\)[\s\S]*adaptationDocumentIsValid\(centerId\)/);
   assert.match(rules, /function viceParticipantWriteDoesNotAssignRoles[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
   assert.match(rules, /function viceParticipantUpdateDoesNotChangeRoles[\s\S]*hasAny\(\[[\s\S]*viceAdminRole[\s\S]*liturgicalRole/);
   assert.match(rules, /function viceMayCleanDisabledParticipant[\s\S]*status == 'DISABLED'/);
@@ -382,7 +382,7 @@ test('la password amministratori può leggere soltanto i link operativi durante 
 test('le regole conservano urban-plus come valore tecnico della nuova Essenziale', () => {
   assert.equal(
     (rules.match(/interfaceStyle in \['original', 'cool', 'urban', 'urban-plus', 'future'\]/g) || []).length,
-    2
+    1
   );
 });
 
