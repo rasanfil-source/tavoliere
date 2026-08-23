@@ -86,7 +86,9 @@ test('diete e invitati aggiornano soltanto il proprio campo Firestore', () => {
 });
 
 test('profilo centro, storage locale e testi accessibili non lasciano stati concorrenti', () => {
-  assert.match(adminCenter, /await saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
+  assert.match(adminCenter, /adminProfileNeedsRepair\(profileData, user, requestedCenterId, existingAccess\.role\)/);
+  assert.match(adminCenter, /void saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)\.catch/);
+  assert.doesNotMatch(adminCenter, /await saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
   assert.match(app, /function storeResidentPreferences[\s\S]*?try \{[\s\S]*?localStorage\.setItem[\s\S]*?catch/);
   assert.match(app, /requiredText: t\('dialog\.transferOwnership\.requiredText'\)/);
   assert.doesNotMatch(summaryView, /t\(["']kitchen\.title["']\)/);

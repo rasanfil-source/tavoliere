@@ -18,7 +18,7 @@ import {
 } from './reservation-state.mjs?v=20260823b';
 import { formatDateId } from './date-utils.mjs?v=20260816g';
 import { formatDietLabel } from './diet-utils.mjs?v=20260823c';
-import { t } from './i18n/i18n.mjs?v=20260823f';
+import { t } from './i18n/i18n.mjs?v=20260823g';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 
 const SESSION_LIFETIME_DAYS = 30;
@@ -30,6 +30,8 @@ const TEMPORAL_CACHE_MAX_ENTRIES = 30;
 let mealTypesCache = null;
 let rulesCache = null;
 let validatedKitchenSession = null;
+let mealTypesLoad = null;
+let rulesLoad = null;
 const windowsCache = new Map();
 const overridesCache = new Map();
 
@@ -80,6 +82,16 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
 export async function ensureKitchenDemoSession() {
   await waitForAuthReady();
   let user = getCurrentUser();
+
+  if (
+    user
+    && validatedKitchenSession
+    && validatedKitchenSession.authUid === user.uid
+    && validatedKitchenSession.centerId === getActiveCenterId()
+    && validatedKitchenSession.validUntil > Date.now()
+  ) {
+    return user;
+  }
 
   // Un account forte è sufficiente soltanto se appartiene davvero al centro.
   // Un Gmail di un altro centro (o l'ex amministratore dopo un trasferimento)
@@ -207,13 +219,22 @@ async function getActiveMealTypes(forceRefresh = false) {
     && Date.now() - mealTypesCache.loadedAt < STATIC_DATA_CACHE_MS) {
     return mealTypesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', centerId, 'mealTypes'));
-  const value = snapshot.docs
-    .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
-    .filter((meal) => meal.status === 'ACTIVE')
-    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  mealTypesCache = { centerId, loadedAt: Date.now(), value };
-  return value;
+  if (mealTypesLoad?.centerId === centerId) return mealTypesLoad.promise;
+  let request;
+  request = getDocs(collection(db, 'centers', centerId, 'mealTypes'))
+    .then((snapshot) => {
+      const value = snapshot.docs
+        .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
+        .filter((meal) => meal.status === 'ACTIVE')
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      mealTypesCache = { centerId, loadedAt: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      if (mealTypesLoad?.promise === request) mealTypesLoad = null;
+    });
+  mealTypesLoad = { centerId, promise: request };
+  return request;
 }
 
 async function getMealWindows(mealDate, forceRefresh = false) {
@@ -258,10 +279,20 @@ async function getRules(forceRefresh = false, staticVersion = '0') {
   ) {
     return rulesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', centerId, 'reservationRules'));
-  const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
-  rulesCache = { centerId, loadedAt: Date.now(), staticVersion, value };
-  return value;
+  const loadKey = `${centerId}:${staticVersion}`;
+  if (rulesLoad?.key === loadKey) return rulesLoad.promise;
+  let request;
+  request = getDocs(collection(db, 'centers', centerId, 'reservationRules'))
+    .then((snapshot) => {
+      const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
+      rulesCache = { centerId, loadedAt: Date.now(), staticVersion, value };
+      return value;
+    })
+    .finally(() => {
+      if (rulesLoad?.promise === request) rulesLoad = null;
+    });
+  rulesLoad = { key: loadKey, promise: request };
+  return request;
 }
 
 function countEffectiveReservations(rulesByParticipant, overrides, mealTypeId, mealDate) {

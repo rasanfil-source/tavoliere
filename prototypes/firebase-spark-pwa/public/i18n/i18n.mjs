@@ -341,6 +341,7 @@ export const CORE_FALLBACKS = Object.freeze({
 
 let currentLocale = DEFAULT_LOCALE;
 let catalogs = new Map();
+const catalogLoads = new Map();
 let isDevelopment = false;
 
 /**
@@ -417,12 +418,26 @@ export function resolveLocale(centerLocale = null) {
  * @returns {Promise<Object>} Catalogo traduzioni
  */
 async function loadCatalog(locale) {
-  // Garantisci prima il caricamento del catalogo italiano per il fallback
-  if (locale !== DEFAULT_LOCALE && !catalogs.has(DEFAULT_LOCALE)) {
-    await loadCatalog(DEFAULT_LOCALE);
-  }
+  if (catalogs.has(locale)) return catalogs.get(locale);
+  if (catalogLoads.has(locale)) return catalogLoads.get(locale);
+  let request;
+  request = loadCatalogUncached(locale).finally(() => {
+    if (catalogLoads.get(locale) === request) catalogLoads.delete(locale);
+  });
+  catalogLoads.set(locale, request);
+  return request;
+}
+
+async function loadCatalogUncached(locale) {
+  // For a non-Italian locale, start the compact fallback and the selected
+  // catalog together. The previous waterfall delayed Auth on every cold
+  // language switch even though the two files are independent.
+  const fallbackPromise = locale !== DEFAULT_LOCALE && !catalogs.has(DEFAULT_LOCALE)
+    ? loadCatalog(DEFAULT_LOCALE)
+    : Promise.resolve();
 
   if (catalogs.has(locale)) {
+    await fallbackPromise;
     return catalogs.get(locale);
   }
 
@@ -456,6 +471,7 @@ async function loadCatalog(locale) {
       throw new Error(`Catalogo non trovato: ${locale}`);
     }
 
+    await fallbackPromise;
     catalogs.set(locale, catalog);
     return catalog;
   } catch (error) {

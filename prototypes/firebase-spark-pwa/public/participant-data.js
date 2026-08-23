@@ -82,6 +82,17 @@ let summaryParticipantsCache = null;
 let summaryRulesCache = null;
 const mealWindowsCache = new Map();
 const participantRulesCache = new Map();
+const staticQueryLoads = new Map();
+
+function shareStaticQuery(key, loader) {
+  if (staticQueryLoads.has(key)) return staticQueryLoads.get(key);
+  let request;
+  request = Promise.resolve().then(loader).finally(() => {
+    if (staticQueryLoads.get(key) === request) staticQueryLoads.delete(key);
+  });
+  staticQueryLoads.set(key, request);
+  return request;
+}
 
 export { normalizeResidentSignature };
 
@@ -778,20 +789,23 @@ export async function listPublicParticipants(options = {}) {
   if (canUseVersionedCache(publicParticipantsCache, options)) {
     return publicParticipantsCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'publicParticipants'));
-  const value = snapshot.docs
-    .map((docSnap) => {
-      const participant = docSnap.data();
-      return {
-        participantId: docSnap.id,
-        ...participant,
-        dietTags: normalizeDietTags(participant.dietTags)
-      };
-    })
-    .filter((participant) => participant.status === 'ACTIVE')
-    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  publicParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
-  return value;
+  const key = `publicParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
+  return shareStaticQuery(key, async () => {
+    const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'publicParticipants'));
+    const value = snapshot.docs
+      .map((docSnap) => {
+        const participant = docSnap.data();
+        return {
+          participantId: docSnap.id,
+          ...participant,
+          dietTags: normalizeDietTags(participant.dietTags)
+        };
+      })
+      .filter((participant) => participant.status === 'ACTIVE')
+      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    publicParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
+    return value;
+  });
 }
 
 async function listSummaryParticipants(options = {}) {
@@ -803,27 +817,30 @@ async function listSummaryParticipants(options = {}) {
     return summaryParticipantsCache.value;
   }
 
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'participants'));
-  const contactsByParticipant = new Map(snapshot.docs.map((docSnap) => {
-    const data = docSnap.data();
-    const phone = String(data.phone || '').trim();
-    const phoneConsent = Boolean(data.phoneConsent && phone);
-    return [docSnap.id, {
-      phone: phoneConsent ? phone : '',
-      phoneConsent,
-      whatsappEnabled: Boolean(data.whatsappEnabled && phoneConsent)
-    }];
-  }));
-  const value = publicParticipants.map((participant) => ({
-    ...participant,
-    ...(contactsByParticipant.get(participant.participantId) || {
-      phone: '',
-      phoneConsent: false,
-      whatsappEnabled: false
-    })
-  }));
-  summaryParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
-  return value;
+  const key = `summaryParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
+  return shareStaticQuery(key, async () => {
+    const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'participants'));
+    const contactsByParticipant = new Map(snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      const phone = String(data.phone || '').trim();
+      const phoneConsent = Boolean(data.phoneConsent && phone);
+      return [docSnap.id, {
+        phone: phoneConsent ? phone : '',
+        phoneConsent,
+        whatsappEnabled: Boolean(data.whatsappEnabled && phoneConsent)
+      }];
+    }));
+    const value = publicParticipants.map((participant) => ({
+      ...participant,
+      ...(contactsByParticipant.get(participant.participantId) || {
+        phone: '',
+        phoneConsent: false,
+        whatsappEnabled: false
+      })
+    }));
+    summaryParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
+    return value;
+  });
 }
 
 export async function listAdminParticipants() {
@@ -1060,13 +1077,16 @@ async function getMealTypes(forceRefresh = false) {
   if (!forceRefresh && isFreshCacheEntry(mealTypesCache)) {
     return mealTypesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'mealTypes'));
-  const value = snapshot.docs
-    .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
-    .filter((meal) => meal.status === 'ACTIVE')
-    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  mealTypesCache = { centerId: getActiveCenterId(), loadedAt: Date.now(), value };
-  return value;
+  const centerId = getActiveCenterId();
+  return shareStaticQuery(`mealTypes:${centerId}`, async () => {
+    const snapshot = await getDocs(collection(db, 'centers', centerId, 'mealTypes'));
+    const value = snapshot.docs
+      .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
+      .filter((meal) => meal.status === 'ACTIVE')
+      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    mealTypesCache = { centerId, loadedAt: Date.now(), value };
+    return value;
+  });
 }
 
 async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false) {
@@ -1582,10 +1602,14 @@ async function getRules(options = {}) {
   if (canUseVersionedCache(summaryRulesCache, options)) {
     return summaryRulesCache.value;
   }
-  const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'reservationRules'));
-  const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
-  summaryRulesCache = createVersionedCacheEntry(value, options.staticVersion);
-  return value;
+  const centerId = getActiveCenterId();
+  const key = `summaryRules:${centerId}:${String(options.staticVersion || '')}`;
+  return shareStaticQuery(key, async () => {
+    const snapshot = await getDocs(collection(db, 'centers', centerId, 'reservationRules'));
+    const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
+    summaryRulesCache = createVersionedCacheEntry(value, options.staticVersion);
+    return value;
+  });
 }
 
 async function getParticipantRules(participantId, forceRefresh = false) {

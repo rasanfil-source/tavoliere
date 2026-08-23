@@ -38,19 +38,48 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
 });
 
-test('la schermata iniziale evita stati intermedi e ha un limite di attesa', () => {
+test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impostazioni senza bloccare', () => {
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
-  const hideIndex = bootstrap.indexOf('hideStartupSplash();');
-  const settingsIndex = bootstrap.indexOf('const centerSettings = await Promise.race');
-  assert.ok(settingsIndex >= 0 && hideIndex > settingsIndex);
   assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
-  assert.match(bootstrap, /const settingsDeadline = new Promise/);
+  assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
   assert.match(bootstrap, /state\.mode === 'kitchen'[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
-  assert.match(bootstrap, /const centerSettings = await Promise\.race\(\[settingsPromise, settingsDeadline\]\)/);
-  assert.match(bootstrap, /void settingsPromise\.then\(async \(lateSettings\)/);
+  assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*await i18nPromise/);
+  assert.match(bootstrap, /void settingsPromise\.then\(async \(centerSettings\)/);
+  assert.match(bootstrap, /renderMode\(\);[\s\S]*isPlainResidentLogin[\s\S]*hideStartupSplash\(\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
-  assert.match(bootstrap, /if \(isPlainResidentLogin\)[\s\S]*setParticipantStatus[\s\S]*else \{\s*refreshNow\('avvio'\)/);
+  assert.match(bootstrap, /if \(!isPlainResidentLogin\) \{\s*refreshNow\('avvio'\)/);
+});
+
+test('la shell PWA e i CSS pesanti restano legati alla vista che li usa', () => {
+  const appShell = serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '';
+  const lazy = serviceWorker.match(/const LAZY_MODULES = \[[\s\S]*?\n\];/)?.[0] || '';
+  assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|launcher-512/);
+  assert.match(lazy, /summary-matrix-view/);
+  assert.match(lazy, /summary-matrix-refinements/);
+  assert.match(index, /view !== 'summary' && view !== 'kitchen'/);
+  assert.match(app, /function ensureSummaryStyles\(\)/);
+  assert.match(app, /if \(targetMode === 'summary'\) await ensureSummaryStyles\(\)/);
+  assert.match(app, /if \(nextMode === 'summary'\) await ensureSummaryStyles\(\)/);
+  assert.match(index, /happyduck[^>]*[\s\S]*loading="lazy" decoding="async"/);
+});
+
+test('pannello, riepilogo e cucina condividono le richieste concorrenti', async () => {
+  const [adminCenter, kitchenData, i18n] = await Promise.all([
+    readPublic('admin-center.js'),
+    readPublic('kitchen-data.js'),
+    readPublic('i18n/i18n.mjs')
+  ]);
+  assert.match(app, /adminHydrationLoad\?\.key === hydrationKey/);
+  assert.match(app, /adminResourcesForSection\(section\)/);
+  assert.match(app, /loadSharedAdminResource/);
+  assert.match(app, /if \(operationalLinksError\) adminLoadedResources\.delete\('links'\)/);
+  assert.match(adminCenter, /loadCurrentAdminMembershipStatus/);
+  assert.match(kitchenData, /mealTypesLoad\?\.centerId === centerId/);
+  assert.match(kitchenData, /rulesLoad\?\.key === loadKey/);
+  assert.match(participantData, /function shareStaticQuery/);
+  assert.match(i18n, /const catalogLoads = new Map/);
+  assert.match(i18n, /const fallbackPromise =[\s\S]*loadCatalog\(DEFAULT_LOCALE\)/);
 });
 
 test('i moduli condivisi hanno una sola identita URL durante il caricamento', async () => {

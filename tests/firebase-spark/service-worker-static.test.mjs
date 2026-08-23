@@ -101,16 +101,15 @@ test('versioned app shell files load the exact release with an offline fallback'
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
   assert.match(index, /styles\.css\?v=20260823k/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260823i/);
-  assert.match(index, /app\.js\?v=20260823v/);
+  assert.match(index, /app\.js\?v=20260823w/);
   assert.match(index, /manifest\.webmanifest\?v=20260822c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260823e/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v429'/);
-  assert.match(serviceWorker, /\/icons\/happyduck\.png\?v=20260823a/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v430'/);
+  assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
-  assert.match(serviceWorker, /launcher-512\.png\?v=20260821a/);
-  assert.match(serviceWorker, /launcher-512-maskable\.png\?v=20260822a/);
+  assert.doesNotMatch(serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '', /launcher-512|happyduck/);
   assert.match(serviceWorker, /splash-512-blended\.png\?v=20260822a/);
 });
 

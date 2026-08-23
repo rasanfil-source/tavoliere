@@ -496,10 +496,11 @@ test('l uscita residente chiude soltanto il modulo mentre il pannello privilegia
 test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati operativi', () => {
   const applyAuth = app.match(/async function resolveAdminAuthState\(user[\s\S]*?\n}/)?.[0] || '';
   assert.match(app, /function beginAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = true/);
-  assert.match(app, /await i18nPromise;[\s\S]*initializeAuthPanel\(\)/);
-  assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\)[\s\S]*finishAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = !isAdmin/);
+  assert.match(app, /if \(hasAdminInterface\) initializeAuthPanel\(\);[\s\S]*await i18nPromise/);
+  assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\{[\s\S]*progressive: true[\s\S]*finishAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = !isAdmin/);
   assert.match(app, /adminPanelHydrating: false/);
   assert.match(app, /hydrationVersion === state\.adminHydrationVersion/);
+  assert.match(app, /adminHydrationLoad\?\.key === hydrationKey/);
 });
 
 test('il refresh del pannello completa il ripristino residente o vice pendente', () => {
@@ -696,9 +697,10 @@ test('il primo caricamento mostra subito le selezioni del periodo corrente', () 
   assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);\s*}/);
   assert.match(anchor, /state\.calendarAnchoredToCenter[\s\S]*return false/);
   assert.match(anchor, /state\.calendarAnchoredToCenter = true;\s*return true/);
-  assert.match(calendarLoad, /const participantMonth = await loadParticipantWeek\(/);
+  assert.match(calendarLoad, /const participantMonth = await loadParticipantMonthData\(/);
   assert.match(calendarLoad, /if \(options\.isCurrentRequest && !options\.isCurrentRequest\(\)\) return false;\s*state\.participantMonth = participantMonth/);
-  assert.doesNotMatch(calendarLoad, /state\.participantMonth = await loadParticipantWeek\(/);
+  assert.match(calendarLoad, /prefetchNextParticipantMonth\(/);
+  assert.match(app, /requestIdleCallback\(run, \{ timeout: 3000 \}\)/);
 });
 
 test('un caricamento impostazioni iniziato prima del salvataggio non ripristina lo stile precedente', () => {

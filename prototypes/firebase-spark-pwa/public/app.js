@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260823f';
+} from './i18n/i18n.mjs?v=20260823g';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -85,13 +85,26 @@ import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260823a';
 import { inspectCenterBackup } from './domain/center-backup.mjs?v=20260823a';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
-  mountSummaryMatrix,
-  scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823h';
-import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
 } from './summary-contact-hint.mjs?v=20260823a';
+
+const performanceTimeline = globalThis.__tatPerformance || {
+  marks: {},
+  counters: {}
+};
+globalThis.__tatPerformance = performanceTimeline;
+
+function markPerformance(name) {
+  performanceTimeline.marks[name] = Math.round(globalThis.performance?.now?.() || Date.now());
+  globalThis.performance?.mark?.(`tat:${name}`);
+}
+
+function countPerformance(name) {
+  performanceTimeline.counters[name] = (performanceTimeline.counters[name] || 0) + 1;
+}
+
+markPerformance('script-start');
 
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -121,17 +134,37 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823h',
+  admin: './admin-center.js?v=20260823i',
   audit: './audit-log.js?v=20260816g',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817d',
-  kitchen: './kitchen-data.js?v=20260823d',
+  kitchen: './kitchen-data.js?v=20260823e',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260823e'
+  participant: './participant-data.js?v=20260823f',
+  summaryView: './summary-matrix-view.js?v=20260823h'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
 const requestCoordinator = createStateStore();
+const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260823i';
+let summaryStylesheetLoad = null;
+
+function ensureSummaryStyles() {
+  if (document.querySelector('link[href*="summary-matrix-refinements.css"]')) {
+    return Promise.resolve();
+  }
+  if (summaryStylesheetLoad) return summaryStylesheetLoad;
+
+  summaryStylesheetLoad = new Promise((resolve) => {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = SUMMARY_STYLESHEET_HREF;
+    stylesheet.addEventListener('load', resolve, { once: true });
+    stylesheet.addEventListener('error', resolve, { once: true });
+    document.head.appendChild(stylesheet);
+  });
+  return summaryStylesheetLoad;
+}
 
 function loadDomainModule(name) {
   if (!domainModuleLoads.has(name)) {
@@ -158,6 +191,24 @@ function preloadActiveViewModules() {
       || (initialMode === 'week' && hasStoredResidentIdentity)) {
     loadDomainModule('daily');
   }
+  if (['kitchen', 'summary'].includes(initialMode)) {
+    loadDomainModule('summaryView');
+  }
+}
+
+function mountSummaryMatrix(container, options) {
+  const requestedMode = state.mode;
+  void loadDomainModule('summaryView').then((module) => {
+    if (!container?.isConnected || state.mode !== requestedMode) return;
+    module.mountSummaryMatrix(container, options);
+  });
+}
+
+function scrollSummaryMatrix(container, offset, options) {
+  void loadDomainModule('summaryView').then((module) => {
+    if (!container?.isConnected) return;
+    module.scrollSummaryMatrix(container, offset, options);
+  });
 }
 
 const bootstrapCenterData = callDomain('bootstrap', 'bootstrapCenterData');
@@ -172,6 +223,7 @@ const linkCurrentAdministratorParticipant = callDomain('admin', 'linkCurrentAdmi
 const listPlatformCenters = callDomain('admin', 'listPlatformCenters');
 const listAdministratorInvitations = callDomain('admin', 'listAdministratorInvitations');
 const loadCurrentAdminMembership = callDomain('admin', 'loadCurrentAdminMembership');
+const loadCurrentAdminMembershipStatus = callDomain('admin', 'loadCurrentAdminMembershipStatus');
 const revokeAdministratorInvitation = callDomain('admin', 'revokeAdministratorInvitation');
 const revokeCenterAdministrator = callDomain('admin', 'revokeCenterAdministrator');
 const rejectAdministratorInvitation = callDomain('admin', 'rejectAdministratorInvitation');
@@ -563,6 +615,8 @@ const state = {
   operationalAutoScrollHandled: false,
   refreshInFlight: false,
   pendingRefreshSource: '',
+  activeRefreshKey: '',
+  pendingRefreshKey: '',
   participantRequestVersion: 0,
   weekOperationsRequestVersion: 0,
   kitchenRequestVersion: 0,
@@ -622,6 +676,7 @@ const state = {
   adminHydrationVersion: 0,
   adminAccessReconcilePromise: null,
   adminSuccessionPollTimerId: 0,
+  adminSuccessionPollAttempt: 0,
   adminMassPermission: false,
   adminCanManageMass: false,
   adminCanManageDailyOperations: false,
@@ -1314,8 +1369,9 @@ elements.adminPhoneInput.addEventListener('input', syncAdminCheckboxes);
   elements.controlPanelEntry,
   elements.mealsReturnEntry
 ].filter(Boolean).forEach((link) => link.addEventListener('click', handleInAppNavigation));
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', async () => {
   const nextMode = resolveMode();
+  if (nextMode === 'summary') await ensureSummaryStyles();
   prepareMonthAutoScrollEntry(state.mode, nextMode);
   state.mode = nextMode;
   invalidateViewRequests();
@@ -1388,12 +1444,19 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
+  markPerformance('bootstrap-start');
   syncStartupSplashPresentation();
   applyMealReminderUrlPreference();
   registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
   initializeResidentAccess();
+
+  // Firebase Auth must start independently from translations and Firestore.
+  // In particular, a persisted Gmail session must not wait for one or two
+  // language catalogs before its observer can reconcile the admin panel.
+  if (hasAdminInterface) initializeAuthPanel();
+  markPerformance('auth-observer-started');
 
   // La vista Cucina deve creare prima la propria sessione: un caricamento
   // anticipato delle impostazioni protette può essere negato e condiviso con
@@ -1402,39 +1465,15 @@ async function bootstrapApp() {
     ? Promise.resolve(null)
     : loadCenterContactSettings().catch(() => null);
   window.setTimeout(hideStartupSplash, 8000);
-  const settingsDeadline = new Promise((resolve) => {
-    window.setTimeout(() => resolve(null), 8000);
-  });
   const i18nPromise = initI18n({
     development: window.location.hostname === 'localhost',
     centerLocale: state.centerContactSettings.language || null
   });
-  // Translation files are local, small and required before auth status text
-  // can be painted. Firestore settings continue loading in parallel and do
-  // not delay the first usable frame.
-  await i18nPromise;
-  renderAllViews();
-  if (hasAdminInterface) initializeAuthPanel();
-  const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
-  const centerSettings = await Promise.race([settingsPromise, settingsDeadline]);
-  if (centerSettings) {
-    state.centerContactSettings = applyResidentPreferences(centerSettings);
-    syncStartupSplashPresentation();
-    await applyCenterDefaultLanguage(centerSettings);
-  } else {
-    // Se Firestore risponde dopo il limite, aggiorna l'interfaccia senza
-    // riaprire il gate né sovrascrivere una richiesta più recente.
-    void settingsPromise.then(async (lateSettings) => {
-      if (!lateSettings) return;
-      state.centerContactSettings = applyResidentPreferences(lateSettings);
-      syncStartupSplashPresentation();
-      await applyCenterDefaultLanguage(lateSettings);
-      renderAllViews();
-    });
-  }
-  renderAllViews();
-  if (!keepStartupGate) hideStartupSplash();
 
+  // The static Italian HTML and CORE_FALLBACKS are sufficient for the first
+  // route paint. Complete catalogs are reconciled immediately afterwards,
+  // but they no longer hold Firebase Auth or the basic resident entry gate.
+  renderMode();
   const isPlainResidentLogin = state.friendlyAccess
     && ['participant', 'week'].includes(state.mode)
     && !state.residentRestorePending
@@ -1442,10 +1481,34 @@ async function bootstrapApp() {
     && !(state.mode === 'week' && canUseWeekWithoutParticipant());
   if (isPlainResidentLogin) {
     setParticipantStatus(t('auth.resident.status'));
-  } else {
-    refreshNow('avvio');
+    hideStartupSplash();
+    markPerformance('first-usable-frame');
   }
 
+  await i18nPromise;
+  markPerformance('translations-ready');
+  renderAllViews();
+  const keepStartupGate = state.mode === 'admin' || state.residentRestorePending;
+  if (!keepStartupGate && !isPlainResidentLogin) {
+    hideStartupSplash();
+    markPerformance('first-usable-frame');
+  }
+
+  // Stale-while-revalidate: visual preferences may come from the center cache,
+  // while roles and permissions remain exclusively authoritative in Firebase.
+  void settingsPromise.then(async (centerSettings) => {
+    if (!centerSettings) return;
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    syncStartupSplashPresentation();
+    await applyCenterDefaultLanguage(centerSettings);
+    renderAllViews();
+    markPerformance('settings-reconciled');
+  });
+
+  if (!isPlainResidentLogin) {
+    refreshNow('avvio');
+  }
+  markPerformance('bootstrap-scheduled');
 }
 
 bootstrapApp().catch(console.error);
@@ -1731,6 +1794,7 @@ async function handleInAppNavigation(event) {
   }
 
   event.preventDefault();
+  if (targetMode === 'summary') await ensureSummaryStyles();
   if (isOperationalTarget) {
     state.residentSettingsMode = false;
     targetUrl.searchParams.set('access', 'friendly');
@@ -2135,9 +2199,6 @@ function selectAdminSection(section, { focus = false, updateHash = false } = {})
     syncAdminCenterSettingsForm();
     renderAdminCenterAvatarEditor();
   }
-  if (section === 'access') {
-    queueMicrotask(refreshAdminRolesWhenVisible);
-  }
   renderAdminSectionVisibility();
   renderAdminMobileSection();
   markAdminPanelVisited();
@@ -2163,6 +2224,9 @@ async function requestAdminSectionChange(section, options = {}) {
   if (!ADMIN_SECTIONS.includes(section) || !isAdminSectionAllowed(section)) return false;
   if (section !== state.adminActiveSection && !await confirmAdminSectionTransition()) return false;
   selectAdminSection(section, options);
+  if (state.adminRole && !state.residentSettingsMode) {
+    await refreshAdminParticipants({ progressive: true, section });
+  }
   return true;
 }
 
@@ -2279,6 +2343,8 @@ function normalizeClientDate(value) {
   const date = value instanceof Date ? value : value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date : null;
 }
+
+let adminHydrationLoad = null;
 
 function initializeAuthPanel() {
   let authSettled = false;
@@ -2413,33 +2479,52 @@ function reconcileAdminAccessWithoutStrongUser() {
 }
 
 async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
+  const hydrationKey = [
+    user?.uid || '',
+    getActiveCenterId(),
+    getAdminRoleInvitationId(),
+    state.mode
+  ].join(':');
+  if (adminHydrationLoad?.key === hydrationKey) {
+    countPerformance('admin-hydration-joined');
+    return adminHydrationLoad.promise;
+  }
+
+  countPerformance('admin-hydration-started');
   const hydrationVersion = ++state.adminHydrationVersion;
   state.adminPanelHydrating = true;
-  try {
-    return await resolveAdminAuthState(user, revision, () => (
-      hydrationVersion === state.adminHydrationVersion
-        ? getCurrentRevision()
-        : Number.NaN
-    ));
-  } catch (error) {
-    // A membership/settings read may fail independently of Firebase Auth. Do
-    // not leave the shell permanently in "Accesso in verifica". If the role
-    // was already established, keep the panel mounted with the data currently
-    // available and surface the recoverable error in its status row.
-    if (hydrationVersion === state.adminHydrationVersion
-        && state.mode === 'admin'
-        && state.adminRole
-        && state.adminAuthUid === user?.uid) {
-      elements.adminPanel.hidden = false;
-      renderMode();
+  let request;
+  request = (async () => {
+    try {
+      return await resolveAdminAuthState(user, revision, () => (
+        hydrationVersion === state.adminHydrationVersion
+          ? getCurrentRevision()
+          : Number.NaN
+      ));
+    } catch (error) {
+      // A membership/settings read may fail independently of Firebase Auth. Do
+      // not leave the shell permanently in "Accesso in verifica". If the role
+      // was already established, keep the panel mounted with the data currently
+      // available and surface the recoverable error in its status row.
+      if (hydrationVersion === state.adminHydrationVersion
+          && state.mode === 'admin'
+          && state.adminRole
+          && state.adminAuthUid === user?.uid) {
+        elements.adminPanel.hidden = false;
+        renderMode();
+      }
+      throw error;
+    } finally {
+      if (hydrationVersion === state.adminHydrationVersion) {
+        state.adminPanelHydrating = false;
+        finishAdminAuthorizationCheck();
+      }
     }
-    throw error;
-  } finally {
-    if (hydrationVersion === state.adminHydrationVersion) {
-      state.adminPanelHydrating = false;
-      finishAdminAuthorizationCheck();
-    }
-  }
+  })().finally(() => {
+    if (adminHydrationLoad?.promise === request) adminHydrationLoad = null;
+  });
+  adminHydrationLoad = { key: hydrationKey, promise: request };
+  return request;
 }
 
 async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
@@ -2639,7 +2724,10 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
   }
   if (isAdmin && !state.platformOwner) {
-    await refreshAdminParticipants();
+    await refreshAdminParticipants({
+      progressive: true,
+      section: state.adminActiveSection || resolveInitialAdminSection()
+    });
     if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     if (state.mode === 'participant' || state.mode === 'week') {
       if (!state.residentReady) {
@@ -2755,6 +2843,8 @@ function clearAdminAuthorizationState() {
   // response must not be able to restore privileges on the new resident
   // session.
   state.adminHydrationVersion += 1;
+  adminLoadedResources.clear();
+  adminResourceLoads.clear();
   state.adminAuthorizationPending = false;
   state.adminPanelHydrating = false;
   state.adminAccessReconcilePromise = null;
@@ -2804,34 +2894,44 @@ function showOwnershipTransferCompleted() {
 }
 
 function cancelAdminSuccessionRoleCheck() {
-  if (!state.adminSuccessionPollTimerId) return;
-  window.clearTimeout(state.adminSuccessionPollTimerId);
+  if (state.adminSuccessionPollTimerId) {
+    window.clearTimeout(state.adminSuccessionPollTimerId);
+  }
   state.adminSuccessionPollTimerId = 0;
+  state.adminSuccessionPollAttempt = 0;
 }
 
-function scheduleAdminSuccessionRoleCheck(delay = 2500) {
-  cancelAdminSuccessionRoleCheck();
+function scheduleAdminSuccessionRoleCheck(delay = null) {
+  if (state.adminSuccessionPollTimerId) {
+    window.clearTimeout(state.adminSuccessionPollTimerId);
+    state.adminSuccessionPollTimerId = 0;
+  }
   if (state.mode !== 'admin' || state.adminRole !== 'ADMIN') return;
   const user = getCurrentUser();
   const centerId = getActiveCenterId();
   if (!user || user.isAnonymous || !hasPendingAdminSuccession(centerId, user.uid)) return;
+  const backoff = [2500, 5000, 10000, 30000, 60000];
+  const resolvedDelay = delay ?? backoff[Math.min(state.adminSuccessionPollAttempt, backoff.length - 1)];
   state.adminSuccessionPollTimerId = window.setTimeout(async () => {
     state.adminSuccessionPollTimerId = 0;
     if (document.visibilityState === 'hidden') {
-      scheduleAdminSuccessionRoleCheck(12000);
+      state.adminSuccessionPollAttempt = Math.max(state.adminSuccessionPollAttempt, 3);
+      scheduleAdminSuccessionRoleCheck(60000);
       return;
     }
     try {
-      const membership = await loadCurrentAdminMembership(user);
+      const membership = await loadCurrentAdminMembershipStatus(user);
       if (!membership.active || membership.role !== state.adminRole) {
+        state.adminSuccessionPollAttempt = 0;
         await applyAdminAuthState(user);
         return;
       }
     } catch {
       // Un errore di rete temporaneo non deve interrompere l'attesa del passaggio.
     }
-    scheduleAdminSuccessionRoleCheck(5000);
-  }, delay);
+    state.adminSuccessionPollAttempt += 1;
+    scheduleAdminSuccessionRoleCheck();
+  }, resolvedDelay);
 }
 
 function renderAdminCenterSwitcher(centers = [], activeCenterId = '', isPlatformOwner = false) {
@@ -3583,24 +3683,49 @@ async function handleCenterInitialization() {
 }
 
 async function refreshNow(source) {
+  const refreshKey = buildRefreshContextKey();
   if (state.refreshInFlight) {
-    state.pendingRefreshSource = source === 'manuale'
-      ? 'manuale'
-      : state.pendingRefreshSource || source;
+    // Timer/focus/online bursts for the same visible period do not require a
+    // second complete set of reads. A manual refresh or a changed route/date
+    // remains authoritative and is queued once.
+    if (source === 'manuale' || refreshKey !== state.activeRefreshKey) {
+      state.pendingRefreshSource = source === 'manuale'
+        ? 'manuale'
+        : state.pendingRefreshSource || source;
+      state.pendingRefreshKey = refreshKey;
+    } else {
+      countPerformance('refresh-coalesced');
+    }
     return;
   }
 
   state.refreshInFlight = true;
+  state.activeRefreshKey = refreshKey;
+  countPerformance('refresh-started');
   try {
     await performRefresh(source);
   } finally {
     state.refreshInFlight = false;
+    state.activeRefreshKey = '';
     const pendingSource = state.pendingRefreshSource;
     state.pendingRefreshSource = '';
+    state.pendingRefreshKey = '';
     if (pendingSource) {
       refreshNow(pendingSource);
     }
   }
+}
+
+function buildRefreshContextKey() {
+  return [
+    getActiveCenterId(),
+    state.mode,
+    state.selectedParticipant?.participantId || '',
+    formatDateId(state.weekStartDate),
+    formatMonthId(state.monthDate),
+    state.summaryDayOffset,
+    state.kitchenDayOffset
+  ].join(':');
 }
 
 async function performRefresh(source) {
@@ -4228,26 +4353,74 @@ async function handleForgetDevice() {
   transitionAuthLifecycle('SIGN_OUT_COMPLETE');
 }
 
-async function refreshAdminParticipants() {
+const adminLoadedResources = new Set();
+const adminResourceLoads = new Map();
+
+function adminResourcesForSection(section) {
+  const resources = new Set(['settings']);
+  if (section === 'people') resources.add('participants');
+  if (section === 'overview') {
+    ['participants', 'accounts', 'invitations', 'coverage', 'links']
+      .forEach((resource) => resources.add(resource));
+  }
+  if (section === 'access') {
+    ['participants', 'accounts', 'invitations'].forEach((resource) => resources.add(resource));
+  }
+  if (section === 'activity') resources.add('coverage');
+  return resources;
+}
+
+function loadSharedAdminResource(name, loader, { forceRefresh = false } = {}) {
+  if (adminResourceLoads.has(name)) return adminResourceLoads.get(name);
+  let request;
+  request = Promise.resolve().then(loader).finally(() => {
+    if (adminResourceLoads.get(name) === request) adminResourceLoads.delete(name);
+  });
+  adminResourceLoads.set(name, request);
+  return request;
+}
+
+async function refreshAdminParticipants(options = {}) {
   const request = requestCoordinator.beginRequest('admin-participants');
   try {
+    const progressive = options.progressive === true;
+    const requestedSection = options.section || state.adminActiveSection || resolveInitialAdminSection();
+    const requestedResources = progressive
+      ? adminResourcesForSection(requestedSection)
+      : new Set(['participants', 'accounts', 'settings', 'coverage', 'links', 'invitations']);
+    const forceRefresh = options.forceRefresh === true;
+    const shouldLoad = (resource) => requestedResources.has(resource)
+      && (!progressive || forceRefresh || !adminLoadedResources.has(resource));
     const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
     const canManageRoles = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
     let operationalLinksError = null;
     const [adminParticipants, adminAccounts, centerSettings, coverage, operationalLinks, adminInvitations] = await Promise.all([
-      listAdminParticipants(),
-      canManageRoles ? listCenterAdministrators() : Promise.resolve([]),
-      loadCenterContactSettings(),
-      loadMealWindowCoverage(),
-      canViewOperationalLinks
-        ? loadOperationalLinks({ forceRefresh: true }).catch((error) => {
+      shouldLoad('participants')
+        ? loadSharedAdminResource('participants', listAdminParticipants, { forceRefresh })
+        : Promise.resolve(state.adminParticipants),
+      shouldLoad('accounts') && canManageRoles
+        ? loadSharedAdminResource('accounts', listCenterAdministrators, { forceRefresh })
+        : Promise.resolve(state.adminAccounts),
+      shouldLoad('settings')
+        ? loadSharedAdminResource('settings', () => loadCenterContactSettings({ forceRefresh }), { forceRefresh })
+        : Promise.resolve(state.centerContactSettings),
+      shouldLoad('coverage')
+        ? loadSharedAdminResource('coverage', loadMealWindowCoverage, { forceRefresh })
+        : Promise.resolve(state.adminCalendarCoverage),
+      shouldLoad('links') && canViewOperationalLinks
+        ? loadSharedAdminResource('links', () => loadOperationalLinks({ forceRefresh }), { forceRefresh })
+          .catch((error) => {
           operationalLinksError = error;
           return state.operationalLinks;
         })
         : Promise.resolve(state.operationalLinks),
-      canManageRoles ? listAdministratorInvitations() : Promise.resolve([])
+      shouldLoad('invitations') && canManageRoles
+        ? loadSharedAdminResource('invitations', listAdministratorInvitations, { forceRefresh })
+        : Promise.resolve(state.adminInvitations)
     ]);
     if (!requestCoordinator.isCurrentRequest(request)) return;
+    requestedResources.forEach((resource) => adminLoadedResources.add(resource));
+    if (operationalLinksError) adminLoadedResources.delete('links');
     const authenticatedOwnerEmail = state.adminRole === 'OWNER'
       ? String(getCurrentUser()?.email || '').trim().toLowerCase()
       : '';
@@ -4298,7 +4471,13 @@ async function refreshAdminParticipants() {
         'Link operativi temporaneamente non disponibili. Riprova tra un momento.'
       );
     }
-    if (hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)) {
+    const operationalLinksReady = state.operationalLinks.publicStatus === 'ACTIVE'
+      && state.operationalLinks.kitchenStatus === 'ACTIVE'
+      && Boolean(state.operationalLinks.publicTokenId)
+      && Boolean(state.operationalLinks.kitchenTokenId);
+    if (requestedResources.has('links')
+        && hasCurrentCapability(CAPABILITIES.MANAGE_OPERATIONAL_LINKS)
+        && !operationalLinksReady) {
       void ensureOperationalLinks().then((links) => {
         if (!requestCoordinator.isCurrentRequest(request)) return;
         state.operationalLinks = links;
@@ -4777,6 +4956,9 @@ async function refreshAdminInvitationList() {
   renderAdminOverview();
 }
 
+let lastAdminRoleRefreshAt = 0;
+const ADMIN_ROLE_REFRESH_TTL_MS = 15000;
+
 function refreshAdminRolesWhenVisible() {
   if (document.visibilityState === 'hidden'
       || state.mode !== 'admin'
@@ -4795,12 +4977,21 @@ function refreshAdminRolesWhenVisible() {
     }
     const user = getCurrentUser();
     if (!user || user.isAnonymous || user.uid !== state.adminAuthUid) return;
-    const membership = await loadCurrentAdminMembership(user);
+    const now = Date.now();
+    if (now - lastAdminRoleRefreshAt < ADMIN_ROLE_REFRESH_TTL_MS) {
+      if (state.adminRole === 'ADMIN' && hasPendingAdminSuccession(getActiveCenterId(), user.uid)) {
+        scheduleAdminSuccessionRoleCheck(0);
+      }
+      return;
+    }
+    lastAdminRoleRefreshAt = now;
+    const membership = await loadCurrentAdminMembershipStatus(user);
     if (!membership.active || membership.role !== state.adminRole) {
       await applyAdminAuthState(user);
       return;
     }
-    if (hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) {
+    if (hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)
+        && state.adminActiveSection === 'access') {
       await refreshAdminInvitationList();
     }
   }).catch((error) => {
@@ -8902,6 +9093,58 @@ async function loadCurrentParticipantWeek(options = {}) {
   state.participantSummary = null;
 }
 
+const PARTICIPANT_MONTH_CACHE_MS = 60 * 1000;
+const PARTICIPANT_MONTH_CACHE_MAX = 3;
+const participantMonthCache = new Map();
+
+function participantMonthCacheKey(participantId, monthStart, options = {}) {
+  return [
+    getActiveCenterId(),
+    participantId,
+    formatMonthId(monthStart),
+    String(options.staticVersion || '')
+  ].join(':');
+}
+
+async function loadParticipantMonthData(participantId, monthStart, options = {}) {
+  const key = participantMonthCacheKey(participantId, monthStart, options);
+  const cached = participantMonthCache.get(key);
+  if (!options.forceStaticRefresh
+      && cached
+      && Date.now() - cached.loadedAt < PARTICIPANT_MONTH_CACHE_MS) {
+    return cached.value;
+  }
+  const value = await loadParticipantWeek(
+    participantId,
+    monthStart,
+    daysInMonth(monthStart),
+    options
+  );
+  participantMonthCache.delete(key);
+  participantMonthCache.set(key, { loadedAt: Date.now(), value });
+  while (participantMonthCache.size > PARTICIPANT_MONTH_CACHE_MAX) {
+    participantMonthCache.delete(participantMonthCache.keys().next().value);
+  }
+  return value;
+}
+
+function prefetchNextParticipantMonth(participantId, monthStart, options = {}) {
+  const nextMonth = new Date(monthStart);
+  nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
+  const run = () => {
+    void loadParticipantMonthData(participantId, nextMonth, {
+      ...options,
+      forceStaticRefresh: false,
+      isCurrentRequest: undefined
+    }).catch(() => undefined);
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 3000 });
+  } else {
+    window.setTimeout(run, 800);
+  }
+}
+
 async function loadCurrentParticipantCalendar(options = {}) {
   if (!state.selectedParticipant && !(state.mode === 'week' && canUseWeekWithoutParticipant())) {
     state.participantWeek = [];
@@ -8916,10 +9159,9 @@ async function loadCurrentParticipantCalendar(options = {}) {
     state.participantMonth = [];
   } else {
     const monthStart = startOfMonth(state.monthDate);
-    const participantMonth = await loadParticipantWeek(
+    const participantMonth = await loadParticipantMonthData(
       state.selectedParticipant.participantId,
       monthStart,
-      daysInMonth(monthStart),
       {
         ...options,
         timezone: state.centerContactSettings.timezone
@@ -8929,6 +9171,10 @@ async function loadCurrentParticipantCalendar(options = {}) {
     state.participantMonth = participantMonth;
     state.participantWeek = [];
     state.participantSummary = null;
+    prefetchNextParticipantMonth(state.selectedParticipant.participantId, monthStart, {
+      ...options,
+      timezone: state.centerContactSettings.timezone
+    });
   }
   return true;
 }

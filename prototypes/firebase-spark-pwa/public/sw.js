@@ -1,13 +1,10 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v429';
+const CACHE_NAME = CACHE_PREFIX + 'v430';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/styles.css',
-  '/summary-matrix-refinements.css',
   '/app.js',
-  '/summary-matrix-view.js',
-  '/summary-matrix-model.js',
   '/summary-contact-hint.mjs',
   '/html-utils.js',
   '/firebase-client.js',
@@ -32,15 +29,14 @@ const APP_SHELL = [
   '/i18n/i18n.mjs',
   '/manifest.webmanifest',
   '/manifest-kitchen.webmanifest',
-  '/icons/launcher-192.png?v=20260821a',
-  '/icons/launcher-512.png?v=20260821a',
-  '/icons/launcher-192-maskable.png?v=20260822a',
-  '/icons/launcher-512-maskable.png?v=20260822a',
   '/icons/splash-512-blended.png?v=20260822a',
-  '/icons/happyduck.png?v=20260823a',
   '/icons/whatsapp.svg'
 ];
 const LAZY_MODULES = [
+  '/summary-matrix-refinements.css',
+  '/summary-matrix-view.js',
+  '/summary-matrix-model.js',
+  '/icons/happyduck.png',
   '/access-links.js',
   '/audit-log.js',
   '/calendar-configuration.js',

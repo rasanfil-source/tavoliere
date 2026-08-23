@@ -80,7 +80,7 @@ test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
   assert.doesNotMatch(html, />\s*rasanfil@gmail\.com\s*</);
   assert.match(html, /class="project-readme-footer project-signature-footer"[\s\S]*class="happyduck-contact"[\s\S]*class="project-readme-link project-link-card"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
-  assert.match(html, /<img class="happyduck-duck" src="\/icons\/happyduck\.png\?v=20260823a" width="34" height="34" alt="">/);
+  assert.match(html, /<img class="happyduck-duck" src="\/icons\/happyduck\.png\?v=20260823a" width="34" height="34" loading="lazy" decoding="async" alt="">/);
   assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 34px[\s\S]*object-fit: contain/);
   assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
   assert.match(css, /\.project-signature-footer[\s\S]*min-height: 44px/);
@@ -544,7 +544,7 @@ test('l’accettazione dell’invito accende una spia senza listener permanente'
   assert.match(app, /admin-nav-attention/);
   assert.match(app, /invitation\.status === 'USED'/);
   assert.match(app, /admin\.invitationId === invitation\.invitationId/);
-  assert.match(app, /queueMicrotask\(refreshAdminRolesWhenVisible\)/);
+  assert.match(app, /refreshAdminParticipants\(\{ progressive: true, section \}\)/);
   assert.doesNotMatch(adminCenter, /\bonSnapshot\s*\(/);
   assert.match(css, /\.admin-section-nav a\.admin-nav-attention::after/);
   assert.match(css, /\.admin-invitation-accepted/);
@@ -563,7 +563,7 @@ test('il nuovo responsabile rileva il trasferimento senza ricaricare e un accoun
   assert.match(adminCenter, /roleInvitationId: String\(data\.invitationId/);
   assert.match(app, /storePendingAdminSuccession\(result\.centerId, user\.uid\)/);
   assert.match(app, /scheduleAdminSuccessionRoleCheck/);
-  assert.match(app, /const membership = await loadCurrentAdminMembership\(user\)/);
+  assert.match(app, /const membership = await loadCurrentAdminMembershipStatus\(user\)/);
   assert.match(app, /membership\.role !== state\.adminRole[\s\S]*applyAdminAuthState\(user\)/);
   assert.match(app, /admin\.succession\.completedMessage/);
   assert.match(app, /requiresDifferentAdminIdentity[\s\S]*adminAuthMethods\.hidden = !requiresDifferentAdminIdentity/);
@@ -648,7 +648,7 @@ test('i controlli amministrativi riconoscono entrambe le forme di permission den
     adminCenter,
     /function isPermissionDeniedError\(error\)[\s\S]*permission-denied[\s\S]*firestore\/permission-denied/
   );
-  assert.equal((adminCenter.match(/isPermissionDeniedError\(error\)/g) || []).length, 5);
+  assert.equal((adminCenter.match(/isPermissionDeniedError\(error\)/g) || []).length, 6);
 });
 
 test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {

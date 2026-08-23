@@ -103,12 +103,33 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
   }
 
   const requestedCenterId = getActiveCenterId();
-  const existingAccess = await readCenterAdmin(user, requestedCenterId);
+  const profileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
+  const [existingAccess, profileSnapshot] = await Promise.all([
+    readCenterAdmin(user, requestedCenterId),
+    getDoc(profileRef)
+  ]);
+  const profileData = profileSnapshot.exists() ? profileSnapshot.data() : {};
   if (existingAccess.active) {
-    await saveAdminProfile(user, requestedCenterId, existingAccess.role);
+    // The profile is a navigation aid, not an authorization source. Repair it
+    // only when necessary and outside the critical path of a valid membership.
+    if (adminProfileNeedsRepair(profileData, user, requestedCenterId, existingAccess.role)) {
+      void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
+    }
+    const navigationProfile = {
+      ...profileData,
+      centerId: requestedCenterId,
+      centerIds: [...new Set([
+        ...(Array.isArray(profileData.centerIds) ? profileData.centerIds : []),
+        requestedCenterId
+      ])]
+    };
     return {
       ...existingAccess,
-      availableCenters: await listAccessibleAdminCenters(user)
+      availableCenters: await listAccessibleAdminCenters(
+        user,
+        navigationProfile,
+        new Map([[requestedCenterId, existingAccess]])
+      )
     };
   }
 
@@ -127,9 +148,8 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
     };
   }
 
-  const profileSnapshot = await getDoc(doc(db, ADMIN_PROFILE_COLLECTION, user.uid));
   if (profileSnapshot.exists()) {
-    const profile = profileSnapshot.data();
+    const profile = profileData;
     if (profile.status === 'ACTIVE') {
       const availableCenters = await listAccessibleAdminCenters(user, profile);
       const preferredCenter = availableCenters.find((center) => center.centerId === profile.centerId)
@@ -737,6 +757,23 @@ export async function loadCurrentAdminMembership(user = getCurrentUser()) {
   return readCenterAdmin(user, getActiveCenterId());
 }
 
+export async function loadCurrentAdminMembershipStatus(user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous) {
+    return { active: false, role: '' };
+  }
+  try {
+    const snapshot = await getDoc(doc(db, 'centers', getActiveCenterId(), 'admins', user.uid));
+    const data = snapshot.exists() ? snapshot.data() : {};
+    return {
+      active: data.status === 'ACTIVE',
+      role: normalizeCenterRole(data.role)
+    };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) return { active: false, role: '' };
+    throw error;
+  }
+}
+
 export async function completeAdministratorPasswordSetup(user = getCurrentUser()) {
   if (!db || !user || user.isAnonymous) {
     throw new Error('Accesso amministratore richiesto');
@@ -765,14 +802,23 @@ async function saveAdminProfile(user, centerId, role) {
   }, { merge: true });
 }
 
-async function listAccessibleAdminCenters(user, profileData = null) {
+function adminProfileNeedsRepair(profile, user, centerId, role) {
+  const centerIds = Array.isArray(profile?.centerIds) ? profile.centerIds : [];
+  return profile?.status !== 'ACTIVE'
+    || profile?.centerId !== centerId
+    || !centerIds.includes(centerId)
+    || String(profile?.email || '') !== String(user.email || '')
+    || normalizeCenterRole(profile?.role) !== normalizeCenterRole(role);
+}
+
+async function listAccessibleAdminCenters(user, profileData = null, accessCache = new Map()) {
   const profile = profileData || (await getDoc(doc(db, ADMIN_PROFILE_COLLECTION, user.uid))).data() || {};
   const candidateIds = [...new Set([
     profile.centerId,
     ...(Array.isArray(profile.centerIds) ? profile.centerIds : [])
   ].filter((centerId) => typeof centerId === 'string' && centerId))];
   const centers = await Promise.all(candidateIds.map(async (centerId) => {
-    const access = await readCenterAdmin(user, centerId);
+    const access = accessCache.get(centerId) || await readCenterAdmin(user, centerId);
     if (!access.active) return null;
     try {
       const centerSnapshot = await getDoc(doc(db, 'centers', centerId));
