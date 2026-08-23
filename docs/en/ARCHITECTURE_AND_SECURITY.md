@@ -73,6 +73,10 @@ The model is centred on `centers/{centerId}`. Each centre separates:
 
 Administrator invitations are temporary documents with a status, expiry and the identity that consumed them. An ownership transfer must always leave an active owner and requires explicit confirmation.
 
+There is one canonical flow: the owner creates an invitation linked to a Person; the recipient explicitly chooses **Accept** or **Reject**; only then do they identify with Google or email and password; acceptance moves the invitation from `ACTIVE` to `USED`; finally, the owner confirms the transfer, which atomically updates the center, both roles, the invitation and the audit log. Opening an authentication method never means accepting the appointment.
+
+Vice administrators do not use Firebase administrator invitations: their access derives only from signature, administrator password, the Person role and `viceSessions`. Support for the old temporary-password replacement request is confined to reading possible historical records; no current path can create a new one.
+
 ## Applied defences
 
 - verified email for password-based administrator access;

@@ -481,6 +481,9 @@ test('l invito di successione separa decisione e identificazione senza percorsi 
   assert.match(app, /t\('auth\.email\.inviteHelp'\)/);
   assert.match(app, /error\?\.code === 'auth\/email-already-in-use'[\s\S]*signInAdministratorWithEmail\(email, password\)/);
   assert.doesNotMatch(app, /adminInviteEmailMode/);
+  assert.doesNotMatch(app, /storeImplicitAdministratorInvitationAcceptance/);
+  assert.match(app, /storeAdminInvitationDecision\('ACCEPT'\)/);
+  assert.match(app, /storeAdminInvitationDecision\('REJECT'\)/);
   assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
   assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
   assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
@@ -598,14 +601,14 @@ test('l invito amministratore funziona anche con email non Google senza corse su
   assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
   assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
   assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
-  assert.match(app, /storeImplicitAdministratorInvitationAcceptance\(\)/);
+  assert.doesNotMatch(app, /storeImplicitAdministratorInvitationAcceptance/);
   assert.match(app, /emailVerificationPending = requiresAdministratorPassword\(user\)/);
   assert.match(app, /storedDecision === 'ACCEPT' && emailVerificationPending/);
   assert.match(app, /adminPasswordReset\.hidden = hasCenterInvitation/);
   assert.doesNotMatch(app, /else if \(!getAdminInvitationId\(\)\)/);
 });
 
-test('il nuovo amministratore sceglie subito la password e non deve sostituirne una temporanea', () => {
+test('il percorso nuovo non attiva la compatibilità storica della password temporanea', () => {
   assert.match(html, /data-admin-password-setup-dialog/);
   assert.match(app, /showRequiredAdminPasswordSetup\(user, access\.passwordSetupRequired === true\)/);
   assert.match(app, /elements\.adminPasswordSetupDialog\.showModal\(\)/);
@@ -616,6 +619,16 @@ test('il nuovo amministratore sceglie subito la password e non deve sostituirne 
   assert.doesNotMatch(app, /ADMIN_PASSWORD_SETUP_STORAGE_PREFIX/);
   assert.match(adminCenter, /passwordSetupRequired: false/);
   assert.match(adminCenter, /export async function completeAdministratorPasswordSetup/);
+  assert.doesNotMatch(adminCenter, /passwordSetupRequired:\s*true/);
+});
+
+test('la revoca del vice non consulta più i vecchi inviti Firebase di ruolo MANAGER', () => {
+  const revokeVice = adminCenter.match(/export async function revokeViceAdministratorAccess\([\s\S]*?\n}\n/)?.[0] || '';
+  const renderInvitations = app.match(/function renderAdminInvitationManagement\([\s\S]*?\n}\n/)?.[0] || '';
+  assert.match(revokeVice, /viceSessions/);
+  assert.doesNotMatch(revokeVice, /ADMIN_INVITATION_COLLECTION/);
+  assert.doesNotMatch(revokeVice, /invitationsSnapshot/);
+  assert.doesNotMatch(renderInvitations, /role\.vice|role === 'MANAGER'/);
 });
 
 test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {

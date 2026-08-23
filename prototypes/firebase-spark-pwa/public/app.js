@@ -121,7 +121,7 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823e',
+  admin: './admin-center.js?v=20260823f',
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
@@ -2823,7 +2823,6 @@ async function handleAuthButton() {
     return;
   }
 
-  storeImplicitAdministratorInvitationAcceptance();
   try {
     const credential = await signInWithGoogle();
     // The Auth observer is intentionally debounced for mutation stability.
@@ -2872,7 +2871,6 @@ async function handleOwnerExit() {
 
 async function handleAdministratorEmailSignIn() {
   state.adminAuthNotice = '';
-  storeImplicitAdministratorInvitationAcceptance();
   setAdministratorEmailButtonsDisabled(true);
   elements.adminEmailStatus.textContent = 'Accesso in corso...';
   try {
@@ -2921,7 +2919,6 @@ async function handleAdministratorEmailCreation() {
     elements.adminEmailStatus.textContent = 'Per creare un account serve un invito valido.';
     return;
   }
-  storeImplicitAdministratorInvitationAcceptance();
   setAdministratorEmailButtonsDisabled(true);
   const email = elements.adminEmail.value.trim();
   const password = elements.adminPassword.value;
@@ -4450,13 +4447,6 @@ async function handleAdministratorInvitationCopy() {
   }
 }
 
-function storeImplicitAdministratorInvitationAcceptance() {
-  const roleInvitationId = getAdminRoleInvitationId();
-  if (roleInvitationId && !loadAdminInvitationDecision(roleInvitationId)) {
-    storeAdminInvitationDecision('ACCEPT');
-  }
-}
-
 async function handleAdministratorInvitationShare() {
   const value = elements.adminInvitationLink.value;
   if (!value) return;
@@ -4793,9 +4783,9 @@ function renderAdminInvitationList() {
           : expired && invitation.status === 'ACTIVE'
             ? t('admin.invitations.expired')
             : t('admin.invitations.revoked');
-    const roleLabel = invitation.role === 'ADMIN' ? t('role.admin') : t('role.vice');
+    const roleLabel = t('role.admin');
     const participant = state.adminParticipants.find((item) => item.participantId === invitation.participantId);
-    const targetLabel = participant?.displayName || (invitation.role === 'ADMIN' ? 'Nuovo amministratore' : invitation.participantId);
+    const targetLabel = participant?.displayName || 'Nuovo amministratore';
     const createdAt = invitation.createdAt?.toDate?.() || new Date(invitation.createdAt || 0);
     const createdLabel = !Number.isNaN(createdAt.getTime())
       ? formatDateTime(createdAt, { dateStyle: 'medium' }, getLocale())
@@ -4803,7 +4793,7 @@ function renderAdminInvitationList() {
     const expiryLabel = !Number.isNaN(expiresAt.getTime())
       ? formatDateTime(expiresAt, { dateStyle: 'medium' }, getLocale())
       : '';
-    const canRevoke = active && (state.adminRole === 'OWNER' || invitation.role === 'MANAGER');
+    const canRevoke = active && state.adminRole === 'OWNER';
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(targetLabel)}</strong><small>${escapeHtml(roleLabel)}</small></span>

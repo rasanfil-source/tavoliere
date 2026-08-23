@@ -73,6 +73,10 @@ El modelo se centra en `centers/{centerId}`. En cada centro se separan:
 
 Las invitaciones administrativas son documentos temporales con estado, caducidad e identidad que los ha consumido. Una transferencia debe dejar siempre un responsable activo y requiere confirmación explícita.
 
+Existe un único flujo canónico: el responsable crea una invitación vinculada a una Persona; el destinatario elige explícitamente **Aceptar** o **Rechazar**; solo después se identifica con Google o con correo y contraseña; la aceptación cambia la invitación de `ACTIVE` a `USED`; por último, el responsable confirma el traspaso, que actualiza de forma atómica el centro, los dos roles, la invitación y el registro de actividad. Abrir un método de autenticación nunca equivale a aceptar el encargo.
+
+Los viceadministradores no usan invitaciones administrativas de Firebase: su acceso deriva exclusivamente de sigla, contraseña de administradores, rol de la Persona y `viceSessions`. La compatibilidad con la antigua solicitud de sustitución de contraseña temporal queda limitada a la lectura de posibles registros históricos; ningún flujo actual puede crear uno nuevo.
+
 ## Defensas aplicadas
 
 - correo verificado para el acceso administrativo con contraseña;

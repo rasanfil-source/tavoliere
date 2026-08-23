@@ -369,18 +369,12 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
   if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
     throw new Error('Solo il responsabile o l’amministratore può revocare un vice');
   }
-  const [membershipsSnapshot, invitationsSnapshot, viceSessionsSnapshot] = await Promise.all([
+  const [membershipsSnapshot, viceSessionsSnapshot] = await Promise.all([
     getDocs(query(
       collection(db, 'centers', centerId, 'admins'),
       where('participantId', '==', normalizedParticipantId),
       where('role', '==', 'MANAGER'),
       limit(10)
-    )),
-    getDocs(query(
-      collection(db, ADMIN_INVITATION_COLLECTION),
-      where('centerId', '==', centerId),
-      where('role', '==', 'MANAGER'),
-      limit(50)
     )),
     getDocs(query(
       collection(db, 'centers', centerId, 'viceSessions'),
@@ -397,18 +391,6 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
       status: 'REVOKED',
       massPermission: true,
       dailyOperationsPermission: false,
-      revokedBy: user.uid,
-      revokedAt: now,
-      updatedAt: now
-    }, { merge: true });
-  });
-  invitationsSnapshot.docs.forEach((item) => {
-    const invitation = item.data();
-    if (invitation.role !== 'MANAGER'
-        || invitation.participantId !== normalizedParticipantId
-        || invitation.status !== 'ACTIVE') return;
-    batch.set(item.ref, {
-      status: 'REVOKED',
       revokedBy: user.uid,
       revokedAt: now,
       updatedAt: now
