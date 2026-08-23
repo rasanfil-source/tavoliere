@@ -565,6 +565,9 @@ test('il nuovo responsabile rileva il trasferimento senza ricaricare e un accoun
   assert.match(app, /scheduleAdminSuccessionRoleCheck/);
   assert.match(app, /const membership = await loadCurrentAdminMembershipStatus\(user\)/);
   assert.match(app, /membership\.role !== state\.adminRole[\s\S]*applyAdminAuthState\(user\)/);
+  assert.match(app, /forceSettingsRefresh: successionCompleted/);
+  assert.match(app, /resource === 'settings' && forceSettingsRefresh/);
+  assert.match(app, /loadCenterContactSettings\(\{ forceRefresh: shouldForceResource\('settings'\) \}\)/);
   assert.match(app, /admin\.succession\.completedMessage/);
   assert.match(app, /requiresDifferentAdminIdentity[\s\S]*adminAuthMethods\.hidden = !requiresDifferentAdminIdentity/);
   assert.match(app, /admin\.succession\.identityMismatch/);

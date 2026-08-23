@@ -2726,7 +2726,12 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   if (isAdmin && !state.platformOwner) {
     await refreshAdminParticipants({
       progressive: true,
-      section: state.adminActiveSection || resolveInitialAdminSection()
+      section: state.adminActiveSection || resolveInitialAdminSection(),
+      // Durante l'attesa del passaggio questo dispositivo può avere ancora
+      // in memoria nome, sigla ed email del responsabile uscente. Appena la
+      // membership diventa OWNER, rileggi il documento centro autorevole:
+      // la scheda Configurazione deve popolarsi subito con il successore.
+      forceSettingsRefresh: successionCompleted
     });
     if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     if (state.mode === 'participant' || state.mode === 'week') {
@@ -4389,8 +4394,11 @@ async function refreshAdminParticipants(options = {}) {
       ? adminResourcesForSection(requestedSection)
       : new Set(['participants', 'accounts', 'settings', 'coverage', 'links', 'invitations']);
     const forceRefresh = options.forceRefresh === true;
+    const forceSettingsRefresh = options.forceSettingsRefresh === true;
+    const shouldForceResource = (resource) => forceRefresh
+      || (resource === 'settings' && forceSettingsRefresh);
     const shouldLoad = (resource) => requestedResources.has(resource)
-      && (!progressive || forceRefresh || !adminLoadedResources.has(resource));
+      && (!progressive || shouldForceResource(resource) || !adminLoadedResources.has(resource));
     const canViewOperationalLinks = hasCurrentCapability(CAPABILITIES.VIEW_OPERATIONAL_LINKS);
     const canManageRoles = hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS);
     let operationalLinksError = null;
@@ -4402,7 +4410,10 @@ async function refreshAdminParticipants(options = {}) {
         ? loadSharedAdminResource('accounts', listCenterAdministrators, { forceRefresh })
         : Promise.resolve(state.adminAccounts),
       shouldLoad('settings')
-        ? loadSharedAdminResource('settings', () => loadCenterContactSettings({ forceRefresh }), { forceRefresh })
+        ? loadSharedAdminResource(
+          'settings',
+          () => loadCenterContactSettings({ forceRefresh: shouldForceResource('settings') })
+        )
         : Promise.resolve(state.centerContactSettings),
       shouldLoad('coverage')
         ? loadSharedAdminResource('coverage', loadMealWindowCoverage, { forceRefresh })
