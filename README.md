@@ -1,8 +1,8 @@
-# Tutti a tavola
+# Oggi a tavola
 
 [![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](README.es.md)
 
-**Tutti a tavola** è il progetto della web app installabile **Oggi a tavola**, pensata per organizzare le prenotazioni dei pasti in una comunità residenziale.
+**Oggi a tavola** è una web app installabile pensata per organizzare le prenotazioni dei pasti in una comunità residenziale.
 
 [Apri l’app](https://tavola-comune.web.app) · [Segnala un problema](mailto:rasanfil@gmail.com) · [Documentazione tecnica](docs/ARCHITETTURA_E_SICUREZZA.md)
 
@@ -100,4 +100,4 @@ Prima di un rilascio usare il gate completo descritto in [Sviluppo e test](docs/
 
 Per informazioni e suggerimenti scrivere a [rasanfil@gmail.com](mailto:rasanfil@gmail.com).
 
-Progetto **Tutti a tavola 2026**.
+Progetto **Oggi a tavola 2026**.

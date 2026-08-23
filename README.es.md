@@ -1,8 +1,8 @@
-# Tutti a tavola
+# Oggi a tavola
 
 [![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](README.es.md)
 
-**Tutti a tavola** es el proyecto de **Oggi a tavola**, una aplicación web instalable pensada para organizar las reservas de comidas en una comunidad residencial.
+**Oggi a tavola** es una aplicación web instalable pensada para organizar las reservas de comidas en una comunidad residencial.
 
 [Abrir la aplicación](https://tavola-comune.web.app) · [Comunicar un problema](mailto:rasanfil@gmail.com) · [Documentación técnica](docs/es/ARQUITECTURA_Y_SEGURIDAD.md)
 
@@ -100,4 +100,4 @@ Antes de una publicación, utilizar el proceso completo descrito en [Desarrollo 
 
 Para información y sugerencias, escribir a [rasanfil@gmail.com](mailto:rasanfil@gmail.com).
 
-Proyecto **Tutti a tavola 2026**.
+Proyecto **Oggi a tavola 2026**.

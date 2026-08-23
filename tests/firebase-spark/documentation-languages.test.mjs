@@ -46,6 +46,14 @@ test('italiano resta la pagina predefinita del repository', () => {
   assert.match(readme, /\]\(README\.es\.md\)/);
 });
 
+test('la documentazione usa Oggi a tavola come unico nome pubblico', () => {
+  for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    assert.match(source, /^# Oggi a tavola/m);
+    assert.doesNotMatch(source, /Tutti a tavola/);
+  }
+});
+
 test('il responsabile non viene documentato come profilo distinto dall amministratore', () => {
   const italian = readFileSync(resolve(repositoryRoot, 'README.md'), 'utf8');
   const english = readFileSync(resolve(repositoryRoot, 'README.en.md'), 'utf8');

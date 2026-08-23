@@ -71,28 +71,34 @@ test('la configurazione raggruppa identita e orari e termina con un solo salvata
   assert.doesNotMatch(configuration, /data-bootstrap-button/);
 });
 
-test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
-  assert.equal((html.match(/href="https:\/\/github\.com\/rasanfil-source\/tavoliere#readme"/g) || []).length, 2);
-  assert.equal((html.match(/class="happyduck-contact" href="mailto:rasanfil@gmail\.com"/g) || []).length, 2);
-  assert.match(html, /data-admin-mobile-section="activity"[\s\S]*data-i18n="project\.info\.title">Info/);
+test('i contatti del progetto compaiono una sola volta e soltanto in Aspetto', () => {
+  assert.equal((html.match(/href="https:\/\/github\.com\/rasanfil-source\/tavoliere#readme"/g) || []).length, 1);
+  assert.equal((html.match(/class="happyduck-contact" href="mailto:rasanfil@gmail\.com"/g) || []).length, 1);
+  assert.doesNotMatch(html, /project-info-card|project-info-title|project\.info\./);
   assert.match(html, /class="happyduck-contact" href="mailto:rasanfil@gmail\.com"[^>]*data-i18n-aria-label="project\.contact\.ariaLabel"/);
   assert.match(html, /class="happyduck-duck"[\s\S]*class="happyduck-name"[\s\S]*Happy[\s\S]*Duck[\s\S]*class="happyduck-action"/);
   assert.doesNotMatch(html, />\s*rasanfil@gmail\.com\s*</);
-  assert.match(html, /class="project-readme-footer project-signature-footer"[\s\S]*class="happyduck-contact"[\s\S]*class="project-readme-link project-link-card"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
+  assert.match(html, /class="project-readme-footer project-signature-footer"[\s\S]*data-i18n="project\.contact\.heading">Per informazioni e contatti[\s\S]*class="project-contact-links"[\s\S]*class="happyduck-contact"[\s\S]*class="project-readme-link project-link-card"[\s\S]*data-i18n="project\.github\.label">Oggi a tavola/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
   assert.match(html, /<img class="happyduck-duck" src="\/icons\/happyduck\.png\?v=20260823a" width="34" height="34" loading="lazy" decoding="async" alt="">/);
   assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 34px[\s\S]*object-fit: contain/);
-  assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
+  assert.doesNotMatch(css, /\.project-info-card|\.project-info-line/);
   assert.match(css, /\.project-signature-footer[\s\S]*min-height: 44px/);
   assert.match(css, /\.project-link-card[\s\S]*min-height: 44px[\s\S]*border-radius: 12px[\s\S]*\.github-mark[\s\S]*width: 30px/);
 });
 
-test('Info usa un solo nome progetto: Tutti a tavola', () => {
-  const info = html.match(/id="project-info-title"[\s\S]*?<\/section>/)?.[0] || '';
-  assert.match(info, /class="github-mark"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
-  assert.doesNotMatch(info, /Tavoliere/);
-  assert.match(info, /data-i18n-aria-label="project\.github\.repositoryAriaLabel"/);
-  assert.doesNotMatch(info, /data-i18n="project\.info\.more"|Per saperne|README del progetto/);
+test('HappyDuck e GitHub hanno la stessa altezza e restano affiancati anche su mobile', () => {
+  assert.match(css, /\.project-link-card\s*\{[\s\S]*height:\s*48px/);
+  assert.match(css, /\.happyduck-contact\s*\{[\s\S]*height:\s*48px/);
+  assert.match(css, /\.project-contact-links\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,/);
+  assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.project-contact-links[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+});
+
+test('la firma usa il nome pubblico Oggi a tavola', () => {
+  const footer = html.match(/<footer class="project-readme-footer project-signature-footer">[\s\S]*?<\/footer>/)?.[0] || '';
+  assert.match(footer, /class="github-mark"[\s\S]*data-i18n="project\.github\.label">Oggi a tavola/);
+  assert.doesNotMatch(footer, /Tutti a tavola|Tavoliere/);
+  assert.match(footer, /data-i18n-aria-label="project\.github\.repositoryAriaLabel"/);
 });
 
 test('agenda centro vive nella vista settimana e sostituisce il vecchio collegamento', () => {

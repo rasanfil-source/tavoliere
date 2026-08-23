@@ -2091,21 +2091,6 @@ html[data-theme="neutro"] {
   min-height: 44px;
 }
 
-.project-info-card {
-  padding: 16px;
-}
-
-.project-info-card .admin-maintenance-copy {
-  width: 100%;
-}
-
-.project-info-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-}
-
 .project-readme-link {
   display: inline-flex;
   align-items: center;
@@ -2116,6 +2101,8 @@ html[data-theme="neutro"] {
 }
 
 .project-link-card {
+  box-sizing: border-box;
+  height: 48px;
   min-height: 44px;
   padding: 5px 11px 5px 7px;
   border: 1.5px solid var(--primary);
@@ -2149,6 +2136,8 @@ html[data-theme="neutro"] {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  box-sizing: border-box;
+  height: 48px;
   min-height: 44px;
   padding: 3px 7px 3px 4px;
   border: 1.5px solid #dba900;
@@ -2236,20 +2225,69 @@ html[data-theme="neutro"] {
 }
 
 .project-signature-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: block;
+}
+
+.project-contact-heading {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.project-contact-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
   justify-content: center;
-  gap: 10px 14px;
+  gap: 10px;
 }
 
 .project-signature-footer .project-readme-link {
+  width: 100%;
   min-height: 44px;
 }
 
 .project-signature-footer .project-readme-link:hover {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+@media (max-width: 420px) {
+  .project-contact-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .happyduck-contact,
+  .project-link-card {
+    min-width: 0;
+    padding-right: 5px;
+    padding-left: 4px;
+    gap: 4px;
+    font-size: 0.8rem;
+  }
+
+  .happyduck-duck {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .happyduck-action {
+    width: 21px;
+    height: 21px;
+    flex-basis: 21px;
+  }
+
+  .github-mark {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+
+  .project-link-card span {
+    white-space: nowrap;
+  }
 }
 
 .admin-invitation-list {
