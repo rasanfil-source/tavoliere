@@ -2267,6 +2267,27 @@ html[data-theme="neutro"] {
   font-weight: 600;
 }
 
+.project-signature-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 14px;
+}
+
+.project-signature-footer .project-readme-link {
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+.project-signature-footer .project-readme-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .admin-invitation-list {
   display: grid;
   margin-top: 10px;
