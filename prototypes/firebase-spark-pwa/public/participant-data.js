@@ -30,6 +30,7 @@ import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.j
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import { normalizeDietTags } from './diet-utils.mjs?v=20260823a';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823a';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
@@ -37,12 +38,12 @@ import {
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260822a';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823a';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260823a';
+} from './center-settings.js?v=20260823b';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -50,7 +51,7 @@ export {
   removeCenterAvatar,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260823a';
+} from './center-settings.js?v=20260823b';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -1159,6 +1160,9 @@ function groupRulesByParticipant(rules) {
 
 export async function saveAdminParticipant(participantId, profile) {
   const normalizedProfile = validateParticipantProfile(profile);
+  const kitchenDietLegend = profile.kitchenDietLegend === undefined
+    ? null
+    : normalizeKitchenDietLegend(profile.kitchenDietLegend);
   const { displayName, signature, initials, groupId, dietTags, phone } = normalizedProfile;
   const expectedRevision = normalizeRevision(profile.expectedRevision);
 
@@ -1209,9 +1213,16 @@ export async function saveAdminParticipant(participantId, profile) {
     const existingRule = ruleSnapshot?.exists() ? ruleSnapshot.data() : {};
 
     transaction.set(metadataRef, { centerId, updatedAt: serverTimestamp() }, { merge: true });
+    const centerUpdate = {};
     if (participantSnapshot.data()?.viceAdminRole === true && normalizedProfile.viceAdminRole !== true) {
+      centerUpdate.adminPasswordRotationRequired = true;
+    }
+    if (kitchenDietLegend !== null) {
+      centerUpdate.kitchenDietLegend = kitchenDietLegend;
+    }
+    if (Object.keys(centerUpdate).length > 0) {
       transaction.set(centerRef, {
-        adminPasswordRotationRequired: true,
+        ...centerUpdate,
         updatedAt: serverTimestamp()
       }, { merge: true });
     }

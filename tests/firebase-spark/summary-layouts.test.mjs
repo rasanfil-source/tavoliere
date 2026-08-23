@@ -179,6 +179,13 @@ test('Originale ingrandisce i codici dieta e li adatta alle righe facoltative', 
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*summary-matrix-optional-rows-1[\s\S]*0\.8rem[\s\S]*summary-matrix-optional-rows-3[\s\S]*0\.68rem/);
 });
 
+test('Cucina Originale mostra una legenda dieta compatta prima delle note', () => {
+  assert.match(view, /renderKitchenDietLegend\(screen, dietLegend\)[\s\S]*renderNotes\(screen\)/);
+  assert.match(view, /visibleCodes[\s\S]*specialDiets[\s\S]*sickDiets/);
+  assert.match(styles, /summary-layout-kitchen\.summary-layout-classic \.kitchen-diet-legend/);
+  assert.match(styles, /\.kitchen-diet-legend ul \{[\s\S]*flex-wrap: wrap/);
+});
+
 test('Internazionale e Futura precisano che la colazione e di domani', () => {
   assert.match(view, /localizedMealLabel\(column, \{ breakfastTomorrow: true \}\)/);
   assert.match(view, /return t\("summary\.breakfastTomorrow"\)/);

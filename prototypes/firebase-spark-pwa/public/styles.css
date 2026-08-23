@@ -2718,21 +2718,39 @@ body[data-resident-login-visible="true"] .account-footer {
 
 .admin-diet-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px;
+  grid-template-columns: minmax(92px, 0.72fr) minmax(120px, 1.28fr);
   gap: 6px;
 }
 
-.admin-diet-fields input {
+.admin-diet-fields input,
+.admin-diet-code-fields,
+.admin-diet-code-fields select {
   width: 100%;
   min-width: 0;
 }
 
-.admin-diet-fields input[hidden] {
+.admin-diet-code-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 6px;
+}
+
+.admin-diet-code-fields input[hidden] {
   display: none;
 }
 
-.admin-diet-fields:has(> input[hidden]) {
+.admin-diet-code-fields:has(> input[hidden]) {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-person-field-diet > .field-help {
+  margin-top: 4px;
+}
+
+@media (max-width: 520px) {
+  .admin-diet-fields {
+    grid-template-columns: minmax(82px, 0.68fr) minmax(112px, 1.32fr);
+  }
 }
 
 @media (max-width: 899px) {

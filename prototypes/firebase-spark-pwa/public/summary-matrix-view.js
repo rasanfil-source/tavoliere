@@ -1,6 +1,7 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260823a";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20260823b";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
 import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260823a";
+import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823a";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
@@ -16,6 +17,7 @@ export function mountSummaryMatrix(
     kitchen = false,
     layout = "classic",
     residentLabel = "name",
+    dietLegend = [],
     showContactHint = true,
     activeIndex = 0,
     onActiveIndexChange = () => {},
@@ -39,7 +41,7 @@ export function mountSummaryMatrix(
   const render = layout === "international" ? renderInternationalScreen : renderScreen;
   container.innerHTML = `
     <div class="summary-matrix-track summary-layout-${layout}${kitchen ? " summary-layout-kitchen" : " summary-layout-diners"}" data-${prefix}-matrix-track aria-label="${escapeHtml(t("summary.screensLabel"))}">
-      ${screens.map((screen) => render(screen, { kitchen, activeIndex, residentLabel, showContactHint })).join("")}
+      ${screens.map((screen) => render(screen, { kitchen, activeIndex, residentLabel, showContactHint, dietLegend })).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${escapeHtml(t("summary.swipeHint"))}</p>
   `;
@@ -201,7 +203,7 @@ export function scrollSummaryMatrix(
   return true;
 }
 
-function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", showContactHint = true }) {
+function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", showContactHint = true, dietLegend = [] }) {
   const prefix = kitchen ? "kitchen" : "summary";
   const isActive = screen.index === activeIndex;
   const optionalRowCount = countClassicOptionalRows(screen);
@@ -513,6 +515,7 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
           showMassMetadata: index === 0 || columns[index - 1]?.dateId !== column.dateId
         })).join("")}
       </div>
+      ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
@@ -576,6 +579,25 @@ function renderNotes(screen) {
       `,
         )
         .join("")}
+    </section>
+  `;
+}
+
+function renderKitchenDietLegend(screen, legend) {
+  const visibleCodes = new Set();
+  screen.columns.forEach((column) => {
+    [...(column.specialDiets?.items || []), ...(column.sickDiets || [])].forEach((item) => {
+      const code = normalizeDietCode(item?.tag);
+      if (/^\d{1,3}$/.test(code)) visibleCodes.add(code);
+    });
+  });
+  const visibleEntries = normalizeKitchenDietLegend(legend)
+    .filter((entry) => visibleCodes.has(entry.code));
+  if (visibleEntries.length === 0) return "";
+  return `
+    <section class="kitchen-diet-legend" aria-label="${escapeHtml(t("kitchen.dietLegend.title"))}">
+      <h3>${escapeHtml(t("kitchen.dietLegend.title"))}</h3>
+      <ul>${visibleEntries.map((entry) => `<li><strong>${escapeHtml(entry.code)}</strong><span aria-hidden="true">=</span><span>${escapeHtml(entry.label)}</span></li>`).join("")}</ul>
     </section>
   `;
 }

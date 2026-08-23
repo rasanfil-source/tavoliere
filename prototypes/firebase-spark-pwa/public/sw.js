@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v405';
+const CACHE_NAME = CACHE_PREFIX + 'v406';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -16,6 +16,7 @@ const APP_SHELL = [
   '/refresh-schedule.js',
   '/date-utils.mjs',
   '/diet-utils.mjs',
+  '/diet-legend.mjs',
   '/role-policy.mjs',
   '/schedule-utils.mjs',
   '/meal-reminders.mjs',

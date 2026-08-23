@@ -12,6 +12,7 @@ const RESTORABLE_CENTER_FIELDS = Object.freeze([
   'calendarCoveredFrom',
   'calendarCoveredThrough',
   'participantContactSharingEnabled',
+  'kitchenDietLegend',
   'participantDataUpdatedAt',
   'avatarVersion',
   'createdAt',

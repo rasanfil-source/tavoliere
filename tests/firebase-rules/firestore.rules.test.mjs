@@ -72,6 +72,29 @@ test('registered admin can update center but cannot bypass administrator invitat
   }));
 });
 
+test('solo amministratore salva una legenda cucina valida e breve', async () => {
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const managerDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
+  await assertSucceeds(ownerDb.doc(centerPath()).set({
+    kitchenDietLegend: [
+      { code: '1', label: 'Poco sale' },
+      { code: '3', label: 'Senza lattosio' }
+    ],
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(ownerDb.doc(centerPath()).set({
+    kitchenDietLegend: Array.from({ length: 13 }, (_, index) => ({
+      code: String(index + 1),
+      label: `Dieta ${index + 1}`
+    })),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+  await assertFails(managerDb.doc(centerPath()).set({
+    kitchenDietLegend: [{ code: '3', label: 'Senza lattosio' }],
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
+});
+
 test('lo stesso amministratore può alternare Google ed email senza perdere il ruolo', async () => {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await context.firestore().doc(adminPath(ADMIN_UID)).set({

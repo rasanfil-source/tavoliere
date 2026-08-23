@@ -1,86 +1,86 @@
-import{t as n,getLocale as w}from"./i18n/i18n.mjs?v=20260823a";import{escapeHtml as s}from"./html-utils.js?v=20260816g";import{formatDietLabel as z,normalizeDietCode as O}from"./diet-utils.mjs?v=20260823a";import{buildKitchenMatrixScreens as G,buildSummaryMatrixScreens as U}from"./summary-matrix-model.js?v=20260820i";let N=0;function ga(a,{days:t=[],operationDays:e=[],kitchen:r=!1,layout:m="classic",residentLabel:o="name",showContactHint:u=!0,activeIndex:c=0,onActiveIndexChange:i=()=>{}}={}){const l=r?G(t,e):U(t,[],e);if(m==="future"&&!r){Y(a,l,o,c,i,u);return}if(l.every(d=>d.columns.length===0)){a.innerHTML=`<p class="empty-state">${s(n("summary.noMeal"))}</p>`;return}const y=r?"kitchen":"summary",b=m==="international"?ma:X;a.innerHTML=`
-    <div class="summary-matrix-track summary-layout-${m}${r?" summary-layout-kitchen":" summary-layout-diners"}" data-${y}-matrix-track aria-label="${s(n("summary.screensLabel"))}">
-      ${l.map(d=>b(d,{kitchen:r,activeIndex:c,residentLabel:o,showContactHint:u})).join("")}
+import{t as n,getLocale as v}from"./i18n/i18n.mjs?v=20260823b";import{escapeHtml as s}from"./html-utils.js?v=20260816g";import{formatDietLabel as G,normalizeDietCode as I}from"./diet-utils.mjs?v=20260823a";import{normalizeKitchenDietLegend as U}from"./diet-legend.mjs?v=20260823a";import{buildKitchenMatrixScreens as Y,buildSummaryMatrixScreens as _}from"./summary-matrix-model.js?v=20260820i";let T=0;function va(a,{days:t=[],operationDays:e=[],kitchen:r=!1,layout:i="classic",residentLabel:u="name",dietLegend:m=[],showContactHint:c=!0,activeIndex:l=0,onActiveIndexChange:o=()=>{}}={}){const p=r?Y(t,e):_(t,[],e);if(i==="future"&&!r){J(a,p,u,l,o,c);return}if(p.every(h=>h.columns.length===0)){a.innerHTML=`<p class="empty-state">${s(n("summary.noMeal"))}</p>`;return}const y=r?"kitchen":"summary",x=i==="international"?ua:aa;a.innerHTML=`
+    <div class="summary-matrix-track summary-layout-${i}${r?" summary-layout-kitchen":" summary-layout-diners"}" data-${y}-matrix-track aria-label="${s(n("summary.screensLabel"))}">
+      ${p.map(h=>x(h,{kitchen:r,activeIndex:l,residentLabel:u,showContactHint:c,dietLegend:m})).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${s(n("summary.swipeHint"))}</p>
-  `;const $=a.querySelector(`[data-${y}-matrix-track]`);let f=0;$.addEventListener("scroll",()=>{window.clearTimeout(f),f=window.setTimeout(()=>{const d=ya($,y);W(a,y,d),i(d)},100)},{passive:!0}),window.requestAnimationFrame(()=>{V(a,c,{kitchen:r,smooth:!1})})}function Y(a,t,e,r=0,m=()=>{},o=!0){a.innerHTML=`
+  `;const f=a.querySelector(`[data-${y}-matrix-track]`);let d=0;f.addEventListener("scroll",()=>{window.clearTimeout(d),d=window.setTimeout(()=>{const h=fa(f,y);O(a,y,h),o(h)},100)},{passive:!0}),window.requestAnimationFrame(()=>{Z(a,l,{kitchen:r,smooth:!1})})}function J(a,t,e,r=0,i=()=>{},u=!0){a.innerHTML=`
     <div class="summary-future-grid" data-summary-future-track>
-      ${t.map(i=>`
-        <article class="summary-future-card" data-summary-future-screen="${i.index}" aria-hidden="${i.index!==r}">
+      ${t.map(l=>`
+        <article class="summary-future-card" data-summary-future-screen="${l.index}" aria-hidden="${l.index!==r}">
           <header class="summary-future-card-head">
-            <div><strong>${s(n(i.labelKey))}</strong><time datetime="${s(i.dateId)}">${s(D(i.dateId))}</time></div>
-            ${Q(i)}
+            <div><strong>${s(n(l.labelKey))}</strong><time datetime="${s(l.dateId)}">${s(N(l.dateId))}</time></div>
+            ${X(l)}
           </header>
           <div class="summary-future-meals">
-            ${i.columns.map(l=>_(l,e,o)).join("")}
+            ${l.columns.map(o=>Q(o,e,u)).join("")}
           </div>
         </article>
       `).join("")}
     </div>
-  `;const u=a.querySelector("[data-summary-future-track]");let c=0;u?.addEventListener("scroll",()=>{window.clearTimeout(c),c=window.setTimeout(()=>{const i=Math.max(0,Math.min(1,Math.round(u.scrollLeft/Math.max(1,u.clientWidth+14))));u.querySelectorAll("[data-summary-future-screen]").forEach(l=>{l.setAttribute("aria-hidden",String(Number(l.dataset.summaryFutureScreen)!==i))}),m(i)},100)},{passive:!0}),window.requestAnimationFrame(()=>{u&&u.scrollTo({left:Math.max(0,r)*(u.clientWidth+14),behavior:"auto"})})}function _(a,t,e=!0){const r=Array.isArray(a.names)?a.names:[],m=Number(a.specialDiets?.participantCount||0),o=Number(a.guestCount||0),u=Number(a.sickCount||0),c=Array.isArray(a.sickDiets)?a.sickDiets:[];return`
+  `;const m=a.querySelector("[data-summary-future-track]");let c=0;m?.addEventListener("scroll",()=>{window.clearTimeout(c),c=window.setTimeout(()=>{const l=Math.max(0,Math.min(1,Math.round(m.scrollLeft/Math.max(1,m.clientWidth+14))));m.querySelectorAll("[data-summary-future-screen]").forEach(o=>{o.setAttribute("aria-hidden",String(Number(o.dataset.summaryFutureScreen)!==l))}),i(l)},100)},{passive:!0}),window.requestAnimationFrame(()=>{m&&m.scrollTo({left:Math.max(0,r)*(m.clientWidth+14),behavior:"auto"})})}function Q(a,t,e=!0){const r=Array.isArray(a.names)?a.names:[],i=Number(a.specialDiets?.participantCount||0),u=Number(a.guestCount||0),m=Number(a.sickCount||0),c=Array.isArray(a.sickDiets)?a.sickDiets:[];return`
     <section class="summary-future-meal">
       <div class="summary-future-meal-main">
-        <span class="summary-future-meal-icon" aria-hidden="true">${v(a.mealTypeId)}</span>
-        <span class="summary-future-meal-name">${s(M(a,{breakfastTomorrow:!0}))}</span>
+        <span class="summary-future-meal-icon" aria-hidden="true">${M(a.mealTypeId)}</span>
+        <span class="summary-future-meal-name">${s(k(a,{breakfastTomorrow:!0}))}</span>
         <strong class="summary-future-meal-total">${s(String(a.total||0))}</strong>
       </div>
-      ${B(a,e)}
-      ${o>0?I("summary.guests",o,"guests"):""}
-      ${m?`<p class="summary-future-diets">${s(n("week.operations.diet.count",{count:m}))}</p>`:""}
-      ${u>0?I("summary.sickMeals",u,"sick"):""}
+      ${E(a,e)}
+      ${u>0?A("summary.guests",u,"guests"):""}
+      ${i?`<p class="summary-future-diets">${s(n("week.operations.diet.count",{count:i}))}</p>`:""}
+      ${m>0?A("summary.sickMeals",m,"sick"):""}
       ${c.length>0?`<div class="summary-future-special-row"><span>${s(n("summary.sickDiets"))}</span><div>${S(c," summary-future-diet-list")}</div></div>`:""}
-      ${r.length?`<div class="summary-future-people">${r.map(i=>J(i,t)).join("")}</div>`:""}
+      ${r.length?`<div class="summary-future-people">${r.map(l=>V(l,t)).join("")}</div>`:""}
     </section>
-  `}function I(a,t,e){return e==="guests"?`<p class="summary-future-metric summary-future-metric-guests"><strong>${s(String(t))}</strong><span>${s(n(a))}</span></p>`:`<p class="summary-future-metric summary-future-metric-${s(e)}"><span>${s(n(a))}</span><strong>${s(String(t))}</strong></p>`}function J(a,t){const e=String(a.displayName||"").trim().split(/\s+/).filter(Boolean).slice(0,3).map(l=>l[0]).join("").toUpperCase(),r=t==="signature"?a.signature||a.displayName:t==="initials"?a.initials||e||a.signature:a.displayName,m=Array.isArray(a.dietTags)?a.dietTags.map(l=>p(l)).filter(Boolean):[],o=`${s(r||"–")}${m.length?`&nbsp;<small>(${s(m.join(", "))})</small>`:""}`,u=C(a.phone),c=a.phoneConsent&&u?`<a class="summary-matrix-call" href="tel:${s(u)}" aria-label="${s(n("summary.callPerson",{name:a.displayName}))}"><span class="summary-matrix-phone-icon" aria-hidden="true">☎</span></a>`:"",i=a.whatsappEnabled&&a.phoneConsent&&u?`<a class="summary-matrix-whatsapp" href="https://wa.me/${s(u.replace(/\D/g,""))}" target="_blank" rel="noopener noreferrer" aria-label="${s(n("summary.messagePerson",{name:a.displayName}))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`:"";if(c||i){const l=`summary-contact-popup-${++N}`;return`<span class="summary-future-person summary-matrix-name-with-popup"><button type="button" class="summary-matrix-person-trigger" popovertarget="${l}" aria-haspopup="dialog" aria-label="${s(n("summary.contactPerson",{name:a.displayName}))}">${o}</button><span class="summary-matrix-contact-popover" id="${l}" popover role="dialog"><span class="summary-matrix-contact-actions">${c}${i}</span></span></span>`}return`<span class="summary-future-person" title="${s(a.displayName||r)}">${o}</span>`}function Q(a){const t=a.columns.find(e=>e.dayIndex===a.index)?.dayMassStatus;return!t||t==="UNKNOWN"?"":T(t)}function T(a){const t=a==="YES";return`<span class="summary-mass-metadata summary-mass-metadata-${t?"yes":"no"}"><span>${s(n("summary.mass"))}:</span><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${s(n(t?"summary.yes":"summary.no"))}</strong></span>`}function V(a,t,{kitchen:e=!1,smooth:r=!0}={}){const m=e?"kitchen":"summary",o=Number(t)===1?1:0;if(!e){const i=a?.querySelector("[data-summary-future-track]");if(i)return i.scrollTo({left:o*(i.clientWidth+14),behavior:r?"smooth":"auto"}),i.querySelectorAll("[data-summary-future-screen]").forEach(l=>{l.setAttribute("aria-hidden",String(Number(l.dataset.summaryFutureScreen)!==o))}),!0}const u=a?.querySelector(`[data-${m}-matrix-track]`),c=u?.querySelector(`[data-${m}-screen="${o}"]`);return!u||!c?!1:(u.scrollTo({left:u.scrollLeft+c.getBoundingClientRect().left-u.getBoundingClientRect().left,behavior:r?"smooth":"auto"}),W(a,m,o),!0)}function X(a,{kitchen:t,activeIndex:e,residentLabel:r="name",showContactHint:m=!0}){const o=t?"kitchen":"summary",u=a.index===e,c=Z(a);return a.columns.length===0?`
-      <section class="summary-matrix-screen" data-${o}-screen="${a.index}" role="tabpanel" aria-hidden="${!u}">
+  `}function A(a,t,e){return e==="guests"?`<p class="summary-future-metric summary-future-metric-guests"><strong>${s(String(t))}</strong><span>${s(n(a))}</span></p>`:`<p class="summary-future-metric summary-future-metric-${s(e)}"><span>${s(n(a))}</span><strong>${s(String(t))}</strong></p>`}function V(a,t){const e=String(a.displayName||"").trim().split(/\s+/).filter(Boolean).slice(0,3).map(o=>o[0]).join("").toUpperCase(),r=t==="signature"?a.signature||a.displayName:t==="initials"?a.initials||e||a.signature:a.displayName,i=Array.isArray(a.dietTags)?a.dietTags.map(o=>$(o)).filter(Boolean):[],u=`${s(r||"–")}${i.length?`&nbsp;<small>(${s(i.join(", "))})</small>`:""}`,m=C(a.phone),c=a.phoneConsent&&m?`<a class="summary-matrix-call" href="tel:${s(m)}" aria-label="${s(n("summary.callPerson",{name:a.displayName}))}"><span class="summary-matrix-phone-icon" aria-hidden="true">☎</span></a>`:"",l=a.whatsappEnabled&&a.phoneConsent&&m?`<a class="summary-matrix-whatsapp" href="https://wa.me/${s(m.replace(/\D/g,""))}" target="_blank" rel="noopener noreferrer" aria-label="${s(n("summary.messagePerson",{name:a.displayName}))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`:"";if(c||l){const o=`summary-contact-popup-${++T}`;return`<span class="summary-future-person summary-matrix-name-with-popup"><button type="button" class="summary-matrix-person-trigger" popovertarget="${o}" aria-haspopup="dialog" aria-label="${s(n("summary.contactPerson",{name:a.displayName}))}">${u}</button><span class="summary-matrix-contact-popover" id="${o}" popover role="dialog"><span class="summary-matrix-contact-actions">${c}${l}</span></span></span>`}return`<span class="summary-future-person" title="${s(a.displayName||r)}">${u}</span>`}function X(a){const t=a.columns.find(e=>e.dayIndex===a.index)?.dayMassStatus;return!t||t==="UNKNOWN"?"":j(t)}function j(a){const t=a==="YES";return`<span class="summary-mass-metadata summary-mass-metadata-${t?"yes":"no"}"><span>${s(n("summary.mass"))}:</span><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${s(n(t?"summary.yes":"summary.no"))}</strong></span>`}function Z(a,t,{kitchen:e=!1,smooth:r=!0}={}){const i=e?"kitchen":"summary",u=Number(t)===1?1:0;if(!e){const l=a?.querySelector("[data-summary-future-track]");if(l)return l.scrollTo({left:u*(l.clientWidth+14),behavior:r?"smooth":"auto"}),l.querySelectorAll("[data-summary-future-screen]").forEach(o=>{o.setAttribute("aria-hidden",String(Number(o.dataset.summaryFutureScreen)!==u))}),!0}const m=a?.querySelector(`[data-${i}-matrix-track]`),c=m?.querySelector(`[data-${i}-screen="${u}"]`);return!m||!c?!1:(m.scrollTo({left:m.scrollLeft+c.getBoundingClientRect().left-m.getBoundingClientRect().left,behavior:r?"smooth":"auto"}),O(a,i,u),!0)}function aa(a,{kitchen:t,activeIndex:e,residentLabel:r="name",showContactHint:i=!0,dietLegend:u=[]}){const m=t?"kitchen":"summary",c=a.index===e,l=ta(a);return a.columns.length===0?`
+      <section class="summary-matrix-screen" data-${m}-screen="${a.index}" role="tabpanel" aria-hidden="${!c}">
         <p class="empty-state">${s(n("summary.noMeal"))}</p>
       </section>
     `:`
-    <section class="summary-matrix-screen" data-${o}-screen="${a.index}" role="tabpanel" aria-hidden="${!u}">
-      <table class="summary-matrix summary-matrix-optional-rows-${c}">
-        ${aa(a,t)}
+    <section class="summary-matrix-screen" data-${m}-screen="${a.index}" role="tabpanel" aria-hidden="${!c}">
+      <table class="summary-matrix summary-matrix-optional-rows-${l}">
+        ${sa(a,t)}
         <colgroup>
           <col class="summary-matrix-label-column">
-          ${a.columns.map(i=>i.dayIndex>a.index?'<col class="summary-matrix-next-date-column">':"<col>").join("")}
+          ${a.columns.map(o=>o.dayIndex>a.index?'<col class="summary-matrix-next-date-column">':"<col>").join("")}
         </colgroup>
         <thead>
           <tr class="summary-matrix-date-row">
             <th class="summary-matrix-corner" rowspan="2"><span class="sr-only">${s(n("summary.item"))}</span></th>
-            ${a.dateGroups.map(i=>`
-              <th class="summary-matrix-date-heading${x(i,a)}" scope="colgroup" colspan="${i.span}">
-                <span>${s(K(i.dayIndex))}</span>
-                <time datetime="${s(i.dateId)}">${s(k(i.dateId))}</time>
+            ${a.dateGroups.map(o=>`
+              <th class="summary-matrix-date-heading${w(o,a)}" scope="colgroup" colspan="${o.span}">
+                <span>${s(z(o.dayIndex))}</span>
+                <time datetime="${s(o.dateId)}">${s(D(o.dateId))}</time>
               </th>
             `).join("")}
           </tr>
           <tr>
-            ${a.columns.map(i=>`
-              <th class="summary-matrix-meal-heading${x(i,a)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${v(i.mealTypeId)}</span><span class="summary-matrix-meal-label">${s(M(i))}</span>${ia(i,t)}</th>
+            ${a.columns.map(o=>`
+              <th class="summary-matrix-meal-heading${w(o,a)}" scope="col"><span class="summary-matrix-meal-icon" aria-hidden="true">${M(o.mealTypeId)}</span><span class="summary-matrix-meal-label">${s(k(o))}</span>${oa(o,t)}</th>
             `).join("")}
           </tr>
         </thead>
         <tbody>
-          ${a.hasGuestGroup?g(n("summary.guests"),"summary-matrix-row-guests",a,i=>String(i.guestCount)):""}
-          ${g(n("summary.diningMeals"),"summary-matrix-row-meals",a,A)}
-          ${a.hasSpecialDiets?g(n("summary.includedDiets"),"summary-matrix-row-diets",a,t?E:q):""}
-          ${a.hasSickMeals?g(n("summary.sickMeals"),"summary-matrix-row-sick",a,P):""}
-          ${a.hasSickDiets?g(n("summary.sickDiets"),"summary-matrix-row-sick-diets",a,L):""}
-          ${a.hasMassInformation?na(a):""}
-          ${t?"":ea(a,r,m)}
+          ${a.hasGuestGroup?b(n("summary.guests"),"summary-matrix-row-guests",a,o=>String(o.guestCount)):""}
+          ${b(n("summary.diningMeals"),"summary-matrix-row-meals",a,L)}
+          ${a.hasSpecialDiets?b(n("summary.includedDiets"),"summary-matrix-row-diets",a,t?F:K):""}
+          ${a.hasSickMeals?b(n("summary.sickMeals"),"summary-matrix-row-sick",a,P):""}
+          ${a.hasSickDiets?b(n("summary.sickDiets"),"summary-matrix-row-sick-diets",a,q):""}
+          ${a.hasMassInformation?ma(a):""}
+          ${t?"":na(a,r,i)}
         </tbody>
       </table>
-      ${t?H(a):""}
+      ${t?R(a):""}
     </section>
-  `}function Z(a){return[a.hasGuestGroup,a.hasSickMeals,a.hasSickDiets].filter(Boolean).length}function aa(a,t){return t?`<caption class="sr-only">${s(`${n("kitchen.view.title")}: ${n(a.labelKey)}`)}</caption>`:`
+  `}function ta(a){return[a.hasGuestGroup,a.hasSickMeals,a.hasSickDiets].filter(Boolean).length}function sa(a,t){return t?`<caption class="sr-only">${s(`${n("kitchen.view.title")}: ${n(a.labelKey)}`)}</caption>`:`
     <caption class="summary-matrix-caption">
-      <time datetime="${s(a.dateId)}">${s(D(a.dateId))}</time>
+      <time datetime="${s(a.dateId)}">${s(N(a.dateId))}</time>
     </caption>
-  `}function v(a){const t={breakfast:"☕",lunch:"🍝",dinner:"🍲"};return ta({breakfast:"coffee",lunch:"sun",dinner:"moon"}[a],t[a]||"•")}function ta(a,t="•"){const e=document.documentElement.dataset.interfaceStyle;if(!(e==="cool"||e==="urban"||e==="future")||!a)return t;const o={coffee:'<path d="M4 10h11v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path d="M15 11h2a3 3 0 0 1 0 6h-2"></path><path d="M6 5c0 1 .8 1.4.8 2.4S6 8.8 6 9.5M10 5c0 1 .8 1.4.8 2.4S10 8.8 10 9.5"></path>',sun:'<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',moon:'<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"></path>'}[a];return o?`<svg class="meal-line-icon meal-line-icon-${a}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${o}</svg>`:t}function M(a,{breakfastTomorrow:t=!1}={}){const e=String(a?.mealTypeId||"").trim().toLowerCase();if(t&&e==="breakfast")return n("summary.breakfastTomorrow");const r=e?n(`meal.type.${e}`):"",m=String(a?.label||"").trim();return r&&r!==`meal.type.${e}`?r:m}function g(a,t,e,r){return`
+  `}function M(a){const t={breakfast:"☕",lunch:"🍝",dinner:"🍲"};return ea({breakfast:"coffee",lunch:"sun",dinner:"moon"}[a],t[a]||"•")}function ea(a,t="•"){const e=document.documentElement.dataset.interfaceStyle;if(!(e==="cool"||e==="urban"||e==="future")||!a)return t;const u={coffee:'<path d="M4 10h11v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"></path><path d="M15 11h2a3 3 0 0 1 0 6h-2"></path><path d="M6 5c0 1 .8 1.4.8 2.4S6 8.8 6 9.5M10 5c0 1 .8 1.4.8 2.4S10 8.8 10 9.5"></path>',sun:'<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>',moon:'<path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2z"></path>'}[a];return u?`<svg class="meal-line-icon meal-line-icon-${a}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">${u}</svg>`:t}function k(a,{breakfastTomorrow:t=!1}={}){const e=String(a?.mealTypeId||"").trim().toLowerCase();if(t&&e==="breakfast")return n("summary.breakfastTomorrow");const r=e?n(`meal.type.${e}`):"",i=String(a?.label||"").trim();return r&&r!==`meal.type.${e}`?r:i}function b(a,t,e,r){return`
     <tr class="${t}">
       <th class="summary-matrix-label" scope="row">${s(a)}</th>
-      ${e.columns.map(m=>`<td class="${x(m,e).trim()}">${r(m)}</td>`).join("")}
+      ${e.columns.map(i=>`<td class="${w(i,e).trim()}">${r(i)}</td>`).join("")}
     </tr>
-  `}function A(a,{contactHint:t=!1}={}){const e=a.total===1?"summary.cover.one":"summary.cover.other";return`<span class="summary-matrix-total">${a.total}</span><span class="summary-matrix-unit">${s(n(e))}</span>${t?B(a):""}`}function j(a){return Array.isArray(a?.names)&&a.names.some(t=>t?.phoneConsent&&C(t.phone))}function B(a,t=!0){return!t||!j(a)?"":`<small class="summary-contact-hint">${s(n("summary.contactHint"))}</small>`}function P(a){if(a.sickCount===0)return h(n("summary.sickMeals"));const t=a.sickCount===1?"summary.tray.one":"summary.tray.other";return`<span class="summary-matrix-diet-total">${a.sickCount}</span><span class="summary-matrix-unit">${s(n(t))}</span>`}function L(a){return a.sickDiets.length===0?h(n("summary.noDiet")):S(a.sickDiets)}function sa(a){if(a.massStatus==="UNKNOWN")return h(n("summary.notSet"));const t=a.massStatus==="YES";return`<span class="summary-matrix-mass-${t?"yes":"no"}">${s(n(t?"summary.yes":"summary.no"))}</span>`}function ea(a,t="name",e=!0){return`
+  `}function L(a,{contactHint:t=!1}={}){const e=a.total===1?"summary.cover.one":"summary.cover.other";return`<span class="summary-matrix-total">${a.total}</span><span class="summary-matrix-unit">${s(n(e))}</span>${t?E(a):""}`}function B(a){return Array.isArray(a?.names)&&a.names.some(t=>t?.phoneConsent&&C(t.phone))}function E(a,t=!0){return!t||!B(a)?"":`<small class="summary-contact-hint">${s(n("summary.contactHint"))}</small>`}function P(a){if(a.sickCount===0)return g(n("summary.sickMeals"));const t=a.sickCount===1?"summary.tray.one":"summary.tray.other";return`<span class="summary-matrix-diet-total">${a.sickCount}</span><span class="summary-matrix-unit">${s(n(t))}</span>`}function q(a){return a.sickDiets.length===0?g(n("summary.noDiet")):S(a.sickDiets)}function ra(a){if(a.massStatus==="UNKNOWN")return g(n("summary.notSet"));const t=a.massStatus==="YES";return`<span class="summary-matrix-mass-${t?"yes":"no"}">${s(n(t?"summary.yes":"summary.no"))}</span>`}function na(a,t="name",e=!0){return`
     <tr class="summary-matrix-row-names">
       <th class="summary-matrix-label summary-matrix-people-label" scope="row">
         <span class="summary-matrix-people-icon" aria-hidden="true">
@@ -91,59 +91,65 @@ import{t as n,getLocale as w}from"./i18n/i18n.mjs?v=20260823a";import{escapeHtml
             <path d="M14.5 14.5c3.4-.7 5.4.8 6 4.5"></path>
           </svg>
         </span>
-        ${e&&a.columns.some(j)?`<small class="summary-contact-hint">${s(n("summary.contactHint"))}</small>`:""}
+        ${e&&a.columns.some(B)?`<small class="summary-contact-hint">${s(n("summary.contactHint"))}</small>`:""}
         <span class="sr-only">${s(n("summary.names"))}</span>
       </th>
-      ${a.columns.map(m=>`<td class="${x(m,a).trim()}">${F(m,{compactActions:!0,residentLabel:t})}</td>`).join("")}
+      ${a.columns.map(i=>`<td class="${w(i,a).trim()}">${H(i,{compactActions:!0,residentLabel:t})}</td>`).join("")}
     </tr>
-  `}function ra(a){return a==="YES"?" summary-mass-state-yes":a==="NO"?" summary-mass-state-no":" summary-mass-state-unknown"}function na(a){const t=la(a).map(e=>`<td class="summary-matrix-mass-band${x(e,a)}${ra(e.massStatus)}" colspan="${e.span}">${da(e)}</td>`).join("");return`
+  `}function ia(a){return a==="YES"?" summary-mass-state-yes":a==="NO"?" summary-mass-state-no":" summary-mass-state-unknown"}function ma(a){const t=da(a).map(e=>`<td class="summary-matrix-mass-band${w(e,a)}${ia(e.massStatus)}" colspan="${e.span}">${$a(e)}</td>`).join("");return`
     <tr class="summary-matrix-row-mass summary-matrix-row-mass-band">
       <th class="summary-matrix-label" scope="row">${s(n("summary.mass"))}</th>
       ${t}
     </tr>
-  `}function ia(a,t){if(t||a.mealTypeId!=="breakfast")return"";const e=a.breakfastPlanned===!0,r=n(e?"summary.breakfastPlanned":"summary.breakfastNotPlanned");return`<span class="summary-matrix-breakfast-status summary-matrix-breakfast-${e?"yes":"no"}"><span aria-hidden="true">${e?"✓":"×"}</span>${s(r)}</span>`}function q(a){if(a.specialDiets.participantCount===0)return h(n("summary.noDiet"));const t=[...a.specialDiets.items].sort((e,r)=>p(e.tag).localeCompare(p(r.tag),w(),{numeric:!0}));return S(t)}function E(a){return a.specialDiets.participantCount===0?h(n("summary.noDiet")):S(a.specialDiets.items," summary-matrix-kitchen-diets")}function S(a,t=""){const e=[...a].sort((r,m)=>p(r.tag).localeCompare(p(m.tag),w(),{numeric:!0}));return`<ul class="summary-matrix-diets${t}">${e.map(r=>{const m=p(r.tag),o=Math.max(0,Math.floor(Number(r.count)||0)),u=o>1?`${m} (${o})`:m;return`<li>${s(u)}</li>`}).join("")}</ul>`}function p(a){const t=O(a);return/^\d+$/.test(t)?t:z(t,n)}function F(a,{compactActions:t=!1,residentLabel:e="name"}={}){return a.names.length===0?h(n("summary.noName")):`<ul class="summary-matrix-names">${a.names.map(r=>{const m=r.dietTags.map(d=>p(d)),o=C(r.phone),u=String(r.displayName||"").trim(),c=u.split(/\s+/).filter(Boolean).slice(0,3).map(d=>d[0]).join("").toUpperCase(),i=e==="signature"?r.signature||u:e==="initials"&&(r.initials||c||r.signature)||u,l=s(i),y=m.length?` <small>(${s(m.join(", "))})</small>`:"",b=`<span class="summary-matrix-person-name">${l}${y}</span>`,$=r.phoneConsent&&o?`<a class="summary-matrix-call" href="tel:${s(o)}" aria-label="${s(n("summary.callPerson",{name:r.displayName}))}"><span class="summary-matrix-phone-icon" aria-hidden="true">☎</span></a>`:"",f=r.whatsappEnabled&&r.phoneConsent&&o?`<a class="summary-matrix-whatsapp" href="https://wa.me/${s(o.replace(/\D/g,""))}" target="_blank" rel="noopener noreferrer" aria-label="${s(n("summary.messagePerson",{name:r.displayName}))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`:"";if(t&&($||f)){const d=`summary-contact-popup-${++N}`;return`
+  `}function oa(a,t){if(t||a.mealTypeId!=="breakfast")return"";const e=a.breakfastPlanned===!0,r=n(e?"summary.breakfastPlanned":"summary.breakfastNotPlanned");return`<span class="summary-matrix-breakfast-status summary-matrix-breakfast-${e?"yes":"no"}"><span aria-hidden="true">${e?"✓":"×"}</span>${s(r)}</span>`}function K(a){if(a.specialDiets.participantCount===0)return g(n("summary.noDiet"));const t=[...a.specialDiets.items].sort((e,r)=>$(e.tag).localeCompare($(r.tag),v(),{numeric:!0}));return S(t)}function F(a){return a.specialDiets.participantCount===0?g(n("summary.noDiet")):S(a.specialDiets.items," summary-matrix-kitchen-diets")}function S(a,t=""){const e=[...a].sort((r,i)=>$(r.tag).localeCompare($(i.tag),v(),{numeric:!0}));return`<ul class="summary-matrix-diets${t}">${e.map(r=>{const i=$(r.tag),u=Math.max(0,Math.floor(Number(r.count)||0)),m=u>1?`${i} (${u})`:i;return`<li>${s(m)}</li>`}).join("")}</ul>`}function $(a){const t=I(a);return/^\d+$/.test(t)?t:G(t,n)}function H(a,{compactActions:t=!1,residentLabel:e="name"}={}){return a.names.length===0?g(n("summary.noName")):`<ul class="summary-matrix-names">${a.names.map(r=>{const i=r.dietTags.map(d=>$(d)),u=C(r.phone),m=String(r.displayName||"").trim(),c=m.split(/\s+/).filter(Boolean).slice(0,3).map(d=>d[0]).join("").toUpperCase(),l=e==="signature"?r.signature||m:e==="initials"&&(r.initials||c||r.signature)||m,o=s(l),p=i.length?` <small>(${s(i.join(", "))})</small>`:"",y=`<span class="summary-matrix-person-name">${o}${p}</span>`,x=r.phoneConsent&&u?`<a class="summary-matrix-call" href="tel:${s(u)}" aria-label="${s(n("summary.callPerson",{name:r.displayName}))}"><span class="summary-matrix-phone-icon" aria-hidden="true">☎</span></a>`:"",f=r.whatsappEnabled&&r.phoneConsent&&u?`<a class="summary-matrix-whatsapp" href="https://wa.me/${s(u.replace(/\D/g,""))}" target="_blank" rel="noopener noreferrer" aria-label="${s(n("summary.messagePerson",{name:r.displayName}))}" title="WhatsApp"><img src="/icons/whatsapp.svg?v=20260808a" alt="" aria-hidden="true"></a>`:"";if(t&&(x||f)){const d=`summary-contact-popup-${++T}`;return`
           <li class="summary-matrix-name-with-popup">
-            <button type="button" class="summary-matrix-person-trigger" popovertarget="${d}" aria-haspopup="dialog" aria-label="${s(n("summary.contactPerson",{name:r.displayName}))}" title="${s(n("summary.contactPerson",{name:r.displayName}))}">${b}</button>
+            <button type="button" class="summary-matrix-person-trigger" popovertarget="${d}" aria-haspopup="dialog" aria-label="${s(n("summary.contactPerson",{name:r.displayName}))}" title="${s(n("summary.contactPerson",{name:r.displayName}))}">${y}</button>
             <span class="summary-matrix-contact-popover" id="${d}" popover role="dialog" aria-label="${s(n("summary.contactPerson",{name:r.displayName}))}">
-              <span class="summary-matrix-contact-actions">${$}${f}</span>
+              <span class="summary-matrix-contact-actions">${x}${f}</span>
             </span>
-          </li>`}return`<li>${b}<span class="summary-matrix-contact-actions">${$}${f}</span></li>`}).join("")}</ul>`}function C(a){const t=String(a||"").trim();return/^[+\d][\d\s()./-]{5,}$/.test(t)?t:""}function ma(a,{kitchen:t,activeIndex:e,residentLabel:r="name",showContactHint:m=!0}){const o=t?"kitchen":"summary",u=a.index===e;return`
-    <section class="summary-matrix-screen summary-international-screen${oa(a)?" summary-screen-has-special":" summary-screen-ordinary"}" data-${o}-screen="${a.index}" role="tabpanel" aria-hidden="${!u}">
-      ${t?`<h2 class="sr-only">${s(`${n("kitchen.view.title")}: ${n(a.labelKey)}`)}</h2>`:`<header class="summary-international-title"><time datetime="${s(a.dateId)}">${s(D(a.dateId))}</time></header>`}
+          </li>`}return`<li>${y}<span class="summary-matrix-contact-actions">${x}${f}</span></li>`}).join("")}</ul>`}function C(a){const t=String(a||"").trim();return/^[+\d][\d\s()./-]{5,}$/.test(t)?t:""}function ua(a,{kitchen:t,activeIndex:e,residentLabel:r="name",showContactHint:i=!0}){const u=t?"kitchen":"summary",m=a.index===e;return`
+    <section class="summary-matrix-screen summary-international-screen${la(a)?" summary-screen-has-special":" summary-screen-ordinary"}" data-${u}-screen="${a.index}" role="tabpanel" aria-hidden="${!m}">
+      ${t?`<h2 class="sr-only">${s(`${n("kitchen.view.title")}: ${n(a.labelKey)}`)}</h2>`:`<header class="summary-international-title"><time datetime="${s(a.dateId)}">${s(N(a.dateId))}</time></header>`}
       <div class="summary-international-grid">
-        ${a.columns.map((i,l,y)=>ua(i,{kitchen:t,residentLabel:r,showContactHint:m,showMassMetadata:l===0||y[l-1]?.dateId!==i.dateId})).join("")}
+        ${a.columns.map((l,o,p)=>ca(l,{kitchen:t,residentLabel:r,showContactHint:i,showMassMetadata:o===0||p[o-1]?.dateId!==l.dateId})).join("")}
       </div>
-      ${t?H(a):""}
+      ${t?pa(a,dietLegend):""}
+      ${t?R(a):""}
     </section>
-  `}function oa(a){return a.columns.some(t=>t.guestCount>0||t.specialDiets.participantCount>0||t.sickCount>0||t.sickDiets.length>0)||a.notesByDate.length>0}function ua(a,{kitchen:t,residentLabel:e="name",showContactHint:r=!0,showMassMetadata:m=!1}){const o=t?E(a):q(a);return`
-    <article class="summary-international-card summary-day-tone-${R(a.dayIndex)}${a.mealTypeId==="breakfast"?" summary-international-card-next":""}">
+  `}function la(a){return a.columns.some(t=>t.guestCount>0||t.specialDiets.participantCount>0||t.sickCount>0||t.sickDiets.length>0)||a.notesByDate.length>0}function ca(a,{kitchen:t,residentLabel:e="name",showContactHint:r=!0,showMassMetadata:i=!1}){const u=t?F(a):K(a);return`
+    <article class="summary-international-card summary-day-tone-${W(a.dayIndex)}${a.mealTypeId==="breakfast"?" summary-international-card-next":""}">
       <header>
-        <span class="summary-international-card-icon" aria-hidden="true">${v(a.mealTypeId)}</span>
-        <div><strong>${s(M(a,{breakfastTomorrow:!0}))}</strong><time datetime="${s(a.dateId)}">${s(k(a.dateId))}</time></div>
-        ${m&&a.dayMassStatus!=="UNKNOWN"?T(a.dayMassStatus):""}
+        <span class="summary-international-card-icon" aria-hidden="true">${M(a.mealTypeId)}</span>
+        <div><strong>${s(k(a,{breakfastTomorrow:!0}))}</strong><time datetime="${s(a.dateId)}">${s(D(a.dateId))}</time></div>
+        ${i&&a.dayMassStatus!=="UNKNOWN"?j(a.dayMassStatus):""}
         ${a.guestCount>0?`<span class="summary-international-mobile-guests">${s(n("summary.guests"))}: <strong>${a.guestCount}</strong></span>`:""}
       </header>
       <dl>
         ${a.guestCount>0?`<div class="summary-international-guest-row"><dt>${s(n("summary.guests"))}</dt><dd>${a.guestCount}</dd></div>`:""}
-        <div><dt>${s(n("summary.diningMeals"))}</dt><dd>${A(a,{contactHint:!t&&r})}</dd></div>
-        ${a.specialDiets.participantCount>0?`<div><dt>${s(n("summary.includedDiets"))}</dt><dd>${o}</dd></div>`:""}
+        <div><dt>${s(n("summary.diningMeals"))}</dt><dd>${L(a,{contactHint:!t&&r})}</dd></div>
+        ${a.specialDiets.participantCount>0?`<div><dt>${s(n("summary.includedDiets"))}</dt><dd>${u}</dd></div>`:""}
         ${a.sickCount>0?`<div><dt>${s(n("summary.sickMeals"))}</dt><dd>${P(a)}</dd></div>`:""}
-        ${a.sickDiets.length>0?`<div><dt>${s(n("summary.sickDiets"))}</dt><dd>${L(a)}</dd></div>`:""}
+        ${a.sickDiets.length>0?`<div><dt>${s(n("summary.sickDiets"))}</dt><dd>${q(a)}</dd></div>`:""}
       </dl>
-      ${t?"":`<section class="summary-international-names"><h3>${s(n("summary.names"))}</h3>${F(a,{compactActions:!0,residentLabel:e})}</section>`}
+      ${t?"":`<section class="summary-international-names"><h3>${s(n("summary.names"))}</h3>${H(a,{compactActions:!0,residentLabel:e})}</section>`}
     </article>
-  `}function la(a){return a.dateGroups.map(t=>{const e=a.columns.find(r=>r.dateId===t.dateId);return{...t,massStatus:e?.dayMassStatus||"UNKNOWN"}})}function H(a){return a.notesByDate.length===0?"":`
+  `}function da(a){return a.dateGroups.map(t=>{const e=a.columns.find(r=>r.dateId===t.dateId);return{...t,massStatus:e?.dayMassStatus||"UNKNOWN"}})}function R(a){return a.notesByDate.length===0?"":`
     <section class="kitchen-notes" aria-label="${s(n("kitchen.notes.title"))}">
       <h3>${s(n("kitchen.notes.title"))}</h3>
       ${a.notesByDate.map(t=>`
         <div class="kitchen-notes-group">
-          <time datetime="${s(t.dateId)}">${s(k(t.dateId))}</time>
+          <time datetime="${s(t.dateId)}">${s(D(t.dateId))}</time>
           <ul>${t.notes.map(e=>`<li><p>${s(e.text)}</p></li>`).join("")}</ul>
         </div>
       `).join("")}
     </section>
-  `}function h(a){return`<span class="summary-matrix-empty" aria-hidden="true">—</span><span class="sr-only">${s(a)}</span>`}function ca(a,t){return a.dayIndex>t.index?" summary-matrix-next-date":""}function da(a){return`
+  `}function pa(a,t){const e=new Set;a.columns.forEach(i=>{[...i.specialDiets?.items||[],...i.sickDiets||[]].forEach(u=>{const m=I(u?.tag);/^\d{1,3}$/.test(m)&&e.add(m)})});const r=U(t).filter(i=>e.has(i.code));return r.length===0?"":`
+    <section class="kitchen-diet-legend" aria-label="${s(n("kitchen.dietLegend.title"))}">
+      <h3>${s(n("kitchen.dietLegend.title"))}</h3>
+      <ul>${r.map(i=>`<li><strong>${s(i.code)}</strong><span aria-hidden="true">=</span><span>${s(i.label)}</span></li>`).join("")}</ul>
+    </section>
+  `}function g(a){return`<span class="summary-matrix-empty" aria-hidden="true">—</span><span class="sr-only">${s(a)}</span>`}function ya(a,t){return a.dayIndex>t.index?" summary-matrix-next-date":""}function $a(a){return`
     <span class="summary-mass-control">
-      <span class="summary-mass-control-day">${s(K(a.dayIndex))}</span>
-      <span class="summary-mass-control-state">${sa(a)}</span>
-    </span>`}function x(a,t){return`${ca(a,t)} summary-day-tone-${R(a.dayIndex)}`}function R(a){return Math.max(0,Math.min(2,Number(a)||0))}function K(a){return[n("summary.today"),n("summary.tomorrow"),n("summary.dayAfterTomorrow")][a]||n("summary.followingDay")}function k(a){const[t,e,r]=String(a).split("-").map(Number);return new Intl.DateTimeFormat(w(),{day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(t,e-1,r))}function D(a){const[t,e,r]=String(a).split("-").map(Number);return!t||!e||!r?"":new Intl.DateTimeFormat(w(),{weekday:"long",day:"numeric",month:"long"}).format(new Date(t,e-1,r))}function ya(a,t){const e=[...a.querySelectorAll(`[data-${t}-screen]`)];if(e.length===0)return 0;const r=e.reduce((m,o)=>Math.abs(o.getBoundingClientRect().left-a.getBoundingClientRect().left)<Math.abs(m.getBoundingClientRect().left-a.getBoundingClientRect().left)?o:m);return Number(r.dataset[`${t}Screen`])===1?1:0}function W(a,t,e){a.querySelectorAll(`[data-${t}-screen]`).forEach(r=>{r.setAttribute("aria-hidden",String(Number(r.dataset[`${t}Screen`])!==e))})}export{ga as mountSummaryMatrix,V as scrollSummaryMatrix};
+      <span class="summary-mass-control-day">${s(z(a.dayIndex))}</span>
+      <span class="summary-mass-control-state">${ra(a)}</span>
+    </span>`}function w(a,t){return`${ya(a,t)} summary-day-tone-${W(a.dayIndex)}`}function W(a){return Math.max(0,Math.min(2,Number(a)||0))}function z(a){return[n("summary.today"),n("summary.tomorrow"),n("summary.dayAfterTomorrow")][a]||n("summary.followingDay")}function D(a){const[t,e,r]=String(a).split("-").map(Number);return new Intl.DateTimeFormat(v(),{day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(t,e-1,r))}function N(a){const[t,e,r]=String(a).split("-").map(Number);return!t||!e||!r?"":new Intl.DateTimeFormat(v(),{weekday:"long",day:"numeric",month:"long"}).format(new Date(t,e-1,r))}function fa(a,t){const e=[...a.querySelectorAll(`[data-${t}-screen]`)];if(e.length===0)return 0;const r=e.reduce((i,u)=>Math.abs(u.getBoundingClientRect().left-a.getBoundingClientRect().left)<Math.abs(i.getBoundingClientRect().left-a.getBoundingClientRect().left)?u:i);return Number(r.dataset[`${t}Screen`])===1?1:0}function O(a,t,e){a.querySelectorAll(`[data-${t}-screen]`).forEach(r=>{r.setAttribute("aria-hidden",String(Number(r.dataset[`${t}Screen`])!==e))})}export{va as mountSummaryMatrix,Z as scrollSummaryMatrix};

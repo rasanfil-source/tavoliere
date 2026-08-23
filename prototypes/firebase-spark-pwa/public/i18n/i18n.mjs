@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260823a';
+const CATALOG_RELEASE = '20260823b';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -85,6 +85,12 @@ export const CORE_FALLBACKS = Object.freeze({
     'kitchen.notes.none': 'Nessuna nota per questa data',
     'kitchen.notes': 'Note per la cucina',
     'kitchen.notes.title': 'Note per la cucina',
+    'kitchen.dietLegend.title': 'Promemoria diete',
+    'diet.legend.codeLabel': 'Numero dieta',
+    'diet.legend.labelLabel': 'Etichetta cucina',
+    'diet.legend.labelPlaceholder': 'Etichetta cucina',
+    'diet.legend.help': 'Scegli un’etichetta o scrivine una nuova di una o due parole. Apparirà soltanto in cucina.',
+    'diet.legend.validation': 'Usa una o due parole, per un massimo di 32 caratteri.',
     'auth.resident.title': 'Accesso residenti',
     'admin.overview.title': 'Area amministrazione',
     'admin.adaptations.title': 'Aspetto',

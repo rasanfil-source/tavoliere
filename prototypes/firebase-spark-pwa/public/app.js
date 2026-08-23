@@ -8,7 +8,7 @@ import {
   applyTranslations,
   readStoredLocale,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260823a';
+} from './i18n/i18n.mjs?v=20260823b';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20260816g';
@@ -46,12 +46,18 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260823a';
+} from './center-settings.js?v=20260823b';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
 } from './diet-utils.mjs?v=20260823a';
+import {
+  isValidKitchenDietLabel,
+  kitchenDietLabelForCode,
+  normalizeKitchenDietLabel,
+  updateKitchenDietLegendEntry
+} from './diet-legend.mjs?v=20260823a';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
@@ -63,7 +69,7 @@ import {
   reduceAuthState,
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20260820a';
-import { toUserMessage } from './core/user-error.mjs?v=20260822a';
+import { toUserMessage } from './core/user-error.mjs?v=20260823a';
 import {
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
@@ -82,7 +88,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823c';
+} from './summary-matrix-view.js?v=20260823d';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
@@ -103,6 +109,14 @@ const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPending.';
 const SUMMARY_CONTACT_HINT_VISITS_STORAGE_PREFIX = 'tavolaComune.summaryContactHintVisits.';
+const KITCHEN_DIET_LABEL_PRESET_KEYS = [
+  'diet.legend.preset.lactoseFree',
+  'diet.legend.preset.glutenFree',
+  'diet.legend.preset.diabetic',
+  'diet.legend.preset.lowSodium',
+  'diet.legend.preset.vegetarian',
+  'diet.legend.preset.plain'
+];
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
@@ -110,9 +124,9 @@ const domainModulePaths = {
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
-  kitchen: './kitchen-data.js?v=20260823a',
+  kitchen: './kitchen-data.js?v=20260823b',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260822b'
+  participant: './participant-data.js?v=20260823c'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -640,6 +654,7 @@ const state = {
     startupPresentationEnabled: false,
     timezone: 'Europe/Rome',
     participantContactSharingEnabled: true,
+    kitchenDietLegend: [],
     themePalette: 'inchiostro',
     interfaceStyle: 'future',
     defaultView: loadCachedDefaultView(),
@@ -878,6 +893,8 @@ const elements = {
   adminParticipantGroup: document.querySelector('[data-admin-participant-group]'),
   adminParticipantDiets: document.querySelector('[data-admin-participant-diets]'),
   adminParticipantDietNumber: document.querySelector('[data-admin-participant-diet-number]'),
+  adminParticipantDietLabel: document.querySelector('[data-admin-participant-diet-label]'),
+  adminDietLabelOptions: document.querySelector('[data-admin-diet-label-options]'),
   adminParticipantLiturgy: document.querySelector('[data-admin-participant-liturgy]'),
   adminParticipantAdministrativeRole: document.querySelector('[data-admin-participant-administrative-role]'),
   adminPermissionsGroup: document.querySelector('[data-admin-permissions-group]'),
@@ -1156,6 +1173,10 @@ elements.adminPeopleList.addEventListener('click', handleAdminPeopleListClick);
 elements.adminPeopleList.addEventListener('change', handleAdminPeopleListChange);
 elements.adminParticipantDiets.addEventListener('change', () => {
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
+  syncAdminDietLabelField({ resetValue: true });
+});
+elements.adminParticipantDietNumber.addEventListener('change', () => {
+  syncAdminDietLabelField({ resetValue: true });
 });
 elements.adminCenterSettingsSave.addEventListener('click', handleAdminCenterSettingsSave);
 elements.adminCenterSettingsSection.addEventListener('input', markAdminCenterDirty);
@@ -1356,6 +1377,7 @@ function renderAllViews() {
   }
   if (elements.adminParticipantDiets) {
     populateAdminDietSelect(t('diet.option.STANDARD'));
+    populateAdminDietLabelOptions();
   }
   if (elements.weekDietType) {
     populateDietSelect(elements.weekDietType, t('diet.option.STANDARD'), elements.weekDietNumber);
@@ -1429,6 +1451,49 @@ function syncStartupSplashPresentation() {
     elements.startupSplashSubtitle.textContent = state.centerContactSettings.appDisplaySubtitle
       || DEFAULT_APP_DISPLAY_SUBTITLE;
   }
+}
+
+function populateAdminDietLabelOptions() {
+  if (!elements.adminDietLabelOptions) return;
+  elements.adminDietLabelOptions.replaceChildren(...KITCHEN_DIET_LABEL_PRESET_KEYS.map((key) => {
+    const option = document.createElement('option');
+    option.value = t(key);
+    return option;
+  }));
+}
+
+function selectedAdminDietCode() {
+  const selected = elements.adminParticipantDiets?.value || 'STANDARD';
+  if (selected !== 'CUSTOM') return selected;
+  const number = Number(elements.adminParticipantDietNumber?.value);
+  return Number.isInteger(number) && number >= 1 && number <= 999 ? String(number) : '';
+}
+
+function syncAdminDietLabelField({ resetValue = false } = {}) {
+  const input = elements.adminParticipantDietLabel;
+  if (!input) return;
+  const selected = elements.adminParticipantDiets?.value || 'STANDARD';
+  const canEditLegend = selected !== 'STANDARD'
+    && hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
+  input.disabled = !canEditLegend;
+  if (!canEditLegend) {
+    input.value = '';
+    return;
+  }
+  if (resetValue) {
+    input.value = kitchenDietLabelForCode(
+      state.centerContactSettings.kitchenDietLegend,
+      selectedAdminDietCode()
+    );
+  }
+}
+
+function readAdminDietLegendLabel() {
+  const label = normalizeKitchenDietLabel(elements.adminParticipantDietLabel?.value);
+  if (label && !isValidKitchenDietLabel(label)) {
+    throw new Error(t('diet.legend.validation'));
+  }
+  return label;
 }
 
 function hideStartupSplash() {
@@ -6068,6 +6133,7 @@ function syncAdminContactForm() {
     elements.adminParticipantDiets.value = 'STANDARD';
     elements.adminParticipantDietNumber.value = '';
     syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
+    syncAdminDietLabelField({ resetValue: true });
     elements.adminPhoneInput.value = '';
     elements.adminParticipantLiturgy.checked = false;
     elements.adminParticipantLiturgy.disabled = true;
@@ -6089,6 +6155,7 @@ function syncAdminContactForm() {
     .some((option) => option.value === dietValue) ? dietValue : 'STANDARD';
   elements.adminParticipantDietNumber.value = '';
   syncCustomDietNumber(elements.adminParticipantDiets, elements.adminParticipantDietNumber);
+  syncAdminDietLabelField({ resetValue: true });
   elements.adminPhoneInput.value = participant.phone || '';
   elements.adminParticipantLiturgy.checked = participant.liturgicalRole === true;
   elements.adminParticipantLiturgy.disabled = !canEditParticipantLiturgy(participant);
@@ -7415,6 +7482,9 @@ async function performAdminSaveContact() {
     const rawPhone = elements.adminPhoneInput.value.trim();
     const dietCode = readAdminDietCode();
     const dietTags = dietCode && dietCode !== 'STANDARD' ? [dietCode] : ['STANDARD'];
+    const dietLegendLabel = hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS)
+      ? readAdminDietLegendLabel()
+      : '';
     const sortOrder = participant?.sortOrder
       ?? Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
     const viceAdminRole = canAssignOperationalRoles()
@@ -7444,10 +7514,25 @@ async function performAdminSaveContact() {
     elements.adminSaveButton.setAttribute('aria-busy', 'true');
     elements.adminPersonEditor.setAttribute('aria-busy', 'true');
     elements.adminStatus.textContent = t('status.saving');
+    let nextDietLegend = null;
+    if (dietCode !== 'STANDARD' && dietLegendLabel) {
+      const currentLegend = state.centerContactSettings.kitchenDietLegend || [];
+      const nextLegend = updateKitchenDietLegendEntry(currentLegend, dietCode, dietLegendLabel);
+      if (JSON.stringify(nextLegend) !== JSON.stringify(currentLegend)) {
+        nextDietLegend = nextLegend;
+      }
+    }
     const savedParticipantId = await saveAdminParticipant(participant?.participantId || '', {
       ...profile,
+      ...(nextDietLegend ? { kitchenDietLegend: nextDietLegend } : {}),
       expectedRevision: participant?.revision
     });
+    if (nextDietLegend) {
+      state.centerContactSettings = {
+        ...state.centerContactSettings,
+        kitchenDietLegend: nextDietLegend
+      };
+    }
     if (assigningAdministrator) {
       const assigned = await assignCenterAdministratorParticipant(
         savedParticipantId,
@@ -8320,6 +8405,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
       days: state.kitchenDays,
       operationDays: visibleKitchenOperations,
       kitchen: true,
+      dietLegend: state.centerContactSettings.kitchenDietLegend || [],
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,
       onActiveIndexChange: (index) => {

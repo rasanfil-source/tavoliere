@@ -7,6 +7,7 @@ import {
 import { db } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823a';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -49,6 +50,7 @@ export function loadCachedCenterContactSettings() {
       timezone: typeof cached.timezone === 'string' ? cached.timezone : 'Europe/Rome',
       reservationCutoffs: normalizeReservationCutoffs(cached.reservationCutoffs),
       participantContactSharingEnabled: cached.participantContactSharingEnabled !== false,
+      kitchenDietLegend: normalizeKitchenDietLegend(cached.kitchenDietLegend),
       themePalette: normalizeThemePalette(cached.themePalette),
       interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
       defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
@@ -349,6 +351,7 @@ function refreshCenterContactSettings() {
         timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
         reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
         participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
+        kitchenDietLegend: normalizeKitchenDietLegend(data.kitchenDietLegend),
         themePalette: normalizeThemePalette(data.themePalette),
         interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
         defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',

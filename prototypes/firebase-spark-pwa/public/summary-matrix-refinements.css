@@ -1783,6 +1783,52 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   padding-left: 22px;
 }
 
+.summary-layout-kitchen.summary-layout-classic .kitchen-diet-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--view-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 4%, var(--view-surface));
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.summary-layout-kitchen.summary-layout-classic .kitchen-diet-legend h3 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--muted);
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.summary-layout-kitchen.summary-layout-classic .kitchen-diet-legend ul {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-layout-kitchen.summary-layout-classic .kitchen-diet-legend li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .summary-layout-kitchen.summary-layout-classic .kitchen-diet-legend {
+    align-items: flex-start;
+    padding: 7px 8px;
+    font-size: 0.72rem;
+  }
+}
+
 .week-invited-saved-meal {
   display: inline-flex;
   align-items: center;
