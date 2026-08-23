@@ -101,7 +101,10 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
 
 function renderFutureMeal(column, residentLabel, showContactHint = true) {
   const names = Array.isArray(column.names) ? column.names : [];
-  const dietCount = Number(column.specialDiets?.participantCount || 0);
+  const dietIdentifiers = [...(Array.isArray(column.specialDiets?.items) ? column.specialDiets.items : [])]
+    .map((diet) => formatDietIdentifier(diet.tag))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right, getLocale(), { numeric: true }));
   const guestCount = Number(column.guestCount || 0);
   const sickCount = Number(column.sickCount || 0);
   const sickDiets = Array.isArray(column.sickDiets) ? column.sickDiets : [];
@@ -114,7 +117,7 @@ function renderFutureMeal(column, residentLabel, showContactHint = true) {
       </div>
       ${renderContactHint(column, showContactHint)}
       ${guestCount > 0 ? renderFutureMetric("summary.guests", guestCount, "guests") : ""}
-      ${dietCount ? `<p class="summary-future-diets">${escapeHtml(t("week.operations.diet.count", { count: dietCount }))}</p>` : ""}
+      ${dietIdentifiers.length ? `<p class="summary-future-diets"><span>${escapeHtml(t("summary.diets"))}:</span> <strong>${escapeHtml(dietIdentifiers.join(", "))}</strong></p>` : ""}
       ${sickCount > 0 ? renderFutureMetric("summary.sickMeals", sickCount, "sick") : ""}
       ${sickDiets.length > 0 ? `<div class="summary-future-special-row"><span>${escapeHtml(t("summary.sickDiets"))}</span><div>${renderDietItems(sickDiets, " summary-future-diet-list")}</div></div>` : ""}
       ${names.length ? `<div class="summary-future-people">${names.map((person) => renderFuturePerson(person, residentLabel)).join("")}</div>` : ""}
@@ -534,13 +537,21 @@ function hasSpecialOperationalContent(screen) {
 
 function renderInternationalCard(column, { kitchen, residentLabel = "name", showContactHint = true, showMassMetadata = false }) {
   const diets = kitchen ? renderKitchenDietCell(column) : renderDietCell(column);
+  const massMetadata = showMassMetadata && column.dayMassStatus !== "UNKNOWN"
+    ? renderMassMetadata(column.dayMassStatus)
+    : "";
+  const mobileGuests = column.guestCount > 0
+    ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>`
+    : "";
+  const headerActions = massMetadata || mobileGuests
+    ? `<div class="summary-international-card-actions">${massMetadata}${mobileGuests}</div>`
+    : "";
   return `
     <article class="summary-international-card summary-day-tone-${normalizeDayTone(column.dayIndex)}${column.mealTypeId === "breakfast" ? " summary-international-card-next" : ""}">
       <header>
         <span class="summary-international-card-icon" aria-hidden="true">${mealIcon(column.mealTypeId)}</span>
-        <div><strong>${escapeHtml(localizedMealLabel(column, { breakfastTomorrow: true }))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
-        ${showMassMetadata && column.dayMassStatus !== "UNKNOWN" ? renderMassMetadata(column.dayMassStatus) : ""}
-        ${column.guestCount > 0 ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>` : ""}
+        <div class="summary-international-card-copy"><strong>${escapeHtml(localizedMealLabel(column, { breakfastTomorrow: true }))}</strong><time datetime="${escapeHtml(column.dateId)}">${escapeHtml(formatDate(column.dateId))}</time></div>
+        ${headerActions}
       </header>
       <dl>
         ${column.guestCount > 0 ? `<div class="summary-international-guest-row"><dt>${escapeHtml(t("summary.guests"))}</dt><dd>${column.guestCount}</dd></div>` : ""}

@@ -71,6 +71,16 @@ test('Internazionale, Futura e Cucina Internazionale integrano la Messa nell int
   assert.match(styles, /\.summary-mass-metadata \{[\s\S]*border-radius: 999px/);
   assert.match(styles, /\.summary-mass-metadata-yes \{[\s\S]*var\(--affirmative\)/);
   assert.match(styles, /\.summary-mass-metadata-no \{[\s\S]*var\(--danger\)/);
+  assert.match(view, /class="summary-international-card-actions"/);
+  assert.match(styles, /\.summary-international-card > header \{[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.summary-international-card-actions \{[\s\S]*justify-content: flex-end;[\s\S]*justify-self: end/);
+});
+
+test('Futura elenca i codici dieta reali senza ridurli a un conteggio', () => {
+  assert.match(view, /const dietIdentifiers = [\s\S]*column\.specialDiets\?\.items[\s\S]*formatDietIdentifier\(diet\.tag\)/);
+  assert.match(view, /t\("summary\.diets"\)/);
+  assert.match(view, /dietIdentifiers\.join\(", "\)/);
+  assert.doesNotMatch(view, /t\("week\.operations\.diet\.count"/);
 });
 
 test('Originale conserva la banda colorata comune in prenotazioni riepilogo e pannello', () => {
