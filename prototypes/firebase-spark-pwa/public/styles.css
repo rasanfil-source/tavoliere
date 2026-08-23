@@ -2161,57 +2161,11 @@ html[data-theme="neutro"] {
 }
 
 .happyduck-duck {
-  width: 42px;
-  height: 38px;
-  flex: 0 0 42px;
-  overflow: visible;
-}
-
-.happyduck-water {
-  fill: #3aaed8;
-}
-
-.happyduck-body,
-.happyduck-head,
-.happyduck-wing,
-.happyduck-crest {
-  fill: #ffd21f;
-  stroke: #c88d00;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-}
-
-.happyduck-crest {
-  stroke-linecap: round;
-}
-
-.happyduck-wing {
-  fill: #ffe362;
-}
-
-.happyduck-beak {
-  fill: #f47b20;
-  stroke: #ca4d0b;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-}
-
-.happyduck-beak-shade {
-  fill: #d94b08;
-}
-
-.happyduck-eye {
-  fill: none;
-  stroke: #17263b;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-}
-
-.happyduck-highlight {
-  fill: none;
-  stroke: #fff18b;
-  stroke-width: 2.2;
-  stroke-linecap: round;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  object-fit: contain;
+  border-radius: 5px;
 }
 
 .happyduck-name {

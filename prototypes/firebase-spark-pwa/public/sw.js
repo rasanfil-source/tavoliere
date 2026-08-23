@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v422';
+const CACHE_NAME = CACHE_PREFIX + 'v423';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -37,6 +37,7 @@ const APP_SHELL = [
   '/icons/launcher-192-maskable.png?v=20260822a',
   '/icons/launcher-512-maskable.png?v=20260822a',
   '/icons/splash-512-blended.png?v=20260822a',
+  '/icons/happyduck.png?v=20260823a',
   '/icons/whatsapp.svg'
 ];
 const LAZY_MODULES = [
