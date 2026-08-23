@@ -4860,14 +4860,16 @@ function renderAdminAccountList() {
     ));
     const name = participant?.displayName || account.email || t('role.admin');
     const active = account.status === 'ACTIVE';
-    const statusLabel = active ? t('status.active') : t('admin.accounts.revoked');
+    const statusBadge = active
+      ? ''
+      : `<span class="admin-invitation-state admin-invitation-accepted">${escapeHtml(t('admin.accounts.revoked'))}</span>`;
     const roleLabel = account.role === 'OWNER'
       ? t('admin.accounts.previousOwner')
       : account.role === 'ADMIN' ? t('role.admin') : t('role.vice');
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(account.email || '')}</small></span>
-        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : 'admin-invitation-accepted'}">${escapeHtml(statusLabel)}</span>
+        ${statusBadge}
         <span>${escapeHtml(roleLabel)}</span>
         ${active
           ? `<button type="button" class="danger-action" data-revoke-center-admin="${escapeHtml(account.adminUid)}">${escapeHtml(t('admin.accounts.revokeAccess'))}</button>`

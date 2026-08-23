@@ -254,6 +254,8 @@ test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
   assert.match(invitations, /adminInvitationManagementStatus\.textContent/);
   assert.doesNotMatch(accounts, /\.join\(''\) \|\|/);
   assert.match(accounts, /adminAccountStatus\.textContent/);
+  assert.doesNotMatch(accounts, /t\('status\.active'\)/);
+  assert.match(accounts, /const statusBadge = active[\s\S]*\? ''[\s\S]*admin\.accounts\.revoked/);
 });
 
 test('i collegamenti operativi mostrano URL e azioni esplicite di copia apertura e condivisione', () => {
