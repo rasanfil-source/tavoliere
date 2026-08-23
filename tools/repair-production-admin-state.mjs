@@ -8,6 +8,8 @@ const firebaseAuth = require('firebase-tools/lib/auth');
 
 const args = new Set(process.argv.slice(2));
 const apply = args.has('--apply');
+const clearAudit = args.has('--clear-audit');
+const preserveAdminAccounts = args.has('--preserve-admin-accounts');
 const projectId = readArgument('--project') || 'tavola-comune';
 const ownerEmail = String(readArgument('--owner-email') || '').trim().toLowerCase();
 const removeEmail = String(readArgument('--remove-email') || '').trim().toLowerCase();
@@ -43,6 +45,12 @@ const administratorInvitations = invitations.filter((item) => (
 const managerInvitations = invitations.filter((item) => (
   decodeFields(item.fields).role === 'MANAGER'
 ));
+const administratorAuditEvents = clearAudit
+  ? await listDocuments(`centers/${centerId}/auditEvents`)
+  : [];
+const viceAuditEvents = clearAudit
+  ? await listDocuments(`centers/${centerId}/viceAuditEvents`)
+  : [];
 const ownerMatches = admins.filter((item) => String(decodeFields(item.fields).email || '').toLowerCase() === ownerEmail);
 if (ownerMatches.length !== 1) {
   throw new Error(`Atteso un solo account amministrativo per ${ownerEmail}; trovati ${ownerMatches.length}.`);
@@ -55,11 +63,15 @@ const ownerProfile = existingOwnerProfile || {
   fields: {}
 };
 
-const adminsToRemove = admins.filter((item) => {
+const adminsToRemove = preserveAdminAccounts ? [] : admins.filter((item) => {
   const data = decodeFields(item.fields);
   return documentId(item.name) !== ownerUid
-    && (data.role === 'OWNER' || data.role === 'ADMIN');
+    && (data.role === 'OWNER' || data.role === 'ADMIN')
+    && (!removeEmail || String(data.email || '').trim().toLowerCase() === removeEmail);
 });
+if (removeEmail && adminsToRemove.length !== 1) {
+  throw new Error(`Atteso un solo account da rimuovere per ${removeEmail}; trovati ${adminsToRemove.length}.`);
+}
 const adminUidsToRemove = new Set(adminsToRemove.map((item) => documentId(item.name)));
 const profilesToRemove = profiles.filter((item) => adminUidsToRemove.has(documentId(item.name)));
 for (const profile of profilesToRemove) {
@@ -85,6 +97,8 @@ const summary = {
   viceAdministratorsPreserved: admins.filter((item) => (
     documentId(item.name) !== ownerUid && decodeFields(item.fields).role === 'MANAGER'
   )).length,
+  administratorAuditEventsToRemove: administratorAuditEvents.length,
+  viceAuditEventsToRemove: viceAuditEvents.length,
   mode: apply ? 'APPLY' : 'DRY_RUN'
 };
 console.log(JSON.stringify(summary, null, 2));
@@ -102,14 +116,16 @@ await writeFile(backupPath, JSON.stringify({
     center: centerDocument,
     admins,
     profiles: [ownerProfile, ...profilesToRemove],
-    invitations: administratorInvitations
+    invitations: administratorInvitations,
+    administratorAuditEvents,
+    viceAuditEvents
   }
 }, null, 2), 'utf8');
 
 const now = new Date().toISOString();
 const ownerAdminData = decodeFields(ownerAdmin.fields);
 const ownerProfileData = decodeFields(ownerProfile.fields);
-const writes = [
+const structuralWrites = [
   updateWrite(centerDocument.name, {
     ownerUid,
     adminEmail: ownerEmail,
@@ -150,23 +166,27 @@ const writes = [
   ...profilesToRemove.map((item) => ({ delete: item.name })),
   ...administratorInvitations.map((item) => ({ delete: item.name }))
 ];
-if (writes.length > 450) throw new Error(`Troppe scritture atomiche (${writes.length}); riparazione interrotta.`);
-
-const commitResponse = await fetch(`https://firestore.googleapis.com/v1/${databaseName}/documents:commit`, {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({ writes })
-});
-if (!commitResponse.ok) {
-  throw new Error(`Riparazione Firestore non riuscita (${commitResponse.status}): ${await commitResponse.text()}`);
+const auditWrites = [
+  ...administratorAuditEvents.map((item) => ({ delete: item.name })),
+  ...viceAuditEvents.map((item) => ({ delete: item.name }))
+];
+if (structuralWrites.length > 450) {
+  throw new Error(`Troppe scritture strutturali atomiche (${structuralWrites.length}); riparazione interrotta.`);
+}
+await commitWrites(structuralWrites, 'Riparazione Firestore');
+for (let offset = 0; offset < auditWrites.length; offset += 400) {
+  await commitWrites(auditWrites.slice(offset, offset + 400), 'Pulizia registro attività');
 }
 
 const remainingAdmins = await listDocuments(`centers/${centerId}/admins`);
 const remainingInvitations = (await listDocuments('adminInvitations'))
   .filter((item) => decodeFields(item.fields).centerId === centerId);
+const remainingAdministratorAuditEvents = clearAudit
+  ? await listDocuments(`centers/${centerId}/auditEvents`)
+  : [];
+const remainingViceAuditEvents = clearAudit
+  ? await listDocuments(`centers/${centerId}/viceAuditEvents`)
+  : [];
 const remainingAdministratorInvitations = remainingInvitations.filter((item) => (
   decodeFields(item.fields).role === 'ADMIN'
 ));
@@ -193,7 +213,11 @@ const verified = Boolean(repairedOwnerDocument)
   && repairedAdmin.dailyOperationsPermission === true
   && remainingAdministratorInvitations.length === 0
   && conflictingOwners.length === 0
-  && removedAccountStillPresent === false;
+  && removedAccountStillPresent === false
+  && (!clearAudit || (
+    remainingAdministratorAuditEvents.length === 0
+    && remainingViceAuditEvents.length === 0
+  ));
 if (!verified) throw new Error('Verifica successiva alla riparazione non superata. Usa il backup locale.');
 
 console.log(JSON.stringify({
@@ -205,7 +229,9 @@ console.log(JSON.stringify({
   remainingAdministratorInvitations: remainingAdministratorInvitations.length,
   preservedManagerInvitations: remainingInvitations.length - remainingAdministratorInvitations.length,
   conflictingOwners: conflictingOwners.length,
-  removedAccountStillPresent
+  removedAccountStillPresent,
+  remainingAdministratorAuditEvents: remainingAdministratorAuditEvents.length,
+  remainingViceAuditEvents: remainingViceAuditEvents.length
 }, null, 2));
 
 function updateWrite(name, data, fieldPaths) {
@@ -213,6 +239,21 @@ function updateWrite(name, data, fieldPaths) {
     update: { name, fields: encodeFields(data) },
     updateMask: { fieldPaths }
   };
+}
+
+async function commitWrites(writes, operationLabel) {
+  if (writes.length === 0) return;
+  const response = await fetch(`https://firestore.googleapis.com/v1/${databaseName}/documents:commit`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ writes })
+  });
+  if (!response.ok) {
+    throw new Error(`${operationLabel} non riuscita (${response.status}): ${await response.text()}`);
+  }
 }
 
 async function listDocuments(path) {

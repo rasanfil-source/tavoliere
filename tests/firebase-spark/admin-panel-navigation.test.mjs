@@ -71,6 +71,13 @@ test('la configurazione raggruppa identita e orari e termina con un solo salvata
   assert.doesNotMatch(configuration, /data-bootstrap-button/);
 });
 
+test('la scheda Amministratore usa tutta la larghezza anche su tablet', () => {
+  const tabletRules = css.match(/@media \(max-width: 899px\) \{[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(tabletRules, /\.admin-role-stack \{[\s\S]*display: block;[\s\S]*width: 100%/);
+  assert.match(tabletRules, /#admin-access-section > \.admin-control-section \{[\s\S]*width: 100%;[\s\S]*max-width: none/);
+  assert.doesNotMatch(tabletRules, /\.admin-role-stack \{[\s\S]*grid-template-columns: repeat\(2/);
+});
+
 test('i contatti del progetto compaiono una sola volta e soltanto in Aspetto', () => {
   assert.equal((html.match(/href="https:\/\/github\.com\/rasanfil-source\/tavoliere#readme"/g) || []).length, 1);
   assert.equal((html.match(/class="happyduck-contact" href="mailto:rasanfil@gmail\.com"/g) || []).length, 1);

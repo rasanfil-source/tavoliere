@@ -2990,9 +2990,13 @@ body[data-resident-login-visible="true"] .account-footer {
   .admin-role-stack {
     grid-column: 1;
     grid-row: 3;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 18px;
+    display: block;
+    width: 100%;
+  }
+
+  #admin-access-section > .admin-control-section {
+    width: 100%;
+    max-width: none;
   }
 
   #admin-adaptations-section {
