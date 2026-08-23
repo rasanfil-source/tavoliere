@@ -71,12 +71,13 @@ test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
   assert.match(html, /class="happyduck-contact" href="mailto:rasanfil@gmail\.com"[^>]*data-i18n-aria-label="project\.contact\.ariaLabel"/);
   assert.match(html, /class="happyduck-duck"[\s\S]*class="happyduck-name"[\s\S]*Happy[\s\S]*Duck[\s\S]*class="happyduck-action"/);
   assert.doesNotMatch(html, />\s*rasanfil@gmail\.com\s*</);
-  assert.match(html, /class="project-readme-footer project-signature-footer"[\s\S]*class="happyduck-contact"[\s\S]*class="project-readme-link"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
+  assert.match(html, /class="project-readme-footer project-signature-footer"[\s\S]*class="happyduck-contact"[\s\S]*class="project-readme-link project-link-card"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
   assert.match(html, /<img class="happyduck-duck" src="\/icons\/happyduck\.png\?v=20260823a" width="34" height="34" alt="">/);
   assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 34px[\s\S]*object-fit: contain/);
   assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
   assert.match(css, /\.project-signature-footer[\s\S]*min-height: 44px/);
+  assert.match(css, /\.project-link-card[\s\S]*min-height: 44px[\s\S]*border-radius: 12px[\s\S]*\.github-mark[\s\S]*width: 30px/);
 });
 
 test('Info usa un solo nome progetto: Tutti a tavola', () => {
