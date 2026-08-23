@@ -1,4 +1,5 @@
-export const CENTER_BACKUP_SCHEMA_VERSION = 2;
+export const CENTER_BACKUP_SCHEMA_VERSION = 3;
+export const SUPPORTED_CENTER_BACKUP_SCHEMA_VERSIONS = Object.freeze([2, 3]);
 
 export const RESTORABLE_CENTER_COLLECTIONS = Object.freeze([
   'groups',
@@ -12,6 +13,7 @@ export const RESTORABLE_CENTER_COLLECTIONS = Object.freeze([
   'dailyOperations',
   'dailyHealth',
   'assets',
+  'presentationSettings',
   'auditEvents'
 ]);
 
@@ -28,7 +30,7 @@ export function inspectCenterBackup(backup, { expectedCenterId = '' } = {}) {
   if (!isRecord(backup)) {
     return invalidResult(['Il file non contiene un oggetto JSON valido.']);
   }
-  if (backup.schemaVersion !== CENTER_BACKUP_SCHEMA_VERSION) {
+  if (!SUPPORTED_CENTER_BACKUP_SCHEMA_VERSIONS.includes(backup.schemaVersion)) {
     errors.push(`Versione backup non supportata: ${String(backup.schemaVersion ?? 'assente')}.`);
   }
 

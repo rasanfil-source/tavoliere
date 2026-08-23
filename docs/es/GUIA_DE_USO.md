@@ -38,6 +38,8 @@ El acceso fuerte se realiza con Google o con un correo verificado y contraseña.
 
 Invitar a un nuevo administrador no transfiere inmediatamente la responsabilidad. La persona debe aceptar y autenticarse; el responsable actual completa después la transferencia mediante la confirmación explícita prevista por la interfaz.
 
+En **Mantenimiento > Archivo de seguridad**, el responsable puede descargar una copia JSON completa. **Cargar** restaura únicamente la configuración del mismo centro: la aplicación muestra un resumen, exige una confirmación escrita y descarga primero el estado actual. Las personas, reservas, roles, contraseñas, enlaces y el registro de actividad permanecen sin cambios.
+
 ## Cocina
 
 El enlace de cocina abre un cuadro sintético con comensales, dietas, celebraciones y notas operativas. Las notas se muestran únicamente el día al que pertenecen. Los códigos de dieta llevan el prefijo `D` y pueden disponer de una leyenda configurada por el administrador.

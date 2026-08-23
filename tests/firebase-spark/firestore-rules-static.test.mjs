@@ -15,6 +15,10 @@ const centerSettings = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/center-settings.js', import.meta.url),
   'utf8'
 );
+const centerBackup = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/domain/center-backup.mjs', import.meta.url),
+  'utf8'
+);
 
 test('resident signature lookup uses only the canonical signature field', () => {
   assert.match(participantData, /normalizeResidentSignature\(participant\.signature\)/);
@@ -219,7 +223,7 @@ test('l avatar del centro e leggibile dalle sessioni e modificabile dai ruoli de
     rules,
     /match \/assets\/\{assetId\}[\s\S]*allow create, update: if canManageCenterConfiguration\(centerId\)[\s\S]*dataUrl\.size\(\) <= 300000/
   );
-  assert.match(participantData, /'assets'/);
+  assert.match(centerBackup, /'assets'/);
 });
 
 test('i contatti sono leggibili nel riepilogo solo quando il centro li condivide', () => {
@@ -310,10 +314,10 @@ test('bulk reservation saves report requested, saved, and failed counts', () => 
 test('center export includes settings and kitchen notes without access credentials', () => {
   assert.match(participantData, /getDoc\(doc\(db, 'centers', getActiveCenterId\(\)\)\)/);
   assert.match(participantData, /Promise\.all\(collections\.map/);
-  assert.match(participantData, /'kitchenNotes'/);
-  assert.match(participantData, /'dailyOperations'/);
-  assert.doesNotMatch(participantData, /const collections = \[[\s\S]*'accessSessions'/);
-  assert.doesNotMatch(participantData, /const collections = \[[\s\S]*'linkTokens'/);
+  assert.match(centerBackup, /'kitchenNotes'/);
+  assert.match(centerBackup, /'dailyOperations'/);
+  assert.doesNotMatch(centerBackup, /RESTORABLE_CENTER_COLLECTIONS[\s\S]*'accessSessions'/);
+  assert.doesNotMatch(centerBackup, /RESTORABLE_CENTER_COLLECTIONS[\s\S]*'linkTokens'/);
 });
 
 test('admin participant list keeps disabled people available for reactivation', () => {

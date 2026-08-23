@@ -46,7 +46,7 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260823b';
+} from './center-settings.js?v=20260823c';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -84,6 +84,7 @@ import {
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20260816g';
 import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260823a';
+import { inspectCenterBackup } from './domain/center-backup.mjs?v=20260823a';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
 import {
   mountSummaryMatrix,
@@ -126,7 +127,7 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817c',
   kitchen: './kitchen-data.js?v=20260823c',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260823c'
+  participant: './participant-data.js?v=20260823d'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -218,6 +219,7 @@ const assignCenterAdministratorParticipant = callDomain('participant', 'assignCe
 const setAdminParticipantActiveStatus = callDomain('participant', 'setAdminParticipantActiveStatus');
 const deleteAdminParticipant = callDomain('participant', 'deleteAdminParticipant');
 const exportCenterData = callDomain('participant', 'exportCenterData');
+const restoreCenterConfiguration = callDomain('participant', 'restoreCenterConfiguration');
 
 preloadActiveViewModules();
 
@@ -944,6 +946,10 @@ const elements = {
   adminExportButton: document.querySelector('[data-admin-export-button]'),
   adminExportSpinner: document.querySelector('[data-admin-export-spinner]'),
   adminExportLabel: document.querySelector('[data-admin-export-label]'),
+  adminRestoreButton: document.querySelector('[data-admin-restore-button]'),
+  adminRestoreInput: document.querySelector('[data-admin-restore-input]'),
+  adminRestoreLabel: document.querySelector('[data-admin-restore-label]'),
+  adminBackupStatus: document.querySelector('[data-admin-backup-status]'),
   adminTools: document.querySelector('[data-admin-tools]'),
   adminContactSharingRow: document.querySelector('[data-admin-contact-sharing-row]'),
   adminCommonPasswordRow: document.querySelector('[data-admin-common-password-row]'),
@@ -1221,6 +1227,8 @@ elements.adminAuditMore.addEventListener('click', handleAuditLoad);
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
 elements.adminExportButton.addEventListener('click', handleAdminExport);
+elements.adminRestoreButton?.addEventListener('click', () => elements.adminRestoreInput?.click());
+elements.adminRestoreInput?.addEventListener('change', handleAdminRestoreSelection);
 if (elements.adminAdaptationsSave) {
   elements.adminAdaptationsSave.addEventListener('click', handleAdminAdaptationsSave);
 }
@@ -6322,7 +6330,11 @@ function applyAdminCapabilityVisibility() {
     elements.adminCenterSettingsSection.hidden = !canConfigureCenter;
   }
   if (elements.adminTools) {
-    elements.adminTools.hidden = !hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA);
+    const canExportBackup = hasCurrentCapability(CAPABILITIES.EXPORT_CENTER_DATA);
+    const canRestoreBackup = hasCurrentCapability(CAPABILITIES.RESTORE_CENTER_DATA);
+    elements.adminTools.hidden = !canExportBackup && !canRestoreBackup;
+    elements.adminExportButton.hidden = !canExportBackup;
+    elements.adminRestoreButton.hidden = !canRestoreBackup;
   }
   if (elements.adminContactSharingRow) {
     elements.adminContactSharingRow.hidden = !canConfigureCenter || state.residentSettingsMode;
@@ -8307,14 +8319,9 @@ async function handleAdminExport() {
   elements.adminStatus.textContent = t('admin.export.preparing');
   try {
     const backup = await exportCenterData();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'tavola-comune-export-' + backup.exportedAt.slice(0, 10) + '.json';
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCenterBackup(backup, 'tavola-comune-export');
     elements.adminStatus.textContent = t('admin.export.ready', { count: backup.totalDocuments });
+    elements.adminBackupStatus.textContent = t('admin.export.ready', { count: backup.totalDocuments });
   } catch (error) {
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Esportazione non riuscita');
   } finally {
@@ -8322,6 +8329,87 @@ async function handleAdminExport() {
     elements.adminExportButton.setAttribute('aria-busy', 'false');
     elements.adminExportSpinner.hidden = true;
     elements.adminExportLabel.textContent = t('admin.backup.downloadAction');
+  }
+}
+
+function downloadCenterBackup(backup, prefix) {
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = prefix + '-' + backup.exportedAt.slice(0, 10) + '.json';
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function handleAdminRestoreSelection(event) {
+  const file = event.target.files?.[0];
+  if (!file || !hasCurrentCapability(CAPABILITIES.RESTORE_CENTER_DATA)) return;
+  return operationGuard.run(
+    'admin:configuration-restore',
+    () => performAdminConfigurationRestore(file)
+  ).finally(() => {
+    event.target.value = '';
+  });
+}
+
+async function performAdminConfigurationRestore(file) {
+  const maximumBytes = 20 * 1024 * 1024;
+  elements.adminRestoreButton.disabled = true;
+  elements.adminRestoreButton.setAttribute('aria-busy', 'true');
+  elements.adminRestoreLabel.textContent = t('admin.backup.reading');
+  elements.adminBackupStatus.textContent = t('admin.backup.reading');
+  try {
+    if (file.size > maximumBytes) {
+      throw new Error(t('admin.backup.tooLarge'));
+    }
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+    } catch {
+      throw new Error(t('admin.backup.invalidJson'));
+    }
+    const inspection = inspectCenterBackup(backup, { expectedCenterId: getActiveCenterId() });
+    if (!inspection.valid) {
+      const error = new Error(inspection.errors.join(' '));
+      error.inspection = inspection;
+      throw error;
+    }
+    const exportedAt = inspection.exportedAt
+      ? inspection.exportedAt.toLocaleString(getLocale())
+      : t('admin.backup.unknownDate');
+    const decision = await showActionDialog({
+      title: t('admin.backup.confirmTitle'),
+      message: t('admin.backup.confirmMessage', {
+        date: exportedAt,
+        count: inspection.totalDocuments
+      }),
+      confirmLabel: t('admin.backup.confirmAction'),
+      requiredText: t('admin.backup.requiredText'),
+      destructive: true
+    });
+    if (!decision.confirmed) {
+      elements.adminBackupStatus.textContent = t('admin.backup.cancelled');
+      return;
+    }
+
+    elements.adminRestoreLabel.textContent = t('admin.backup.restoring');
+    elements.adminBackupStatus.textContent = t('admin.backup.safetyCopy');
+    const safetyBackup = await exportCenterData();
+    downloadCenterBackup(safetyBackup, 'tavola-comune-prima-del-ripristino');
+    elements.adminBackupStatus.textContent = t('admin.backup.restoring');
+    await restoreCenterConfiguration(backup);
+    await refreshAdminParticipants();
+    elements.adminBackupStatus.textContent = t('admin.backup.restored');
+    elements.adminStatus.textContent = t('admin.backup.restored');
+  } catch (error) {
+    const inspectionMessage = error?.inspection?.errors?.join(' ');
+    elements.adminBackupStatus.textContent = inspectionMessage
+      || friendlyErrorMessage(error, t('admin.backup.restoreFailed'));
+  } finally {
+    elements.adminRestoreButton.disabled = false;
+    elements.adminRestoreButton.setAttribute('aria-busy', 'false');
+    elements.adminRestoreLabel.textContent = t('admin.backup.uploadAction');
   }
 }
 

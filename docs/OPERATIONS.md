@@ -55,6 +55,10 @@ Dal pannello **Manutenzione** il responsabile può scaricare un backup JSON comp
 - non aggiungerlo a Git;
 - verificare che il file sia leggibile prima di considerarlo una copia valida.
 
+Il pulsante **Carica** nello stesso riquadro offre un ripristino prudente e limitato alla configurazione. Accetta una copia JSON dello stesso centro, ne mostra data e numero di documenti, richiede di digitare `RIPRISTINA` e scarica automaticamente una nuova copia di sicurezza prima di applicare le modifiche. Ripristina identità visiva, viste, lingua, orari limite, condivisione dei contatti, legenda diete e icona. Non modifica persone, prenotazioni, amministratori, password, link operativi o registro attività.
+
+Il caricamento dal pannello non equivale quindi a un recupero completo del database. Il recupero completo dei dati operativi resta una procedura tecnica controllata, da provare prima nell’emulatore.
+
 Ispezione locale senza scritture:
 
 ```powershell

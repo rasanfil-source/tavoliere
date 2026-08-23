@@ -41,17 +41,22 @@ import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.
 import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823b';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
 import {
+  CENTER_BACKUP_SCHEMA_VERSION,
+  RESTORABLE_CENTER_COLLECTIONS
+} from './domain/center-backup.mjs?v=20260823a';
+import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260823b';
+} from './center-settings.js?v=20260823c';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
   loadCenterContactSettings,
   removeCenterAvatar,
+  restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260823b';
+} from './center-settings.js?v=20260823c';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -1504,20 +1509,7 @@ export async function exportCenterData() {
   if (admin.status !== 'ACTIVE' || !hasCapability(role, CAPABILITIES.EXPORT_CENTER_DATA)) {
     throw new Error('Esportazione riservata a chi dispone del permesso specifico');
   }
-  const collections = [
-    'groups',
-    'participants',
-    'publicParticipants',
-    'mealTypes',
-    'mealWindows',
-    'reservationRules',
-    'reservationOverrides',
-    'kitchenNotes',
-    'dailyOperations',
-    'dailyHealth',
-    'assets',
-    'auditEvents'
-  ];
+  const collections = RESTORABLE_CENTER_COLLECTIONS;
   const [centerSnapshot, collectionEntries] = await Promise.all([
     getDoc(doc(db, 'centers', getActiveCenterId())),
     Promise.all(collections.map(async (collectionName) => [
@@ -1530,7 +1522,7 @@ export async function exportCenterData() {
   const totalDocuments = collectionEntries.reduce((sum, [, rows]) => sum + rows.length, 0);
 
   return {
-    schemaVersion: 2,
+    schemaVersion: CENTER_BACKUP_SCHEMA_VERSION,
     projectId: 'tavola-comune',
     centerId: getActiveCenterId(),
     center,

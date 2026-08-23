@@ -414,6 +414,22 @@ test('Google non richiede la password ma il responsabile può aggiungerla per l 
   assert.doesNotMatch(app, /administratorPasswordRequired === true\s*\|\|/);
 });
 
+test('l archivio affianca scarica e carica con un ripristino configurazione protetto', () => {
+  const archive = html.match(/class="admin-control-section admin-tools-row admin-maintenance-row"[\s\S]*?data-admin-restore-input[^>]*>/)?.[0] || '';
+  assert.match(archive, /class="admin-backup-actions"/);
+  assert.match(archive, /data-admin-export-button[\s\S]*data-admin-restore-button/);
+  assert.match(archive, /data-admin-restore-input[^>]*accept="application\/json,\.json"[^>]*hidden/);
+  assert.match(css, /\.admin-backup-actions \{[\s\S]*grid-template-columns: repeat\(2, minmax\(120px, 1fr\)\)/);
+  assert.match(app, /CAPABILITIES\.RESTORE_CENTER_DATA/);
+  assert.match(app, /requiredText: t\('admin\.backup\.requiredText'\)/);
+  assert.match(app, /const safetyBackup = await exportCenterData\(\)/);
+  assert.match(app, /await restoreCenterConfiguration\(backup\)/);
+  assert.match(centerSettings, /membership\.role !== 'OWNER'/);
+  assert.match(centerSettings, /administratorName: current\.administratorName/);
+  assert.match(centerSettings, /adminEmail: current\.adminEmail/);
+  assert.match(participantData, /restoreCenterConfiguration/);
+});
+
 test('il salvataggio del responsabile crea o aggiorna automaticamente la Persona', () => {
   assert.match(app, /saveAdministratorAsParticipant\(\{/);
   assert.match(app, /participantWithPreviousSignature \|\| participantWithNextSignature/);

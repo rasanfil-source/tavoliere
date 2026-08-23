@@ -38,6 +38,8 @@ Strong sign-in uses Google or a verified email address and password. Depending o
 
 Inviting a new administrator does not transfer ownership immediately. The person must accept and authenticate; the current owner then completes the transfer using the explicit confirmation provided by the interface.
 
+In **Maintenance > Security archive**, the owner can download a complete JSON copy. **Upload** restores only the configuration of the same centre: the app previews the copy, requires typed confirmation and first downloads the current state. People, reservations, roles, passwords, links and activity history remain unchanged.
+
 ## Kitchen
 
 The kitchen link opens a concise view of covers, diets, celebrations and operational notes. Notes are shown only on the day to which they belong. Diet codes are prefixed with `D` and may have a legend configured by the administrator.

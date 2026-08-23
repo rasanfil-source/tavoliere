@@ -99,6 +99,20 @@
   flex: 0 0 auto;
 }
 
+.admin-backup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.admin-backup-actions .admin-download-action {
+  min-width: 0;
+}
+
+.admin-backup-status:empty {
+  display: none;
+}
+
 @media (max-width: 620px) {
   .admin-section-nav {
     position: sticky;

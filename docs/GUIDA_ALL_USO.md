@@ -38,6 +38,8 @@ L’accesso forte avviene con Google oppure con email verificata e password. Dal
 
 L’invito a un nuovo amministratore non trasferisce immediatamente la responsabilità. La persona deve accettare e autenticarsi; il responsabile attuale completa poi il passaggio con la conferma esplicita prevista dall’interfaccia.
 
+In **Manutenzione > Archivio di sicurezza**, il responsabile può scaricare una copia JSON completa. Con **Carica** può ripristinare rapidamente soltanto la configurazione dello stesso centro: l’app mostra un riepilogo, richiede una conferma scritta e scarica prima una copia dello stato corrente. Persone, prenotazioni, ruoli, password, collegamenti e registro attività restano invariati.
+
 ## Cucina
 
 Il link cucina apre un quadro sintetico con coperti, diete, celebrazioni e note operative. Le note vengono mostrate soltanto per il giorno a cui appartengono. I codici dieta sono preceduti da `D` e possono avere una legenda configurata dall’amministratore.

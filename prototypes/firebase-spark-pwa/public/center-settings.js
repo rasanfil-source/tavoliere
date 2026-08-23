@@ -4,10 +4,11 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260822a';
+import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
 import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823b';
+import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20260823a';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -269,6 +270,50 @@ export async function updateCenterSettings({
     ...settings
   });
   return settings;
+}
+
+export async function restoreCenterConfiguration(backup) {
+  const user = getCurrentUser();
+  if (!db || !user || user.isAnonymous) {
+    throw new Error('Accesso del responsabile richiesto');
+  }
+  const centerId = getActiveCenterId();
+  const membershipSnapshot = await getDoc(doc(db, 'centers', centerId, 'admins', user.uid));
+  const membership = membershipSnapshot.exists() ? membershipSnapshot.data() : {};
+  if (membership.status !== 'ACTIVE' || membership.role !== 'OWNER') {
+    throw new Error('Solo il responsabile può ripristinare la configurazione');
+  }
+
+  const restore = buildCenterConfigurationRestore(backup, { expectedCenterId: centerId });
+  const current = await loadCenterContactSettings({ forceRefresh: true });
+  await updateCenterSettings({
+    ...current,
+    ...restore.settings,
+    commonPassword: '',
+    administratorSharedPassword: '',
+    currentAdministratorSharedPassword: '',
+    administratorName: current.administratorName,
+    administratorSignature: current.administratorSignature,
+    adminEmail: current.adminEmail
+  });
+
+  if (restore.kitchenDietLegend !== null) {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'centers', centerId), {
+      kitchenDietLegend: normalizeKitchenDietLegend(restore.kitchenDietLegend),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await batch.commit();
+  }
+  if (restore.avatarDataUrl) {
+    await saveCenterAvatar(restore.avatarDataUrl);
+  }
+
+  invalidateCenterContactSettingsCache();
+  return {
+    inspection: restore.inspection,
+    settings: await loadCenterContactSettings({ forceRefresh: true })
+  };
 }
 
 export async function saveCenterAvatar(dataUrl) {

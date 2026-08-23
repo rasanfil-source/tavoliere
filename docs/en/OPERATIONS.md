@@ -55,6 +55,10 @@ From **Maintenance**, the centre owner can download a complete JSON backup. The 
 - do not add it to Git;
 - verify that it is readable before treating it as a valid copy.
 
+The **Upload** button in the same panel provides a cautious, configuration-only restore. It accepts a JSON copy for the same centre, previews its date and document count, requires the word `RESTORE`, and automatically downloads a fresh safety copy before applying changes. It restores visual identity, views, language, cut-off times, contact sharing, diet legend and icon. It does not change people, reservations, administrators, passwords, operational links or activity history.
+
+Uploading from the panel is therefore not a full database recovery. Full operational-data recovery remains a controlled technical procedure and must first be tested in the emulator.
+
 Local read-only inspection:
 
 ```powershell

@@ -55,6 +55,10 @@ Desde **Mantenimiento**, el responsable puede descargar una copia completa del c
 - no añadirlo a Git;
 - comprobar que sea legible antes de considerarlo una copia válida.
 
+El botón **Cargar** del mismo recuadro ofrece una restauración prudente y limitada a la configuración. Acepta una copia JSON del mismo centro, muestra su fecha y número de documentos, exige escribir `RESTAURAR` y descarga automáticamente una nueva copia de seguridad antes de aplicar los cambios. Restaura la identidad visual, las vistas, el idioma, los horarios límite, la compartición de contactos, la leyenda de dietas y el icono. No modifica personas, reservas, administradores, contraseñas, enlaces operativos ni el registro de actividad.
+
+La carga desde el panel no equivale a una recuperación completa de la base de datos. La recuperación completa de los datos operativos sigue siendo un procedimiento técnico controlado que debe probarse primero en el emulador.
+
 Inspección local sin escrituras:
 
 ```powershell

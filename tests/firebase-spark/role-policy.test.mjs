@@ -22,6 +22,7 @@ test('il responsabile conserva tutti i poteri del centro', () => {
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADMINS), true);
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), true);
   assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
+  assert.equal(capabilities.has(CAPABILITIES.RESTORE_CENTER_DATA), true);
 });
 
 test('l amministratore gestisce il centro ma non puo sostituire il responsabile', () => {
@@ -35,6 +36,7 @@ test('l amministratore gestisce il centro ma non puo sostituire il responsabile'
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_MASS), false);
   assert.equal(capabilities.has(CAPABILITIES.DELETE_PARTICIPANTS), true);
   assert.equal(capabilities.has(CAPABILITIES.ASSIGN_LITURGY), true);
+  assert.equal(capabilities.has(CAPABILITIES.RESTORE_CENTER_DATA), false);
 });
 
 test('il vice usa Persone Link e Aspetto ma non le schede riservate', () => {
@@ -48,6 +50,7 @@ test('il vice usa Persone Link e Aspetto ma non le schede riservate', () => {
   assert.equal(capabilities.has(CAPABILITIES.VIEW_OPERATIONAL_LINKS), true);
   assert.equal(capabilities.has(CAPABILITIES.MANAGE_ADMINS), false);
   assert.equal(capabilities.has(CAPABILITIES.TRANSFER_OWNERSHIP), false);
+  assert.equal(capabilities.has(CAPABILITIES.RESTORE_CENTER_DATA), false);
 });
 
 test('la Liturgia e personale e non viene ereditata dai ruoli amministrativi', () => {

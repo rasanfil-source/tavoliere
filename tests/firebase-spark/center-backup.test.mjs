@@ -13,7 +13,7 @@ function createBackup() {
   documents.reservationRules.push({ id: 'rule_1', participantId: 'person_1' });
   const counts = Object.fromEntries(Object.entries(documents).map(([name, rows]) => [name, rows.length]));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     centerId: 'center_demo',
     center: { name: 'Centro demo' },
     exportedAt: '2026-08-10T12:00:00.000Z',
@@ -28,6 +28,14 @@ test('un backup coerente supera la fase di anteprima', () => {
   assert.equal(report.valid, true);
   assert.equal(report.totalDocuments, 3);
   assert.deepEqual(report.errors, []);
+});
+
+test('le copie precedenti restano caricabili dopo l aggiunta delle impostazioni di presentazione', () => {
+  const backup = createBackup();
+  backup.schemaVersion = 2;
+  const report = inspectCenterBackup(backup, { expectedCenterId: 'center_demo' });
+  assert.equal(report.valid, true);
+  assert.equal(report.counts.presentationSettings, 0);
 });
 
 test('il validatore rifiuta centro errato raccolte sconosciute e conteggi falsi', () => {
