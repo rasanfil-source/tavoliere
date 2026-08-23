@@ -425,10 +425,10 @@ function renderDietCell(column) {
 function renderKitchenDietCell(column) {
   if (column.specialDiets.participantCount === 0)
     return renderEmpty(t("summary.noDiet"));
-  return renderDietItems(column.specialDiets.items, " summary-matrix-kitchen-diets", { alwaysShowCount: true });
+  return renderDietItems(column.specialDiets.items, " summary-matrix-kitchen-diets");
 }
 
-function renderDietItems(items, extraClass = "", { alwaysShowCount = false } = {}) {
+function renderDietItems(items, extraClass = "") {
   const sorted = [...items].sort((left, right) =>
     formatDietIdentifier(left.tag).localeCompare(
       formatDietIdentifier(right.tag),
@@ -439,7 +439,7 @@ function renderDietItems(items, extraClass = "", { alwaysShowCount = false } = {
   return `<ul class="summary-matrix-diets${extraClass}">${sorted.map((diet) => {
     const identifier = formatDietIdentifier(diet.tag);
     const count = Math.max(0, Math.floor(Number(diet.count) || 0));
-    const countLabel = alwaysShowCount || count > 1
+    const countLabel = count > 1
       ? `<span class="diet-code-count">× ${count}</span>`
       : "";
     return `<li><span class="diet-code-badge diet-code-tone-${getDietBadgeTone(diet.tag)}">${escapeHtml(identifier)}</span>${countLabel}</li>`;

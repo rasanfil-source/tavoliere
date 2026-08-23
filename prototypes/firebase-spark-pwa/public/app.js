@@ -89,7 +89,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823f';
+} from './summary-matrix-view.js?v=20260823g';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint

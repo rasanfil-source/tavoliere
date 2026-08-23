@@ -111,6 +111,8 @@ test('Originale e Internazionale aprono i contatti dal nome del commensale', () 
 test('le diete operative mostrano solo identificatore e molteplicità', () => {
   assert.match(view, /function formatDietIdentifier\(tag\)/);
   assert.match(view, /diet-code-count[^`]*× \$\{count\}/);
+  assert.match(view, /const countLabel = count > 1/);
+  assert.doesNotMatch(view, /alwaysShowCount/);
   assert.match(view, /diet-code-tone-\$\{getDietBadgeTone\(diet\.tag\)\}/);
   assert.match(view, /participant\.dietTags\.map\(\(tag\) => formatDietIdentifier\(tag\)\)/);
   assert.match(view, /dinner: "🍲"/);
