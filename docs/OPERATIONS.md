@@ -1,5 +1,7 @@
 # Esercizio, rilascio e ripristino
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](OPERATIONS.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/OPERATIONS.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/OPERACIONES.md)
+
 ## Gestione operativa delle sessioni
 
 Entrare e uscire dal pannello è navigazione e non distrugge la sessione. Il comando **Esci** termina invece deliberatamente l’accesso del dispositivo.

@@ -1,5 +1,7 @@
 # Sviluppo e test
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](SVILUPPO_E_TEST.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/DEVELOPMENT_AND_TESTING.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/DESARROLLO_Y_PRUEBAS.md)
+
 ## Requisiti
 
 - Node.js `24.12.0` come indicato in `.nvmrc`;
@@ -88,4 +90,3 @@ Le lingue supportate sono italiano, inglese, francese, spagnolo e tedesco. Ogni 
 - Non committare URL contenenti token operativi.
 - Conservare backup e file diagnostici soltanto nelle cartelle ignorate da Git.
 - Preferire emulatori e fixture sintetiche per test distruttivi.
-

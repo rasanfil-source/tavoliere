@@ -1,5 +1,7 @@
 # Contribuire a Tutti a tavola
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](CONTRIBUTING.md) [![English](https://img.shields.io/badge/language-English-6b7280)](CONTRIBUTING.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](CONTRIBUTING.es.md)
+
 Grazie per l’interesse nel progetto. Prima di proporre una modifica, aprire una segnalazione o scrivere a `rasanfil@gmail.com` descrivendo il problema, il percorso per riprodurlo e il risultato atteso.
 
 ## Regole di lavoro

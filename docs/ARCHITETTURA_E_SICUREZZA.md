@@ -1,5 +1,7 @@
 # Architettura, autenticazione e sicurezza
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](ARCHITETTURA_E_SICUREZZA.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/ARCHITECTURE_AND_SECURITY.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/ARQUITECTURA_Y_SEGURIDAD.md)
+
 ## Obiettivi
 
 L’architettura privilegia semplicità operativa, persistenza delle sessioni, isolamento tra centri e compatibilità con Firebase Spark. L’applicazione è una PWA statica: la logica applicativa risiede nel browser e l’autorizzazione definitiva nelle regole Firestore.
@@ -85,4 +87,3 @@ Gli inviti amministrativi sono documenti temporanei con stato, scadenza e identi
 ## Limiti accettati
 
 Il piano Spark esclude funzioni server personalizzate. Alcune operazioni amministrative sono quindi transazioni Firestore avviate dal client e protette dalle regole. Le modifiche alle regole richiedono sempre test con emulatori e revisione del principio del minimo privilegio.
-

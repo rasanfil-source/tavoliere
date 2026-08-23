@@ -1,5 +1,7 @@
 # Sicurezza
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](SECURITY.md) [![English](https://img.shields.io/badge/language-English-6b7280)](SECURITY.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](SECURITY.es.md)
+
 ## Segnalare una vulnerabilità
 
 Non pubblicare dettagli sensibili in una issue aperta. Scrivere a [rasanfil@gmail.com](mailto:rasanfil@gmail.com) indicando:
@@ -20,4 +22,3 @@ Non inviare password, token attivi o dati personali. Se un segreto è già stato
 - Gli account amministrativi devono usare password uniche, email verificata e verifica in due passaggi quando disponibile.
 
 Per il modello completo vedere [Architettura, autenticazione e sicurezza](docs/ARCHITETTURA_E_SICUREZZA.md).
-

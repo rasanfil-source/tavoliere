@@ -1,5 +1,7 @@
 # Tutti a tavola
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](README.md) [![English](https://img.shields.io/badge/language-English-6b7280)](README.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](README.es.md)
+
 **Tutti a tavola** è il progetto della web app installabile **Oggi a tavola**, pensata per organizzare le prenotazioni dei pasti in una comunità residenziale.
 
 [Apri l’app](https://tavola-comune.web.app) · [Segnala un problema](mailto:rasanfil@gmail.com) · [Documentazione tecnica](docs/ARCHITETTURA_E_SICUREZZA.md)

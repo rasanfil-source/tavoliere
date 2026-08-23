@@ -1,5 +1,7 @@
 # Guida all’uso
 
+[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](GUIDA_ALL_USO.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/USER_GUIDE.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/GUIA_DE_USO.md)
+
 ## Installazione
 
 L’app può essere usata nel browser o installata come PWA.
@@ -50,4 +52,3 @@ I promemoria delle prenotazioni sono facoltativi, locali al dispositivo e inizia
 - **La sessione non viene ripristinata:** verificare che il browser non cancelli i dati del sito alla chiusura.
 - **Un link cucina o riepilogo non apre i dati:** chiedere all’amministratore un link operativo aggiornato, completo del codice centro.
 - **Un comando non è disponibile:** verificare il ruolo con cui è stato effettuato l’accesso.
-
