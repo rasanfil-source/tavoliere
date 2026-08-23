@@ -70,16 +70,17 @@ test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
   assert.match(html, /class="happyduck-contact" href="mailto:rasanfil@gmail\.com"[^>]*data-i18n-aria-label="project\.contact\.ariaLabel"/);
   assert.match(html, /class="happyduck-duck"[\s\S]*class="happyduck-name"[\s\S]*Happy[\s\S]*Duck[\s\S]*class="happyduck-action"/);
   assert.doesNotMatch(html, />\s*rasanfil@gmail\.com\s*</);
-  assert.match(html, /class="project-readme-footer"[\s\S]*data-i18n="project\.footer">Progetto Tutti a tavola 2026/);
+  assert.match(html, /class="project-readme-footer"[\s\S]*data-i18n="project\.footer">Tutti a tavola/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
   assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 42px/);
   assert.match(html, /happyduck-crest[\s\S]*happyduck-wing[\s\S]*happyduck-beak-shade[\s\S]*happyduck-highlight/);
   assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
 });
 
-test('Info mostra soltanto il marchio GitHub e il nome Tavoliere', () => {
+test('Info usa un solo nome progetto: Tutti a tavola', () => {
   const info = html.match(/id="project-info-title"[\s\S]*?<\/section>/)?.[0] || '';
-  assert.match(info, /class="github-mark"[\s\S]*data-i18n="project\.github\.label">Tavoliere/);
+  assert.match(info, /class="github-mark"[\s\S]*data-i18n="project\.github\.label">Tutti a tavola/);
+  assert.doesNotMatch(info, /Tavoliere/);
   assert.match(info, /data-i18n-aria-label="project\.github\.repositoryAriaLabel"/);
   assert.doesNotMatch(info, /data-i18n="project\.info\.more"|Per saperne|README del progetto/);
 });

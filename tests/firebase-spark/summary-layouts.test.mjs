@@ -233,6 +233,7 @@ test('la manutenzione usa righe uniformi, registro in dialogo e backup con avanz
   assert.match(app, /listAuditEvents\(\{[\s\S]*maximum: 20[\s\S]*renderFilteredAuditEvents/);
   assert.match(app, /adminExportButton\.disabled = true[\s\S]*adminExportSpinner\.hidden = false/);
   assert.match(appStyles, /\.admin-maintenance-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.admin-calendar-extension \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(appStyles, /\.admin-maintenance-action,[\s\S]*min-height: 44px/);
 });
 

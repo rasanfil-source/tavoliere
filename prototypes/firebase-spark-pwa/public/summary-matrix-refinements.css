@@ -2202,32 +2202,9 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 
 /* Manutenzione: scadenza sotto il titolo, azioni leggibili e centrate. */
 .admin-calendar-extension {
-  grid-template-columns: minmax(132px, 0.72fr) minmax(190px, 1.28fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding: 10px 12px;
-}
-
-.admin-calendar-extension > .section-title {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  justify-items: start;
-  gap: 4px;
-}
-
-.admin-calendar-extension > .section-title > h2,
-.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
-  margin: 0;
-}
-
-.admin-calendar-extension > .section-title > [data-admin-calendar-extension-status] {
-  color: var(--primary);
-  font-weight: 700;
-}
-
-.admin-calendar-extension > .admin-option-help {
-  grid-column: auto;
-  margin: 0;
+  padding: 16px;
 }
 
 .admin-audit-disclosure > summary {
@@ -2347,23 +2324,14 @@ html[data-interface-style="urban"] .week-matrix-row-today > button {
 
 @media (max-width: 620px) {
   .admin-calendar-extension {
-    grid-template-columns: minmax(108px, 0.62fr) minmax(0, 1.38fr);
-    align-items: start;
-    gap: 10px 12px;
-  }
-
-  .admin-calendar-extension > .section-title {
-    grid-row: 1 / span 2;
-  }
-
-  .admin-calendar-extension > .admin-option-help {
-    grid-column: 2;
-    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
   }
 
   .admin-calendar-extension [data-bootstrap-button] {
-    grid-column: 2;
-    grid-row: 2;
+    grid-column: auto;
+    grid-row: auto;
     justify-self: stretch;
   }
 
