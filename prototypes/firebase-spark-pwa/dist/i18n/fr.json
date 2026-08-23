@@ -207,7 +207,7 @@
   "admin.succession.completedTitle": "Transfert terminé",
   "admin.succession.completedMessage": "Vous êtes maintenant responsable du centre. L’adresse du responsable a été mise à jour avec votre compte et l’onglet Administrateur est disponible.",
   "admin.succession.outgoingCompletedTitle": "Transfert terminé",
-  "admin.succession.outgoingCompletedMessage": "Vous pouvez prévenir le nouvel administrateur que la passation est terminée. Quittez Oggi a tavola ! Vous pourrez vous reconnecter pour enregistrer les repas.",
+  "admin.succession.outgoingCompletedMessage": "Vous pouvez prévenir le nouvel administrateur que la passation est terminée. Quittez Oggi a tavola. Vous pourrez vous reconnecter pour enregistrer les repas.",
   "admin.succession.identityMismatch": "Ce compte n’est pas associé à la fonction. Déconnectez-vous et utilisez la même méthode que lors de l’acceptation : Google ou e-mail et mot de passe.",
   "admin.invitations.acceptedIdentify": "Vous avez choisi d’accepter. Choisissez comment vous identifier pour terminer.",
   "admin.invitations.copy": "Copier le lien d'invitation",

@@ -16,6 +16,13 @@ const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter,
   readFile(new URL('participant-data.js', projectRoot), 'utf8')
 ]);
 
+test('il nome Oggi a tavola non incorpora mai il punto esclamativo', async () => {
+  for (const language of ['it', 'en', 'fr', 'es', 'de']) {
+    const catalog = await readFile(new URL(`i18n/${language}.json`, projectRoot), 'utf8');
+    assert.doesNotMatch(catalog, /Oggi a tavola\s*!/);
+  }
+});
+
 test('il riepilogo amministrativo non richiede il vecchio indicatore visivo del calendario', () => {
   assert.doesNotMatch(html, /data-admin-overview-calendar/);
   assert.match(app, /if \(elements\.adminOverviewCalendar\) \{[\s\S]*elements\.adminOverviewCalendar\.textContent/);

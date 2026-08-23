@@ -105,7 +105,7 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /manifest\.webmanifest\?v=20260822c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260823c/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v426'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v427'/);
   assert.match(serviceWorker, /\/icons\/happyduck\.png\?v=20260823a/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);

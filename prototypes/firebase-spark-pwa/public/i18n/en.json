@@ -207,7 +207,7 @@
   "admin.succession.completedTitle": "Transfer completed",
   "admin.succession.completedMessage": "You are now the center manager. The manager email has been updated to your account and the Administrator tab is available.",
   "admin.succession.outgoingCompletedTitle": "Transfer completed",
-  "admin.succession.outgoingCompletedMessage": "You can let the new administrator know that the handover is complete. Exit Oggi a tavola! You can sign in again to register meals.",
+  "admin.succession.outgoingCompletedMessage": "You can let the new administrator know that the handover is complete. Exit Oggi a tavola. You can sign in again to register meals.",
   "admin.succession.identityMismatch": "This account is not linked to the role. Sign out and use the same method you chose when accepting the invitation: Google or email and password.",
   "admin.invitations.acceptedIdentify": "You chose to accept. Choose how to identify yourself to complete the process.",
   "admin.invitations.copy": "Copy invitation link",

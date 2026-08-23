@@ -207,7 +207,7 @@
   "admin.succession.completedTitle": "Passaggio completato",
   "admin.succession.completedMessage": "Ora sei il responsabile del centro. L’email del responsabile è stata aggiornata con il tuo account e la scheda Amministratore è disponibile.",
   "admin.succession.outgoingCompletedTitle": "Trasferimento completato",
-  "admin.succession.outgoingCompletedMessage": "Puoi avvisare il nuovo amministratore che il passaggio è avvenuto. Esci da Oggi a tavola! Potrai rientrare per la registrazione dei pasti.",
+  "admin.succession.outgoingCompletedMessage": "Puoi avvisare il nuovo amministratore che il passaggio è avvenuto. Esci da Oggi a tavola. Potrai rientrare per la registrazione dei pasti.",
   "admin.succession.identityMismatch": "Questo account non è associato all’incarico. Esci e usa lo stesso metodo scelto per accettare l’invito: Google oppure email e password.",
   "admin.invitations.acceptedIdentify": "Hai scelto di accettare. Scegli come identificarti per completare.",
   "admin.invitations.copy": "Copia link invito",
