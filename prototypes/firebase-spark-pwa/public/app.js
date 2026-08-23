@@ -101,7 +101,7 @@ const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPen
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260822b',
+  admin: './admin-center.js?v=20260823c',
   audit: './audit-log.js?v=20260822a',
   bootstrap: './bootstrap-demo.js?v=20260816h',
   daily: './daily-operations.js?v=20260817c',
@@ -2644,7 +2644,7 @@ function cancelAdminSuccessionRoleCheck() {
   state.adminSuccessionPollTimerId = 0;
 }
 
-function scheduleAdminSuccessionRoleCheck(delay = 8000) {
+function scheduleAdminSuccessionRoleCheck(delay = 2500) {
   cancelAdminSuccessionRoleCheck();
   if (state.mode !== 'admin' || state.adminRole !== 'ADMIN') return;
   const user = getCurrentUser();
@@ -2665,7 +2665,7 @@ function scheduleAdminSuccessionRoleCheck(delay = 8000) {
     } catch {
       // Un errore di rete temporaneo non deve interrompere l'attesa del passaggio.
     }
-    scheduleAdminSuccessionRoleCheck(12000);
+    scheduleAdminSuccessionRoleCheck(5000);
   }, delay);
 }
 
@@ -4391,10 +4391,22 @@ async function performOwnershipTransfer() {
   elements.adminTransferOwnership.disabled = true;
   elements.adminLeadershipStatus.textContent = 'Trasferisco la responsabilità...';
   try {
-    await transferCenterOwnership(successorUid, { revokePrevious });
-    elements.adminLeadershipStatus.textContent = revokePrevious
-      ? 'Responsabilità trasferita e precedente accesso revocato'
-      : 'Responsabilità trasferita; resti amministratore del centro';
+    const result = await transferCenterOwnership(successorUid, { revokePrevious });
+    state.adminInvitations = state.adminInvitations.map((invitation) => (
+      invitation.invitationId === result.invitationId
+        ? { ...invitation, status: 'TRANSFERRED', transferredTo: result.ownerUid }
+        : invitation
+    ));
+    elements.adminNavAccess.classList.remove('admin-nav-attention');
+    elements.adminNavAccess.removeAttribute('title');
+    elements.adminNavAccess.removeAttribute('aria-label');
+    elements.adminLeadershipStatus.textContent = t('admin.succession.outgoingCompletedTitle');
+    await showActionDialog({
+      title: t('admin.succession.outgoingCompletedTitle'),
+      message: t('admin.succession.outgoingCompletedMessage'),
+      confirmLabel: t('common.actions.exit'),
+      hideCancel: true
+    });
     if (revokePrevious) {
       await signOutCurrentUser();
     } else {
@@ -4656,6 +4668,8 @@ function renderAdminInvitationList() {
       ? t('admin.invitations.pending')
       : invitation.status === 'USED'
         ? t('admin.invitations.accepted')
+        : invitation.status === 'TRANSFERRED'
+          ? t('admin.invitations.transferred')
         : invitation.status === 'REJECTED'
           ? t('admin.invitations.rejected')
           : expired && invitation.status === 'ACTIVE'
@@ -4675,7 +4689,7 @@ function renderAdminInvitationList() {
     return `
       <article class="admin-invitation-row">
         <span><strong>${escapeHtml(targetLabel)}</strong><small>${escapeHtml(roleLabel)}</small></span>
-        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : invitation.status === 'USED' ? 'admin-invitation-accepted' : ''}">${escapeHtml(statusLabel)}</span>
+        <span class="admin-invitation-state ${active ? 'admin-invitation-active' : ['USED', 'TRANSFERRED'].includes(invitation.status) ? 'admin-invitation-accepted' : ''}">${escapeHtml(statusLabel)}</span>
         <span class="admin-invitation-dates">
           ${createdLabel ? `<time datetime="${escapeHtml(createdAt.toISOString())}">${escapeHtml(t('admin.invitations.sentOn', { date: createdLabel }))}</time>` : ''}
           ${active && expiryLabel ? `<small>${escapeHtml(t('admin.invitations.expiresOn', { date: expiryLabel }))}</small>` : ''}

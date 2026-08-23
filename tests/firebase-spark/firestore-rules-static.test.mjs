@@ -101,6 +101,8 @@ test('la successione mantiene sempre un responsabile e aggiorna i due ruoli insi
   assert.match(rules, /affectedKeys\(\)\.hasOnly\(\[[\s\S]*'ownerUid'[\s\S]*'administratorName'[\s\S]*'administratorSignature'[\s\S]*'adminEmail'[\s\S]*'administratorPasswordRequired'[\s\S]*'updatedAt'[\s\S]*\]\)/);
   assert.match(rules, /!existsAfter\([\s\S]*admins\/\$\(request\.auth\.uid\)/);
   assert.match(rules, /request\.resource\.data\.status == 'REVOKED'[\s\S]*massPermission == false[\s\S]*dailyOperationsPermission == false/);
+  assert.match(rules, /resource\.data\.status == 'USED'[\s\S]*request\.resource\.data\.status == 'TRANSFERRED'/);
+  assert.match(rules, /request\.resource\.data\.transferredTo == resource\.data\.consumedBy/);
 });
 
 test('public sessions are read only for participant reservations', () => {

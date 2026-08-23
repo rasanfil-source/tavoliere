@@ -624,7 +624,10 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   }
 
   const successorEmail = String(
-    successor.email || successorProfileSnapshot.data()?.email || ''
+    successorInvitation.acceptedEmail
+      || successor.email
+      || successorProfileSnapshot.data()?.email
+      || ''
   ).trim().toLowerCase();
   if (!successorEmail) {
     throw new Error('Il successore deve avere un indirizzo email autenticato');
@@ -668,6 +671,13 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     dailyOperationsPermission: true,
     updatedAt: now
   }, { merge: true });
+  batch.set(doc(db, ADMIN_INVITATION_COLLECTION, successorInvitationId), {
+    status: 'TRANSFERRED',
+    transferredBy: user.uid,
+    transferredTo: normalizedSuccessorUid,
+    transferredAt: now,
+    updatedAt: now
+  }, { merge: true });
   // adminProfiles e' soltanto un indice di navigazione. I permessi effettivi
   // dipendono sempre dalla membership del centro, per supportare più centri
   // senza riattivare accidentalmente un ruolo revocato.
@@ -700,7 +710,9 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     centerId,
     previousOwnerUid: user.uid,
     ownerUid: normalizedSuccessorUid,
-    adminEmail: successorEmail
+    adminEmail: successorEmail,
+    administratorName: String(successorParticipant.displayName || '').trim(),
+    invitationId: successorInvitationId
   };
 }
 
@@ -898,6 +910,7 @@ async function claimRoleInvitation(invitationId, invitation, user) {
   batch.set(doc(db, ADMIN_INVITATION_COLLECTION, invitationId), {
     status: 'USED',
     consumedBy: user.uid,
+    acceptedEmail: String(user.email || '').trim(),
     consumedAt: now,
     updatedAt: now
   }, { merge: true });

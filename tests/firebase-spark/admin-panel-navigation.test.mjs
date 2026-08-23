@@ -479,6 +479,9 @@ test('il cambio responsabile usa un invito consegnabile e aggiorna la Persona as
   assert.match(adminCenter, /administratorSignature: String\(successorParticipant\.signature/);
   assert.match(adminCenter, /adminEmail: successorEmail/);
   assert.match(adminCenter, /administratorPasswordRequired: successor\.administratorPasswordRequired === true/);
+  assert.match(adminCenter, /successorInvitation\.acceptedEmail[\s\S]*successor\.email/);
+  assert.match(adminCenter, /administratorName: String\(successorParticipant\.displayName/);
+  assert.match(adminCenter, /status: 'TRANSFERRED'[\s\S]*transferredTo: normalizedSuccessorUid/);
 });
 
 test('l’accettazione dell’invito accende una spia senza listener permanente', () => {
@@ -578,6 +581,8 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(app, /const revokePrevious = true/);
   assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
   assert.match(app, /if \(revokePrevious\) \{[\s\S]*await signOutCurrentUser\(\)/);
+  assert.match(app, /admin\.succession\.outgoingCompletedMessage[\s\S]*await signOutCurrentUser\(\)/);
+  assert.match(app, /classList\.remove\('admin-nav-attention'\)/);
   assert.match(transfer, /const revokePrevious = options\?\.revokePrevious === true/);
   assert.match(transfer, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
   assert.match(transfer, /batch\.set\(currentProfileRef,[\s\S]*status: 'REVOKED'/);

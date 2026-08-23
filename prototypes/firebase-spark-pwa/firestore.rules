@@ -729,8 +729,7 @@ service cloud.firestore {
         && request.resource.data.invitationAcceptedAt == request.time
         && request.resource.data.get('administratorPasswordRequired', false)
           == (request.auth.token.firebase.sign_in_provider == 'password')
-        && request.resource.data.get('passwordSetupRequired', false)
-          == (request.auth.token.firebase.sign_in_provider == 'password')
+        && request.resource.data.get('passwordSetupRequired', false) == false
         && request.resource.data.participantId is string
         && (
           request.resource.data.participantId == ''
@@ -858,10 +857,14 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.consumedAt == request.time
           && request.resource.data.updatedAt == request.time
+          && (!request.resource.data.keys().hasAny(['acceptedEmail']) || (
+            request.resource.data.acceptedEmail is string
+            && request.resource.data.acceptedEmail == request.auth.token.email
+          ))
           && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.role == resource.data.role
           && getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)/admins/$(request.auth.uid)).data.participantId == resource.data.participantId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status', 'consumedBy', 'consumedAt', 'updatedAt'
+            'status', 'consumedBy', 'acceptedEmail', 'consumedAt', 'updatedAt'
           ])
         || canManageAdministrativeRoles(resource.data.centerId)
           && resource.data.status == 'ACTIVE'
@@ -881,6 +884,18 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status', 'rejectedBy', 'rejectedAt', 'updatedAt'
+          ])
+        || isCoordinatedOwnershipTransfer(resource.data.centerId)
+          && resource.data.role == 'ADMIN'
+          && resource.data.status == 'USED'
+          && resource.data.consumedBy == getAfter(/databases/$(database)/documents/centers/$(resource.data.centerId)).data.ownerUid
+          && request.resource.data.status == 'TRANSFERRED'
+          && request.resource.data.transferredBy == request.auth.uid
+          && request.resource.data.transferredTo == resource.data.consumedBy
+          && request.resource.data.transferredAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'transferredBy', 'transferredTo', 'transferredAt', 'updatedAt'
           ])
         ;
       allow delete: if canManageAdministrativeRoles(resource.data.centerId) || isBootstrapOwner();

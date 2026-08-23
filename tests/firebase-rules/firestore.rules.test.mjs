@@ -467,6 +467,7 @@ test('il responsabile invita un amministratore associandolo alla Persona scelta'
   batch.set(invitedDb.doc(`adminInvitations/${invitationId}`), {
     status: 'USED',
     consumedBy: uid,
+    acceptedEmail: 'director@example.test',
     consumedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
@@ -482,7 +483,7 @@ test('il responsabile invita un amministratore associandolo alla Persona scelta'
     massPermission: true,
     dailyOperationsPermission: true,
     administratorPasswordRequired: true,
-    passwordSetupRequired: true,
+    passwordSetupRequired: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -499,10 +500,10 @@ test('il responsabile invita un amministratore associandolo alla Persona scelta'
   });
   await assertSucceeds(batch.commit());
 
-  await assertSucceeds(invitedDb.doc(adminPath(uid)).update({
-    passwordSetupRequired: false,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }));
+  const acceptedInvitation = (await invitedDb.doc(`adminInvitations/${invitationId}`).get()).data();
+  if (acceptedInvitation.acceptedEmail !== 'director@example.test') {
+    throw new Error('L email autenticata non e stata conservata nell invito accettato');
+  }
 });
 
 test('il candidato può rifiutare l invito senza diventare amministratore', async () => {
@@ -577,7 +578,7 @@ test('un profilo di un centro precedente accetta un nuovo invito amministratore'
     massPermission: true,
     dailyOperationsPermission: true,
     administratorPasswordRequired: true,
-    passwordSetupRequired: true,
+    passwordSetupRequired: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -656,7 +657,7 @@ test('un amministratore può accettare un nuovo centro senza perdere quello già
     massPermission: true,
     dailyOperationsPermission: true,
     administratorPasswordRequired: true,
-    passwordSetupRequired: true,
+    passwordSetupRequired: false,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -830,6 +831,22 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
     dailyOperationsPermission: false,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
+  batch.set(ownerDb.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`), {
+    status: 'TRANSFERRED',
+    transferredBy: ADMIN_UID,
+    transferredTo: CENTER_ADMIN_UID,
+    transferredAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(ownerDb.doc(`${centerPath()}/auditEvents/transfer_test`), {
+    centerId: CENTER_ID,
+    actorUid: ADMIN_UID,
+    action: 'TRANSFER_OWNERSHIP',
+    targetType: 'ADMIN',
+    targetId: CENTER_ADMIN_UID,
+    summary: 'Responsabilita trasferita al nuovo amministratore',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
   await assertSucceeds(batch.commit());
 
   const previousOwnerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
@@ -855,11 +872,14 @@ test('il precedente responsabile può revocarsi nella stessa transazione di succ
     const oldMembership = (await db.doc(adminPath(ADMIN_UID)).get()).data();
     const nextMembership = (await db.doc(adminPath(CENTER_ADMIN_UID)).get()).data();
     const center = (await db.doc(centerPath()).get()).data();
+    const invitation = (await db.doc(`adminInvitations/${ACCEPTED_ADMIN_INVITATION_ID}`).get()).data();
     if (oldMembership.status !== 'REVOKED'
         || oldMembership.massPermission !== false
         || oldMembership.dailyOperationsPermission !== false
         || nextMembership.role !== 'OWNER'
-        || center.ownerUid !== CENTER_ADMIN_UID) {
+        || center.ownerUid !== CENTER_ADMIN_UID
+        || invitation.status !== 'TRANSFERRED'
+        || invitation.transferredTo !== CENTER_ADMIN_UID) {
       throw new Error('Il precedente responsabile conserva ancora accesso al centro');
     }
   });
@@ -2393,6 +2413,7 @@ async function seedAcceptedAdministratorInvitation() {
       status: 'USED',
       createdBy: ADMIN_UID,
       consumedBy: CENTER_ADMIN_UID,
+      acceptedEmail: 'admin@example.test',
       expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2027-01-01T00:00:00Z')),
       createdAt: acceptedAt,
       consumedAt: acceptedAt,
