@@ -17,6 +17,11 @@ const index = readFileSync(
   'utf8'
 );
 
+const firebaseConfig = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/firebase.json', import.meta.url),
+  'utf8'
+);
+
 const appManifest = JSON.parse(readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/manifest.webmanifest', import.meta.url),
   'utf8'
@@ -105,7 +110,7 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /manifest\.webmanifest\?v=20260822c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260823e/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v436'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v437'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
@@ -134,4 +139,14 @@ test('a newly activated service worker reloads the page once', () => {
   assert.match(app, /reloadingForUpdate/);
   assert.match(app, /register\('\/sw\.js', \{ updateViaCache: 'none' \}\)/);
   assert.match(app, /registration\.update\(\)/);
+});
+
+test('refresh di mese e settimana non riusa una vecchia shell HTML', () => {
+  assert.match(
+    firebaseConfig,
+    /"source": "\/"[\s\S]*?"Cache-Control"[\s\S]*?"no-cache, max-age=0, must-revalidate"/
+  );
+  const networkFirst = serviceWorker.match(/async function networkFirst\([\s\S]*?\n}/)?.[0] || '';
+  assert.match(networkFirst, /fetch\(request, \{ cache: 'no-store' \}\)/);
+  assert.match(networkFirst, /cache\.match\(fallbackPath \|\| request/);
 });

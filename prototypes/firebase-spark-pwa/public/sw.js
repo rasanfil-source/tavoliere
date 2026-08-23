@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v436';
+const CACHE_NAME = CACHE_PREFIX + 'v437';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -166,7 +166,13 @@ async function versionedCacheFirst(request, fallbackPath) {
 async function networkFirst(request, fallbackPath) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await fetch(request);
+    // Le viste dell'app condividono la stessa shell HTML e differiscono solo
+    // nei parametri (?view=week, ?view=summary, ...). Il normale HTTP cache
+    // del browser poteva quindi restituire per un'ora una shell precedente,
+    // mentre il passaggio a un altro parametro caricava quella nuova. La
+    // Cache Storage resta il ripiego offline; online la navigazione deve
+    // sempre riconvalidare la shell pubblicata.
+    const response = await fetch(request, { cache: 'no-store' });
     if (response && (response.ok || response.type === 'opaque')) {
       // Gli URL di navigazione possono contenere centro e token di accesso.
       // Una chiave canonica conserva una sola copia della struttura applicativa.
