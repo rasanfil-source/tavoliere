@@ -2447,6 +2447,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   state.adminNeedsInitialization = !isPlatformOwner && access.needsInitialization === true;
   state.adminRole = isAdmin ? access.role : '';
   state.adminAuthUid = isAdmin || isPlatformOwner ? user.uid : '';
+  ensureAuthorizedAdminRoute();
   state.adminMassPermission = isAdmin && access.massPermission === true;
   state.adminCanManageMass = isAdmin && access.canManageMass === true;
   state.adminCanManageDailyOperations = isAdmin && hasCurrentCapability(CAPABILITIES.MANAGE_DAILY_OPERATIONS);
@@ -6592,6 +6593,33 @@ function setResidentSettingsAccessBoundary(enabled) {
   if (enabled) url.searchParams.set('access', RESIDENT_SETTINGS_ACCESS);
   else if (url.searchParams.get('access') === RESIDENT_SETTINGS_ACCESS) url.searchParams.delete('access');
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+}
+
+function ensureAuthorizedAdminRoute() {
+  // Firebase Auth persists the administrator identity, while the URL persists
+  // the surface that must be rebuilt after a refresh.  Keep those two states
+  // aligned only after the backend has confirmed an administrative role: a
+  // resident route must never acquire privileges merely from a stale Firebase
+  // session, but a visible full panel must always reload as view=admin.
+  if (state.mode !== 'admin' || !state.adminRole || state.residentSettingsMode) return;
+  const url = new URL(window.location.href);
+  let changed = false;
+  if (url.searchParams.get('view') !== 'admin') {
+    url.searchParams.set('view', 'admin');
+    changed = true;
+  }
+  if (url.searchParams.has('access')) {
+    url.searchParams.delete('access');
+    changed = true;
+  }
+  const centerId = getActiveCenterId();
+  if (centerId && url.searchParams.get('c') !== centerId) {
+    url.searchParams.set('c', centerId);
+    changed = true;
+  }
+  if (changed) {
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }
 }
 
 function updateControlPanelEntryHref() {

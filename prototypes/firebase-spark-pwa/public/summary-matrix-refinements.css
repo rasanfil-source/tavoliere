@@ -1353,6 +1353,15 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   text-align: left;
 }
 
+.summary-layout-classic .summary-matrix-label.summary-matrix-people-label {
+  text-align: center;
+}
+
+.summary-layout-classic .summary-matrix-people-icon {
+  display: grid;
+  margin-inline: auto;
+}
+
 .summary-layout-classic .summary-matrix td {
   background: var(--surface);
   text-align: center;
