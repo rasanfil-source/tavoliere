@@ -1,6 +1,6 @@
-import { normalizeDietCode } from './diet-utils.mjs?v=20260823a';
+import { normalizeDietCode } from './diet-utils.mjs?v=20260823b';
 
-export const MAX_KITCHEN_DIET_LEGEND_ENTRIES = 12;
+export const MAX_KITCHEN_DIET_LEGEND_ENTRIES = 999;
 export const MAX_KITCHEN_DIET_LABEL_LENGTH = 32;
 
 export function normalizeKitchenDietLabel(value) {

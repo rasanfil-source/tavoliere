@@ -29,8 +29,8 @@ import {
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
 import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260823a';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823a';
+import { normalizeDietTags } from './diet-utils.mjs?v=20260823b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823b';
 import {
   normalizeResidentSignature,
   validateParticipantProfile

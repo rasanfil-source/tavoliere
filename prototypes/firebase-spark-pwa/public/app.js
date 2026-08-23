@@ -51,13 +51,13 @@ import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260823a';
+} from './diet-utils.mjs?v=20260823b';
 import {
   isValidKitchenDietLabel,
   kitchenDietLabelForCode,
   normalizeKitchenDietLabel,
   updateKitchenDietLegendEntry
-} from './diet-legend.mjs?v=20260823a';
+} from './diet-legend.mjs?v=20260823b';
 import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
@@ -88,7 +88,7 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823d';
+} from './summary-matrix-view.js?v=20260823e';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint

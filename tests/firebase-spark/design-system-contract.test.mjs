@@ -34,6 +34,17 @@ test('i colori testuali principali rispettano il contrasto WCAG AA', () => {
   assert.ok(contrastRatio('#ffffff', colors.primary) >= 4.5);
 });
 
+test('i badge dieta usano una palette stabile con contrasto WCAG AA', () => {
+  const tones = [...summaryStyles.matchAll(/\.diet-code-tone-(\d+) \{ color: (#[0-9a-f]{6}); background: (#[0-9a-f]{6}); \}/gi)];
+  assert.equal(tones.length, 8);
+  tones.forEach(([, tone, foreground, background]) => {
+    assert.ok(
+      contrastRatio(foreground, background) >= 4.5,
+      `badge dieta ${tone} non raggiunge 4.5:1`
+    );
+  });
+});
+
 test('focus e movimento ridotto fanno parte del sistema grafico', () => {
   assert.match(styles, /:where\(button, a, input, select, textarea\):focus-visible/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);

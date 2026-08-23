@@ -110,7 +110,8 @@ test('Originale e Internazionale aprono i contatti dal nome del commensale', () 
 
 test('le diete operative mostrano solo identificatore e molteplicità', () => {
   assert.match(view, /function formatDietIdentifier\(tag\)/);
-  assert.match(view, /count > 1 \? `\$\{identifier\} \(\$\{count\}\)` : identifier/);
+  assert.match(view, /diet-code-count[^`]*× \$\{count\}/);
+  assert.match(view, /diet-code-tone-\$\{getDietBadgeTone\(diet\.tag\)\}/);
   assert.match(view, /participant\.dietTags\.map\(\(tag\) => formatDietIdentifier\(tag\)\)/);
   assert.match(view, /dinner: "🍲"/);
 });
@@ -180,10 +181,13 @@ test('Originale ingrandisce i codici dieta e li adatta alle righe facoltative', 
 });
 
 test('Cucina Originale mostra una legenda dieta compatta prima delle note', () => {
-  assert.match(view, /renderKitchenDietLegend\(screen, dietLegend\)[\s\S]*renderNotes\(screen\)/);
+  assert.equal((view.match(/renderKitchenDietLegend\(screen, dietLegend\)[\s\S]{0,100}renderNotes\(screen\)/g) || []).length, 2);
   assert.match(view, /visibleCodes[\s\S]*specialDiets[\s\S]*sickDiets/);
-  assert.match(styles, /summary-layout-kitchen\.summary-layout-classic \.kitchen-diet-legend/);
+  assert.match(styles, /summary-layout-kitchen \.kitchen-diet-legend/);
   assert.match(styles, /\.kitchen-diet-legend ul \{[\s\S]*flex-wrap: wrap/);
+  assert.match(view, /renderInternationalScreen\(screen, \{[^}]*dietLegend = \[\]/);
+  assert.match(view, /formatDietLabel\(normalizeDietCode\(tag\), t\)/);
+  assert.match(styles, /\.diet-code-tone-1 \{ color: #713f12; background: #fef3c7; \}/);
 });
 
 test('Internazionale e Futura precisano che la colazione e di domani', () => {

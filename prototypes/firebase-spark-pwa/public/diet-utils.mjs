@@ -1,9 +1,9 @@
 const DIET_DEFINITIONS = Object.freeze([
   { value: 'STANDARD', label: 'Nessuna dieta' },
-  { value: '1', label: 'Dieta 1' },
-  { value: '2', label: 'Dieta 2' },
-  { value: '3', label: 'Dieta 3' },
-  { value: '4', label: 'Dieta 4' },
+  { value: '1', label: 'D1' },
+  { value: '2', label: 'D2' },
+  { value: '3', label: 'D3' },
+  { value: '4', label: 'D4' },
   { value: 'BIANCO', label: 'In bianco' },
   { value: 'CUSTOM', label: 'Altro numero...' },
   { value: 'DIAB', label: 'Diabete' },
@@ -61,7 +61,7 @@ export function resolveDietSelection(selectedValue, customValue) {
 export function formatDietLabel(value, translate) {
   const normalized = normalizeDietCode(value);
   if (/^\d+$/.test(normalized)) {
-    return normalized;
+    return `D${normalized}`;
   }
   const catalogCode = normalized === 'DIABETE' ? 'DIAB' : normalized;
   const key = `diet.option.${catalogCode}`;
@@ -70,4 +70,20 @@ export function formatDietLabel(value, translate) {
     if (translated && translated !== key) return translated;
   }
   return DIET_LABELS[normalized] || normalized;
+}
+
+const NAMED_DIET_TONES = Object.freeze({
+  BIANCO: 1,
+  DIAB: 2,
+  DIABETE: 2,
+  IPO: 3,
+  CARDIO: 4
+});
+
+export function getDietBadgeTone(value) {
+  const normalized = normalizeDietCode(value);
+  if (/^\d+$/.test(normalized)) {
+    return ((Number(normalized) - 1) % 8) + 1;
+  }
+  return NAMED_DIET_TONES[normalized] || 8;
 }

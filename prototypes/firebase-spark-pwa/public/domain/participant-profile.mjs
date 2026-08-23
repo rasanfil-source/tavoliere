@@ -1,4 +1,4 @@
-import { normalizeDietTags } from '../diet-utils.mjs?v=20260823a';
+import { normalizeDietTags } from '../diet-utils.mjs?v=20260823b';
 
 export function normalizeResidentSignature(value) {
   return String(value || '').trim().replace(/\s+/g, '').toUpperCase();

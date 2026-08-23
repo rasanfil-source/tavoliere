@@ -1,7 +1,7 @@
 import { t, getLocale } from "./i18n/i18n.mjs?v=20260823b";
 import { escapeHtml } from "./html-utils.js?v=20260816g";
-import { formatDietLabel, normalizeDietCode } from "./diet-utils.mjs?v=20260823a";
-import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823a";
+import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20260823b";
+import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823b";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
@@ -257,6 +257,7 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", sh
           ${kitchen ? "" : renderClassicNamesRow(screen, residentLabel, showContactHint)}
         </tbody>
       </table>
+      ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
       ${kitchen ? renderNotes(screen) : ""}
     </section>
   `;
@@ -424,10 +425,10 @@ function renderDietCell(column) {
 function renderKitchenDietCell(column) {
   if (column.specialDiets.participantCount === 0)
     return renderEmpty(t("summary.noDiet"));
-  return renderDietItems(column.specialDiets.items, " summary-matrix-kitchen-diets");
+  return renderDietItems(column.specialDiets.items, " summary-matrix-kitchen-diets", { alwaysShowCount: true });
 }
 
-function renderDietItems(items, extraClass = "") {
+function renderDietItems(items, extraClass = "", { alwaysShowCount = false } = {}) {
   const sorted = [...items].sort((left, right) =>
     formatDietIdentifier(left.tag).localeCompare(
       formatDietIdentifier(right.tag),
@@ -438,14 +439,15 @@ function renderDietItems(items, extraClass = "") {
   return `<ul class="summary-matrix-diets${extraClass}">${sorted.map((diet) => {
     const identifier = formatDietIdentifier(diet.tag);
     const count = Math.max(0, Math.floor(Number(diet.count) || 0));
-    const label = count > 1 ? `${identifier} (${count})` : identifier;
-    return `<li>${escapeHtml(label)}</li>`;
+    const countLabel = alwaysShowCount || count > 1
+      ? `<span class="diet-code-count">× ${count}</span>`
+      : "";
+    return `<li><span class="diet-code-badge diet-code-tone-${getDietBadgeTone(diet.tag)}">${escapeHtml(identifier)}</span>${countLabel}</li>`;
   }).join("")}</ul>`;
 }
 
 function formatDietIdentifier(tag) {
-  const value = normalizeDietCode(tag);
-  return /^\d+$/.test(value) ? value : formatDietLabel(value, t);
+  return formatDietLabel(normalizeDietCode(tag), t);
 }
 
 function renderNamesCell(column, { compactActions = false, residentLabel = "name" } = {}) {
@@ -498,7 +500,7 @@ function normalizePhone(value) {
   return /^[+\d][\d\s()./-]{5,}$/.test(phone) ? phone : "";
 }
 
-function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel = "name", showContactHint = true }) {
+function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel = "name", showContactHint = true, dietLegend = [] }) {
   const prefix = kitchen ? "kitchen" : "summary";
   const isActive = screen.index === activeIndex;
   const densityClass = hasSpecialOperationalContent(screen)
@@ -597,7 +599,7 @@ function renderKitchenDietLegend(screen, legend) {
   return `
     <section class="kitchen-diet-legend" aria-label="${escapeHtml(t("kitchen.dietLegend.title"))}">
       <h3>${escapeHtml(t("kitchen.dietLegend.title"))}</h3>
-      <ul>${visibleEntries.map((entry) => `<li><strong>${escapeHtml(entry.code)}</strong><span aria-hidden="true">=</span><span>${escapeHtml(entry.label)}</span></li>`).join("")}</ul>
+      <ul>${visibleEntries.map((entry) => `<li><strong class="diet-code-badge diet-code-tone-${getDietBadgeTone(entry.code)}">${escapeHtml(formatDietIdentifier(entry.code))}</strong><span aria-hidden="true">=</span><span>${escapeHtml(entry.label)}</span></li>`).join("")}</ul>
     </section>
   `;
 }
