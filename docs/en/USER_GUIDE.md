@@ -1,6 +1,6 @@
 # User guide
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![English](https://img.shields.io/badge/language-English-16615a)](USER_GUIDE.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](../es/GUIA_DE_USO.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](USER_GUIDE.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](../es/GUIA_DE_USO.md)
 
 ## Installation
 
@@ -23,11 +23,11 @@ The **Exit** command deliberately ends the session. Entering and leaving the con
 
 ## Deputy administrator
 
-A deputy signs in with their personal code and the administrators password. They can use delegated functions, including people management and viewing, copying, opening and sharing operational links. They do not automatically acquire functions reserved for the centre owner.
+A deputy signs in with their personal code and the administrators password. They can use delegated functions, including people management and viewing, copying, opening and sharing operational links. They do not automatically acquire functions reserved for the administrator.
 
-## Administrator and centre owner
+## Administrator
 
-Strong sign-in uses Google or a verified email address and password. Depending on the role, the control panel manages:
+The centre’s sole administrator signs in with Google or a verified email address and password. From the control panel, the administrator manages:
 
 - centre configuration and identity;
 - people and operational roles;
@@ -36,9 +36,9 @@ Strong sign-in uses Google or a verified email address and password. Depending o
 - calendar, activity log and backup;
 - administrator invitations and transfer of ownership.
 
-Inviting a new administrator does not transfer ownership immediately. The person must accept and authenticate; the current owner then completes the transfer using the explicit confirmation provided by the interface.
+Inviting a new administrator does not transfer the appointment immediately. The person must accept and authenticate; the current administrator then completes the transfer using the explicit confirmation provided by the interface.
 
-In **Maintenance > Security archive**, the owner can download a complete JSON copy. **Upload** restores only the configuration of the same centre: the app previews the copy, requires typed confirmation and first downloads the current state. People, reservations, roles, passwords, links and activity history remain unchanged.
+In **Maintenance > Security archive**, the administrator can download a complete JSON copy. **Upload** restores only the configuration of the same centre: the app previews the copy, requires typed confirmation and first downloads the current state. People, reservations, roles, passwords, links and activity history remain unchanged.
 
 ## Kitchen
 

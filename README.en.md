@@ -1,6 +1,6 @@
 # Tutti a tavola
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](README.md) [![English](https://img.shields.io/badge/language-English-16615a)](README.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](README.es.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](README.es.md)
 
 **Tutti a tavola** is the project behind **Oggi a tavola**, an installable web app designed to organise meal reservations in a residential community.
 
@@ -23,9 +23,10 @@ The app supports multiple centres, while keeping every item of data and every se
 | --- | --- | --- |
 | Resident | Personal code and common password | Reservations and device preferences |
 | Deputy administrator | Personal code and administrators password | People, operational links and delegated functions |
-| Administrator | Google or verified email and password | Configuration and operational management |
-| Centre owner | Strong administrator authentication | Full control and transfer of ownership |
+| Administrator | Google or verified email and password | Full control, configuration, operational management and transfer of the appointment |
 | Kitchen | Centre operational link | Kitchen data without the full resident directory |
+
+Each centre has one administrator. Transferring the appointment replaces the current administrator with the new one; it does not create a separate “centre owner” profile.
 
 The liturgical role is independent of administrative roles and may also be assigned to a resident.
 

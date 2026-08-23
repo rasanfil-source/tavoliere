@@ -1,6 +1,6 @@
 # Seguridad
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](SECURITY.md) [![English](https://img.shields.io/badge/language-English-6b7280)](SECURITY.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-16615a)](SECURITY.es.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](SECURITY.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](SECURITY.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](SECURITY.es.md)
 
 ## Comunicar una vulnerabilidad
 

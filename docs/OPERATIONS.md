@@ -1,6 +1,6 @@
 # Esercizio, rilascio e ripristino
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](OPERATIONS.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/OPERATIONS.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/OPERACIONES.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](OPERATIONS.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](en/OPERATIONS.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](es/OPERACIONES.md)
 
 ## Gestione operativa delle sessioni
 
@@ -48,7 +48,7 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run release:verify"
 
 ## Backup
 
-Dal pannello **Manutenzione** il responsabile può scaricare un backup JSON completo del centro. Il file contiene dati personali e operativi:
+Dal pannello **Manutenzione** l’amministratore può scaricare un backup JSON completo del centro. Il file contiene dati personali e operativi:
 
 - conservarlo cifrato o in uno spazio ad accesso ristretto;
 - non inviarlo per posta elettronica non protetta;

@@ -1,6 +1,6 @@
 # Guía de uso
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![English](https://img.shields.io/badge/language-English-6b7280)](../en/USER_GUIDE.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-16615a)](GUIA_DE_USO.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](../en/USER_GUIDE.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](GUIA_DE_USO.md)
 
 ## Instalación
 
@@ -23,11 +23,11 @@ El comando **Salir** finaliza deliberadamente la sesión; entrar y salir del pan
 
 ## Viceadministrador
 
-El viceadministrador accede con su código personal y la contraseña de administradores. Puede utilizar las funciones delegadas, incluida la gestión de personas y la consulta, copia, apertura y distribución de enlaces operativos. No adquiere automáticamente las funciones reservadas al responsable del centro.
+El viceadministrador accede con su código personal y la contraseña de administradores. Puede utilizar las funciones delegadas, incluida la gestión de personas y la consulta, copia, apertura y distribución de enlaces operativos. No adquiere automáticamente las funciones reservadas al administrador.
 
-## Administrador y responsable
+## Administrador
 
-El acceso fuerte se realiza con Google o con un correo verificado y contraseña. Según el rol, desde el panel se gestionan:
+El único administrador del centro accede con Google o con un correo verificado y contraseña. Desde el panel gestiona:
 
 - configuración e identidad del centro;
 - personas y roles operativos;
@@ -36,9 +36,9 @@ El acceso fuerte se realiza con Google o con un correo verificado y contraseña.
 - calendario, registro de actividad y copia de seguridad;
 - invitaciones administrativas y transferencia de responsabilidad.
 
-Invitar a un nuevo administrador no transfiere inmediatamente la responsabilidad. La persona debe aceptar y autenticarse; el responsable actual completa después la transferencia mediante la confirmación explícita prevista por la interfaz.
+Invitar a un nuevo administrador no transfiere inmediatamente el cargo. La persona debe aceptar y autenticarse; el administrador actual completa después el traspaso mediante la confirmación explícita prevista por la interfaz.
 
-En **Mantenimiento > Archivo de seguridad**, el responsable puede descargar una copia JSON completa. **Cargar** restaura únicamente la configuración del mismo centro: la aplicación muestra un resumen, exige una confirmación escrita y descarga primero el estado actual. Las personas, reservas, roles, contraseñas, enlaces y el registro de actividad permanecen sin cambios.
+En **Mantenimiento > Archivo de seguridad**, el administrador puede descargar una copia JSON completa. **Cargar** restaura únicamente la configuración del mismo centro: la aplicación muestra un resumen, exige una confirmación escrita y descarga primero el estado actual. Las personas, reservas, roles, contraseñas, enlaces y el registro de actividad permanecen sin cambios.
 
 ## Cocina
 

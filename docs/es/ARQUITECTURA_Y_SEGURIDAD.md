@@ -1,6 +1,6 @@
 # Arquitectura, autenticación y seguridad
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](../ARCHITETTURA_E_SICUREZZA.md) [![English](https://img.shields.io/badge/language-English-6b7280)](../en/ARCHITECTURE_AND_SECURITY.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-16615a)](ARQUITECTURA_Y_SEGURIDAD.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../ARCHITETTURA_E_SICUREZZA.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](../en/ARCHITECTURE_AND_SECURITY.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](ARQUITECTURA_Y_SEGURIDAD.md)
 
 ## Objetivos
 
@@ -47,8 +47,8 @@ Principios invariantes:
 
 La matriz canónica está en `public/role-policy.mjs`.
 
-- `OWNER`: control completo del centro y transferencia de responsabilidad.
-- `ADMIN`: configuración y operatividad completas, excepto la transferencia reservada al responsable.
+- `OWNER`: rol técnico del administrador actual, con control completo y facultad para traspasar el cargo.
+- `ADMIN`: estado técnico del sucesor autenticado durante el traspaso, con operatividad administrativa pero sin facultad para completarlo.
 - `MANAGER`: panel operativo restringido, personas, adaptaciones, operaciones diarias y lectura de enlaces operativos.
 - `RESIDENT`: reservas y preferencias del dispositivo.
 
@@ -71,9 +71,9 @@ El modelo se centra en `centers/{centerId}`. En cada centro se separan:
 - sesiones y tokens de acceso;
 - registro de actividad y ajustes operativos.
 
-Las invitaciones administrativas son documentos temporales con estado, caducidad e identidad que los ha consumido. Una transferencia debe dejar siempre un responsable activo y requiere confirmación explícita.
+Las invitaciones administrativas son documentos temporales con estado, caducidad e identidad que los ha consumido. Un traspaso debe dejar siempre un administrador activo y requiere confirmación explícita.
 
-Existe un único flujo canónico: el responsable crea una invitación vinculada a una Persona; el destinatario elige explícitamente **Aceptar** o **Rechazar**; solo después se identifica con Google o con correo y contraseña; la aceptación cambia la invitación de `ACTIVE` a `USED`; por último, el responsable confirma el traspaso, que actualiza de forma atómica el centro, los dos roles, la invitación y el registro de actividad. Abrir un método de autenticación nunca equivale a aceptar el encargo.
+Existe un único flujo canónico: el administrador actual crea una invitación vinculada a una Persona; el destinatario elige explícitamente **Aceptar** o **Rechazar**; solo después se identifica con Google o con correo y contraseña; la aceptación cambia la invitación de `ACTIVE` a `USED`; por último, el administrador actual confirma el traspaso, que actualiza de forma atómica el centro, los dos roles, la invitación y el registro de actividad. Abrir un método de autenticación nunca equivale a aceptar el encargo.
 
 Los viceadministradores no usan invitaciones administrativas de Firebase: su acceso deriva exclusivamente de sigla, contraseña de administradores, rol de la Persona y `viceSessions`. La compatibilidad con la antigua solicitud de sustitución de contraseña temporal queda limitada a la lectura de posibles registros históricos; ningún flujo actual puede crear uno nuevo.
 

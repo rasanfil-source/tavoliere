@@ -1,6 +1,6 @@
 # Tutti a tavola
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](README.md) [![English](https://img.shields.io/badge/language-English-6b7280)](README.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-16615a)](README.es.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](README.es.md)
 
 **Tutti a tavola** es el proyecto de **Oggi a tavola**, una aplicación web instalable pensada para organizar las reservas de comidas en una comunidad residencial.
 
@@ -23,9 +23,10 @@ La aplicación está diseñada para varios centros, pero cada dato y cada sesió
 | --- | --- | --- |
 | Residente | Código personal y contraseña común | Reservas y preferencias del dispositivo |
 | Viceadministrador | Código personal y contraseña de administradores | Personas, enlaces operativos y funciones delegadas |
-| Administrador | Google o correo verificado y contraseña | Configuración y gestión operativa |
-| Responsable del centro | Autenticación administrativa fuerte | Control completo y transferencia de responsabilidad |
+| Administrador | Google o correo verificado y contraseña | Control completo, configuración, gestión operativa y traspaso del cargo |
 | Cocina | Enlace operativo del centro | Datos de cocina, sin el registro completo de residentes |
+
+Cada centro tiene un único administrador. El traspaso del cargo sustituye al administrador actual por el nuevo; no crea un perfil separado llamado «responsable del centro».
 
 El rol litúrgico es independiente del rol administrativo y también puede asignarse a un residente.
 

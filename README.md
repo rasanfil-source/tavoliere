@@ -1,6 +1,6 @@
 # Tutti a tavola
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](README.md) [![English](https://img.shields.io/badge/language-English-6b7280)](README.en.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](README.es.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](README.es.md)
 
 **Tutti a tavola** è il progetto della web app installabile **Oggi a tavola**, pensata per organizzare le prenotazioni dei pasti in una comunità residenziale.
 
@@ -23,9 +23,10 @@ L’app è progettata per più centri, ma ogni dato e ogni sessione restano asso
 | --- | --- | --- |
 | Residente | Sigla personale e password comune | Prenotazioni e preferenze del dispositivo |
 | Vice amministratore | Sigla personale e password amministratori | Persone, link operativi e funzioni delegate |
-| Amministratore | Google oppure email verificata e password | Configurazione e gestione operativa |
-| Responsabile del centro | Autenticazione amministrativa forte | Controllo completo e passaggio di responsabilità |
+| Amministratore | Google oppure email verificata e password | Controllo completo, configurazione, gestione operativa e passaggio dell’incarico |
 | Cucina | Link operativo del centro | Dati cucina, senza anagrafica completa dei residenti |
+
+Il centro ha un unico amministratore. Il passaggio dell’incarico sostituisce l’amministratore attuale con quello nuovo; non crea un secondo profilo chiamato “responsabile del centro”.
 
 Il ruolo liturgico è indipendente dal ruolo amministrativo e può essere assegnato anche a un residente.
 

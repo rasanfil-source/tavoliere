@@ -1,6 +1,6 @@
 # Operaciones, publicación y recuperación
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](../OPERATIONS.md) [![English](https://img.shields.io/badge/language-English-6b7280)](../en/OPERATIONS.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-16615a)](OPERACIONES.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../OPERATIONS.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](../en/OPERATIONS.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](OPERACIONES.md)
 
 ## Gestión operativa de las sesiones
 
@@ -48,7 +48,7 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run release:verify"
 
 ## Copias de seguridad
 
-Desde **Mantenimiento**, el responsable puede descargar una copia completa del centro en formato JSON. El archivo contiene datos personales y operativos:
+Desde **Mantenimiento**, el administrador puede descargar una copia completa del centro en formato JSON. El archivo contiene datos personales y operativos:
 
 - guardarlo cifrado o en un espacio de acceso restringido;
 - no enviarlo por correo electrónico sin protección;

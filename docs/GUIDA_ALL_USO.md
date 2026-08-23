@@ -1,6 +1,6 @@
 # Guida all’uso
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](GUIDA_ALL_USO.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/USER_GUIDE.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/GUIA_DE_USO.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](GUIDA_ALL_USO.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](en/USER_GUIDE.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](es/GUIA_DE_USO.md)
 
 ## Installazione
 
@@ -23,11 +23,11 @@ Il comando **Esci** termina deliberatamente la sessione; entrare e uscire dal pa
 
 ## Vice amministratore
 
-Il vice entra con la propria sigla e la password amministratori. Può usare le funzioni delegate, comprese la gestione delle persone e la consultazione, copia, apertura e condivisione dei link operativi. Non acquisisce automaticamente le funzioni riservate al responsabile.
+Il vice entra con la propria sigla e la password amministratori. Può usare le funzioni delegate, comprese la gestione delle persone e la consultazione, copia, apertura e condivisione dei link operativi. Non acquisisce automaticamente le funzioni riservate all’amministratore.
 
-## Amministratore e responsabile
+## Amministratore
 
-L’accesso forte avviene con Google oppure con email verificata e password. Dal pannello si gestiscono, secondo il ruolo:
+L’unico amministratore accede con Google oppure con email verificata e password. Dal pannello gestisce:
 
 - configurazione e identità del centro;
 - persone e ruoli operativi;
@@ -36,9 +36,9 @@ L’accesso forte avviene con Google oppure con email verificata e password. Dal
 - calendario, registro attività e backup;
 - inviti amministrativi e passaggio di responsabilità.
 
-L’invito a un nuovo amministratore non trasferisce immediatamente la responsabilità. La persona deve accettare e autenticarsi; il responsabile attuale completa poi il passaggio con la conferma esplicita prevista dall’interfaccia.
+L’invito a un nuovo amministratore non trasferisce immediatamente l’incarico. La persona deve accettare e autenticarsi; l’amministratore attuale completa poi il passaggio con la conferma esplicita prevista dall’interfaccia.
 
-In **Manutenzione > Archivio di sicurezza**, il responsabile può scaricare una copia JSON completa. Con **Carica** può ripristinare rapidamente soltanto la configurazione dello stesso centro: l’app mostra un riepilogo, richiede una conferma scritta e scarica prima una copia dello stato corrente. Persone, prenotazioni, ruoli, password, collegamenti e registro attività restano invariati.
+In **Manutenzione > Archivio di sicurezza**, l’amministratore può scaricare una copia JSON completa. Con **Carica** può ripristinare rapidamente soltanto la configurazione dello stesso centro: l’app mostra un riepilogo, richiede una conferma scritta e scarica prima una copia dello stato corrente. Persone, prenotazioni, ruoli, password, collegamenti e registro attività restano invariati.
 
 ## Cucina
 

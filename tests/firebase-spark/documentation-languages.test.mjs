@@ -33,17 +33,29 @@ test('la documentazione pubblica esiste in italiano inglese e spagnolo', () => {
     const absolutePath = resolve(repositoryRoot, relativePath);
     assert.equal(existsSync(absolutePath), true, `Pagina mancante: ${relativePath}`);
     const source = readFileSync(absolutePath, 'utf8');
-    assert.match(source, /img\.shields\.io\/badge\/lingua-Italiano-/);
-    assert.match(source, /img\.shields\.io\/badge\/language-English-/);
-    assert.match(source, /img\.shields\.io\/badge\/idioma-Espa%C3%B1ol-/);
+    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AE%F0%9F%87%B9-Italiano-/);
+    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AC%F0%9F%87%A7-English-/);
+    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-/);
   }
 });
 
 test('italiano resta la pagina predefinita del repository', () => {
   const readme = readFileSync(resolve(repositoryRoot, 'README.md'), 'utf8');
-  assert.match(readme, /lingua-Italiano-16615a/);
+  assert.match(readme, /%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a/);
   assert.match(readme, /\]\(README\.en\.md\)/);
   assert.match(readme, /\]\(README\.es\.md\)/);
+});
+
+test('il responsabile non viene documentato come profilo distinto dall amministratore', () => {
+  const italian = readFileSync(resolve(repositoryRoot, 'README.md'), 'utf8');
+  const english = readFileSync(resolve(repositoryRoot, 'README.en.md'), 'utf8');
+  const spanish = readFileSync(resolve(repositoryRoot, 'README.es.md'), 'utf8');
+  assert.doesNotMatch(italian, /\| Responsabile del centro \|/);
+  assert.doesNotMatch(english, /\| Centre owner \|/);
+  assert.doesNotMatch(spanish, /\| Responsable del centro \|/);
+  assert.match(italian, /Il centro ha un unico amministratore/);
+  assert.match(english, /Each centre has one administrator/);
+  assert.match(spanish, /Cada centro tiene un único administrador/);
 });
 
 test('tutti i collegamenti locali della documentazione hanno una destinazione', () => {

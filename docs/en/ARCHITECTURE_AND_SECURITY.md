@@ -1,6 +1,6 @@
 # Architecture, authentication and security
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-6b7280)](../ARCHITETTURA_E_SICUREZZA.md) [![English](https://img.shields.io/badge/language-English-16615a)](ARCHITECTURE_AND_SECURITY.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](../es/ARQUITECTURA_Y_SEGURIDAD.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../ARCHITETTURA_E_SICUREZZA.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](ARCHITECTURE_AND_SECURITY.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](../es/ARQUITECTURA_Y_SEGURIDAD.md)
 
 ## Goals
 
@@ -47,8 +47,8 @@ Invariants:
 
 The canonical matrix is in `public/role-policy.mjs`.
 
-- `OWNER`: full control of the centre and transfer of ownership.
-- `ADMIN`: complete configuration and operations, excluding ownership transfer.
+- `OWNER`: technical role of the current administrator, with full control and authority to transfer the appointment.
+- `ADMIN`: technical state of the authenticated successor during the handover, with administrative operations but no authority to complete the transfer.
 - `MANAGER`: restricted operational panel, people, adaptations, daily operations and reading operational links.
 - `RESIDENT`: reservations and device preferences.
 
@@ -71,9 +71,9 @@ The model is centred on `centers/{centerId}`. Each centre separates:
 - sessions and access tokens;
 - activity log and operational settings.
 
-Administrator invitations are temporary documents with a status, expiry and the identity that consumed them. An ownership transfer must always leave an active owner and requires explicit confirmation.
+Administrator invitations are temporary documents with a status, expiry and the identity that consumed them. A transfer must always leave an active administrator and requires explicit confirmation.
 
-There is one canonical flow: the owner creates an invitation linked to a Person; the recipient explicitly chooses **Accept** or **Reject**; only then do they identify with Google or email and password; acceptance moves the invitation from `ACTIVE` to `USED`; finally, the owner confirms the transfer, which atomically updates the center, both roles, the invitation and the audit log. Opening an authentication method never means accepting the appointment.
+There is one canonical flow: the current administrator creates an invitation linked to a Person; the recipient explicitly chooses **Accept** or **Reject**; only then do they identify with Google or email and password; acceptance moves the invitation from `ACTIVE` to `USED`; finally, the current administrator confirms the transfer, which atomically updates the centre, both roles, the invitation and the audit log. Opening an authentication method never means accepting the appointment.
 
 Vice administrators do not use Firebase administrator invitations: their access derives only from signature, administrator password, the Person role and `viceSessions`. Support for the old temporary-password replacement request is confined to reading possible historical records; no current path can create a new one.
 

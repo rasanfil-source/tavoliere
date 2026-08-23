@@ -1,6 +1,6 @@
 # Architettura, autenticazione e sicurezza
 
-[![Italiano](https://img.shields.io/badge/lingua-Italiano-16615a)](ARCHITETTURA_E_SICUREZZA.md) [![English](https://img.shields.io/badge/language-English-6b7280)](en/ARCHITECTURE_AND_SECURITY.md) [![Español](https://img.shields.io/badge/idioma-Espa%C3%B1ol-6b7280)](es/ARQUITECTURA_Y_SEGURIDAD.md)
+[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](ARCHITETTURA_E_SICUREZZA.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](en/ARCHITECTURE_AND_SECURITY.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](es/ARQUITECTURA_Y_SEGURIDAD.md)
 
 ## Obiettivi
 
@@ -47,8 +47,8 @@ Principi invarianti:
 
 La matrice canonica è in `public/role-policy.mjs`.
 
-- `OWNER`: controllo completo del centro e trasferimento della responsabilità.
-- `ADMIN`: configurazione e operatività completa, escluso il trasferimento riservato al responsabile.
+- `OWNER`: ruolo tecnico dell’amministratore attuale, con controllo completo e facoltà di trasferire l’incarico.
+- `ADMIN`: stato tecnico del successore autenticato durante il passaggio, con operatività amministrativa ma senza facoltà di completare il trasferimento.
 - `MANAGER`: pannello operativo ristretto, persone, adattamenti, operazioni giornaliere e lettura dei link operativi.
 - `RESIDENT`: prenotazioni e preferenze del dispositivo.
 
@@ -71,9 +71,9 @@ Il modello è centrato su `centers/{centerId}`. Sotto ogni centro sono separati:
 - sessioni e token di accesso;
 - registro attività e impostazioni operative.
 
-Gli inviti amministrativi sono documenti temporanei con stato, scadenza e identità che li ha consumati. Un passaggio di responsabilità deve lasciare sempre un responsabile attivo e richiede una conferma esplicita.
+Gli inviti amministrativi sono documenti temporanei con stato, scadenza e identità che li ha consumati. Un passaggio dell’incarico deve lasciare sempre un amministratore attivo e richiede una conferma esplicita.
 
-Il percorso canonico è unico: il responsabile crea un invito collegato a una Persona; il destinatario sceglie esplicitamente **Accetta** o **Rifiuta**; soltanto dopo si identifica con Google oppure email e password; l'accettazione porta l'invito da `ACTIVE` a `USED`; infine il responsabile conferma il trasferimento, che aggiorna atomicamente centro, due ruoli, invito e registro attività. L'apertura dei metodi di autenticazione non equivale mai ad accettare l'incarico.
+Il percorso canonico è unico: l’amministratore attuale crea un invito collegato a una Persona; il destinatario sceglie esplicitamente **Accetta** o **Rifiuta**; soltanto dopo si identifica con Google oppure email e password; l'accettazione porta l'invito da `ACTIVE` a `USED`; infine l’amministratore attuale conferma il trasferimento, che aggiorna atomicamente centro, due ruoli, invito e registro attività. L'apertura dei metodi di autenticazione non equivale mai ad accettare l'incarico.
 
 I Vice non usano inviti Firebase amministrativi: derivano esclusivamente da sigla, password amministratori, ruolo della Persona e `viceSessions`. Il supporto alla vecchia richiesta di sostituzione della password temporanea resta confinato alla lettura di eventuali record storici; nessun percorso corrente può crearne uno nuovo.
 
