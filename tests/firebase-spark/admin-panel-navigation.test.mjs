@@ -435,6 +435,9 @@ test('l invito di successione separa decisione e identificazione senza percorsi 
   assert.match(app, /const invitationNeedsDecision = hasRoleInvitation && !storedDecision/);
   assert.match(app, /elements\.adminAuthMethods\.hidden = invitationNeedsDecision/);
   assert.match(app, /elements\.inviteAcceptActions\.hidden = Boolean\(storedDecision\)/);
+  assert.match(app, /clearAdminInvitationDecision\(roleInvitationId\)[\s\S]*Accettazione fallita/);
+  assert.match(app, /elements\.inviteAcceptActions\.hidden = !invitationPending/);
+  assert.match(app, /invitationAcceptanceFailed[\s\S]*elements\.inviteAccept\.focus/);
   assert.match(app, /t\('admin\.invitations\.acceptedIdentify'\)/);
   assert.match(app, /t\('auth\.email\.inviteHelp'\)/);
   assert.match(app, /error\?\.code === 'auth\/email-already-in-use'[\s\S]*signInAdministratorWithEmail\(email, password\)/);

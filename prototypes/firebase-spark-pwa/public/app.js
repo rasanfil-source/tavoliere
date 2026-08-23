@@ -2370,6 +2370,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   }
 
   let invitationResponse = '';
+  let invitationAcceptanceFailed = false;
   const roleInvitationId = getAdminRoleInvitationId();
   const storedDecision = access.invitationPending
     ? loadAdminInvitationDecision(roleInvitationId)
@@ -2396,6 +2397,8 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       window.location.reload();
       return;
     } catch (error) {
+      invitationAcceptanceFailed = true;
+      clearAdminInvitationDecision(roleInvitationId);
       elements.adminEmailStatus.textContent = friendlyErrorMessage(error, 'Accettazione fallita');
     }
   } else if (storedDecision === 'REJECT') {
@@ -2511,8 +2514,16 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       : invitationPending
       ? invitationPrompt(access.invitationRole)
       : t('admin.invitations.invalidOrExpired');
+    // Prima dell'autenticazione la decisione memorizzata nasconde i comandi
+    // mentre si identifica la persona. Se l'attivazione automatica non si
+    // conclude, la schermata autenticata deve sempre restituire una via di
+    // prosecuzione: accettare di nuovo oppure rifiutare.
+    elements.inviteAcceptActions.hidden = !invitationPending;
     elements.inviteAccept.disabled = !invitationPending;
     elements.inviteReject.disabled = !invitationPending;
+    if (invitationAcceptanceFailed) {
+      elements.inviteAccept.focus({ preventScroll: true });
+    }
   }
   elements.centerInitializer.hidden = isPlatformOwner || !access.needsInitialization;
   if (access.needsInitialization && user && user.email) {
