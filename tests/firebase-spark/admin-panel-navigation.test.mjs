@@ -72,7 +72,8 @@ test('il progetto collega il README sia da Manutenzione sia da Aspetto', () => {
   assert.doesNotMatch(html, />\s*rasanfil@gmail\.com\s*</);
   assert.match(html, /class="project-readme-footer"[\s\S]*data-i18n="project\.footer">Progetto Tutti a tavola 2026/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
-  assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 48px/);
+  assert.match(css, /\.happyduck-contact[\s\S]*min-height: 44px[\s\S]*\.happyduck-duck[\s\S]*width: 42px/);
+  assert.match(html, /happyduck-crest[\s\S]*happyduck-wing[\s\S]*happyduck-beak-shade[\s\S]*happyduck-highlight/);
   assert.match(css, /\.project-info-card[\s\S]*\.project-readme-footer/);
 });
 
