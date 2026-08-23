@@ -82,7 +82,11 @@ import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v
 import {
   mountSummaryMatrix,
   scrollSummaryMatrix
-} from './summary-matrix-view.js?v=20260823a';
+} from './summary-matrix-view.js?v=20260823b';
+import {
+  nextSummaryContactHintVisitCount,
+  shouldShowSummaryContactHint
+} from './summary-contact-hint.mjs?v=20260823a';
 
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -98,6 +102,7 @@ const INVITATION_ID_PATTERN = /^[a-f0-9]{64}$/;
 const CENTER_INVITATION_STORAGE_KEY = 'tavolaComune.pendingCenterInvitation';
 const ADMIN_INVITATION_DECISION_STORAGE_PREFIX = 'tavolaComune.adminInvitationDecision.';
 const ADMIN_SUCCESSION_PENDING_STORAGE_PREFIX = 'tavolaComune.adminSuccessionPending.';
+const SUMMARY_CONTACT_HINT_VISITS_STORAGE_PREFIX = 'tavolaComune.summaryContactHintVisits.';
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
   accessLinks: './access-links.js?v=20260816h',
@@ -573,6 +578,8 @@ const state = {
   summaryDays: [],
   summaryOperations: [],
   summaryDayOffset: 0,
+  summaryContactHintVisible: true,
+  summaryContactHintVisitRecorded: false,
   kitchenDayOffset: 0,
   kitchenDays: [],
   kitchenOperations: [],
@@ -3687,6 +3694,7 @@ async function refreshParticipant(source, options = {}) {
       state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || [];
       state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || null;
       state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || null;
+      recordSummaryContactHintVisit();
       selectSummaryMatrixDay(state.summaryDayOffset);
     } else {
       state.todayOverview = [];
@@ -6610,6 +6618,7 @@ function renderTodayOverview() {
       operationDays: state.summaryOperations,
       layout: state.centerContactSettings.summaryLayout || 'classic',
       residentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
+      showContactHint: state.summaryContactHintVisible,
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: (index) => {
         selectSummaryMatrixDay(index, { scroll: false });
@@ -6660,6 +6669,55 @@ function renderMassCard(dailyOperation) {
       </div>
     </article>
   `;
+}
+
+function getSummaryContactHintStorageKey() {
+  const participantId = String(
+    state.selectedParticipant?.participantId
+      || state.selectedParticipant?.id
+      || ''
+  ).trim();
+  const currentUser = getCurrentUser();
+  const authenticatedUid = currentUser && !currentUser.isAnonymous
+    ? String(currentUser.uid || '').trim()
+    : '';
+  const visitorId = participantId || authenticatedUid || 'device';
+  return `${SUMMARY_CONTACT_HINT_VISITS_STORAGE_PREFIX}${getActiveCenterId()}.${visitorId}`;
+}
+
+function loadSummaryContactHintVisitCount() {
+  try {
+    return window.localStorage.getItem(getSummaryContactHintStorageKey());
+  } catch {
+    return 0;
+  }
+}
+
+function storeSummaryContactHintVisitCount(count) {
+  try {
+    window.localStorage.setItem(getSummaryContactHintStorageKey(), String(count));
+  } catch {
+    // Il suggerimento resta disponibile quando la persistenza locale e bloccata.
+  }
+}
+
+function isSummaryPageReload() {
+  try {
+    return window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+  } catch {
+    return false;
+  }
+}
+
+function recordSummaryContactHintVisit() {
+  if (state.summaryContactHintVisitRecorded) return;
+  let visitCount = loadSummaryContactHintVisitCount();
+  if (!isSummaryPageReload()) {
+    visitCount = nextSummaryContactHintVisitCount(visitCount);
+    storeSummaryContactHintVisitCount(visitCount);
+  }
+  state.summaryContactHintVisible = shouldShowSummaryContactHint(visitCount);
+  state.summaryContactHintVisitRecorded = true;
 }
 
 function renderSickCard(dailyHealth) {

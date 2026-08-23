@@ -286,6 +286,14 @@
   vertical-align: top;
 }
 
+.summary-layout-classic .summary-matrix-people-label .summary-contact-hint {
+  max-width: 15ch;
+  margin: 3px auto 0;
+  font-size: 0.62rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .summary-matrix-people-icon {
   display: inline-grid;
   width: 28px;

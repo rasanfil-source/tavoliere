@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v403';
+const CACHE_NAME = CACHE_PREFIX + 'v404';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -8,6 +8,7 @@ const APP_SHELL = [
   '/app.js',
   '/summary-matrix-view.js',
   '/summary-matrix-model.js',
+  '/summary-contact-hint.mjs',
   '/html-utils.js',
   '/firebase-client.js',
   '/center-context.js',

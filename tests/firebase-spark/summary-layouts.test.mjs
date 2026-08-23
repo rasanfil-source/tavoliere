@@ -93,7 +93,7 @@ test('telefono e WhatsApp restano ben distinti nel popup', () => {
 });
 
 test('Originale e Internazionale aprono i contatti dal nome del commensale', () => {
-  assert.match(view, /renderClassicNamesRow\(screen, residentLabel\)/);
+  assert.match(view, /renderClassicNamesRow\(screen, residentLabel, showContactHint\)/);
   assert.match(view, /summary-matrix-people-icon/);
   assert.match(view, /renderNamesCell\(column, \{ compactActions: true, residentLabel \}\)/);
   assert.match(view, /class="summary-matrix-person-trigger" popovertarget=/);
@@ -164,7 +164,10 @@ test('il riepilogo rende evidente il contatto solo per commensali contattabili',
   assert.match(view, /person\?\.phoneConsent && normalizePhone\(person\.phone\)/);
   assert.match(view, /summary\.contactHint/);
   assert.match(styles, /\.summary-contact-hint \{[\s\S]*color: var\(--muted\)/);
-  assert.match(view, /contactHint: !kitchen/);
+  assert.match(view, /renderClassicNamesRow\(screen, residentLabel, showContactHint\)/);
+  assert.match(view, /screen\.columns\.some\(hasContactablePerson\)/);
+  assert.match(view, /contactHint: !kitchen && showContactHint/);
+  assert.match(styles, /summary-matrix-people-label \.summary-contact-hint/);
 });
 
 test('Internazionale e Futura precisano che la colazione e di domani', () => {

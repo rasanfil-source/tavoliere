@@ -1,0 +1,1 @@
+const r=30;function I(t){const n=Number.parseInt(String(t??""),10);return!Number.isFinite(n)||n<0?0:Math.min(n,30)}function T(t){return Math.min(I(t)+1,30)}function i(t){return I(t)<30}export{r as SUMMARY_CONTACT_HINT_VISIT_LIMIT,T as nextSummaryContactHintVisitCount,I as normalizeSummaryContactHintVisitCount,i as shouldShowSummaryContactHint};
