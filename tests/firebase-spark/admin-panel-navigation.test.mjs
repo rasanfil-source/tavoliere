@@ -650,6 +650,13 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(app, /friendlyErrorMessage\(error, 'Trasferimento non riuscito'\)[\s\S]*showActionDialog/);
 });
 
+test('il responsabile uscente non legge il profilo globale privato del successore', () => {
+  const transfer = adminCenter.match(/export async function transferCenterOwnership\([\s\S]*?\n}\n/)?.[0] || '';
+  assert.doesNotMatch(transfer, /successorProfileRef/);
+  assert.doesNotMatch(transfer, /ADMIN_PROFILE_COLLECTION/);
+  assert.match(transfer, /successorInvitation\.acceptedEmail[\s\S]*successor\.email/);
+});
+
 test('il nuovo responsabile sincronizza la propria email e può ripulire un vecchio OWNER', () => {
   assert.match(app, /synchronizeCenterOwnerEmail/);
   assert.match(app, /state\.adminRole === 'OWNER'[\s\S]*getCurrentUser\(\)\?\.email/);

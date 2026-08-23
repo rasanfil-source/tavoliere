@@ -608,7 +608,8 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.match(adminCenter, /saveAdminProfile\(user, requestedCenterId, existingAccess\.role\)/);
   const ownershipTransfer = adminCenter.match(/export async function transferCenterOwnership\([\s\S]*?\n}\n/)?.[0] || '';
   assert.doesNotMatch(ownershipTransfer, /batch\.set\([^\n]*ProfileRef/);
-  assert.match(ownershipTransfer, /successorProfileSnapshot\.data\(\)\?\.email/);
+  assert.doesNotMatch(ownershipTransfer, /successorProfileSnapshot|successorProfileRef/);
+  assert.match(ownershipTransfer, /successorInvitation\.acceptedEmail[\s\S]*successor\.email/);
   assert.match(ownershipTransfer, /La membership del centro e'\s*\/\/ la fonte autorevole/);
 });
 

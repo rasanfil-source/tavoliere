@@ -565,11 +565,10 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     throw new Error('Seleziona un amministratore diverso dal responsabile attuale');
   }
   const successorRef = doc(db, 'centers', centerId, 'admins', normalizedSuccessorUid);
-  const successorProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedSuccessorUid);
-  const [successorSnapshot, successorProfileSnapshot] = await Promise.all([
-    getDoc(successorRef),
-    getDoc(successorProfileRef)
-  ]);
+  // Il profilo globale del successore e' privato e non deve essere letto dal
+  // responsabile uscente. Membership e invito accettato contengono gia' tutti
+  // i dati necessari al passaggio.
+  const successorSnapshot = await getDoc(successorRef);
   const successor = successorSnapshot.exists() ? successorSnapshot.data() : {};
   if (successor.status !== 'ACTIVE' || successor.role !== 'ADMIN') {
     throw new Error('Il successore deve essere un amministratore attivo');
@@ -606,7 +605,6 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   const successorEmail = String(
     successorInvitation.acceptedEmail
       || successor.email
-      || successorProfileSnapshot.data()?.email
       || ''
   ).trim().toLowerCase();
   if (!successorEmail) {
