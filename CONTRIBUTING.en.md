@@ -1,6 +1,6 @@
 # Contributing to Tutti a tavola
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](CONTRIBUTING.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](CONTRIBUTING.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](CONTRIBUTING.es.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](CONTRIBUTING.md) 🇬🇧 [![English](https://img.shields.io/badge/English-16615a)](CONTRIBUTING.en.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](CONTRIBUTING.es.md)
 
 Thank you for your interest in the project. Before proposing a change, open a report or [email HappyDuck](mailto:rasanfil@gmail.com), describing the problem, the steps to reproduce it and the expected result.
 

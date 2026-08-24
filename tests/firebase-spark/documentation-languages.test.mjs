@@ -51,15 +51,15 @@ test('la documentazione pubblica esiste in italiano inglese e spagnolo', () => {
     const absolutePath = resolve(repositoryRoot, relativePath);
     assert.equal(existsSync(absolutePath), true, `Pagina mancante: ${relativePath}`);
     const source = readFileSync(absolutePath, 'utf8');
-    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AE%F0%9F%87%B9-Italiano-/);
-    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AC%F0%9F%87%A7-English-/);
-    assert.match(source, /img\.shields\.io\/badge\/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-/);
+    assert.match(source, /🇮🇹\s+\[!\[Italiano\]/);
+    assert.match(source, /🇬🇧\s+\[!\[English\]/);
+    assert.match(source, /🇪🇸\s+\[!\[Español\]/);
   }
 });
 
 test('italiano resta la pagina predefinita del repository', () => {
   const readme = readFileSync(resolve(repositoryRoot, 'README.md'), 'utf8');
-  assert.match(readme, /%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a/);
+  assert.match(readme, /🇮🇹\s+\[!\[Italiano\]\(https:\/\/img\.shields\.io\/badge\/Italiano-16615a/);
   assert.match(readme, /\]\(README\.en\.md\)/);
   assert.match(readme, /\]\(README\.es\.md\)/);
 });
@@ -100,6 +100,8 @@ test('i README mostrano la firma HappyDuck con immagine e contatto email', () =>
   for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
     const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
     assert.match(source, /prototypes\/firebase-spark-pwa\/public\/icons\/happyduck\.png/);
+    assert.match(source, /prototypes\/firebase-spark-pwa\/public\/icons\/happyduck-mail\.svg/);
+    assert.match(source, /<table>/);
     assert.match(source, /<strong>HappyDuck<\/strong>/);
     assert.match(source, /href="mailto:rasanfil@gmail\.com"/);
   }

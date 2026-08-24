@@ -1,6 +1,6 @@
 # User guide
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](USER_GUIDE.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](../es/GUIA_DE_USO.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](../GUIDA_ALL_USO.md) 🇬🇧 [![English](https://img.shields.io/badge/English-16615a)](USER_GUIDE.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](../es/GUIA_DE_USO.md)
 
 **Oggi a tavola** is an installable PWA for breakfast, lunch and dinner reservations in a residential community. Residents and deputies use a personal code; the administrator uses Google or a verified email and password; the kitchen uses a dedicated operational link.
 

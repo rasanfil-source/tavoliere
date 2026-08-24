@@ -1,6 +1,6 @@
 # Oggi a tavola
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](README.es.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-16615a)](README.md) 🇬🇧 [![English](https://img.shields.io/badge/English-6b7280)](README.en.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](README.es.md)
 
 **Oggi a tavola** è una web app installabile pensata per organizzare le prenotazioni dei pasti in una comunità residenziale.
 
@@ -98,10 +98,12 @@ Prima di un rilascio usare il gate completo descritto in [Sviluppo e test](docs/
 
 ## Supporto
 
-<p align="center">
-  <img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="88" alt="Firma HappyDuck"><br>
-  <strong>HappyDuck</strong><br>
-  <a href="mailto:rasanfil@gmail.com">Scrivi allo sviluppatore</a>
-</p>
+<table>
+  <tr>
+    <td align="center"><a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="46" alt="Paperetta HappyDuck"> &nbsp; <strong>HappyDuck</strong> &nbsp; <img src="prototypes/firebase-spark-pwa/public/icons/happyduck-mail.svg" width="28" alt="Scrivi un’email"></a></td>
+  </tr>
+</table>
+
+[Scrivi allo sviluppatore](mailto:rasanfil@gmail.com)
 
 Progetto **Oggi a tavola 2026**.

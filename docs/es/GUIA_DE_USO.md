@@ -1,8 +1,6 @@
 # Guía de uso de Oggi a tavola
 
-[![Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](../GUIDA_ALL_USO.md)
-[![English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-1f4e79)](../en/USER_GUIDE.md)
-[![Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-bc2f32)](GUIA_DE_USO.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](../GUIDA_ALL_USO.md) 🇬🇧 [![English](https://img.shields.io/badge/English-6b7280)](../en/USER_GUIDE.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-16615a)](GUIA_DE_USO.md)
 
 [Inicio](../../README.es.md) · [Arquitectura y seguridad](ARQUITECTURA_Y_SEGURIDAD.md) · [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md) · [Operaciones](OPERACIONES.md)
 

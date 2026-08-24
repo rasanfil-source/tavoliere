@@ -1,6 +1,6 @@
 # Operations, release and recovery
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../OPERATIONS.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](OPERATIONS.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](../es/OPERACIONES.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](../OPERATIONS.md) 🇬🇧 [![English](https://img.shields.io/badge/English-16615a)](OPERATIONS.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](../es/OPERACIONES.md)
 
 **Documentation:** [README](../../README.en.md) · [User guide](USER_GUIDE.md) · [Architecture](ARCHITECTURE_AND_SECURITY.md) · [Development](DEVELOPMENT_AND_TESTING.md)
 

@@ -1,6 +1,6 @@
 # Sviluppo e test
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](SVILUPPO_E_TEST.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](en/DEVELOPMENT_AND_TESTING.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](es/DESARROLLO_Y_PRUEBAS.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-16615a)](SVILUPPO_E_TEST.md) 🇬🇧 [![English](https://img.shields.io/badge/English-6b7280)](en/DEVELOPMENT_AND_TESTING.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](es/DESARROLLO_Y_PRUEBAS.md)
 
 ## Requisiti
 

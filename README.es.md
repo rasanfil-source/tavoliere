@@ -1,6 +1,6 @@
 # Oggi a tavola
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](README.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](README.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](README.es.md)
+🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](README.md) 🇬🇧 [![English](https://img.shields.io/badge/English-6b7280)](README.en.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-16615a)](README.es.md)
 
 **Oggi a tavola** es una aplicación web instalable pensada para organizar las reservas de comidas en una comunidad residencial.
 
@@ -98,10 +98,12 @@ Antes de una publicación, utilizar el proceso completo descrito en [Desarrollo 
 
 ## Soporte
 
-<p align="center">
-  <img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="88" alt="Firma de HappyDuck"><br>
-  <strong>HappyDuck</strong><br>
-  <a href="mailto:rasanfil@gmail.com">Escribe al desarrollador</a>
-</p>
+<table>
+  <tr>
+    <td align="center"><a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="46" alt="Patito HappyDuck"> &nbsp; <strong>HappyDuck</strong> &nbsp; <img src="prototypes/firebase-spark-pwa/public/icons/happyduck-mail.svg" width="28" alt="Enviar un correo"></a></td>
+  </tr>
+</table>
+
+[Escribe al desarrollador](mailto:rasanfil@gmail.com)
 
 Proyecto **Oggi a tavola 2026**.
