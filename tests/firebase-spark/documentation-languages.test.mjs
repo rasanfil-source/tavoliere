@@ -28,6 +28,24 @@ const documentationPages = [
   'docs/es/OPERACIONES.md'
 ];
 
+const translatedDocumentSets = [
+  [
+    'docs/GUIDA_ALL_USO.md',
+    'docs/en/USER_GUIDE.md',
+    'docs/es/GUIA_DE_USO.md'
+  ],
+  [
+    'docs/ARCHITETTURA_E_SICUREZZA.md',
+    'docs/en/ARCHITECTURE_AND_SECURITY.md',
+    'docs/es/ARQUITECTURA_Y_SEGURIDAD.md'
+  ],
+  [
+    'docs/OPERATIONS.md',
+    'docs/en/OPERATIONS.md',
+    'docs/es/OPERACIONES.md'
+  ]
+];
+
 test('la documentazione pubblica esiste in italiano inglese e spagnolo', () => {
   for (const relativePath of documentationPages) {
     const absolutePath = resolve(repositoryRoot, relativePath);
@@ -44,6 +62,38 @@ test('italiano resta la pagina predefinita del repository', () => {
   assert.match(readme, /%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a/);
   assert.match(readme, /\]\(README\.en\.md\)/);
   assert.match(readme, /\]\(README\.es\.md\)/);
+});
+
+test('le guide principali sono complete e collegate nelle tre lingue', () => {
+  for (const documentSet of translatedDocumentSets) {
+    for (const relativePath of documentSet) {
+      const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+      assert.ok(source.length > 3000, `Documento troppo breve: ${relativePath}`);
+      assert.doesNotMatch(source, /traduzione non aggiornata|translation is not up to date|traducci[oó]n no actualizada/i);
+
+      for (const siblingPath of documentSet) {
+        const siblingName = siblingPath.split('/').at(-1);
+        assert.match(source, new RegExp(siblingName.replaceAll('.', '\\.')),
+          `${relativePath} non collega ${siblingName}`);
+      }
+    }
+  }
+});
+
+test('i README indirizzano alla documentazione della propria lingua', () => {
+  const expectedLinks = new Map([
+    ['README.md', ['docs/GUIDA_ALL_USO.md', 'docs/ARCHITETTURA_E_SICUREZZA.md', 'docs/SVILUPPO_E_TEST.md', 'docs/OPERATIONS.md']],
+    ['README.en.md', ['docs/en/USER_GUIDE.md', 'docs/en/ARCHITECTURE_AND_SECURITY.md', 'docs/en/DEVELOPMENT_AND_TESTING.md', 'docs/en/OPERATIONS.md']],
+    ['README.es.md', ['docs/es/GUIA_DE_USO.md', 'docs/es/ARQUITECTURA_Y_SEGURIDAD.md', 'docs/es/DESARROLLO_Y_PRUEBAS.md', 'docs/es/OPERACIONES.md']]
+  ]);
+
+  for (const [relativePath, links] of expectedLinks) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    for (const link of links) {
+      assert.match(source, new RegExp(link.replaceAll('.', '\\.').replaceAll('/', '\\/')),
+        `${relativePath} non collega ${link}`);
+    }
+  }
 });
 
 test('la documentazione usa Oggi a tavola come unico nome pubblico', () => {

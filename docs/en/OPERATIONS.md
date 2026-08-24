@@ -2,85 +2,61 @@
 
 [![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../OPERATIONS.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-16615a)](OPERATIONS.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-6b7280)](../es/OPERACIONES.md)
 
-## Operational session management
+**Documentation:** [README](../../README.en.md) · [User guide](USER_GUIDE.md) · [Architecture](ARCHITECTURE_AND_SECURITY.md) · [Development](DEVELOPMENT_AND_TESTING.md)
 
-Entering and leaving the control panel is navigation and does not destroy the session. **Exit** deliberately ends access on the device.
+## Live sessions and refresh
 
-### Lost or unavailable device
+Control-panel navigation does not destroy sessions; **Exit** does. `PUBLIC` is the pre-identification scope, `PERSONAL` lasts up to 30 days and renews against a long-lived revocable token, `KITCHEN` is independent, and `viceSessions` adds deputy authority without replacing strong Firebase Auth.
 
-Revoking one device requires its token, which is normally unavailable remotely. If there is a risk, the administrator must **temporarily suspend the person**: this revokes known operational credentials and **blocks all of that person’s devices**. After verification, the person can be reactivated and sign in again.
+If a device is lost and its token is unavailable, temporarily suspend the Person to revoke known credentials and block all their devices, then reactivate after verification. Regenerate operational links if they may have been disclosed. Disabling a centre preserves its data.
 
-Disabling a centre preserves its data: **the action is not presented as permanent deletion** and must clearly state that the information remains stored.
+| Centre-local time | Automatic refresh |
+| --- | --- |
+| 07:00–10:00 and 13:30–17:30 | 5 minutes |
+| other daytime hours | 45 minutes |
+| 23:00–07:00 | 90 minutes |
 
-Operational links must be regenerated when they may have reached unintended recipients.
+Foreground resume and manual refresh may trigger an immediate read. Annual meal-window coverage is extended in **Maintenance > Calendar**; changing timezone or cut-offs recalculates future windows in resumable batches.
 
-## Pre-release checks
+## Release checklist and deployment
 
-1. Confirm that the worktree contains only the intended changes.
-2. Run tests, i18n validation and rule tests.
-3. Run the build and check `git diff --check`.
-4. Test the changed paths in a browser on mobile and desktop.
-5. Create a descriptive commit as a rollback point.
-6. Deploy Hosting; include Firestore only if rules or indexes changed.
-7. Verify the hashes served by the public site.
-
-## Deployment
-
-Hosting and rules:
+1. Confirm only intended worktree changes.
+2. Run application, i18n and Firestore-rule tests.
+3. Build and run `git diff --check`.
+4. Test affected roles on mobile and desktop.
+5. Create a descriptive rollback commit.
+6. Deploy Hosting; add rules/indexes only when changed.
+7. Verify public hashes.
 
 ```powershell
+# Hosting and Firestore
 pwsh.exe -NoLogo -NoProfile -Command "npm run deploy:firebase"
-```
 
-Hosting only:
-
-```powershell
+# Hosting only
 pwsh.exe -NoLogo -NoProfile -Command "node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting"
-```
 
-The wrapper builds before deployment and uses the configuration in `prototypes/firebase-spark-pwa`.
-
-Release verification:
-
-```powershell
+# Public verification
 pwsh.exe -NoLogo -NoProfile -Command "npm run release:verify"
 ```
 
-## Backups
+The service worker prepares updates silently and activates them after every app window/tab is closed and the app is reopened; it does not forcibly reload the visible page.
 
-From **Maintenance**, the administrator can download a complete JSON backup. The file contains personal and operational data:
+## Backup and recovery
 
-- store it encrypted or in a restricted location;
-- do not send it by unprotected email;
-- do not add it to Git;
-- verify that it is readable before treating it as a valid copy.
+The Maintenance JSON contains personal and operational data and must be encrypted/restricted, never sent through an unprotected channel or committed to Git. It includes centre data, people, reservations, calendar, notes, daily operations, presentation, avatar and audit; it excludes passwords, Firebase accounts, administrator memberships, sessions and tokens/links.
 
-The **Upload** button in the same panel provides a cautious, configuration-only restore. It accepts a JSON copy for the same centre, previews its date and document count, requires the word `RESTORE`, and automatically downloads a fresh safety copy before applying changes. It restores visual identity, views, language, cut-off times, contact sharing, diet legend and icon. It does not change people, reservations, administrators, passwords, operational links or activity history.
-
-Uploading from the panel is therefore not a full database recovery. Full operational-data recovery remains a controlled technical procedure and must first be tested in the emulator.
-
-Local read-only inspection:
+**Upload** is limited to the administrator in charge. It validates the same centre, previews date/counts, requires typed confirmation and downloads a fresh safety copy. It restores only configuration, cut-offs, contact sharing, diet legend, appearance, language and icon—not people, reservations, administrators, passwords, links or audit.
 
 ```powershell
+# Read-only inspection
 pwsh.exe -NoLogo -NoProfile -Command "npm run backup:inspect -- <backup-path.json>"
-```
 
-## Recovery test
-
-Test recovery in the emulator first:
-
-```powershell
+# Full-restore rehearsal in the emulator
 pwsh.exe -NoLogo -NoProfile -Command "npm run test:backup-restore-emulator -- <backup-path.json>"
 ```
 
-A real recovery changes data and requires explicit authorisation, a prior backup, exact centre identification and subsequent verification. Do not delete or overwrite production data to diagnose an interface problem.
+A real full restore changes production data and requires explicit authorisation, a prior backup, exact centre identification and post-checks.
 
-## Returning to an earlier version
+## Rollback
 
-1. Identify the previous stable commit.
-2. Create a traceable revert without deleting history.
-3. Run tests and build again.
-4. Redeploy Hosting and, if needed, compatible rules.
-5. Verify the public release.
-
-Firebase Hosting also keeps release history, but the Git commit remains the source needed to reconstruct code, tests and documentation exactly.
+Identify the stable commit, create a traceable revert without deleting history, rerun tests/build, redeploy compatible Hosting/rules and verify the public release. Firebase keeps release history, but Git is the reproducible source.

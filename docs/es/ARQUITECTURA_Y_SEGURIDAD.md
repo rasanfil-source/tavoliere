@@ -1,93 +1,147 @@
 # Arquitectura, autenticación y seguridad
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../ARCHITETTURA_E_SICUREZZA.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](../en/ARCHITECTURE_AND_SECURITY.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](ARQUITECTURA_Y_SEGURIDAD.md)
+[![Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](../ARCHITETTURA_E_SICUREZZA.md)
+[![English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-1f4e79)](../en/ARCHITECTURE_AND_SECURITY.md)
+[![Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-bc2f32)](ARQUITECTURA_Y_SEGURIDAD.md)
 
-## Objetivos
+[Inicio](../../README.es.md) · [Guía de uso](GUIA_DE_USO.md) · [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md) · [Operaciones](OPERACIONES.md)
 
-La arquitectura prioriza la sencillez operativa, la persistencia de las sesiones, el aislamiento entre centros y la compatibilidad con Firebase Spark. La aplicación es una PWA estática: la lógica se ejecuta en el navegador y la autorización definitiva se aplica mediante las reglas de Firestore.
+Este documento describe la arquitectura efectiva de Oggi a tavola. La aplicación es una PWA estática compatible con el plan Firebase Spark; la seguridad no depende de ocultar botones, sino de reglas Firestore, identidad y capacidades verificadas.
 
 ## Componentes
 
-| Componente | Responsabilidad |
-| --- | --- |
-| `public/index.html` | Estructura accesible de las vistas y del panel |
-| `public/app.js` | Orquestación, navegación y renderizado |
-| `public/core/auth-state-machine.mjs` | Máquina de estados de autenticación |
-| `public/role-policy.mjs` | Matriz centralizada de roles y capacidades |
-| `public/*-data.js` | Acceso a los datos por dominio |
-| `firestore.rules` | Autorización del lado servidor |
-| `public/sw.js` | Caché del app shell y actualización de la PWA |
-| `tools/build-public.mjs` | Generación de la carpeta `dist` |
+- **Firebase Hosting** distribuye la PWA estática.
+- **Cloud Firestore** conserva configuración, personas, reservas, operaciones diarias, sesiones y auditoría.
+- **Firebase Authentication** autentica al administrador y proporciona identidades técnicas secundarias para operaciones protegidas.
+- **Service worker** almacena la carcasa de la aplicación y activa las actualizaciones sin recargar una sesión activa.
+- **Módulos del cliente** separan política de roles, autenticación, enlaces, panel, reservas, traducciones y vistas.
+
+No se utilizan Cloud Functions ni servicios de pago en el flujo ordinario.
 
 ## Máquina de estados de autenticación
 
-Los estados principales son:
+La interfaz converge hacia un único contexto de acceso:
 
-```text
-signed-out
-  ├─ restauración/acceso residente → restoring-resident → resident-ready
-  └─ acceso administrador          → admin-checking     → admin-ready
+1. `RESTORING`: se restauran preferencias, sesión personal y Firebase Auth;
+2. `ANONYMOUS`: no existe una sesión utilizable;
+3. `PERSONAL_RESIDENT`: sigla y contraseña común;
+4. `PERSONAL_MANAGER`: sigla y contraseña de viceadministradores;
+5. `FIREBASE_ADMIN`: identidad Firebase autorizada para el centro;
+6. `OPERATIONAL_LINK`: acceso limitado por token a reservas o cocina.
 
-resident-ready ── navegación panel/reservas ── resident-ready
-admin-ready    ── navegación panel/reservas ── admin-ready
-cualquier estado ── cierre explícito → signing-out → signed-out
-```
+Una sesión personal activa tiene precedencia sobre una identidad Firebase residual para las capacidades del usuario actual. Por tanto, un residente no hereda privilegios de un administrador que usó antes el mismo navegador. Al mismo tiempo, navegar entre reservas y panel no destruye innecesariamente ninguna sesión.
 
-Principios invariantes:
-
-- el código personal y la contraseña común producen una sesión de residente;
-- el código de un vice y la contraseña de administradores producen una sesión `MANAGER` limitada;
-- Google o un correo verificado identifican a un administrador Firebase;
-- una sesión de residente o vice no elimina ni eleva Firebase Auth;
-- una sesión Firebase anterior no concede privilegios al residente actual;
-- las respuestas tardías se ignoran mediante revisiones e identificadores de solicitud;
-- el panel se muestra únicamente después de conciliar el rol, evitando destellos de controles incorrectos.
+Durante la restauración las áreas protegidas permanecen ocultas hasta que el estado está reconciliado, evitando destellos de botones o paneles incorrectos. Un temporizador de seguridad evita que la interfaz quede bloqueada indefinidamente en la comprobación.
 
 ## Roles y capacidades
 
-La matriz canónica está en `public/role-policy.mjs`.
+La política central está en `public/role-policy.mjs`.
 
-- `OWNER`: rol técnico del administrador actual, con control completo y facultad para traspasar el cargo.
-- `ADMIN`: estado técnico del sucesor autenticado durante el traspaso, con operatividad administrativa pero sin facultad para completarlo.
-- `MANAGER`: panel operativo restringido, personas, adaptaciones, operaciones diarias y lectura de enlaces operativos.
-- `RESIDENT`: reservas y preferencias del dispositivo.
+| Rol técnico | Significado | Capacidades principales |
+| --- | --- | --- |
+| `OWNER` | Administrador actual del centro | Todas las capacidades |
+| `ADMIN` | Administrador aceptado durante una transición | Gestión administrativa excepto traspaso, administradores y restauración |
+| `MANAGER` | Viceadministrador | Panel, personas, eliminación de residentes, operaciones diarias y lectura de enlaces |
+| `RESIDENT` | Residente | Reservas propias y preferencias permitidas |
 
-`MANAGE_MASS` no deriva del rol administrativo: solo se añade cuando la persona tiene el rol litúrgico. El control del frontend nunca sustituye la comprobación de Firestore.
+`OWNER` no es una segunda persona distinta del administrador: es el nombre técnico del único administrador actualmente responsable.
 
-## Sesiones y enlaces operativos
+La capacidad `MANAGE_MASS` no se hereda por ser administrador o viceadministrador. Se añade únicamente cuando la persona tiene asignada la función litúrgica. Agenda del centro, en cambio, forma parte de las operaciones diarias de administrador y viceadministradores.
 
-Las sesiones amigables están asociadas al centro y al dispositivo. Los tokens personales persistentes permiten restaurar la sesión sin guardar la contraseña en texto claro. Los enlaces de resumen y cocina incluyen siempre el código del centro; su token es una credencial y no debe publicarse en la documentación ni en los registros.
+La interfaz consulta capacidades para mostrar las acciones; las reglas Firestore repiten los controles para impedir accesos directos no autorizados.
 
-La cocina recibe datos operativos, no el registro completo. Aunque el contenido sea menos sensible, el enlace sigue siendo revocable y está asociado a un centro.
+## Sesiones personales
 
-## Datos de Firestore
+El acceso por sigla crea una sesión asociada al centro y al participante:
 
-El modelo se centra en `centers/{centerId}`. En cada centro se separan:
+- duración de la sesión: 30 días;
+- renovación durante el uso;
+- token personal revocable de larga duración: 9000 días;
+- la revocación elimina la posibilidad de restaurar o renovar la sesión en el dispositivo perdido.
 
-- configuración y ajustes privados;
-- participantes públicos y datos privados;
-- administradores y roles;
-- reservas, excepciones y operaciones diarias;
-- sesiones y tokens de acceso;
-- registro de actividad y ajustes operativos.
+Las contraseñas compartidas no se guardan en claro. Su almacenamiento y comparación utilizan material criptográfico con sal. Los documentos de sesión no conceden por sí solos capacidades distintas de las resueltas para la persona y el centro.
 
-Las invitaciones administrativas son documentos temporales con estado, caducidad e identidad que los ha consumido. Un traspaso debe dejar siempre un administrador activo y requiere confirmación explícita.
+## Autenticación administrativa
 
-Existe un único flujo canónico: el administrador actual crea una invitación vinculada a una Persona; el destinatario elige explícitamente **Aceptar** o **Rechazar**; solo después se identifica con Google o con correo y contraseña; la aceptación cambia la invitación de `ACTIVE` a `USED`; por último, el administrador actual confirma el traspaso, que actualiza de forma atómica el centro, los dos roles, la invitación y el registro de actividad. Abrir un método de autenticación nunca equivale a aceptar el encargo.
+El administrador usa Google o correo verificado y contraseña mediante Firebase Authentication. La autorización requiere además una membresía administrativa válida para el centro. Tener una cuenta Firebase no basta.
 
-Los viceadministradores no usan invitaciones administrativas de Firebase: su acceso deriva exclusivamente de sigla, contraseña de administradores, rol de la Persona y `viceSessions`. La compatibilidad con la antigua solicitud de sustitución de contraseña temporal queda limitada a la lectura de posibles registros históricos; ningún flujo actual puede crear uno nuevo.
+El cliente puede utilizar una instancia Firebase secundaria para ejecutar operaciones técnicas sin reemplazar la identidad visible. Esto evita que una autenticación auxiliar interfiera con la sesión principal.
 
-## Defensas aplicadas
+La contraseña del administrador pertenece a Firebase Authentication y nunca debe escribirse en documentos de configuración, backups o registros.
 
-- correo verificado para el acceso administrativo con contraseña;
-- persistencia Firebase configurada antes de observar el estado Auth;
-- capacidades centralizadas y reglas Firestore coherentes;
-- caducidad y revocación de sesiones y enlaces;
-- límites de esquema en las reglas para horarios, perfiles y configuraciones;
-- cabeceras de Hosting contra sniffing, framing y permisos innecesarios;
-- caché con red como fuente principal, sin caché independiente de datos Firestore en el service worker;
-- copias de seguridad excluidas del repositorio.
+## Modelo Firestore
 
-## Límites aceptados
+Los datos se agrupan bajo `centers/{centerId}`. Entre las colecciones y documentos principales se encuentran:
 
-El plan Spark excluye funciones personalizadas de servidor. Algunas operaciones administrativas son, por tanto, transacciones Firestore iniciadas por el cliente y protegidas por reglas. Los cambios en las reglas requieren siempre pruebas con emuladores y una revisión del principio de mínimo privilegio.
+- configuración pública y privada;
+- `participants` y proyecciones públicas;
+- grupos, tipos de comida, plazos y excepciones;
+- reservas y operaciones diarias;
+- notas de cocina y estado diario;
+- sesiones personales y de viceadministradores;
+- membresías e invitaciones administrativas;
+- eventos de auditoría.
+
+Los enlaces operativos contienen el identificador del centro y una credencial específica. El enlace de cocina expone únicamente la vista y las lecturas previstas por sus reglas; no es una sesión administrativa.
+
+## Traspaso de responsabilidad
+
+El traspaso es una transición controlada:
+
+1. `OWNER` crea una invitación para una persona existente;
+2. el destinatario se autentica con Firebase y acepta;
+3. se registran UID, correo verificado y nombre seleccionado;
+4. el `OWNER` confirma el traspaso;
+5. una transacción actualiza el administrador vigente, la membresía y el estado de la invitación;
+6. el acceso administrativo anterior se revoca, manteniendo la ficha de residente.
+
+El backend rechaza el traspaso si la invitación no está aceptada, la identidad no coincide o quien confirma ya no posee la capacidad necesaria. La interfaz debe derivar el estado de los datos actuales, no de antiguas invitaciones revocadas.
+
+## Dietas, notas y celebraciones
+
+Los códigos de dieta admitidos son `D1`–`D999`. Las etiquetas se normalizan y son breves; el código permanece visible para no depender solo del color.
+
+Las notas de cocina están limitadas a 1000 caracteres, 50 entradas por día y 8000 caracteres totales diarios. La fecha se calcula en el huso horario del centro.
+
+La celebración es un único valor diario. Su escritura requiere la función personal correspondiente y es independiente de la Agenda del centro.
+
+## Internacionalización
+
+El italiano está incluido en la carga inicial. Inglés y español se cargan bajo demanda cuando el dispositivo cambia de idioma. Si una clave no está disponible, se usa el italiano, pero las pruebas impiden publicar claves técnicas visibles o catálogos incompletos.
+
+## PWA, caché y actualización
+
+El service worker aplica una estrategia de carcasa versionada. Una nueva versión se instala en segundo plano y espera a que se cierren todas las ventanas y pestañas de la versión anterior. En la apertura siguiente toma el control. No se usa una recarga forzada durante una operación, para evitar regresiones de estado y pantallas intermedias.
+
+El manifiesto incluye iconos `any` y `maskable`; Android puede así aplicar su máscara sin inventar bordes irregulares.
+
+## Backup y restauración
+
+El archivo JSON incluye únicamente las colecciones admitidas de configuración y operación: grupos, participantes, proyecciones públicas, tipos y reglas de comidas, excepciones, notas de cocina, operaciones y estado diarios, recursos, presentación y auditoría.
+
+Quedan excluidos:
+
+- contraseñas y secretos;
+- usuarios Firebase;
+- membresías, invitaciones y traspaso administrativo;
+- sesiones y tokens personales;
+- credenciales de los enlaces operativos.
+
+La restauración valida formato, centro y colecciones permitidas. No debe utilizarse para clonar la identidad de un administrador ni para sustituir Firebase Authentication.
+
+## Principios de seguridad
+
+- privilegio mínimo y capacidades explícitas;
+- separación entre sesión personal, administrativa y enlace operativo;
+- autorización tanto en interfaz como en reglas;
+- tokens revocables y regenerables;
+- ninguna contraseña o credencial en logs y backups;
+- operaciones destructivas confirmadas y auditadas;
+- datos de cada centro aislados por ruta e identidad;
+- pruebas con emuladores antes de publicar reglas.
+
+## Referencias
+
+- [Guía de uso](GUIA_DE_USO.md)
+- [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md)
+- [Operaciones, publicación y recuperación](OPERACIONES.md)

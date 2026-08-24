@@ -1,56 +1,168 @@
-# Guía de uso
+# Guía de uso de Oggi a tavola
 
-[![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](../GUIDA_ALL_USO.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](../en/USER_GUIDE.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](GUIA_DE_USO.md)
+[![Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-16615a)](../GUIDA_ALL_USO.md)
+[![English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-1f4e79)](../en/USER_GUIDE.md)
+[![Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-bc2f32)](GUIA_DE_USO.md)
 
-## Instalación
+[Inicio](../../README.es.md) · [Arquitectura y seguridad](ARQUITECTURA_Y_SEGURIDAD.md) · [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md) · [Operaciones](OPERACIONES.md)
 
-La aplicación puede utilizarse en el navegador o instalarse como PWA.
+Oggi a tavola es una aplicación web instalable para organizar las reservas de comidas de un centro. Esta guía describe el comportamiento efectivo de la aplicación; las autorizaciones siguen siendo comprobadas por las reglas de Firestore y no solo por la interfaz.
 
-- Android/Chrome: abrir el enlace del centro y elegir **Instalar aplicación** o **Añadir a pantalla de inicio**.
-- Windows/Edge: abrir el enlace y elegir **Aplicaciones > Instalar este sitio como una aplicación**.
+## Instalación y primer acceso
 
-Para conservar la sesión, no borrar los datos del sitio. Una actualización normal o el cierre de la ventana no deberían exigir un nuevo acceso.
+La aplicación puede usarse en el navegador o instalarse como PWA desde Chrome o Edge. Al instalarla aparece como **Oggi a tavola** y conserva la sesión en ese dispositivo hasta que el usuario cierre sesión, se revoque la sesión o caduque.
 
-## Residente
+En la primera apertura se muestra la presentación configurada por el administrador. En las aperturas siguientes aparece solo la pantalla de inicio breve. La preferencia de apertura elegida en **Aspecto** —Mes o Semana— se restaura también después de cerrar y volver a abrir la aplicación.
 
-1. Abrir el enlace de reservas del centro.
-2. Introducir el código personal y la contraseña común.
-3. Seleccionar o deseleccionar comidas en la vista mensual o semanal.
-4. Abrir **Resumen** para consultar las reservas.
-5. Abrir el panel de control para modificar las preferencias de este dispositivo.
+Cada dispositivo mantiene sus propias preferencias de aspecto, idioma y recordatorios.
 
-El comando **Salir** finaliza deliberadamente la sesión; entrar y salir del panel de control es solo navegación y no debe destruirla.
+## Formas de acceso y funciones
 
-## Viceadministrador
+| Persona | Acceso | Funciones principales |
+| --- | --- | --- |
+| Residente | Sigla personal + contraseña común | Reservas propias, resumen y preferencias del dispositivo |
+| Viceadministrador | Sigla personal + contraseña de viceadministradores | Funciones del residente, Agenda del centro, gestión de personas y enlaces operativos |
+| Administrador actual | Google o correo verificado + contraseña | Configuración completa, gestión del centro y traspaso de responsabilidad |
+| Encargado de celebraciones | Función personal asignada | Modificación de la celebración del día |
 
-El viceadministrador accede con su código personal y la contraseña de administradores. Puede utilizar las funciones delegadas, incluida la gestión de personas y la consulta, copia, apertura y distribución de enlaces operativos. No adquiere automáticamente las funciones reservadas al administrador.
+El centro tiene un único administrador actual. En el código este estado se llama `OWNER`; `ADMIN` se utiliza técnicamente durante invitaciones o transiciones y no representa un segundo responsable permanente.
 
-## Administrador
+La función **Celebraciones litúrgicas** se asigna expresamente a una persona. No se concede automáticamente al administrador ni al viceadministrador.
 
-El único administrador del centro accede con Google o con un correo verificado y contraseña. Desde el panel gestiona:
+## Acceso de residentes y viceadministradores
 
-- configuración e identidad del centro;
-- personas y roles operativos;
-- enlaces de reservas, resumen y cocina;
-- aspecto y preferencias;
-- calendario, registro de actividad y copia de seguridad;
-- invitaciones administrativas y transferencia de responsabilidad.
+1. Introduce tu sigla.
+2. Introduce la contraseña común para acceder como residente, o la contraseña de viceadministradores si tienes esa función.
+3. Pulsa **Entrar**.
 
-Invitar a un nuevo administrador no transfiere inmediatamente el cargo. La persona debe aceptar y autenticarse; el administrador actual completa después el traspaso mediante la confirmación explícita prevista por la interfaz.
+Una sesión personal dura hasta 30 días y se renueva mientras se utiliza. El centro conserva un token revocable de larga duración para permitir esa renovación. Una sesión personal no hereda privilegios de una sesión Firebase anterior del mismo navegador.
 
-En **Mantenimiento > Archivo de seguridad**, el administrador puede descargar una copia JSON completa. **Cargar** restaura únicamente la configuración del mismo centro: la aplicación muestra un resumen, exige una confirmación escrita y descarga primero el estado actual. Las personas, reservas, roles, contraseñas, enlaces y el registro de actividad permanecen sin cambios.
+## Acceso del administrador
 
-## Cocina
+El administrador entra desde el acceso administrativo con Google o con correo y contraseña. El correo debe coincidir con el usuario autorizado del centro y, cuando se usa contraseña, debe estar verificado.
 
-El enlace de cocina abre un cuadro sintético con comensales, dietas, celebraciones y notas operativas. Las notas se muestran únicamente el día al que pertenecen. Los códigos de dieta llevan el prefijo `D` y pueden disponer de una leyenda configurada por el administrador.
+El acceso mediante Google y mediante correo representa a la misma persona solo si Firebase los ha vinculado correctamente. La contraseña administrativa no se guarda en la configuración del centro: la gestiona Firebase Authentication y se restablece mediante correo.
+
+## Reservar comidas
+
+### Vista mensual
+
+La vista mensual muestra Colación, Almuerzo y Cena para cada día. Selecciona una casilla para cambiar el estado de una comida. Los mandos múltiples permiten aplicar una elección a varios días o comidas; su posición, izquierda o derecha, se configura en **Aspecto**.
+
+El día actual permanece resaltado. Al cambiar de mes, la vista pasa automáticamente al nuevo mes actual. El mes corriente y el siguiente pueden precargarse; los posteriores se cargan al seleccionarlos.
+
+### Vista semanal
+
+La vista semanal presenta los mismos datos en una tabla más compacta. La columna de los días sigue la misma posición elegida para los mandos múltiples de la vista mensual. Al cambiar de semana, la aplicación muestra automáticamente la nueva semana actual.
+
+Los plazos de reserva se aplican según el huso horario configurado por el centro. Después del plazo, una casilla puede mostrarse cerrada y ya no acepta cambios.
+
+### Agenda del centro
+
+La Agenda del centro permite a administradores y viceadministradores registrar enfermos, invitados y otras variaciones operativas. Las celebraciones son independientes y solo puede modificarlas una persona autorizada expresamente.
+
+## Resumen y cocina
+
+El **Resumen** muestra comensales, dietas, invitados, enfermos y celebración sin permitir modificar reservas. Si están habilitados los contactos, se puede tocar el nombre de una persona para llamarla o escribirle por WhatsApp.
+
+La vista **Cocina** utiliza un enlace operativo específico y presenta solo la información necesaria para el servicio. No concede acceso administrativo ni a los datos privados del centro. El enlace debe considerarse una credencial: hay que compartirlo solo con quien lo necesita y regenerarlo si se difunde por error.
+
+Colación se refiere al día siguiente cuando aparece junto con el almuerzo y la cena de hoy.
+
+Las notas de cocina corresponden al día indicado y las notas de días anteriores no deben mostrarse en la vista operativa actual.
+
+## Dietas
+
+Las dietas se identifican con códigos `D1`–`D999`. El administrador puede asociar a cada código una etiqueta breve para la cocina, por ejemplo `D3 = sin lactosa`.
+
+En el resumen y en cocina:
+
+- una sola dieta se muestra como `D3`, sin `× 1`;
+- varias dietas iguales se muestran como `D3 × 4`;
+- los colores son estables y ayudan a reconocer rápidamente los códigos, pero el código textual siempre permanece visible.
 
 ## Recordatorios
 
-Los recordatorios de reservas son opcionales, locales al dispositivo y están inicialmente desactivados. Si se activan, requieren permiso del navegador y pueden desactivarse desde los ajustes de la aplicación o desde la notificación.
+Los recordatorios de reserva están desactivados de forma predeterminada y se activan por separado en cada dispositivo desde **Aspecto**. El navegador debe conceder permiso para las notificaciones. La aplicación avisa antes del plazo cuando el dispositivo y el navegador permiten ejecutar la notificación; no es un servicio garantizado con la aplicación totalmente cerrada en todos los sistemas.
 
-## Problemas frecuentes
+## Panel de control
 
-- **La versión parece antigua:** cerrar completamente la PWA y volver a abrirla; si es necesario, actualizar una vez la página.
-- **La sesión no se restaura:** comprobar que el navegador no borre los datos del sitio al cerrarse.
-- **Un enlace de cocina o resumen no muestra datos:** pedir al administrador un enlace operativo actualizado que incluya el código del centro.
-- **Un comando no está disponible:** comprobar el rol utilizado para acceder.
+El panel muestra solo las secciones autorizadas para la sesión actual.
+
+### Configuración
+
+Disponible para el administrador actual. Incluye identidad del centro, presentación inicial, horarios límite, contraseñas compartidas, icono y opciones operativas globales.
+
+### Personas
+
+Permite crear y modificar residentes, grupos, contactos, dietas y funciones. Administrador y viceadministradores pueden eliminar residentes; la operación requiere confirmación y deja una traza de actividad.
+
+### Enlaces operativos
+
+Administrador y viceadministradores pueden abrir, copiar y compartir los enlaces de reservas y cocina. Solo quien posee la capacidad de gestión puede regenerarlos.
+
+### Aspecto
+
+Contiene preferencias del dispositivo: vista de apertura, tema, paleta, aspecto del resumen y cocina, orden de residentes, posición de mandos múltiples, idioma y recordatorios.
+
+Valores restablecibles:
+
+| Opción | Valor predeterminado |
+| --- | --- |
+| Vista de apertura | Mes |
+| Aspecto | Esencial |
+| Paleta | Tinta |
+| Resumen | Original |
+| Cocina | Original |
+| Residentes en el resumen | Nombre |
+| Mandos múltiples | Derecha |
+| Idioma | Italiano |
+| Recordatorios | Desactivados |
+
+### Administrador
+
+Gestiona invitaciones y traspaso de responsabilidad. El flujo correcto es:
+
+1. el administrador actual elige una persona y crea la invitación;
+2. el destinatario abre el enlace, se autentica y acepta;
+3. el sistema conserva el nombre y el correo verificado del destinatario;
+4. el administrador actual confirma el traspaso escribiendo la palabra solicitada;
+5. la nueva identidad pasa a ser el administrador actual y la anterior pierde los privilegios administrativos, conservando su ficha personal para las reservas.
+
+No hay que crear dos administradores permanentes ni modificar manualmente documentos Firestore para completar el proceso.
+
+### Mantenimiento
+
+Incluye extensión del calendario, registro de actividad y archivo de seguridad. El backup JSON contiene la configuración y los datos operativos admitidos, pero no contraseñas, usuarios Firebase, sesiones, credenciales de enlaces ni la cadena de administración. La restauración sirve para recuperar la configuración del centro, no para sustituir Firebase Authentication.
+
+## Uso de varios centros
+
+Las sesiones personales y administrativas están asociadas al centro. Abrir un enlace de otro centro no debe conceder derechos por una sesión anterior. Comprueba siempre el nombre del centro antes de cambiar datos.
+
+## Solución de problemas
+
+### Después de actualizar aparece una pantalla antigua
+
+Cierra todas las ventanas y pestañas instaladas de Oggi a tavola y vuelve a abrirla. El service worker activa la nueva versión cuando ya no quedan clientes de la versión anterior; no fuerza recargas mientras se está trabajando.
+
+### El panel queda en “Comprobando acceso”
+
+Comprueba la conexión y vuelve a abrir el panel. Si persiste, cierra sesión y entra de nuevo con el método apropiado. No combines una sesión de residente con la expectativa de conservar privilegios administrativos.
+
+### El correo del administrador se considera no autorizado
+
+Comprueba que el correo sea el autorizado para el centro, esté verificado y que la invitación o el traspaso se haya completado. Restablecer la contraseña no autoriza por sí solo un correo distinto.
+
+### La cocina no muestra datos
+
+Abre de nuevo el enlace operativo actual. Si el token fue regenerado, el enlace antiguo deja de ser válido.
+
+### Un dispositivo se ha perdido
+
+El administrador debe revocar la sesión personal desde la gestión de personas y, si es necesario, regenerar los enlaces operativos. Para una cuenta administrativa también hay que proteger la cuenta Google/Firebase.
+
+## Más información
+
+- [Arquitectura, autenticación y seguridad](ARQUITECTURA_Y_SEGURIDAD.md)
+- [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md)
+- [Operaciones, publicación y recuperación](OPERACIONES.md)
