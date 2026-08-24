@@ -106,11 +106,11 @@ test('versioned app shell files load the exact release with an offline fallback'
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
   assert.match(index, /styles\.css\?v=20260824c/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260824a/);
-  assert.match(index, /app\.js\?v=20260824d/);
+  assert.match(index, /app\.js\?v=20260824e/);
   assert.match(index, /manifest\.webmanifest\?v=20260822c/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260823e/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v439'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v440'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
@@ -134,9 +134,10 @@ test('the app registers the service worker and no longer unregisters it at start
   assert.doesNotMatch(index, /\.unregister\(\)/);
 });
 
-test('a newly activated service worker reloads the page once', () => {
-  assert.match(app, /addEventListener\('controllerchange'/);
-  assert.match(app, /reloadingForUpdate/);
+test('un aggiornamento del service worker attende la prossima apertura senza riavviare la pagina', () => {
+  assert.doesNotMatch(serviceWorker, /skipWaiting\(\)/);
+  assert.doesNotMatch(app, /addEventListener\('controllerchange'/);
+  assert.doesNotMatch(app, /reloadingForUpdate/);
   assert.match(app, /register\('\/sw\.js', \{ updateViaCache: 'none' \}\)/);
   assert.match(app, /registration\.update\(\)/);
 });

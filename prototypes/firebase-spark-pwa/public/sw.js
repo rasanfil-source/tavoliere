@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v439';
+const CACHE_NAME = CACHE_PREFIX + 'v440';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -61,7 +61,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
   );
 });
 

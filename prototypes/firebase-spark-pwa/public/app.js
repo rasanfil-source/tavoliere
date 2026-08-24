@@ -9626,14 +9626,6 @@ function registerServiceWorker() {
     return;
   }
 
-  const hadServiceWorkerController = Boolean(navigator.serviceWorker.controller);
-  let reloadingForUpdate = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadServiceWorkerController || reloadingForUpdate) return;
-    reloadingForUpdate = true;
-    window.location.reload();
-  });
-
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => registration.update())
