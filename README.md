@@ -17,6 +17,26 @@
 
 L’app è progettata per più centri, ma ogni dato e ogni sessione restano associati al proprio centro.
 
+## L’app in immagini
+
+### Prenotazioni
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/prenotazioni-settimana.png" width="360" alt="Vista settimanale delle prenotazioni"><br><sub>Vista settimana</sub></td>
+    <td align="center"><img src="docs/images/prenotazioni-mese.png" width="360" alt="Vista mensile delle prenotazioni"><br><sub>Vista mese</sub></td>
+  </tr>
+</table>
+
+### Riepilogo e cucina
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/riepilogo.png" width="360" alt="Riepilogo dei pasti"><br><sub>Riepilogo operativo</sub></td>
+    <td align="center"><img src="docs/images/cucina.png" width="360" alt="Quadro dati della cucina"><br><sub>Vista cucina</sub></td>
+  </tr>
+</table>
+
 ## Accessi e responsabilità
 
 | Profilo | Accesso | Funzioni principali |

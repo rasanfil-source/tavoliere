@@ -17,6 +17,26 @@
 
 La aplicación está diseñada para varios centros, pero cada dato y cada sesión permanecen asociados a su propio centro.
 
+## La aplicación en imágenes
+
+### Reservas
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/prenotazioni-settimana.png" width="360" alt="Vista semanal de las reservas"><br><sub>Vista semanal</sub></td>
+    <td align="center"><img src="docs/images/prenotazioni-mese.png" width="360" alt="Vista mensual de las reservas"><br><sub>Vista mensual</sub></td>
+  </tr>
+</table>
+
+### Resumen y cocina
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/riepilogo.png" width="360" alt="Resumen de comidas"><br><sub>Resumen operativo</sub></td>
+    <td align="center"><img src="docs/images/cucina.png" width="360" alt="Panel de datos de cocina"><br><sub>Vista de cocina</sub></td>
+  </tr>
+</table>
+
 ## Accesos y responsabilidades
 
 | Perfil | Acceso | Funciones principales |

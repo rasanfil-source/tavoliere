@@ -17,6 +17,26 @@
 
 The app supports multiple centres, while keeping every item of data and every session associated with its own centre.
 
+## The app in pictures
+
+### Reservations
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/prenotazioni-settimana.png" width="360" alt="Weekly reservation view"><br><sub>Week view</sub></td>
+    <td align="center"><img src="docs/images/prenotazioni-mese.png" width="360" alt="Monthly reservation view"><br><sub>Month view</sub></td>
+  </tr>
+</table>
+
+### Summary and kitchen
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/riepilogo.png" width="360" alt="Meal summary"><br><sub>Operational summary</sub></td>
+    <td align="center"><img src="docs/images/cucina.png" width="360" alt="Kitchen data board"><br><sub>Kitchen view</sub></td>
+  </tr>
+</table>
+
 ## Access and responsibilities
 
 | Profile | Sign-in method | Main functions |

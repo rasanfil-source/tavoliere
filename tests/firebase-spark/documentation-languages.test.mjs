@@ -107,6 +107,25 @@ test('i README mostrano la firma HappyDuck con immagine e contatto email', () =>
   }
 });
 
+test('i README mostrano le schermate anonimizzate nei punti funzionali', () => {
+  const screenshots = [
+    'docs/images/prenotazioni-settimana.png',
+    'docs/images/prenotazioni-mese.png',
+    'docs/images/riepilogo.png',
+    'docs/images/cucina.png'
+  ];
+  for (const screenshot of screenshots) {
+    assert.equal(existsSync(resolve(repositoryRoot, screenshot)), true, `Schermata mancante: ${screenshot}`);
+  }
+  for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    for (const screenshot of screenshots) {
+      assert.match(source, new RegExp(screenshot.replaceAll('.', '\\.').replaceAll('/', '\\/')),
+        `${relativePath} non mostra ${screenshot}`);
+    }
+  }
+});
+
 test('la documentazione usa Oggi a tavola come unico nome pubblico', () => {
   for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
     const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
