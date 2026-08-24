@@ -210,7 +210,8 @@ test('titolo e seconda riga iniziali appartengono al solo responsabile', () => {
   assert.match(html, /<div class="startup-gate"[^>]*data-startup-gate/);
   const splash = html.match(/<div class="startup-splash"[\s\S]*?<\/div>/)?.[0] || '';
   assert.match(splash, /<div class="startup-splash" data-startup-splash>/);
-  assert.match(splash, /<img src="\/icons\/splash-512-blended\.png/);
+  assert.match(splash, /<img src="\/icons\/splash-512-transparent\.png/);
+  assert.match(css, /\.startup-gate\s*\{[\s\S]*?background:\s*#ffffff;/);
   assert.match(splash, /data-startup-splash-copy[^>]*hidden/);
   assert.match(splash, /data-startup-splash-title[\s\S]*Oggi a tavola/);
   assert.doesNotMatch(splash, /Oggi a Tavola/);

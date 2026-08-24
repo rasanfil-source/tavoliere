@@ -76,9 +76,9 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
 });
 
 test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () => {
-  assert.equal(appManifest.background_color, '#f7f5ef');
-  assert.equal(kitchenManifest.background_color, '#f7f5ef');
-  assert.match(index, /splash-512-blended\.png\?v=20260822a/);
+  assert.equal(appManifest.background_color, '#ffffff');
+  assert.equal(kitchenManifest.background_color, '#ffffff');
+  assert.match(index, /splash-512-transparent\.png\?v=20260824a/);
   assert.match(index, /fetchpriority="high"/);
 });
 
@@ -105,18 +105,18 @@ test('versioned app shell files load the exact release with an offline fallback'
 });
 
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
-  assert.match(index, /styles\.css\?v=20260824d/);
+  assert.match(index, /styles\.css\?v=20260824e/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260824b/);
   assert.match(index, /app\.js\?v=20260824h/);
-  assert.match(index, /manifest\.webmanifest\?v=20260824a/);
+  assert.match(index, /manifest\.webmanifest\?v=20260824b/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20260823e/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v444'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v445'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
   assert.doesNotMatch(serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '', /launcher-512|happyduck/);
-  assert.match(serviceWorker, /splash-512-blended\.png\?v=20260822a/);
+  assert.match(serviceWorker, /splash-512-transparent\.png\?v=20260824a/);
 });
 
 test('la barra partecipante non conserva il vecchio pulsante di aggiornamento', () => {
