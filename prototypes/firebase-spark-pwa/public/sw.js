@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v437';
+const CACHE_NAME = CACHE_PREFIX + 'v438';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -172,7 +172,7 @@ async function networkFirst(request, fallbackPath) {
     // mentre il passaggio a un altro parametro caricava quella nuova. La
     // Cache Storage resta il ripiego offline; online la navigazione deve
     // sempre riconvalidare la shell pubblicata.
-    const response = await fetch(request, { cache: 'no-store' });
+    const response = await fetch(request, { cache: 'no-cache' });
     if (response && (response.ok || response.type === 'opaque')) {
       // Gli URL di navigazione possono contenere centro e token di accesso.
       // Una chiave canonica conserva una sola copia della struttura applicativa.
