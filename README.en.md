@@ -98,6 +98,10 @@ Before a release, use the complete gate described in [Development and testing](d
 
 ## Support
 
-For information and suggestions, write to [rasanfil@gmail.com](mailto:rasanfil@gmail.com).
+<p align="center">
+  <img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="88" alt="HappyDuck signature"><br>
+  <strong>HappyDuck</strong><br>
+  <a href="mailto:rasanfil@gmail.com">Email the developer</a>
+</p>
 
 **Oggi a tavola 2026** project.

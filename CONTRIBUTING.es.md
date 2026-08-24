@@ -2,7 +2,7 @@
 
 [![🇮🇹 Italiano](https://img.shields.io/badge/%F0%9F%87%AE%F0%9F%87%B9-Italiano-6b7280)](CONTRIBUTING.md) [![🇬🇧 English](https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7-English-6b7280)](CONTRIBUTING.en.md) [![🇪🇸 Español](https://img.shields.io/badge/%F0%9F%87%AA%F0%9F%87%B8-Espa%C3%B1ol-16615a)](CONTRIBUTING.es.md)
 
-Gracias por tu interés en el proyecto. Antes de proponer un cambio, abre un aviso o escribe a `rasanfil@gmail.com`, describiendo el problema, los pasos para reproducirlo y el resultado esperado.
+Gracias por tu interés en el proyecto. Antes de proponer un cambio, abre un aviso o [escribe a HappyDuck](mailto:rasanfil@gmail.com), describiendo el problema, los pasos para reproducirlo y el resultado esperado.
 
 ## Reglas de trabajo
 

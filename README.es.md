@@ -98,6 +98,10 @@ Antes de una publicación, utilizar el proceso completo descrito en [Desarrollo 
 
 ## Soporte
 
-Para información y sugerencias, escribir a [rasanfil@gmail.com](mailto:rasanfil@gmail.com).
+<p align="center">
+  <img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="88" alt="Firma de HappyDuck"><br>
+  <strong>HappyDuck</strong><br>
+  <a href="mailto:rasanfil@gmail.com">Escribe al desarrollador</a>
+</p>
 
 Proyecto **Oggi a tavola 2026**.

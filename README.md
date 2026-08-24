@@ -98,6 +98,10 @@ Prima di un rilascio usare il gate completo descritto in [Sviluppo e test](docs/
 
 ## Supporto
 
-Per informazioni e suggerimenti scrivere a [rasanfil@gmail.com](mailto:rasanfil@gmail.com).
+<p align="center">
+  <img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="88" alt="Firma HappyDuck"><br>
+  <strong>HappyDuck</strong><br>
+  <a href="mailto:rasanfil@gmail.com">Scrivi allo sviluppatore</a>
+</p>
 
 Progetto **Oggi a tavola 2026**.

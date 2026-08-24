@@ -96,6 +96,15 @@ test('i README indirizzano alla documentazione della propria lingua', () => {
   }
 });
 
+test('i README mostrano la firma HappyDuck con immagine e contatto email', () => {
+  for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    assert.match(source, /prototypes\/firebase-spark-pwa\/public\/icons\/happyduck\.png/);
+    assert.match(source, /<strong>HappyDuck<\/strong>/);
+    assert.match(source, /href="mailto:rasanfil@gmail\.com"/);
+  }
+});
+
 test('la documentazione usa Oggi a tavola come unico nome pubblico', () => {
   for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
     const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
