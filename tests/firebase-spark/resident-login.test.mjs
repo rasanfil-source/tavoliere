@@ -818,9 +818,9 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
   assert.match(participantRefresh, /await refreshStrongAdministratorOperationalAuthorization\(\)/);
   assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
-  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260823i">/);
-  assert.match(summaryStyles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
-  assert.match(summaryStyles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
+  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824a">/);
+  assert.match(styles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
+  assert.match(styles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
 });
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
@@ -828,11 +828,12 @@ test('sul mobile selettori e pulsante operativo restano affiancati e stabili', (
   assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.action\.book">Prenota/);
   assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*data-i18n="app\.action\.book">Prenota/);
   assert.match(index, /data-participant-nav-link data-operational-view-switch[\s\S]*operational-view-switch-measure[\s\S]*data-i18n="summary\.view\.title"/);
-  assert.match(summaryStyles, /\.operational-view-switch > span \{[\s\S]*grid-area: 1 \/ 1/);
-  assert.match(summaryStyles, /\.operational-view-switch \{[\s\S]*height: 42px !important;[\s\S]*min-height: 42px !important/);
-  assert.match(summaryStyles, /@media \(max-width: 520px\)[\s\S]*\.meal-view-nav \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
-  assert.match(summaryStyles, /\[data-summary-panel\] \.summary-date-tabs \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
-  assert.match(summaryStyles, /@media \(min-width: 621px\)[\s\S]*\[data-summary-panel\] \.summary-date-tabs > \[data-participant-nav-link\] \{[\s\S]*margin-left: auto/);
+  assert.match(styles, /\.operational-view-switch > span \{[\s\S]*grid-area: 1 \/ 1/);
+  assert.match(styles, /\.operational-view-switch \{[\s\S]*height: 42px !important;[\s\S]*min-height: 42px !important/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.meal-view-nav \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
+  assert.match(styles, /\[data-summary-panel\] \.summary-date-tabs \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content/);
+  assert.match(styles, /@media \(min-width: 621px\)[\s\S]*\[data-summary-panel\] \.summary-date-tabs > \[data-participant-nav-link\] \{[\s\S]*margin-left: auto/);
+  assert.doesNotMatch(summaryStyles, /\.operational-view-switch-measure|\.meal-view-nav > \[data-summary-nav-link\]/);
 });
 
 test('ogni nuovo ingresso nel riepilogo riparte da Oggi', () => {

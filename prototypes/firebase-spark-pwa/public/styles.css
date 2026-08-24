@@ -7083,3 +7083,164 @@ body[data-mode="admin"] .admin-shell-body {
   }
 
 }
+
+/* Navigazione operativa critica.
+   Mese/Settimana e Riepilogo/Prenota appartengono alla shell principale:
+   non devono dipendere dal foglio specialistico delle viste di riepilogo. */
+.summary-date-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-day-segment {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(92px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.summary-day-segment .week-pill {
+  position: relative;
+  min-height: 42px;
+  padding: 0 18px 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.summary-day-segment .week-pill + .week-pill {
+  border-left: 1px solid var(--primary);
+}
+
+.summary-day-segment .week-pill-active {
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.summary-day-segment .week-pill-active::after {
+  position: absolute;
+  right: 10px;
+  bottom: 3px;
+  left: 10px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+}
+
+[data-summary-panel] .summary-date-tabs > .operational-view-switch {
+  box-sizing: border-box;
+  height: 42px !important;
+  min-height: 42px !important;
+}
+
+.meal-view-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.meal-view-preference {
+  display: block;
+  min-width: 0;
+}
+
+.meal-view-segment .week-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+[data-participant-panel],
+[data-week-panel] {
+  touch-action: pan-y;
+}
+
+.meal-view-nav > [data-summary-nav-link] {
+  margin-left: auto;
+}
+
+.operational-view-switch {
+  display: grid;
+  box-sizing: border-box;
+  height: 42px !important;
+  min-height: 42px !important;
+  align-items: center;
+  justify-items: center;
+  white-space: nowrap;
+}
+
+.operational-view-switch > span {
+  grid-area: 1 / 1;
+}
+
+.operational-view-switch-measure {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (min-width: 621px) {
+  [data-summary-panel] .summary-date-tabs > [data-participant-nav-link] {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  [data-summary-panel] .summary-date-tabs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  [data-summary-panel] .summary-day-segment {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-summary-panel] .summary-date-tabs > .panel-link {
+    width: auto;
+    min-width: 0;
+    margin-left: 0;
+    padding-inline: clamp(8px, 3vw, 14px);
+  }
+}
+
+@media (max-width: 520px) {
+  .meal-view-nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .meal-view-preference {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .meal-view-segment {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .meal-view-nav > [data-summary-nav-link] {
+    width: auto;
+    min-width: 0;
+    margin-left: 0;
+    padding-inline: clamp(8px, 3vw, 14px);
+  }
+}

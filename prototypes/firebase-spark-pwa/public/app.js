@@ -147,7 +147,7 @@ const domainModulePaths = {
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
 const requestCoordinator = createStateStore();
-const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260823i';
+const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260824a';
 let summaryStylesheetLoad = null;
 
 function ensureSummaryStyles() {

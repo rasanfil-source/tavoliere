@@ -155,7 +155,7 @@ test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () 
   assert.match(app, /event\.preventDefault\(\)/);
   assert.match(app, /state\.mode === 'participant'[\s\S]*shiftMonth\(direction\)/);
   assert.match(app, /state\.mode === 'week'[\s\S]*shiftWeek\(direction \* 7\)/);
-  assert.match(styles, /\[data-participant-panel\],[\s\S]*\[data-week-panel\] \{[\s\S]*touch-action: pan-y/);
+  assert.match(appStyles, /\[data-participant-panel\],[\s\S]*\[data-week-panel\] \{[\s\S]*touch-action: pan-y/);
 });
 
 test('il selettore Oggi Domani scorre con la stessa animazione nelle due direzioni', () => {
