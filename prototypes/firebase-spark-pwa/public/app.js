@@ -90,23 +90,6 @@ import {
   shouldShowSummaryContactHint
 } from './summary-contact-hint.mjs?v=20260823a';
 
-const performanceTimeline = globalThis.__tatPerformance || {
-  marks: {},
-  counters: {}
-};
-globalThis.__tatPerformance = performanceTimeline;
-
-function markPerformance(name) {
-  performanceTimeline.marks[name] = Math.round(globalThis.performance?.now?.() || Date.now());
-  globalThis.performance?.mark?.(`tat:${name}`);
-}
-
-function countPerformance(name) {
-  performanceTimeline.counters[name] = (performanceTimeline.counters[name] || 0) + 1;
-}
-
-markPerformance('script-start');
-
 const initialMode = resolveMode();
 let authLifecycle = createInitialAuthState({ route: initialMode });
 
@@ -1445,7 +1428,6 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
-  markPerformance('bootstrap-start');
   syncStartupSplashPresentation();
   applyMealReminderUrlPreference();
   registerServiceWorker();
@@ -1457,7 +1439,6 @@ async function bootstrapApp() {
   // In particular, a persisted Gmail session must not wait for one or two
   // language catalogs before its observer can reconcile the admin panel.
   if (hasAdminInterface) initializeAuthPanel();
-  markPerformance('auth-observer-started');
 
   // La vista Cucina deve creare prima la propria sessione: un caricamento
   // anticipato delle impostazioni protette può essere negato e condiviso con
@@ -1486,7 +1467,6 @@ async function bootstrapApp() {
   }
 
   await i18nPromise;
-  markPerformance('translations-ready');
   renderAllViews();
   // Su un accesso diretto a Mese o Settimana Firebase Auth non ha ancora
   // ripristinato l'eventuale account amministratore. Non mostrare per un
@@ -1497,7 +1477,6 @@ async function bootstrapApp() {
     || isDirectMealRoute;
   if (!keepStartupGate && !isPlainResidentLogin) {
     hideStartupSplash();
-    markPerformance('first-usable-frame');
   }
 
   // Stale-while-revalidate: visual preferences may come from the center cache,
@@ -1508,14 +1487,9 @@ async function bootstrapApp() {
     syncStartupSplashPresentation();
     await applyCenterDefaultLanguage(centerSettings);
     renderAllViews();
-    markPerformance('settings-reconciled');
   });
 
-  const initialRefresh = refreshNow(isPlainResidentLogin ? 'ripristino-accesso' : 'avvio');
-  if (isDirectMealRoute) {
-    void initialRefresh.finally(() => markPerformance('first-usable-frame'));
-  }
-  markPerformance('bootstrap-scheduled');
+  void refreshNow(isPlainResidentLogin ? 'ripristino-accesso' : 'avvio');
 }
 
 bootstrapApp().catch(console.error);
@@ -2471,8 +2445,8 @@ function reconcileAdminAccessWithoutStrongUser() {
     // vice-sessione già valida, lasciando il pannello fermo su "verifica".
     beginAdminAuthorizationCheck();
     await restoreResidentSettingsPanel();
-    finishAdminAuthorizationCheck();
     renderMode();
+    finishAdminAuthorizationCheck();
   })().catch((error) => {
     finishAdminAuthorizationCheck();
     showAuthError(error);
@@ -2493,13 +2467,12 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     state.mode
   ].join(':');
   if (adminHydrationLoad?.key === hydrationKey) {
-    countPerformance('admin-hydration-joined');
     return adminHydrationLoad.promise;
   }
 
-  countPerformance('admin-hydration-started');
   const hydrationVersion = ++state.adminHydrationVersion;
   state.adminPanelHydrating = true;
+  let authorizationFailed = false;
   let request;
   request = (async () => {
     try {
@@ -2509,6 +2482,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
           : Number.NaN
       ));
     } catch (error) {
+      authorizationFailed = true;
       // A membership/settings read may fail independently of Firebase Auth. Do
       // not leave the shell permanently in "Accesso in verifica". If the role
       // was already established, keep the panel mounted with the data currently
@@ -2524,7 +2498,12 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
     } finally {
       if (hydrationVersion === state.adminHydrationVersion) {
         state.adminPanelHydrating = false;
-        finishAdminAuthorizationCheck();
+        // In caso di errore showAuthError prepara prima la schermata stabile e
+        // soltanto dopo rimuove il velo iniziale. Non pubblicare qui uno stato
+        // intermedio ancora privo del relativo messaggio.
+        if (!authorizationFailed && state.adminAuthorizationPending) {
+          finishAdminAuthorizationCheck();
+        }
       }
     }
   })().finally(() => {
@@ -2756,9 +2735,12 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
     }
   }
-  finishAdminAuthorizationCheck();
   elements.adminPanel.hidden = !isAdmin || state.platformOwner;
   renderMode();
+  // Il pannello o la schermata di accesso sono ora nello stato definitivo.
+  // Rivelarli prima degli eventuali dialoghi successivi evita che una modale
+  // attenda una risposta mentre è ancora coperta dallo splash.
+  finishAdminAuthorizationCheck();
   if (successionCompleted) {
     await showOwnershipTransferCompleted();
   } else if (successionWasPending && access.role === 'ADMIN') {
@@ -2769,7 +2751,6 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
 
 
 function setSignedOutState() {
-  finishAdminAuthorizationCheck();
   clearAdminAuthorizationState();
   elements.adminShell.dataset.adminActive = 'false';
   elements.adminShell.dataset.adminOwner = 'false';
@@ -2848,6 +2829,9 @@ function setSignedOutState() {
   elements.ownerInvitationPanel.hidden = true;
   applyAdminCapabilityVisibility();
   elements.adminShell.open = state.mode === 'admin';
+  // La schermata di accesso è ora completa: solo a questo punto può sostituire
+  // lo splash usato durante il ripristino della sessione precedente.
+  finishAdminAuthorizationCheck();
 }
 
 function clearAdminAuthorizationState() {
@@ -3545,7 +3529,6 @@ async function handlePlatformCenterListClick(event) {
 }
 
 function showAuthError(error) {
-  finishAdminAuthorizationCheck();
   const currentUser = getCurrentUser();
   const keepAuthorizedPanel = state.mode === 'admin'
     && Boolean(state.adminRole)
@@ -3555,6 +3538,7 @@ function showAuthError(error) {
   showAuthenticatedAdministratorControls();
   elements.authStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
   if (keepAuthorizedPanel) renderMode();
+  finishAdminAuthorizationCheck();
 }
 
 function setBootstrapProgress(active, detail = 'Estensione calendario prenotazioni...') {
@@ -3705,15 +3689,12 @@ async function refreshNow(source) {
         ? 'manuale'
         : state.pendingRefreshSource || source;
       state.pendingRefreshKey = refreshKey;
-    } else {
-      countPerformance('refresh-coalesced');
     }
     return;
   }
 
   state.refreshInFlight = true;
   state.activeRefreshKey = refreshKey;
-  countPerformance('refresh-started');
   try {
     await performRefresh(source);
   } finally {
@@ -3753,7 +3734,9 @@ async function performRefresh(source) {
   state.timerId = window.setTimeout(() => refreshNow('timer'), delayMs);
 
   if (state.mode === 'admin') {
-    hideStartupSplash();
+    // Il refresh amministrativo non decide quando mostrare la pagina. Auth,
+    // ruolo e dati del pannello devono raggiungere uno stato definitivo; sarà
+    // finishAdminAuthorizationCheck a rimuovere atomicamente lo splash.
     return;
   }
 

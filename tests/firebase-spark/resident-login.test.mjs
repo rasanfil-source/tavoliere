@@ -512,7 +512,7 @@ test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati oper
   const applyAuth = app.match(/async function resolveAdminAuthState\(user[\s\S]*?\n}/)?.[0] || '';
   assert.match(app, /function beginAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = true/);
   assert.match(app, /if \(hasAdminInterface\) initializeAuthPanel\(\);[\s\S]*await i18nPromise/);
-  assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\{[\s\S]*progressive: true[\s\S]*finishAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = !isAdmin/);
+  assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\{[\s\S]*progressive: true[\s\S]*elements\.adminPanel\.hidden = !isAdmin[\s\S]*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(app, /adminPanelHydrating: false/);
   assert.match(app, /hydrationVersion === state\.adminHydrationVersion/);
   assert.match(app, /adminHydrationLoad\?\.key === hydrationKey/);

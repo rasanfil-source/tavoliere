@@ -49,8 +49,27 @@ test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impost
   assert.match(bootstrap, /const isDirectMealRoute = \['participant', 'week'\]\.includes\(state\.mode\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
   assert.match(bootstrap, /const keepStartupGate =[\s\S]*isDirectMealRoute/);
-  assert.match(bootstrap, /const initialRefresh = refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
+  assert.match(bootstrap, /void refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
   assert.doesNotMatch(bootstrap, /if \(!isPlainResidentLogin\)/);
+});
+
+test('l applicazione non conserva telemetria o contatori diagnostici globali', () => {
+  assert.doesNotMatch(app, /__tatPerformance|performanceTimeline|markPerformance|countPerformance/);
+  assert.doesNotMatch(app, /performance\?\.mark|performance\.mark/);
+});
+
+test('il primo ingresso nel pannello pubblica soltanto uno stato Auth definitivo', () => {
+  const refresh = app.match(/async function performRefresh\(source\)[\s\S]*?\n}/)?.[0] || '';
+  const adminRefresh = refresh.match(/if \(state\.mode === 'admin'\) \{[\s\S]*?\n  }/)?.[0] || '';
+  const signedOut = app.match(/function setSignedOutState\(\)[\s\S]*?\n}/)?.[0] || '';
+  const authError = app.match(/function showAuthError\(error\)[\s\S]*?\n}/)?.[0] || '';
+  const authHydration = app.match(/async function applyAdminAuthState\(user,[\s\S]*?\n}/)?.[0] || '';
+
+  assert.doesNotMatch(adminRefresh, /hideStartupSplash\(/);
+  assert.match(signedOut, /applyAdminCapabilityVisibility\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(authHydration, /if \(!authorizationFailed && state\.adminAuthorizationPending\)[\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(app, /elements\.adminPanel\.hidden = !isAdmin \|\| state\.platformOwner;\s*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
 });
 
 test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo condiviso', () => {
