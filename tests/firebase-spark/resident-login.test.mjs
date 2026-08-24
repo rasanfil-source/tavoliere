@@ -823,6 +823,14 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   assert.match(styles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
 });
 
+test('la riapertura usa la vista preferita senza cambiare la vista durante un refresh', () => {
+  assert.match(app, /const initialMode = resolveMode\(\{ appLaunch: true \}\)/);
+  assert.match(app, /function resolveMode\(\{ appLaunch = false \} = \{\}\)/);
+  assert.match(app, /appLaunch && isLegacyParticipantAppLaunch\(params\) && loadCachedDefaultView\(\) === 'week'/);
+  assert.match(app, /navigationEntry\.type === 'navigate'/);
+  assert.match(app, /cacheDefaultView\(preferences\.defaultView\)/);
+});
+
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
   assert.equal((index.match(/data-operational-view-switch/g) || []).length, 3);
   assert.match(index, /operational-view-switch-measure[\s\S]*data-i18n="app\.action\.book">Prenota/);

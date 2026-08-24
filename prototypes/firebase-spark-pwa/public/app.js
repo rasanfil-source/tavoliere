@@ -44,7 +44,8 @@ import {
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings,
-  loadCachedDefaultView
+  loadCachedDefaultView,
+  cacheDefaultView
 } from './center-settings.js?v=20260823e';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
@@ -90,7 +91,7 @@ import {
   shouldShowSummaryContactHint
 } from './summary-contact-hint.mjs?v=20260823a';
 
-const initialMode = resolveMode();
+const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
 
 function transitionAuthLifecycle(type, data = {}) {
@@ -473,6 +474,9 @@ function applyResidentPreferences(settings) {
 
 function storeResidentPreferences(preferences) {
   try {
+    if (typeof preferences?.defaultView === 'string') {
+      cacheDefaultView(preferences.defaultView);
+    }
     window.localStorage.setItem(
       getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
       JSON.stringify(preferences)
@@ -7456,14 +7460,31 @@ function getMonthScopeMeals(weekStart, mealTypeId) {
     .filter((meal) => !mealTypeId || meal.mealTypeId === mealTypeId);
 }
 
-function resolveMode() {
-  const view = new URLSearchParams(window.location.search).get('view');
+function resolveMode({ appLaunch = false } = {}) {
+  const params = new URLSearchParams(window.location.search);
+  const view = params.get('view');
   if (view === 'kitchen') return 'kitchen';
   if (view === 'summary') return 'summary';
   if (view === 'week') return 'week';
-  if (view === 'participant') return 'participant';
+  if (view === 'participant') {
+    if (appLaunch && isLegacyParticipantAppLaunch(params) && loadCachedDefaultView() === 'week') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', 'week');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+      return 'week';
+    }
+    return 'participant';
+  }
   if (view === 'admin') return 'admin';
   return loadCachedDefaultView() === 'week' ? 'week' : 'participant';
+}
+
+function isLegacyParticipantAppLaunch(params) {
+  if (params.get('access') !== 'friendly') return false;
+  const allowedParameters = new Set(['view', 'access']);
+  if ([...params.keys()].some((key) => !allowedParameters.has(key))) return false;
+  const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
+  return !navigationEntry || navigationEntry.type === 'navigate';
 }
 
 function resolveEntryView() {
