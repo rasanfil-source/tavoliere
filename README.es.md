@@ -9,6 +9,7 @@
 ## Qué permite hacer
 
 - reservar desayuno, almuerzo y cena en las vistas mensual y semanal;
+- aplicar selecciones múltiples a un día, una comida, una semana o al mes completo;
 - consultar un resumen operativo sin modificar las reservas;
 - mostrar a la cocina comensales, dietas, celebraciones y notas del día;
 - gestionar personas, roles, horarios límite, calendario y enlaces operativos;

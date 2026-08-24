@@ -51,6 +51,30 @@ The liturgical role is personal and independent from administration; it may also
 
 **Week** uses one row per day and one column per meal, with actions for a day, meal or the entire week. Its day column follows the side selected for Month. Date ranges automatically realign at midnight and period boundaries.
 
+### Multiple selections and collective actions
+
+Multiple selections change only the reservations of the person who is currently signed in. They never change another resident’s choices and they skip meals that are already closed or in the past.
+
+In **Month**:
+
+- **M** applies the choice to every editable meal in the displayed month;
+- the calendar control applies it to every editable meal in that week;
+- the Breakfast, Lunch and Dinner controls apply it to the same meal throughout the week;
+- an individual cell still changes only that meal on that day.
+
+In **Week**:
+
+- the general control acts on every editable meal in the week;
+- the control beside a day acts on that day only;
+- the Breakfast, Lunch or Dinner heading acts on that meal column throughout the week;
+- each cell remains an individual control.
+
+Every collective control behaves as a consistent toggle. If its scope contains at least one unreserved meal, it reserves every editable meal in that scope. If all of them are already reserved, it clears them all. In a mixed state, the first tap therefore completes the selection and the next tap clears it. **Future** uses the same rule for its available controls.
+
+The grid updates immediately while saving continues. A status message reports how many reservations were saved; after an error, the app restores or reloads any unconfirmed state. There is no extra confirmation dialog because the action remains reversible with another tap while the cut-off time is still open.
+
+The left or right position selected in **Appearance** is applied consistently to Month controls and to the Week day column.
+
 ## Centre Agenda
 
 Available under Week to administrators and deputies; Mass is available only to people with the liturgical role.

@@ -9,6 +9,7 @@
 ## Che cosa permette di fare
 
 - prenotare colazione, pranzo e cena nelle viste mese e settimana;
+- applicare selezioni multiple a un giorno, un pasto, una settimana o all’intero mese;
 - consultare un riepilogo operativo senza modificare le prenotazioni;
 - mostrare alla cucina coperti, diete, celebrazioni e note del giorno;
 - gestire persone, ruoli, orari limite, calendario e link operativi;

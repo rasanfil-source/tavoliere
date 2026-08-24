@@ -125,6 +125,30 @@ test('i README mostrano le schermate anonimizzate nei punti funzionali', () => {
   }
 });
 
+test('le selezioni multiple sono spiegate nei README e nelle tre guide', () => {
+  const expected = new Map([
+    ['README.md', /selezioni multiple/],
+    ['README.en.md', /multiple selections/],
+    ['README.es.md', /selecciones múltiples/],
+    ['docs/GUIDA_ALL_USO.md', /### Selezioni multiple e azioni collettive/],
+    ['docs/en/USER_GUIDE.md', /### Multiple selections and collective actions/],
+    ['docs/es/GUIA_DE_USO.md', /### Selecciones múltiples y acciones colectivas/]
+  ]);
+  for (const [relativePath, pattern] of expected) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    assert.match(source, pattern, `${relativePath} non documenta le selezioni multiple`);
+  }
+  for (const relativePath of [
+    'docs/GUIDA_ALL_USO.md',
+    'docs/en/USER_GUIDE.md',
+    'docs/es/GUIA_DE_USO.md'
+  ]) {
+    const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');
+    assert.match(source, /M/);
+    assert.match(source, /Future|Futura/);
+  }
+});
+
 test('la documentazione usa Oggi a tavola come unico nome pubblico', () => {
   for (const relativePath of ['README.md', 'README.en.md', 'README.es.md']) {
     const source = readFileSync(resolve(repositoryRoot, relativePath), 'utf8');

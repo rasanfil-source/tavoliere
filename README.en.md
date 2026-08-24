@@ -9,6 +9,7 @@
 ## What it can do
 
 - reserve breakfast, lunch and dinner in month and week views;
+- apply multiple selections to a day, meal, week or the entire month;
 - consult an operational summary without changing reservations;
 - show the kitchen covers, diets, celebrations and daily notes;
 - manage people, roles, cut-off times, calendar and operational links;

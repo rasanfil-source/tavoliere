@@ -55,6 +55,30 @@ La vista semanal presenta los mismos datos en una tabla más compacta. La column
 
 Los plazos de reserva se aplican según el huso horario configurado por el centro. Después del plazo, una casilla puede mostrarse cerrada y ya no acepta cambios.
 
+### Selecciones múltiples y acciones colectivas
+
+Las selecciones múltiples modifican únicamente las reservas de la persona que ha iniciado sesión. No cambian las elecciones de otros residentes y omiten las comidas cuyo plazo ya ha terminado o que pertenecen al pasado.
+
+En la **vista mensual**:
+
+- **M** aplica la elección a todas las comidas modificables del mes mostrado;
+- el mando con el calendario la aplica a todas las comidas modificables de esa semana;
+- los mandos Desayuno, Almuerzo y Cena actúan sobre la misma comida durante toda la semana;
+- cada casilla individual continúa modificando solo esa comida y ese día.
+
+En la **vista semanal**:
+
+- el mando general actúa sobre todas las comidas modificables de la semana;
+- el mando situado junto a un día actúa solo sobre las comidas de ese día;
+- el encabezado de Desayuno, Almuerzo o Cena actúa sobre esa columna durante toda la semana;
+- cada casilla sigue siendo un mando individual.
+
+Cada mando colectivo funciona como un interruptor coherente. Si en su ámbito existe al menos una comida no reservada, reserva todas las que todavía se pueden modificar. Si ya están todas reservadas, las desmarca todas. En un estado mixto, el primer toque completa la selección y el siguiente la vacía. La vista **Futura** utiliza la misma regla en los mandos disponibles.
+
+La cuadrícula muestra el resultado inmediatamente mientras continúa el guardado. Un mensaje indica cuántas reservas se han guardado; si ocurre un error, la aplicación restaura o vuelve a cargar los estados no confirmados. No se solicita una confirmación adicional porque la acción puede deshacerse con otro toque mientras el plazo siga abierto.
+
+La posición izquierda o derecha elegida en **Aspecto** se aplica de manera coherente tanto a los mandos del mes como a la columna de días de la semana.
+
 ### Agenda del centro
 
 La Agenda del centro permite a administradores y viceadministradores registrar enfermos, invitados y otras variaciones operativas. Las celebraciones son independientes y solo puede modificarlas una persona autorizada expresamente.

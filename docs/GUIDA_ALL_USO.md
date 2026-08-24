@@ -72,6 +72,30 @@ I comandi multipli possono stare a destra o a sinistra: **M** agisce sul mese, i
 
 La griglia ha una riga per giorno e una colonna per pasto. Sono disponibili comandi per giorno, pasto e intera settimana. La colonna dei giorni segue lo stesso lato scelto per i controlli multipli del mese. Il cambio di settimana o mese riporta al periodo corrente quando necessario e, al passaggio della mezzanotte o del confine del periodo, la vista si riallinea automaticamente.
 
+### Selezioni multiple e azioni collettive
+
+Le selezioni multiple modificano esclusivamente le prenotazioni della persona attualmente autenticata. Non cambiano le scelte degli altri residenti e non operano sui pasti già chiusi o passati.
+
+Nella **vista Mese**:
+
+- **M** applica la scelta a tutti i pasti ancora modificabili del mese visualizzato;
+- il comando con il calendario applica la scelta a tutti i pasti modificabili della relativa settimana;
+- i comandi Colazione, Pranzo e Cena agiscono sullo stesso pasto per tutta la settimana;
+- ogni singola casella continua a modificare soltanto quel pasto e quel giorno.
+
+Nella **vista Settimana**:
+
+- il comando generale agisce su tutti i pasti modificabili della settimana;
+- il comando accanto a un giorno agisce sui pasti di quel solo giorno;
+- il comando nell’intestazione di Colazione, Pranzo o Cena agisce su quella colonna per tutta la settimana;
+- ogni casella resta un comando individuale.
+
+Ogni comando collettivo funziona come un interruttore coerente: se nello spazio scelto esiste almeno un pasto non prenotato, prenota tutti quelli modificabili; se sono già tutti prenotati, li deseleziona tutti. In una situazione mista, quindi, il primo tocco completa la selezione e il successivo la svuota. La vista **Futura** usa la stessa logica nei comandi disponibili.
+
+Il risultato appare subito nella griglia mentre il salvataggio procede. Un messaggio comunica quante prenotazioni sono state salvate; in caso di errore, l’app ripristina o ricarica gli stati non confermati. Non viene richiesta una conferma aggiuntiva, perché l’azione resta reversibile con un secondo tocco finché gli orari limite sono aperti.
+
+La posizione destra o sinistra scelta in **Aspetto** viene applicata in modo coerente sia ai controlli del mese sia alla colonna dei giorni della settimana.
+
 ## Agenda del centro
 
 Compare sotto la settimana per amministratore e vice; la sola Messa è disponibile a chi possiede il ruolo liturgico.
