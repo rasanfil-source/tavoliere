@@ -136,7 +136,7 @@ test('mese e settimana condividono il selettore segmentato e la spunta verde', (
   assert.doesNotMatch(index, /data-view-pin-button/);
   assert.doesNotMatch(index, /class="meal-view-pin"/);
   assert.doesNotMatch(app, /VIEW_PREFERENCE_HOLD_MS|savePreferredView|loadStoredPreferredView/);
-  assert.match(app, /return loadCachedDefaultView\(\) === 'week' \? 'week' : 'participant'/);
+  assert.match(app, /return loadPreferredInitialView\(\) === 'week' \? 'week' : 'participant'/);
   assert.match(styles, /\.week-meal-button\.meal-state-present[\s\S]*background: var\(--primary\)/);
 });
 

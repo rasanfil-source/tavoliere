@@ -7467,7 +7467,7 @@ function resolveMode({ appLaunch = false } = {}) {
   if (view === 'summary') return 'summary';
   if (view === 'week') return 'week';
   if (view === 'participant') {
-    if (appLaunch && isLegacyParticipantAppLaunch(params) && loadCachedDefaultView() === 'week') {
+    if (appLaunch && isLegacyParticipantAppLaunch(params) && loadPreferredInitialView() === 'week') {
       const url = new URL(window.location.href);
       url.searchParams.set('view', 'week');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
@@ -7476,7 +7476,21 @@ function resolveMode({ appLaunch = false } = {}) {
     return 'participant';
   }
   if (view === 'admin') return 'admin';
-  return loadCachedDefaultView() === 'week' ? 'week' : 'participant';
+  return loadPreferredInitialView() === 'week' ? 'week' : 'participant';
+}
+
+function loadPreferredInitialView() {
+  try {
+    const preferences = JSON.parse(window.localStorage.getItem(
+      getCenterScopedStorageKey('tavolaComune.residentPreferences')
+    ) || '{}');
+    if (preferences?.defaultView === 'week' || preferences?.defaultView === 'month') {
+      return preferences.defaultView;
+    }
+  } catch {
+    // La cache specifica della vista resta il ripiego per storage non leggibile.
+  }
+  return loadCachedDefaultView();
 }
 
 function isLegacyParticipantAppLaunch(params) {
