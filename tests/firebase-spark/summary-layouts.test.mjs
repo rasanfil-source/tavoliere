@@ -190,6 +190,7 @@ test('Originale ingrandisce i codici dieta e li adatta alle righe facoltative', 
   assert.match(view, /summary-matrix-optional-rows-\$\{optionalRowCount\}/);
   assert.match(styles, /\.summary-layout-classic \.summary-matrix \{[\s\S]*--classic-diet-code-size: 1\.12rem/);
   assert.match(styles, /\.summary-layout-classic \.summary-matrix-diets li \{[\s\S]*font-size: var\(--classic-diet-code-size\)/);
+  assert.match(styles, /\.summary-layout-classic \.summary-matrix-diets \{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap;[\s\S]*justify-content: center/);
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*summary-matrix-optional-rows-1[\s\S]*0\.8rem[\s\S]*summary-matrix-optional-rows-3[\s\S]*0\.68rem/);
 });
 

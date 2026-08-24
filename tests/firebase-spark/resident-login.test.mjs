@@ -823,7 +823,7 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
   assert.match(participantRefresh, /await refreshStrongAdministratorOperationalAuthorization\(\)/);
   assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
-  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824a">/);
+  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);
   assert.match(styles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
   assert.match(styles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
 });

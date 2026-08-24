@@ -1284,6 +1284,16 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   font-weight: 650;
 }
 
+/* In Riepilogo e Cucina Originale i codici sfruttano prima lo spazio
+   orizzontale e vanno a capo soltanto quando la cella non li contiene più. */
+.summary-layout-classic .summary-matrix-diets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+}
+
 .summary-matrix-empty {
   color: var(--muted);
 }

@@ -78,7 +78,7 @@ test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo co
   assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|launcher-512/);
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
-  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824a">/);
+  assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);
   assert.doesNotMatch(index, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
   assert.match(app, /function ensureSummaryStyles\(\)/);
   assert.match(app, /if \(isOperationalTarget\) await ensureSummaryStyles\(\)/);
