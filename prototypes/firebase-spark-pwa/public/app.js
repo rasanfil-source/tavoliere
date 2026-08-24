@@ -350,6 +350,7 @@ function addCalendarDays(date, amount) {
 }
 const dateTimeFormatterCache = new Map();
 const MONTH_AUTO_SCROLL_DELAY_MS = 1800;
+const MONTH_AUTO_SCROLL_MEDIA_QUERY = '(max-width: 1024px)';
 const MONTH_AUTO_SCROLL_CANCEL_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
 const OPERATIONAL_AUTO_SCROLL_DELAY_MS = 1800;
 const MEAL_VIEW_SWIPE_MIN_X = 52;
@@ -1633,14 +1634,14 @@ function cancelMonthAutoScroll(markHandled = false) {
 }
 
 function scheduleMonthAutoScroll() {
-  const isMobile = window.matchMedia('(max-width: 620px)').matches;
+  const isCompactViewport = window.matchMedia(MONTH_AUTO_SCROLL_MEDIA_QUERY).matches;
   if (
     state.monthAutoScrollHandled
     || state.monthAutoScrollTimerId
     || state.mode !== 'participant'
     || !state.selectedParticipant
     || !elements.calendarPanel
-    || !isMobile
+    || !isCompactViewport
   ) {
     return;
   }
@@ -1668,7 +1669,7 @@ function scheduleMonthAutoScroll() {
       state.mode !== 'participant'
       || document.hidden
       || window.scrollY > 24
-      || !window.matchMedia('(max-width: 620px)').matches
+      || !window.matchMedia(MONTH_AUTO_SCROLL_MEDIA_QUERY).matches
     ) {
       return;
     }

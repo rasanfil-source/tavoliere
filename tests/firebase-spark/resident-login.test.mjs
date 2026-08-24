@@ -402,11 +402,16 @@ test('il comando mensile compatto sostituisce la barra doppia', () => {
   assert.doesNotMatch(app, />Prenota mese<|>Svuota mese</);
 });
 
-test('la vista mese mobile porta la griglia in primo piano senza scavalcare l utente', () => {
+test('i comandi mensili a sinistra invertono anche la colonna larga su tablet e desktop', () => {
+  assert.match(styles, /\.month-weekday-row\.month-controls-left,[\s\S]*?\.month-week-row\.month-controls-left \{[\s\S]*?grid-template-columns: minmax\(154px, 0\.9fr\) repeat\(7, minmax\(0, 1fr\)\)/);
+});
+
+test('la vista mese su mobile e tablet porta la griglia in primo piano senza scavalcare l utente', () => {
   assert.match(index, /data-calendar-panel/);
   assert.match(app, /const MONTH_AUTO_SCROLL_DELAY_MS = 1800/);
+  assert.match(app, /const MONTH_AUTO_SCROLL_MEDIA_QUERY = '\(max-width: 1024px\)'/);
   assert.match(app, /\['pointerdown', 'touchstart', 'wheel', 'keydown'\]/);
-  assert.match(app, /window\.matchMedia\('\(max-width: 620px\)'\)\.matches/);
+  assert.match(app, /window\.matchMedia\(MONTH_AUTO_SCROLL_MEDIA_QUERY\)\.matches/);
   assert.match(app, /window\.scrollY > 24/);
   assert.match(app, /elements\.calendarPanel\.scrollIntoView\(\{ behavior, block: 'start' \}\)/);
   assert.doesNotMatch(app, /querySelector\('\[data-current-week\]'\)/);

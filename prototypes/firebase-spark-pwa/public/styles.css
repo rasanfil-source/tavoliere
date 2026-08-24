@@ -5789,6 +5789,16 @@ html[data-interface-style="original"] .month-day-number-today .month-day-number-
   justify-items: start;
 }
 
+/* Da tablet in su la colonna larga appartiene sempre ai comandi. Quando i
+   comandi passano a sinistra va invertita anche la geometria delle tracce,
+   non soltanto l'ordine degli elementi nel markup. */
+@media (min-width: 621px) {
+  .month-weekday-row.month-controls-left,
+  .month-week-row.month-controls-left {
+    grid-template-columns: minmax(154px, 0.9fr) repeat(7, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 620px) {
   .month-week-row.month-controls-left .month-week-mobile-header .month-scope-group {
     grid-column: 1;
