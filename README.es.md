@@ -118,12 +118,9 @@ Antes de una publicación, utilizar el proceso completo descrito en [Desarrollo 
 
 ## Soporte
 
-<table>
-  <tr>
-    <td align="center"><a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="46" alt="Patito HappyDuck"> &nbsp; <strong>HappyDuck</strong> &nbsp; <img src="prototypes/firebase-spark-pwa/public/icons/happyduck-mail.svg" width="28" alt="Enviar un correo"></a></td>
-  </tr>
-</table>
-
-[Escribe al desarrollador](mailto:rasanfil@gmail.com)
+<p align="center">
+  <a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck-badge.png" width="284" alt="HappyDuck — escribe al desarrollador"></a><br>
+  <a href="mailto:rasanfil@gmail.com">Escribe al desarrollador</a>
+</p>
 
 Proyecto **Oggi a tavola 2026**.

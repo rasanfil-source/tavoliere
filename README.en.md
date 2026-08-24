@@ -118,12 +118,9 @@ Before a release, use the complete gate described in [Development and testing](d
 
 ## Support
 
-<table>
-  <tr>
-    <td align="center"><a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="46" alt="HappyDuck duck"> &nbsp; <strong>HappyDuck</strong> &nbsp; <img src="prototypes/firebase-spark-pwa/public/icons/happyduck-mail.svg" width="28" alt="Send an email"></a></td>
-  </tr>
-</table>
-
-[Email the developer](mailto:rasanfil@gmail.com)
+<p align="center">
+  <a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck-badge.png" width="284" alt="HappyDuck — email the developer"></a><br>
+  <a href="mailto:rasanfil@gmail.com">Email the developer</a>
+</p>
 
 **Oggi a tavola 2026** project.

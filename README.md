@@ -118,12 +118,9 @@ Prima di un rilascio usare il gate completo descritto in [Sviluppo e test](docs/
 
 ## Supporto
 
-<table>
-  <tr>
-    <td align="center"><a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck.png" width="46" alt="Paperetta HappyDuck"> &nbsp; <strong>HappyDuck</strong> &nbsp; <img src="prototypes/firebase-spark-pwa/public/icons/happyduck-mail.svg" width="28" alt="Scrivi un’email"></a></td>
-  </tr>
-</table>
-
-[Scrivi allo sviluppatore](mailto:rasanfil@gmail.com)
+<p align="center">
+  <a href="mailto:rasanfil@gmail.com"><img src="prototypes/firebase-spark-pwa/public/icons/happyduck-badge.png" width="284" alt="HappyDuck — scrivi allo sviluppatore"></a><br>
+  <a href="mailto:rasanfil@gmail.com">Scrivi allo sviluppatore</a>
+</p>
 
 Progetto **Oggi a tavola 2026**.
