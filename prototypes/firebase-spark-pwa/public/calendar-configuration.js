@@ -32,6 +32,7 @@ const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
 const ALLOWED_MONTH_CONTROLS_SIDE_VALUES = new Set(['right', 'left']);
 const ALLOWED_RESIDENT_LABEL_VALUES = new Set(['name', 'signature', 'initials']);
 const ALLOWED_INTERFACE_STYLE_VALUES = new Set(['original', 'cool', 'urban-plus', 'future']);
+const DEFAULT_OPENING_VIEW = 'week';
 
 export async function saveCenterConfiguration({
   name,
@@ -86,7 +87,7 @@ export async function saveCenterConfiguration({
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: typeof themePalette === 'string' ? themePalette : 'inchiostro',
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
-    defaultView: defaultView === 'week' ? 'week' : 'month',
+    defaultView: defaultView === 'month' ? 'month' : DEFAULT_OPENING_VIEW,
     summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),

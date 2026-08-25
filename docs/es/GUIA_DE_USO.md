@@ -131,7 +131,7 @@ Valores restablecibles:
 
 | Opción | Valor predeterminado |
 | --- | --- |
-| Vista de apertura | Mes |
+| Vista de apertura | Semana |
 | Aspecto | Esencial |
 | Paleta | Tinta |
 | Resumen | Original |

@@ -55,7 +55,7 @@ Il ruolo liturgico è indipendente dal ruolo amministrativo e può essere assegn
 
 | Impostazione | Valore iniziale |
 | --- | --- |
-| Vista di apertura | Mese |
+| Vista di apertura | Settimana |
 | Aspetto grafico | Essenziale |
 | Palette colori | Inchiostro |
 | Vista riepilogo | Originale |

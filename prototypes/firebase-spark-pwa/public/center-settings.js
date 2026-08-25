@@ -15,6 +15,7 @@ export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 export const DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola';
 export const DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!';
+export const DEFAULT_OPENING_VIEW = 'week';
 const ALLOWED_VIEW_VALUES = new Set(['month', 'week']);
 const ALLOWED_SUMMARY_LAYOUT_VALUES = new Set(['classic', 'international', 'future']);
 const ALLOWED_KITCHEN_LAYOUT_VALUES = new Set(['classic', 'international']);
@@ -53,7 +54,7 @@ export function loadCachedCenterContactSettings() {
       kitchenDietLegend: normalizeKitchenDietLegend(cached.kitchenDietLegend),
       themePalette: normalizeThemePalette(cached.themePalette),
       interfaceStyle: normalizeInterfaceStyle(cached.interfaceStyle),
-      defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : 'month',
+      defaultView: ALLOWED_VIEW_VALUES.has(cached.defaultView) ? cached.defaultView : DEFAULT_OPENING_VIEW,
       summaryLayout: normalizeLayout(cached.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
       kitchenLayout: normalizeLayout(cached.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
       monthControlsSide: normalizeLayout(cached.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
@@ -102,14 +103,14 @@ export function loadCachedCenterAvatar() {
 export function loadCachedDefaultView() {
   try {
     const raw = window.localStorage.getItem(getCenterScopedStorageKey(DEFAULT_VIEW_CACHE_KEY));
-    return ALLOWED_VIEW_VALUES.has(raw) ? raw : 'month';
+    return ALLOWED_VIEW_VALUES.has(raw) ? raw : DEFAULT_OPENING_VIEW;
   } catch {
-    return 'month';
+    return DEFAULT_OPENING_VIEW;
   }
 }
 
 export function cacheDefaultView(value) {
-  const normalized = ALLOWED_VIEW_VALUES.has(value) ? value : 'month';
+  const normalized = ALLOWED_VIEW_VALUES.has(value) ? value : DEFAULT_OPENING_VIEW;
   try {
     window.localStorage.setItem(getCenterScopedStorageKey(DEFAULT_VIEW_CACHE_KEY), normalized);
   } catch {
@@ -225,7 +226,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260823a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260825a');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -242,7 +243,7 @@ export async function updateCenterSettings({
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
     themePalette: normalizeThemePalette(themePalette),
     interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
-    defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : 'month',
+    defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : DEFAULT_OPENING_VIEW,
     summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
     kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
     monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
@@ -395,7 +396,7 @@ function refreshCenterContactSettings() {
         kitchenDietLegend: normalizeKitchenDietLegend(data.kitchenDietLegend),
         themePalette: normalizeThemePalette(data.themePalette),
         interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
-        defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : 'month',
+        defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : DEFAULT_OPENING_VIEW,
         summaryLayout: normalizeLayout(data.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
         kitchenLayout: normalizeLayout(data.kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
         monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),

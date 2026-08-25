@@ -37,6 +37,7 @@ import {
 import {
   DEFAULT_APP_DISPLAY_NAME,
   DEFAULT_APP_DISPLAY_SUBTITLE,
+  DEFAULT_OPENING_VIEW,
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
   loadCenterContactSettings,
@@ -46,7 +47,7 @@ import {
   updateCenterSettings,
   loadCachedDefaultView,
   cacheDefaultView
-} from './center-settings.js?v=20260823e';
+} from './center-settings.js?v=20260825a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
   formatDietLabel,
@@ -5301,7 +5302,7 @@ async function performAdminCenterSettingsSave() {
         : state.centerContactSettings.participantContactSharingEnabled,
       themePalette: state.centerContactSettings.themePalette || 'inchiostro',
       interfaceStyle: state.centerContactSettings.interfaceStyle || 'urban-plus',
-      defaultView: state.centerContactSettings.defaultView || 'month',
+      defaultView: state.centerContactSettings.defaultView || DEFAULT_OPENING_VIEW,
       summaryLayout: state.centerContactSettings.summaryLayout || 'classic',
       kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
       monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
@@ -5552,7 +5553,7 @@ function syncAdminAdaptationsForm() {
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
   if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = currentInterfaceStyle;
   if (elements.adminDefaultViewSelect) {
-    elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || 'month';
+    elements.adminDefaultViewSelect.value = state.centerContactSettings.defaultView || DEFAULT_OPENING_VIEW;
   }
   if (elements.adminSummaryLayoutSelect) {
     elements.adminSummaryLayoutSelect.value = state.centerContactSettings.summaryLayout || 'classic';

@@ -830,6 +830,8 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
 
 test('la riapertura usa la vista preferita senza cambiare la vista durante un refresh', () => {
   assert.match(app, /const initialMode = resolveMode\(\{ appLaunch: true \}\)/);
+  assert.match(app, /DEFAULT_OPENING_VIEW/);
+  assert.match(index, /<option value="week"[^>]*selected>Vista settimana<\/option>/);
   assert.match(app, /function resolveMode\(\{ appLaunch = false \} = \{\}\)/);
   assert.match(app, /appLaunch && isLegacyParticipantAppLaunch\(params\) && loadPreferredInitialView\(\) === 'week'/);
   assert.match(app, /navigationEntry\.type === 'navigate'/);

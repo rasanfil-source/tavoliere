@@ -55,7 +55,7 @@ The liturgical role is independent of administrative roles and may also be assig
 
 | Setting | Initial value |
 | --- | --- |
-| Opening view | Month |
+| Opening view | Week |
 | Visual style | Essential |
 | Colour palette | Ink |
 | Summary view | Original |

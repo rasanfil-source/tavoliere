@@ -48,7 +48,7 @@ import {
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260823e';
+} from './center-settings.js?v=20260825a';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -57,7 +57,7 @@ export {
   restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260823e';
+} from './center-settings.js?v=20260825a';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';

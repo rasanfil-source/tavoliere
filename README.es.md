@@ -55,7 +55,7 @@ El rol litúrgico es independiente del rol administrativo y también puede asign
 
 | Ajuste | Valor inicial |
 | --- | --- |
-| Vista de apertura | Mes |
+| Vista de apertura | Semana |
 | Aspecto gráfico | Esencial |
 | Paleta de colores | Tinta |
 | Vista de resumen | Original |
