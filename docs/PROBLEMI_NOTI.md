@@ -1,6 +1,6 @@
 # Problemi noti
 
-I problemi 2–6 della stessa analisi sono stati corretti e verificati localmente; gli esiti e le indicazioni di rilascio sono in [CORREZIONI_ANALISI_2026-09-29.md](CORREZIONI_ANALISI_2026-09-29.md).
+I problemi 2–6 della stessa analisi sono stati corretti, verificati e pubblicati il 29 settembre 2026; gli esiti e le indicazioni di aggiornamento sono in [CORREZIONI_ANALISI_2026-09-29.md](CORREZIONI_ANALISI_2026-09-29.md).
 
 ## SEC-001 — Password comune leggibile da una sessione Cucina senza token
 

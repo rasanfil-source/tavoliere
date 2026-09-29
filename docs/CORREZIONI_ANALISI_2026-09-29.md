@@ -1,6 +1,6 @@
 # Correzioni dell'analisi del 29 settembre 2026
 
-Stato: implementate e verificate nel checkout locale; non pubblicate.
+Stato: pubblicate il 29 settembre 2026 su https://tavola-comune.web.app, progetto Firebase `tavola-comune`. Commit della versione pubblicata: `e8ddea7`.
 
 L'intervento riguarda i problemi 2–6 dell'analisi. Il problema 1 resta aperto e rinviato per decisione dell'utente, come documentato in [PROBLEMI_NOTI.md](PROBLEMI_NOTI.md). Le modifiche preesistenti nella cartella di lavoro sono state conservate.
 
@@ -26,12 +26,14 @@ Queste correzioni non richiedono nuove credenziali, cambi di ruolo o una diversa
 - **Build completata** e cartella `dist` rigenerata. Prima della rigenerazione è stata verificata la corrispondenza dei file generati preesistenti con i sorgenti, per conservarne le modifiche.
 - Controllo del diff senza errori di spaziatura.
 
-Non è stato eseguito un test completo dell'interfaccia nel browser né una verifica del sito pubblicato. Il launcher locale di npm risulta incompleto: suite, validatore e build sono stati eseguiti direttamente con Node, mentre le regole sono state verificate con il wrapper Firebase del progetto.
+Il gate completo prima del rilascio è stato superato. Dopo la pubblicazione sono stati confrontati gli hash SHA-256 dei file online con la build locale: `index.html`, `app.js`, `styles.css`, `sw.js`, `participant-data.js`, `summary-matrix-model.js` e `summary-matrix-view.js` coincidono. Firebase ha confermato compilazione e rilascio delle regole Firestore.
+
+Non è stato eseguito un test completo dell'interfaccia con sessioni autenticate nel browser di produzione. Il launcher locale di npm risulta incompleto: suite, validatore e build sono stati eseguiti direttamente con Node, mentre le regole sono state verificate con il wrapper Firebase del progetto.
 
 Test aggiunti: `tests/firebase-spark/diet-pipeline.test.mjs`, `tests/firebase-rules/application-flows.test.mjs` e relativo helper `tests/helpers/browser-module.mjs`.
 
-## Indicazioni per il rilascio
+## Rilascio e aggiornamento della PWA
 
-La correzione 2 richiede il rilascio coordinato dell'applicazione e delle regole Firestore: le vecchie versioni eseguono una query dei contatti che le nuove regole rifiutano. Sono stati aggiornati i riferimenti dei moduli modificati e la cache PWA a `v447`; dopo il rilascio una PWA già aperta potrebbe richiedere la chiusura e riapertura per caricare la nuova versione.
+Applicazione e regole Firestore sono state pubblicate insieme con `deploy --only hosting,firestore:rules`; gli indici non sono stati modificati. Le vecchie versioni eseguono una query dei contatti che le nuove regole rifiutano. Sono stati aggiornati i riferimenti dei moduli modificati e la cache PWA a `v447`: chiudere tutte le finestre e schede dell'app e riaprirla per caricare la nuova versione.
 
-Non è prevista una migrazione dei dati esistenti. La protezione dei contatti limita le letture future dal server e non può ritirare dati già scaricati da una versione precedente. Nessun deploy, commit o modifica a dati di produzione è stato eseguito nell'ambito di questo intervento.
+Non è prevista una migrazione dei dati esistenti e non sono stati modificati i documenti applicativi di produzione. La protezione dei contatti limita le letture future dal server e non può ritirare dati già scaricati da una versione precedente. Il problema 1 è rimasto escluso dall'intervento anche nel rilascio.
