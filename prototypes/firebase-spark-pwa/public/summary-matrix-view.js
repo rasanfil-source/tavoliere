@@ -5,7 +5,7 @@ import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823c";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260820i";
+} from "./summary-matrix-model.js?v=20260929a";
 
 let contactPopupSequence = 0;
 

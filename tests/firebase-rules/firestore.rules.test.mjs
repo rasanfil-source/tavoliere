@@ -1996,12 +1996,15 @@ test('il riepilogo legge i contatti consentiti senza esporli alla cucina', async
     await context.firestore().doc(centerPath()).set({
       participantContactSharingEnabled: true
     }, { merge: true });
+    await context.firestore().doc(privateParticipantPath(MARIO_ID)).set({
+      phoneConsent: true
+    }, { merge: true });
   });
   const publicDb = testEnv.authenticatedContext(PUBLIC_UID, anonymousToken()).firestore();
   const kitchenDb = testEnv.authenticatedContext(KITCHEN_UID, anonymousToken()).firestore();
 
   await assertSucceeds(publicDb.doc(privateParticipantPath(MARIO_ID)).get());
-  await assertSucceeds(publicDb.collection(`centers/${CENTER_ID}/participants`).get());
+  await assertSucceeds(publicDb.collection(`centers/${CENTER_ID}/participants`).where('phoneConsent', '==', true).get());
   await assertFails(kitchenDb.doc(privateParticipantPath(MARIO_ID)).get());
 });
 
@@ -2292,7 +2295,7 @@ test('a kitchen session cannot be created for an inactive center', async () => {
     targetType: 'CENTER',
     tokenId: 'kitchen_token',
     status: 'ACTIVE',
-    expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2026-09-01T00:00:00Z')),
+    expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 86400000)),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
@@ -2333,7 +2336,7 @@ test('a personal token creates a session bound to its participant', async () => 
     targetType: 'PARTICIPANT',
     tokenId: 'personal_mario_token',
     status: 'ACTIVE',
-    expiresAt: firebase.firestore.Timestamp.fromDate(new Date('2026-09-01T00:00:00Z')),
+    expiresAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 86400000)),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };

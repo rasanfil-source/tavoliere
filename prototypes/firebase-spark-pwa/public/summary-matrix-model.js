@@ -223,15 +223,12 @@ function applyOccasionalDiets(participants, assignments, mealTypeId) {
     assignmentByParticipant.set(assignment.participantId, labels);
   });
 
-  return participants.map((participant) => ({
-    ...participant,
-    dietTags: [
-      ...new Set([
-        ...(Array.isArray(participant.dietTags) ? participant.dietTags : []),
-        ...(assignmentByParticipant.get(participant.participantId) || []),
-      ]),
-    ],
-  }));
+  return participants.map((participant) => {
+    const temporaryDiets = assignmentByParticipant.get(participant.participantId);
+    return temporaryDiets
+      ? { ...participant, dietTags: [...new Set(temporaryDiets)] }
+      : participant;
+  });
 }
 
 function summarizeSpecialDiets(participants) {
@@ -285,12 +282,6 @@ function findSickMeal(
   }
 
   const assignments = getDietAssignments(operationDay);
-  const assignmentByParticipant = new Map(
-    assignments.map((assignment) => [
-      assignment.participantId,
-      String(assignment.dietLabel || assignment.dietTag || "").trim(),
-    ]),
-  );
   const mealDirectory = new Map(
     (Array.isArray(mealParticipants) ? mealParticipants : []).map(
       (participant) => [participant.participantId, participant],
@@ -303,14 +294,8 @@ function findSickMeal(
       mealDirectory.get(sickPerson.participantId) ||
       participantDirectory.get(sickPerson.participantId) ||
       sickPerson;
-    const participantDiets = new Set(getSpecialDietTags(participant));
-    const occasionalDiet = assignmentByParticipant.get(
-      sickPerson.participantId,
-    );
-    if (occasionalDiet && occasionalDiet.toUpperCase() !== STANDARD_DIET_TAG) {
-      participantDiets.add(occasionalDiet);
-    }
-    participantDiets.forEach((tag) => dietLabels.push(tag));
+    const [effectiveParticipant] = applyOccasionalDiets([participant], assignments, mealTypeId);
+    getSpecialDietTags(effectiveParticipant).forEach((tag) => dietLabels.push(tag));
   });
   return {
     count: sickPeople.length,

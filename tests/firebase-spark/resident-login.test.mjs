@@ -291,9 +291,10 @@ test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabi
   assert.match(app, /function clearAdminAuthorizationState\(\)[\s\S]*state\.adminHydrationVersion \+= 1[\s\S]*state\.adminRole = ''[\s\S]*state\.adminCanManageDailyOperations = false[\s\S]*state\.residentAdministratorAuthorized = false/);
 });
 
-test('le preferenze locali residenti non sovrascrivono lo stile del pannello amministrativo', () => {
-  assert.match(app, /if \(!state\.residentReady \|\| state\.adminRole \|\| \(state\.mode === 'admin' && !state\.residentSettingsMode\)\)\s*\{\s*return settings;/);
-  assert.match(app, /if \(state\.residentReady \|\| state\.adminRole\) \{\s*const residentPreferences = loadResidentPreferences\(\);/);
+test('le preferenze personali valgono anche nel pannello amministrativo', () => {
+  const apply = app.match(/function applyResidentPreferences\(settings\)[\s\S]*?\n}/)[0];
+  assert.doesNotMatch(apply, /state\.adminRole|state\.residentSettingsMode/);
+  assert.match(apply, /loadResidentPreferences\(\)/);
 });
 
 test('gli aggiornamenti concorrenti vengono serializzati e accodati', () => {
@@ -835,8 +836,8 @@ test('la riapertura usa la vista preferita senza cambiare la vista durante un re
   assert.match(app, /function resolveMode\(\{ appLaunch = false \} = \{\}\)/);
   assert.match(app, /appLaunch && isLegacyParticipantAppLaunch\(params\) && loadPreferredInitialView\(\) === 'week'/);
   assert.match(app, /navigationEntry\.type === 'navigate'/);
-  assert.match(app, /cacheDefaultView\(preferences\.defaultView\)/);
-  assert.match(app, /function loadPreferredInitialView\(\)[\s\S]*tavolaComune\.residentPreferences[\s\S]*preferences\.defaultView/);
+  assert.doesNotMatch(app, /cacheDefaultView\(preferences\.defaultView\)/);
+  assert.match(app, /function loadPreferredInitialView\(\) \{\s*return DEFAULT_OPENING_VIEW/);
 });
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
@@ -988,7 +989,7 @@ test('la condivisione contatti appartiene alla Configurazione e usa il salvatagg
   assert.doesNotMatch(app, /updateParticipantContactSharing/);
   assert.match(app, /participantContactSharingEnabled: elements\.adminContactSharingSelect/);
   assert.match(app, /adminCenterSettingsSection\.addEventListener\('change', markAdminCenterDirty\)/);
-  assert.match(app, /administratorName: state\.centerContactSettings\.administratorName/);
+  assert.match(app, /administratorName,/);
   assert.match(centerSettings, /participantContactSharingEnabled: Boolean\(participantContactSharingEnabled\)/);
   assert.match(calendarConfiguration, /participantContactSharingEnabled: target\.participantContactSharingEnabled/);
   assert.doesNotMatch(app, /saveRequests\.push\(updateCenterContactSettings/);

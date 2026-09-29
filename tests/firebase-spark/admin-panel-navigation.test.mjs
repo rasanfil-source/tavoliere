@@ -265,11 +265,11 @@ test('Aspetto elimina il falso riferimento a tutte le persone e descrive le vist
   assert.ok(viewPosition >= 0 && stylePosition > viewPosition && stylePosition < layoutsPosition);
 });
 
-test('il salvataggio della configurazione conserva la lingua del centro', () => {
+test('il salvataggio della configurazione non pubblica le preferenze personali', () => {
   const start = app.indexOf('async function performAdminCenterSettingsSave()');
   const end = app.indexOf('async function saveAdministratorAsParticipant', start);
   const handler = app.slice(start, end);
-  assert.match(handler, /language: state\.centerContactSettings\.language \|\| 'it'/);
+  assert.match(handler, /\.\.\.PERSONAL_APPEARANCE_DEFAULTS/);
 });
 
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
@@ -362,13 +362,13 @@ test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
   assert.match(app, /function updateControlPanelEntryHref\(\)[\s\S]*?adminEntryUrl\.searchParams\.set\('access', RESIDENT_SETTINGS_ACCESS\)/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?renderResidentSettingsPanel\(\);[\s\S]*?reconcileAdminAccessWithoutStrongUser\(\);[\s\S]*?return;/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?elements\.adminNavConfiguration\.hidden = true;[\s\S]*?elements\.adminNavAdaptations\.hidden = false;[\s\S]*?elements\.adminNavAccess\.hidden = true;[\s\S]*?mountAdminSection\('adaptations'\);[\s\S]*?return;/);
-  assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?if \(state\.residentSettingsMode\) \{[\s\S]*?storeResidentPreferences\(preferences\)/);
+  assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?storeResidentPreferences\(preferences\)/);
   assert.match(app, /function syncAdaptationsContextCopy\(\)[\s\S]*?adminSectionNav\.hidden = residentDeviceMode/);
   assert.match(app, /resident\.preferences\.defaultViewHelp/);
   assert.match(app, /resident\.preferences\.layoutsHelp/);
   assert.match(app, /adminKitchenLayoutPicker\.hidden = residentDeviceMode/);
   assert.match(app, /summaryResidentLabel: elements\.adminSummaryResidentLabelSelect\?\.value/);
-  assert.match(app, /preferences\.summaryResidentLabel \? \{ summaryResidentLabel: preferences\.summaryResidentLabel \}/);
+  assert.match(app, /summaryResidentLabel: 'name'/);
 });
 
 test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {

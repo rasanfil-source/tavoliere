@@ -28,7 +28,11 @@ import {
   withAdministratorTechnicalSession
 } from './firebase-client.js?v=20260822a';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823b';
+import {
+  findApplicableRule,
+  resolveEffectiveDietTags,
+  resolveEffectiveEffect
+} from './reservation-state.mjs?v=20260823b';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import { normalizeDietTags } from './diet-utils.mjs?v=20260823c';
 import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
@@ -819,7 +823,10 @@ async function listSummaryParticipants(options = {}) {
 
   const key = `summaryParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
   return shareStaticQuery(key, async () => {
-    const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'participants'));
+    const snapshot = await getDocs(query(
+      collection(db, 'centers', getActiveCenterId(), 'participants'),
+      where('phoneConsent', '==', true)
+    ));
     const contactsByParticipant = new Map(snapshot.docs.map((docSnap) => {
       const data = docSnap.data();
       const phone = String(data.phone || '').trim();
@@ -947,9 +954,7 @@ export async function loadParticipantWeek(participantId, startDate = new Date(),
 
 export async function saveParticipantMeal(participant, meal, effect) {
   assertOnline();
-  const batch = writeBatch(db);
-  queueReservationWrite(batch, participant, meal, effect);
-  await commitWithRetry(() => batch.commit());
+  await commitReservationMeals(participant, [meal], effect);
   markMealSaved(meal, effect);
 }
 
@@ -965,9 +970,7 @@ export async function saveParticipantDay(participant, meals, effect) {
     return 0;
   }
 
-  const batch = writeBatch(db);
-  mealsToUpdate.forEach((meal) => queueReservationWrite(batch, participant, meal, effect));
-  await commitWithRetry(() => batch.commit());
+  await commitReservationMeals(participant, mealsToUpdate, effect);
   mealsToUpdate.forEach((meal) => markMealSaved(meal, effect));
   return mealsToUpdate.length;
 }
@@ -1009,11 +1012,8 @@ export async function saveParticipantMonthSelection(participant, days, effect, m
 }
 
 async function saveReservationGroup(participant, meals, effect) {
-  const batch = writeBatch(db);
-  meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect));
-
   try {
-    await commitWithRetry(() => batch.commit());
+    await commitReservationMeals(participant, meals, effect);
     meals.forEach((meal) => markMealSaved(meal, effect));
     return { saved: meals.length, failed: 0 };
   } catch (batchError) {
@@ -1025,11 +1025,45 @@ async function saveReservationGroup(participant, meals, effect) {
   }
 }
 
-function queueReservationWrite(batch, participant, meal, effect) {
+async function commitReservationMeals(participant, meals, effect) {
+  const centerId = getActiveCenterId();
+  try {
+    await commitWithRetry(() => {
+      const batch = writeBatch(db);
+      meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect, { centerId }));
+      return batch.commit();
+    });
+  } catch (error) {
+    const code = String(error?.code || '').replace(/^firestore\//, '');
+    if (!['permission-denied', 'not-found'].includes(code)) throw error;
+
+    // Un altro dispositivo può aver creato o eliminato un override dopo la
+    // lettura del calendario. Riconciliamo solo quel conflitto, conservando
+    // identità, dieta e data di creazione degli override già presenti.
+    await runTransaction(db, async (transaction) => {
+      const snapshots = await Promise.all(meals.map((meal) => transaction.get(doc(
+        db, 'centers', centerId, 'reservationOverrides',
+        participant.participantId + '_' + meal.mealWindowId
+      ))));
+      if (!snapshots.some((snapshot, index) => snapshot.exists() !== Boolean(meals[index].createdAt))) {
+        throw error;
+      }
+      snapshots.forEach((snapshot, index) => queueReservationWrite(
+        transaction, participant, meals[index], effect,
+        { centerId, exists: snapshot.exists() }
+      ));
+    });
+  }
+}
+
+function queueReservationWrite(batch, participant, meal, effect, {
+  centerId = getActiveCenterId(),
+  exists = Boolean(meal.createdAt)
+} = {}) {
   const overrideRef = doc(
     db,
     'centers',
-    getActiveCenterId(),
+    centerId,
     'reservationOverrides',
     participant.participantId + '_' + meal.mealWindowId
   );
@@ -1040,13 +1074,13 @@ function queueReservationWrite(batch, participant, meal, effect) {
     updatedAt: serverTimestamp()
   };
 
-  if (meal.createdAt) {
+  if (exists) {
     batch.update(overrideRef, update);
     return;
   }
 
   batch.set(overrideRef, {
-    centerId: getActiveCenterId(),
+    centerId,
     participantId: participant.participantId,
     groupId: participant.groupId,
     dietTags: Array.isArray(participant.dietTags) ? participant.dietTags : ['STANDARD'],
@@ -1158,10 +1192,20 @@ function buildParticipantMealSummary(meal, mealDate, participants, rules, overri
     })
   ]));
 
-  const present = participants
+  const reservationParticipants = participants.map((participant) => ({
+    ...participant,
+    dietTags: resolveEffectiveDietTags(
+      findApplicableRule(
+        rulesByParticipant.get(participant.participantId) || [],
+        participant.participantId, meal.mealTypeId, mealDate
+      ) || participant,
+      overrideByParticipant.get(participant.participantId)
+    )
+  }));
+  const present = reservationParticipants
     .filter((participant) => effects.get(participant.participantId) === 'PRESENT')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  const absent = participants
+  const absent = reservationParticipants
     .filter((participant) => effects.get(participant.participantId) === 'ABSENT')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
 

@@ -6,7 +6,6 @@ import {
   formatDate,
   formatTime,
   applyTranslations,
-  readStoredLocale,
   SUPPORTED_LOCALES
 } from './i18n/i18n.mjs?v=20260823g';
 import {
@@ -44,9 +43,7 @@ import {
   removeCenterAvatar,
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
-  updateCenterSettings,
-  loadCachedDefaultView,
-  cacheDefaultView
+  updateCenterSettings
 } from './center-settings.js?v=20260825a';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
 import {
@@ -126,8 +123,8 @@ const domainModulePaths = {
   daily: './daily-operations.js?v=20260817d',
   kitchen: './kitchen-data.js?v=20260823e',
   notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260823f',
-  summaryView: './summary-matrix-view.js?v=20260823h'
+  participant: './participant-data.js?v=20260929a',
+  summaryView: './summary-matrix-view.js?v=20260929a'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -441,52 +438,45 @@ function openResidentEntryGate() {
   }
 }
 
+const PERSONAL_APPEARANCE_DEFAULTS = Object.freeze({
+  themePalette: 'inchiostro', interfaceStyle: 'urban-plus',
+  defaultView: DEFAULT_OPENING_VIEW, summaryLayout: 'classic',
+  kitchenLayout: 'classic', summaryResidentLabel: 'name',
+  monthControlsSide: 'right', language: 'it'
+});
+
+function getPersonalPreferencesStorageKey() {
+  const user = getCurrentUser();
+  const residentIdentity = state.selectedParticipant?.participantId;
+  const explicitResidentEntry = ['common', 'shared-admin'].includes(state.residentEntryKind);
+  const identity = explicitResidentEntry && residentIdentity
+    ? 'participant:' + residentIdentity
+    : user && !user.isAnonymous && !isResidentTechnicalEmail(user.email)
+    ? 'account:' + user.uid
+    : state.selectedParticipant?.participantId
+      ? 'participant:' + state.selectedParticipant.participantId
+      : 'guest';
+  return getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY) + ':' + encodeURIComponent(identity);
+}
+
 function loadResidentPreferences() {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(
-      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY)
-    ) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    const parsed = JSON.parse(window.localStorage.getItem(getPersonalPreferencesStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
 }
 
 function applyResidentPreferences(settings) {
-  // The center-level settings must win while the control panel is active.
-  // An administrator can also have a resident session restored in the same
-  // tab; applying that tab's old preferences here would silently bring back
-  // a previous interface style (and make the week/Agenda rendering appear to
-  // change as the mode is mounted again).
-  if (!state.residentReady || state.adminRole || (state.mode === 'admin' && !state.residentSettingsMode)) {
-    return settings;
-  }
   const preferences = loadResidentPreferences();
-  return {
-    ...settings,
-    ...(preferences.themePalette ? { themePalette: preferences.themePalette } : {}),
-    ...(preferences.interfaceStyle ? { interfaceStyle: preferences.interfaceStyle } : {}),
-    ...(preferences.defaultView ? { defaultView: preferences.defaultView } : {}),
-    ...(preferences.summaryLayout ? { summaryLayout: preferences.summaryLayout } : {}),
-    ...(preferences.summaryResidentLabel ? { summaryResidentLabel: preferences.summaryResidentLabel } : {}),
-    ...(preferences.monthControlsSide ? { monthControlsSide: preferences.monthControlsSide } : {}),
-    ...(preferences.language ? { language: preferences.language } : {})
-  };
+  const appearance = Object.fromEntries(Object.entries(PERSONAL_APPEARANCE_DEFAULTS)
+    .map(([key, fallback]) => [key, preferences[key] || fallback]));
+  return { ...settings, ...appearance };
 }
 
 function storeResidentPreferences(preferences) {
-  try {
-    if (typeof preferences?.defaultView === 'string') {
-      cacheDefaultView(preferences.defaultView);
-    }
-    window.localStorage.setItem(
-      getCenterScopedStorageKey(RESIDENT_PREFERENCES_STORAGE_KEY),
-      JSON.stringify(preferences)
-    );
-  } catch {
-    // Le preferenze locali sono accessorie: un browser con storage negato non
-    // deve lasciare bloccato il salvataggio autorevole del centro.
-  }
+  window.localStorage.setItem(getPersonalPreferencesStorageKey(), JSON.stringify(preferences));
 }
 
 function readDietCode(select, numberInput) {
@@ -704,7 +694,7 @@ const state = {
     kitchenDietLegend: [],
     themePalette: 'inchiostro',
     interfaceStyle: 'urban-plus',
-    defaultView: loadCachedDefaultView(),
+    defaultView: DEFAULT_OPENING_VIEW,
     summaryLayout: 'classic',
     kitchenLayout: 'classic',
     monthControlsSide: 'right',
@@ -1404,7 +1394,7 @@ function handleKitchenPanelClick(event) {
 }
 
 async function applyCenterDefaultLanguage(centerSettings) {
-  if (!readStoredLocale() && centerSettings?.language && centerSettings.language !== getLocale()) {
+  if (centerSettings?.language && centerSettings.language !== getLocale()) {
     await setLocale(centerSettings.language, { persist: false });
     renderAllViews();
   }
@@ -3770,8 +3760,8 @@ async function performRefresh(source) {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    state.centerContactSettings = centerSettings;
-    await applyCenterDefaultLanguage(centerSettings);
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    await applyCenterDefaultLanguage(state.centerContactSettings);
     renderMode();
     const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
     const kitchenPayloads = await Promise.all(kitchenDates.map(async (date) => {
@@ -4183,6 +4173,7 @@ async function handleResidentLogin(event) {
     }
     state.participants = result.participants;
     state.selectedParticipant = result.participant;
+    state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
     state.residentReady = true;
     state.residentRestorePending = false;
     state.residentAuthTransition = '';
@@ -4455,8 +4446,8 @@ async function refreshAdminParticipants(options = {}) {
     state.adminParticipants = adminParticipants;
     state.adminAccounts = adminAccounts;
     populateAdminDietSelect(t('diet.option.STANDARD'));
-    state.centerContactSettings = centerSettings;
-    await applyCenterDefaultLanguage(centerSettings);
+    state.centerContactSettings = applyResidentPreferences(centerSettings);
+    await applyCenterDefaultLanguage(state.centerContactSettings);
     state.operationalLinks = operationalLinks;
     state.adminInvitations = adminInvitations;
     state.adminCalendarCoverage = coverage;
@@ -5300,14 +5291,7 @@ async function performAdminCenterSettingsSave() {
       participantContactSharingEnabled: elements.adminContactSharingSelect
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
-      themePalette: state.centerContactSettings.themePalette || 'inchiostro',
-      interfaceStyle: state.centerContactSettings.interfaceStyle || 'urban-plus',
-      defaultView: state.centerContactSettings.defaultView || DEFAULT_OPENING_VIEW,
-      summaryLayout: state.centerContactSettings.summaryLayout || 'classic',
-      kitchenLayout: state.centerContactSettings.kitchenLayout || 'classic',
-      monthControlsSide: state.centerContactSettings.monthControlsSide || 'right',
-      summaryResidentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
-      language: state.centerContactSettings.language || 'it',
+      ...PERSONAL_APPEARANCE_DEFAULTS,
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorSharedPassword: newSharedAdminPassword,
       currentAdministratorSharedPassword: currentSharedAdminPassword,
@@ -5338,7 +5322,7 @@ async function performAdminCenterSettingsSave() {
     });
     state.centerContactSettings = {
       ...state.centerContactSettings,
-      ...settings,
+      ...applyResidentPreferences(settings),
       administratorProfileComplete: true,
       adminPasswordSet: state.centerContactSettings.adminPasswordSet || Boolean(newAdminPassword),
       // Se è stata inserita una nuova password, aggiorna il flag; altrimenti mantieni quello attuale.
@@ -5508,15 +5492,15 @@ function syncAdaptationsContextCopy() {
   );
   setContextualTranslation(
     elements.adminAdaptationsDescription,
-    residentDeviceMode ? 'resident.preferences.description' : 'admin.adaptations.description'
+    'resident.preferences.description'
   );
   if (elements.residentDevicePreferencesIntro) {
-    elements.residentDevicePreferencesIntro.hidden = !residentDeviceMode;
+    elements.residentDevicePreferencesIntro.hidden = false;
     elements.residentDevicePreferencesIntro.textContent = t('resident.preferences.intro');
   }
   setContextualTranslation(
     elements.viewPreferenceHelp,
-    residentDeviceMode ? 'resident.preferences.defaultViewHelp' : 'viewPreference.help'
+    'resident.preferences.defaultViewHelp'
   );
   if (elements.adminDefaultViewSelect) {
     elements.adminDefaultViewSelect.setAttribute('aria-label', residentDeviceMode
@@ -5525,7 +5509,7 @@ function syncAdaptationsContextCopy() {
   }
   setContextualTranslation(
     elements.adminLayoutsHelp,
-    residentDeviceMode ? 'resident.preferences.layoutsHelp' : 'admin.adaptations.layouts.help'
+    'resident.preferences.layoutsHelp'
   );
   if (elements.adminKitchenLayoutPicker) {
     elements.adminKitchenLayoutPicker.hidden = residentDeviceMode;
@@ -5660,70 +5644,19 @@ async function handleAdminAdaptationsSave() {
     const interfaceStyleToSave = state.pendingInterfaceStyle
       || state.centerContactSettings.interfaceStyle
       || 'urban-plus';
-    const sharingEnabled = elements.adminContactSharingSelect
-      ? elements.adminContactSharingSelect.value === 'enabled'
-      : state.centerContactSettings.participantContactSharingEnabled;
-    const languageToSave = elements.adminLanguageSelect ? elements.adminLanguageSelect.value : (state.centerContactSettings.language || 'it');
-    if (state.residentSettingsMode) {
-      const preferences = {
-        themePalette: paletteToSave,
-        interfaceStyle: interfaceStyleToSave,
-        defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
-        summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
-        summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
-        monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
-        language: languageToSave
-      };
-      storeResidentPreferences(preferences);
-      state.centerContactSettings = { ...state.centerContactSettings, ...preferences };
-      state.pendingThemePalette = '';
-      state.pendingInterfaceStyle = '';
-      await setLocale(languageToSave);
-      applyTranslations(document);
-      renderMode();
-      await clearApplicationCache();
-      if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
-      return;
-    }
-    const settings = await updateCenterSettings({
-      name: state.centerContactSettings.name,
-      timezone: state.centerContactSettings.timezone,
-      participantContactSharingEnabled: sharingEnabled,
+    const languageToSave = elements.adminLanguageSelect?.value || state.centerContactSettings.language || 'it';
+    const preferences = {
       themePalette: paletteToSave,
       interfaceStyle: interfaceStyleToSave,
-      defaultView: elements.adminDefaultViewSelect ? elements.adminDefaultViewSelect.value : state.centerContactSettings.defaultView,
-      summaryLayout: elements.adminSummaryLayoutSelect ? elements.adminSummaryLayoutSelect.value : state.centerContactSettings.summaryLayout,
-      kitchenLayout: elements.adminKitchenLayoutSelect ? elements.adminKitchenLayoutSelect.value : state.centerContactSettings.kitchenLayout,
-      monthControlsSide: elements.adminMonthControlsSideSelect ? elements.adminMonthControlsSideSelect.value : state.centerContactSettings.monthControlsSide,
-      summaryResidentLabel: elements.adminSummaryResidentLabelSelect
-        ? elements.adminSummaryResidentLabelSelect.value
-        : state.centerContactSettings.summaryResidentLabel,
-      language: languageToSave,
-      commonPassword: '',
-      administratorName: state.centerContactSettings.administratorName || getCurrentUser()?.displayName || '',
-      administratorSignature: state.centerContactSettings.administratorSignature || '',
-      adminEmail: state.centerContactSettings.adminEmail || getCurrentUser()?.email || '',
-      reservationCutoffs: state.centerContactSettings.reservationCutoffs,
-      adaptationsOnly: true
-    });
-    state.centerContactSettings = {
-      ...state.centerContactSettings,
-      ...settings,
+      defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
+      summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
+      kitchenLayout: elements.adminKitchenLayoutSelect?.value || state.centerContactSettings.kitchenLayout,
+      summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
+      monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
       language: languageToSave
     };
-    if (state.residentReady || state.adminRole) {
-      const residentPreferences = loadResidentPreferences();
-      storeResidentPreferences({
-        ...residentPreferences,
-        themePalette: settings.themePalette || paletteToSave,
-        interfaceStyle: settings.interfaceStyle || interfaceStyleToSave,
-        defaultView: settings.defaultView || elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
-        summaryLayout: settings.summaryLayout || elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
-        summaryResidentLabel: settings.summaryResidentLabel || elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
-        monthControlsSide: settings.monthControlsSide || elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
-        language: languageToSave
-      });
-    }
+    storeResidentPreferences(preferences);
+    state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
@@ -5901,6 +5834,7 @@ function loadImage(source) {
 }
 
 function renderMode() {
+  state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
   const activePalette = state.pendingThemePalette
     || state.centerContactSettings.themePalette
     || 'inchiostro';
@@ -7482,17 +7416,7 @@ function resolveMode({ appLaunch = false } = {}) {
 }
 
 function loadPreferredInitialView() {
-  try {
-    const preferences = JSON.parse(window.localStorage.getItem(
-      getCenterScopedStorageKey('tavolaComune.residentPreferences')
-    ) || '{}');
-    if (preferences?.defaultView === 'week' || preferences?.defaultView === 'month') {
-      return preferences.defaultView;
-    }
-  } catch {
-    // La cache specifica della vista resta il ripiego per storage non leggibile.
-  }
-  return loadCachedDefaultView();
+  return DEFAULT_OPENING_VIEW;
 }
 
 function isLegacyParticipantAppLaunch(params) {
@@ -7504,7 +7428,7 @@ function isLegacyParticipantAppLaunch(params) {
 }
 
 function resolveEntryView() {
-  return state?.centerContactSettings?.defaultView || loadCachedDefaultView();
+  return applyResidentPreferences(state.centerContactSettings).defaultView;
 }
 
 function applyResidentEntryView() {
@@ -8801,15 +8725,19 @@ function applyDailyDietsToKitchenMeals(meals, dietAssignments) {
   )));
   return (meals || []).map((meal) => {
     const counts = new Map();
-    (meal.dietParticipants || []).forEach((participant) => {
+    const dietParticipants = (meal.dietParticipants || []).map((participant) => {
       const temporaryDiet = dietByParticipant.get(participant.participantId);
-      const tags = temporaryDiet ? [temporaryDiet] : participant.dietTags || ['STANDARD'];
+      return temporaryDiet ? { ...participant, dietTags: [temporaryDiet] } : participant;
+    });
+    dietParticipants.forEach((participant) => {
+      const tags = participant.dietTags || ['STANDARD'];
       tags.filter((tag) => tag !== 'STANDARD').forEach((tag) => (
         counts.set(tag, (counts.get(tag) || 0) + 1)
       ));
     });
     return {
       ...meal,
+      dietParticipants,
       diets: [...counts.entries()]
         .map(([tag, count]) => ({ tag, label: formatDietLabel(tag, t), count }))
         .sort((left, right) => left.label.localeCompare(right.label, 'it'))
