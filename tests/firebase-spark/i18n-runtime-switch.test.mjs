@@ -207,7 +207,20 @@ test('i18n runtime: applicazione traduzioni nel DOM simulato con data-i18n', asy
   assert.equal(nav.getAttribute('aria-label'), 'Navigation participant');
 });
 
-test('i18n runtime: precedenza risoluzione lingua', () => {
+test('i18n runtime: precedenza risoluzione lingua', (context) => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  context.after(() => {
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, 'navigator', originalNavigator);
+    } else {
+      delete globalThis.navigator;
+    }
+  });
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { languages: [] },
+    configurable: true
+  });
+
   // Senza preferenze salvate, usa lingua centro se supportata
   const resolvedCenter = resolveLocale('fr');
   assert.equal(resolvedCenter, 'fr');
