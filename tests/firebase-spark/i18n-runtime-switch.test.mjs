@@ -213,6 +213,7 @@ test('i18n runtime: precedenza risoluzione lingua', () => {
   assert.equal(resolvedCenter, 'fr');
 
   // Con lingua non valida, fallback a italiano
+  Object.defineProperty(globalThis, "navigator", { value: { languages: [] }, writable: true });
   const resolvedInvalid = resolveLocale('xx');
   assert.equal(resolvedInvalid, 'it');
 });
