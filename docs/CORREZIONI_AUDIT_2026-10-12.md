@@ -33,4 +33,10 @@ La riscrittura delle finestre calendario e Firebase Auth possono richiedere più
 
 Per attivare la nuova cache, chiudere tutte le schede e le finestre dell’app, quindi riaprirla. Per un’icona Home creata in precedenza senza il centro, ricreare il collegamento partendo dall’URL completo del proprio centro dopo l’aggiornamento; le credenziali residenti possono richiedere un nuovo accesso.
 
-Pubblicazione e confronto degli hash online: in corso.
+## Pubblicazione completata
+
+Il 12 ottobre 2026 sono stati pubblicati Hosting e regole Firestore sul progetto `tavola-comune`, all’indirizzo [tavola-comune.web.app](https://tavola-comune.web.app/). Firebase ha confermato compilazione e rilascio delle regole, caricamento dei 59 file della build e attivazione della nuova versione Hosting.
+
+`tools/verify-hosting-release.mjs` ha verificato la corrispondenza SHA-256 tra build locale e file online per HTML, applicazione, operazioni giornaliere, Persone, configurazione calendario, impostazioni centro, contesto del centro, modulo i18n, catalogo italiano, CSS e service worker.
+
+Commit della release applicativa: `7d66660`. I log di gate, emulatore, browser, deploy e confronto hash sono conservati in `.tools/audit-20261012/`. I due documenti di progetto preesistenti e non tracciati sono rimasti estranei al commit e alla pubblicazione.
