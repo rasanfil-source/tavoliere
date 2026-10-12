@@ -4,11 +4,11 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
-import { formatDateId } from './date-utils.mjs?v=20260816g';
+import { db } from './firebase-client.js?v=20261012b';
+import { getActiveCenterId } from './center-context.js?v=20261012b';
+import { formatDateId } from './date-utils.mjs?v=20261012b';
 
-export { formatDateId } from './date-utils.mjs?v=20260816g';
+export { formatDateId } from './date-utils.mjs?v=20261012b';
 
 const MAX_NOTE_LENGTH = 1000;
 const MAX_DAILY_NOTE_LENGTH = 8000;

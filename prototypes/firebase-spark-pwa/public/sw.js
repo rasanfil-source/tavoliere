@@ -1,5 +1,8 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v447';
+const CACHE_NAME = CACHE_PREFIX + 'v451';
+// Only public, immutable SDK files: never Auth API responses or session data.
+const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
+  .map((file) => `https://www.gstatic.com/firebasejs/12.17.0/${file}`);
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -74,6 +77,9 @@ self.addEventListener('activate', (event) => {
         ) && name !== CACHE_NAME)
         .map((name) => caches.delete(name))))
       .then(() => self.clients.claim())
+      // The first page loads these modules before the worker takes control.
+      // Warm their cache after claiming clients, without delaying app startup.
+      .then(() => Promise.allSettled(FIREBASE_SDK.map((url) => sdkCacheFirst(url))))
   );
 });
 
@@ -114,6 +120,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(event.request.url);
+  if (url.origin === self.location.origin
+      && ['/manifest.webmanifest', '/manifest-kitchen.webmanifest'].includes(url.pathname)
+      && /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(url.searchParams.get('c') || '')) {
+    event.respondWith(centerManifest(url));
+    return;
+  }
   if (event.request.mode === 'navigate') {
     event.respondWith(networkFirst(event.request, '/index.html'));
     return;
@@ -128,13 +140,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.hostname === 'www.gstatic.com' && url.pathname.includes('/firebasejs/')) {
-    event.respondWith(staleWhileRevalidate(event.request, event.request, event));
+  if (url.origin === 'https://www.gstatic.com' && /^\/firebasejs\/\d+\.\d+\.\d+\/[^/]+\.js$/.test(url.pathname)) {
+    event.respondWith(sdkCacheFirst(event.request));
   }
 });
 
+async function centerManifest(url) {
+  const cache = await caches.open(CACHE_NAME);
+  const response = await cache.match(url.pathname) || await fetch(url.pathname);
+  const manifest = await response.json();
+  const start = new URL(manifest.start_url, self.location.origin);
+  start.searchParams.set('c', url.searchParams.get('c'));
+  manifest.start_url = start.pathname + start.search;
+  // Identità stabile per centro e vista, indipendente dalla versione degli asset.
+  manifest.id = manifest.start_url;
+  return new Response(JSON.stringify(manifest), {
+    headers: { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'no-store' }
+  });
+}
+
 function isAppResourcePath(pathname) {
-  return APP_SHELL.includes(pathname) || LAZY_MODULES.includes(pathname);
+  return APP_SHELL.some((path) => path.split('?')[0] === pathname) || LAZY_MODULES.includes(pathname);
+}
+
+async function sdkCacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME).catch(() => null);
+  const cached = await cache?.match(request).catch(() => undefined);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response?.ok && cache) {
+    // Storage limits must not prevent a successfully downloaded SDK from loading.
+    await cache.put(request, response.clone()).catch(() => undefined);
+  }
+  return response;
 }
 
 async function versionedCacheFirst(request, fallbackPath) {

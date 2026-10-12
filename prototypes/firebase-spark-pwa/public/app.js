@@ -7,11 +7,11 @@ import {
   formatTime,
   applyTranslations,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20260823g';
+} from './i18n/i18n.mjs?v=20261012b';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20260816g';
-import { escapeHtml } from './html-utils.js?v=20260816g';
+} from './refresh-schedule.js?v=20261012b';
+import { escapeHtml } from './html-utils.js?v=20261012b';
 import {
   getCurrentUser,
   authorizeResidentAdministratorSession,
@@ -27,12 +27,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20260822a';
+} from './firebase-client.js?v=20261012b';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20260816h';
+} from './center-context.js?v=20261012b';
 import {
   DEFAULT_APP_DISPLAY_NAME,
   DEFAULT_APP_DISPLAY_SUBTITLE,
@@ -44,50 +44,50 @@ import {
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings
-} from './center-settings.js?v=20260825a';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
+} from './center-settings.js?v=20261012b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20260823c';
+} from './diet-utils.mjs?v=20261012b';
 import {
   isValidKitchenDietLabel,
   kitchenDietLabelForCode,
   normalizeKitchenDietLabel,
   updateKitchenDietLegendEntry
-} from './diet-legend.mjs?v=20260823c';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20260816g';
-import { buildMealReminderPlan } from './meal-reminders.mjs?v=20260821a';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20260816g';
-import { createStateStore } from './core/state-store.mjs?v=20260816g';
+} from './diet-legend.mjs?v=20261012b';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20261012b';
+import { buildMealReminderPlan } from './meal-reminders.mjs?v=20261012b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20261012b';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20261012b';
+import { createStateStore } from './core/state-store.mjs?v=20261012b';
 import {
   createInitialAuthState,
   reduceAuthState,
   selectAuthSurface
-} from './core/auth-state-machine.mjs?v=20260820a';
-import { toUserMessage } from './core/user-error.mjs?v=20260823c';
+} from './core/auth-state-machine.mjs?v=20261012b';
+import { toUserMessage } from './core/user-error.mjs?v=20261012b';
 import {
   shouldBlockResidentEntryRestore,
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
-} from './core/auth-session-policy.mjs?v=20260818a';
+} from './core/auth-session-policy.mjs?v=20261012b';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20260816g';
+} from './core/connectivity.mjs?v=20261012b';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816h';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20260823a';
-import { inspectCenterBackup } from './domain/center-backup.mjs?v=20260823a';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
+} from './domain/participant-profile.mjs?v=20261012b';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20261012b';
+import { inspectCenterBackup } from './domain/center-backup.mjs?v=20261012b';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20261012b';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
-} from './summary-contact-hint.mjs?v=20260823a';
+} from './summary-contact-hint.mjs?v=20261012b';
 
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -116,15 +116,15 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 ];
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20260816h',
-  admin: './admin-center.js?v=20260823i',
-  audit: './audit-log.js?v=20260816g',
-  bootstrap: './bootstrap-demo.js?v=20260816h',
-  daily: './daily-operations.js?v=20260817d',
-  kitchen: './kitchen-data.js?v=20260823e',
-  notes: './kitchen-notes.js?v=20260821a',
-  participant: './participant-data.js?v=20260929a',
-  summaryView: './summary-matrix-view.js?v=20260929a'
+  accessLinks: './access-links.js?v=20261012b',
+  admin: './admin-center.js?v=20261012b',
+  audit: './audit-log.js?v=20261012b',
+  bootstrap: './bootstrap-demo.js?v=20261012b',
+  daily: './daily-operations.js?v=20261012b',
+  kitchen: './kitchen-data.js?v=20261012b',
+  notes: './kitchen-notes.js?v=20261012b',
+  participant: './participant-data.js?v=20261012b',
+  summaryView: './summary-matrix-view.js?v=20261012b'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -621,6 +621,7 @@ const state = {
   participantMeals: [],
   participantWeek: [],
   participantMonth: [],
+  mealReminderDays: [],
   participantSummary: null,
   calendarAnchoredToCenter: false,
   calendarAnchorDateId: '',
@@ -1531,11 +1532,11 @@ function syncAdminDietLabelField({ resetValue = false } = {}) {
   const canEditLegend = selected !== 'STANDARD'
     && hasCurrentCapability(CAPABILITIES.MANAGE_CENTER_SETTINGS);
   input.disabled = !canEditLegend;
-  if (!canEditLegend) {
+  if (selected === 'STANDARD') {
     input.value = '';
     return;
   }
-  if (resetValue) {
+  if (resetValue || !canEditLegend) {
     input.value = kitchenDietLabelForCode(
       state.centerContactSettings.kitchenDietLegend,
       selectedAdminDietCode()
@@ -3290,7 +3291,28 @@ function clearMealReminderTimers() {
 }
 
 function getLoadedResidentCalendarDays() {
-  return [...state.participantWeek, ...state.participantMonth];
+  const days = new Map([...state.participantWeek, ...state.participantMonth].map((day) => [day.date, day]));
+  if (state.mealReminderParticipantId === state.selectedParticipant?.participantId) {
+    (state.mealReminderDays || []).forEach((day) => days.set(day.date, day));
+  }
+  return [...days.values()];
+}
+
+async function refreshMealReminderDays(isCurrent = () => true) {
+  if (!mealRemindersAreSupported() || !loadMealReminderPreference()
+      || Notification.permission !== 'granted' || !state.residentReady || !state.selectedParticipant) {
+    state.mealReminderDays = [];
+    return;
+  }
+  const participantId = state.selectedParticipant.participantId;
+  const days = await loadParticipantWeek(participantId, getCenterToday(), 1, {
+    timezone: state.centerContactSettings.timezone,
+    locale: getLocale()
+  });
+  if (isCurrent() && state.selectedParticipant?.participantId === participantId) {
+    state.mealReminderDays = days;
+    state.mealReminderParticipantId = participantId;
+  }
 }
 
 function syncMealReminderControl(statusKey = '') {
@@ -3337,7 +3359,14 @@ async function handleMealReminderPreferenceChange(event) {
     const enabled = permission === 'granted';
     storeMealReminderPreference(enabled);
     syncMealReminderControl(enabled ? 'mealReminder.status.enabled' : 'mealReminder.status.denied');
-    if (enabled) scheduleMealRemindersFromCurrentCalendar();
+    if (enabled) {
+      await refreshMealReminderDays();
+      scheduleMealRemindersFromCurrentCalendar();
+    }
+  } catch (error) {
+    storeMealReminderPreference(false);
+    clearMealReminderTimers();
+    syncMealReminderControl('mealReminder.status.failed');
   } finally {
     event.target.disabled = !mealRemindersAreSupported();
   }
@@ -3354,8 +3383,8 @@ function scheduleMealRemindersFromCurrentCalendar() {
   }
 
   const days = getLoadedResidentCalendarDays();
-  if (!days.some((day) => day?.isToday === true)) return;
   clearMealReminderTimers();
+  if (!days.some((day) => day?.isToday === true)) return;
   const plan = buildMealReminderPlan(days, {
     sentReminderIds: loadSentMealReminderIds()
   });
@@ -4019,6 +4048,16 @@ async function refreshParticipant(source, options = {}) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
+    try {
+      await refreshMealReminderDays(() => isCurrentParticipantRequest(request));
+    } catch {
+      // I promemoria facoltativi non devono impedire l'accesso al calendario.
+      if (!isCurrentParticipantRequest(request)) return;
+      state.mealReminderDays = [];
+      clearMealReminderTimers();
+      syncMealReminderControl('mealReminder.status.failed');
+    }
+    if (!isCurrentParticipantRequest(request)) return;
     scheduleMealRemindersFromCurrentCalendar();
     state.lastSuccessfulRefreshAt = new Date();
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
@@ -5245,13 +5284,19 @@ async function performAdminCenterSettingsSave() {
   elements.adminCenterSettingsSave.setAttribute('aria-busy', 'true');
   elements.adminCenterSettingsSection.setAttribute('aria-busy', 'true');
   elements.adminCenterSettingsStatus.textContent = 'Salvo...';
+  let settingsSaved = false;
+  let administratorPasswordSaved = false;
+  const updatedCredentials = new Set();
   try {
     const administratorFields = [
       elements.adminAdministratorName,
       elements.adminAdministratorSignature,
       elements.adminAdministratorEmail
     ];
-    const invalidField = administratorFields.find((field) => field && !field.checkValidity());
+    if (administratorFields.some((field) => typeof field?.checkValidity !== 'function')) {
+      throw new Error('Modulo del responsabile incompleto. Ricarica la pagina prima di salvare.');
+    }
+    const invalidField = administratorFields.find((field) => !field.checkValidity());
     if (invalidField) {
       invalidField.reportValidity();
       throw new Error('Completa i dati del responsabile');
@@ -5259,6 +5304,10 @@ async function performAdminCenterSettingsSave() {
     const previousAdministratorSignature = state.centerContactSettings.administratorSignature || '';
     const administratorName = elements.adminAdministratorName?.value.trim() || '';
     const administratorSignature = elements.adminAdministratorSignature?.value.trim() || '';
+    const administratorSave = await saveAdministratorAsParticipant({
+      administratorName, administratorSignature, previousAdministratorSignature,
+      prepareOnly: true
+    });
     const newAdminPassword = elements.adminAdministratorPassword?.value || '';
     const newSharedAdminPassword = elements.adminSharedPasswordNew?.value || '';
     const currentSharedAdminPassword = elements.adminSharedPasswordCurrent?.value || '';
@@ -5271,6 +5320,7 @@ async function performAdminCenterSettingsSave() {
         throw new Error('La password dell\'amministratore deve contenere almeno 6 caratteri.');
       }
       await updateAdministratorPassword(newAdminPassword);
+      administratorPasswordSaved = true;
       if (elements.adminAdministratorPassword) {
         elements.adminAdministratorPassword.value = '';
         if (elements.adminAdministratorPassword.type !== 'password') {
@@ -5297,6 +5347,7 @@ async function performAdminCenterSettingsSave() {
       currentAdministratorSharedPassword: currentSharedAdminPassword,
       administratorName,
       administratorSignature,
+      administratorSave,
       adminEmail: state.adminRole === 'OWNER'
         ? getCurrentUser()?.email || ''
         : elements.adminAdministratorEmail?.value || '',
@@ -5305,12 +5356,17 @@ async function performAdminCenterSettingsSave() {
         dinner: elements.adminCutoffDinner.value,
         nextDayBreakfast: elements.adminCutoffBreakfast.value
       },
-      onProgress: ({ completedDays, totalDays, status }) => {
+      onProgress: ({ completedDays, totalDays, status, credential }) => {
+        if (status === 'AUTH_UPDATED') {
+          updatedCredentials.add(credential);
+          return;
+        }
         if (status === 'COMPLETED') return;
         const percentage = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 100;
         elements.adminCenterSettingsStatus.textContent = `Aggiorno le scadenze future: ${percentage}%`;
       }
     });
+    settingsSaved = true;
     if (elements.adminCommonPasswordInput) {
       elements.adminCommonPasswordInput.value = '';
       if (elements.adminCommonPasswordInput.type !== 'password') {
@@ -5338,14 +5394,10 @@ async function performAdminCenterSettingsSave() {
         ? false
         : state.centerContactSettings.adminPasswordRotationRequired
     };
-    const administratorParticipantId = await saveAdministratorAsParticipant({
-      administratorName,
-      administratorSignature,
-      previousAdministratorSignature
-    });
+    const administratorParticipantId = administratorSave.participantId;
+    state.adminParticipantId = administratorParticipantId;
     await linkCurrentAdministratorParticipant(administratorParticipantId);
     state.adminParticipants = await listAdminParticipants();
-    state.adminParticipantId = administratorParticipantId;
     let avatarNotice = '';
     if (state.pendingCenterAvatarDataUrl && state.centerContactSettings.commonPasswordSet) {
       try {
@@ -5364,7 +5416,14 @@ async function performAdminCenterSettingsSave() {
     applyAdminCapabilityVisibility();
     elements.adminCenterSettingsStatus.textContent = `Configurazione e scheda Persona salvate.${avatarNotice}`;
   } catch (error) {
-    elements.adminCenterSettingsStatus.textContent = friendlyErrorMessage(error, 'Centro non salvato');
+    const progress = settingsSaved
+      ? 'Configurazione e Persona salvate. Completamento dell’accesso non riuscito: ricarica il pannello e riprova.'
+      : administratorPasswordSaved
+        ? 'Password personale aggiornata. Configurazione non completata.'
+        : 'Configurazione non completata.';
+    const passwordNotice = !settingsSaved && updatedCredentials.size > 0
+      ? ' Una password condivisa è già stata aggiornata; completa nuovamente il salvataggio.' : '';
+    elements.adminCenterSettingsStatus.textContent = `${progress}${passwordNotice} ${friendlyErrorMessage(error, '')}`;
   } finally {
     elements.adminCenterSettingsSave.disabled = false;
     elements.adminCenterSettingsSave.removeAttribute('aria-busy');
@@ -5375,7 +5434,8 @@ async function performAdminCenterSettingsSave() {
 async function saveAdministratorAsParticipant({
   administratorName,
   administratorSignature,
-  previousAdministratorSignature
+  previousAdministratorSignature,
+  prepareOnly = false
 }) {
   const nextSignature = administratorSignature.toUpperCase();
   const previousSignature = previousAdministratorSignature.trim().toUpperCase();
@@ -5408,7 +5468,7 @@ async function saveAdministratorAsParticipant({
     phoneConsent: participant?.phoneConsent === true,
     whatsappEnabled: participant?.whatsappEnabled === true,
     expectedRevision: participant?.revision
-  });
+  }, { prepareOnly });
 }
 
 function markAdminCenterDirty(event) {
@@ -5946,7 +6006,7 @@ function renderMode() {
     elements.kitchenPanel.hidden = true;
   }
   const isOrdinaryView = isParticipant || isWeek || isSummary;
-  const showResidentExit = isOrdinaryView
+  const showResidentExit = (isOrdinaryView && showResidentLogin)
     || (isAdminView && state.residentSettingsMode);
   const showAdministratorAccess = isAdminView;
   elements.adminShell.hidden = isKitchen || !showAdministratorAccess;
@@ -8366,7 +8426,23 @@ async function activateResidentAdministratorPanel() {
   return true;
 }
 
+function captureWeekOperationContext() {
+  const dateId = state.weekOperationalDateId;
+  const requestVersion = state.weekOperationsRequestVersion;
+  const centerId = getActiveCenterId();
+  return {
+    dateId,
+    isCurrent: () => state.mode === 'week'
+      && state.weekOperationalDateId === dateId
+      && state.weekOperationalHealth?.dateId === dateId
+      && state.weekOperationsRequestVersion === requestVersion
+      && getActiveCenterId() === centerId
+  };
+}
+
 async function handleWeekInvitedSave() {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const invitedMeals = {};
   elements.weekInvitedInputs.forEach((input) => {
     invitedMeals[input.dataset.weekInvitedMeal] = Math.min(
@@ -8377,12 +8453,15 @@ async function handleWeekInvitedSave() {
   elements.weekInvitedSave.disabled = true;
   elements.weekInvitedStatus.textContent = t('week.operations.invited.saving');
   try {
-    state.weekOperationalHealth = await saveInvitedMeals(
-      parseDateId(state.weekOperationalDateId),
+    const health = await saveInvitedMeals(
+      parseDateId(context.dateId),
       invitedMeals
     );
+    if (!context.isCurrent()) return;
+    state.weekOperationalHealth = health;
     renderWeekOperations();
   } catch (error) {
+    if (!context.isCurrent()) return;
     elements.weekInvitedStatus.textContent = friendlyErrorMessage(
       error,
       t('week.operations.invited.notSaved')
@@ -8455,6 +8534,8 @@ function renderWeekDietAssignments() {
 }
 
 async function handleWeekHealthSave() {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const selectedIds = new Set(Array.from(
     elements.weekHealthList.querySelectorAll('[data-week-sick-selected]'),
     (row) => row.dataset.weekSickSelected
@@ -8469,10 +8550,15 @@ async function handleWeekHealthSave() {
   elements.weekHealthSave.disabled = true;
   elements.weekHealthStatus.textContent = t('week.operations.health.saving');
   try {
-    state.weekOperationalHealth = await saveSickPeople(parseDateId(state.weekOperationalDateId), sickPeople);
+    const health = await saveSickPeople(parseDateId(context.dateId), sickPeople, {
+      previousPeople: state.weekOperationalHealth?.sickPeople || []
+    });
+    if (!context.isCurrent()) return;
+    state.weekOperationalHealth = health;
     renderWeekOperations();
     elements.weekHealthStatus.textContent = sickPeople.length > 0 ? t('week.operations.health.saved') : t('week.operations.health.empty');
   } catch (error) {
+    if (!context.isCurrent()) return;
     elements.weekHealthStatus.textContent = friendlyErrorMessage(error, 'Elenco non salvato');
   } finally {
     elements.weekHealthSave.disabled = false;
@@ -8480,6 +8566,8 @@ async function handleWeekHealthSave() {
 }
 
 async function handleWeekDietSave() {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const participantId = elements.weekDietParticipant.value;
   if (!participantId) return;
   elements.weekDietSave.disabled = true;
@@ -8487,26 +8575,19 @@ async function handleWeekDietSave() {
   try {
     const dietTag = readDietCode(elements.weekDietType, elements.weekDietNumber);
     const duration = Number(elements.weekDietDuration.value) === 2 ? 2 : 1;
-    const startDate = parseDateId(state.weekOperationalDateId);
+    const startDate = parseDateId(context.dateId);
     const savedDays = await Promise.all(Array.from({ length: duration }, async (_, index) => {
       const date = addCalendarDays(startDate, index);
-      const dateId = formatDateId(date);
-      const health = dateId === state.weekOperationalHealth?.dateId
-        ? state.weekOperationalHealth
-        : await loadDailyHealth(date);
-      const dietAssignments = (health.dietAssignments || [])
-        .filter((assignment) => assignment.participantId !== participantId);
-      if (dietTag !== 'STANDARD') {
-        dietAssignments.push({ participantId, dietTag });
-      }
-      return saveDietAssignments(date, dietAssignments);
+      return saveDietAssignments(date, participantId, dietTag);
     }));
+    if (!context.isCurrent()) return;
     state.weekOperationalHealth = savedDays[0];
     renderWeekOperations();
     elements.weekDietStatus.textContent = dietTag === 'STANDARD'
       ? 'Dieta occasionale rimossa'
       : `Dieta salvata per ${duration === 1 ? 'un giorno' : 'due giorni'}`;
   } catch (error) {
+    if (!context.isCurrent()) return;
     elements.weekDietStatus.textContent = friendlyErrorMessage(error, 'Dieta non salvata');
   } finally {
     elements.weekDietSave.disabled = false;
@@ -8514,26 +8595,32 @@ async function handleWeekDietSave() {
 }
 
 async function handleWeekDietListClick(event) {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const button = event.target.closest('[data-week-diet-remove]');
   if (!button) return;
-  const dietAssignments = (state.weekOperationalHealth?.dietAssignments || [])
-    .filter((assignment) => assignment.participantId !== button.dataset.weekDietRemove);
   button.disabled = true;
   elements.weekDietStatus.textContent = t('week.operations.diet.removing');
   try {
-    state.weekOperationalHealth = await saveDietAssignments(
-      parseDateId(state.weekOperationalDateId),
-      dietAssignments
+    const health = await saveDietAssignments(
+      parseDateId(context.dateId),
+      button.dataset.weekDietRemove,
+      'STANDARD'
     );
+    if (!context.isCurrent()) return;
+    state.weekOperationalHealth = health;
     renderWeekOperations();
     elements.weekDietStatus.textContent = t('week.operations.diet.removed');
   } catch (error) {
-    elements.weekDietStatus.textContent = friendlyErrorMessage(error, 'Dieta non rimossa');
     button.disabled = false;
+    if (!context.isCurrent()) return;
+    elements.weekDietStatus.textContent = friendlyErrorMessage(error, 'Dieta non rimossa');
   }
 }
 
 async function handleWeekKitchenNoteSave() {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const noteText = elements.weekKitchenNoteInput.value.trim();
   if (!noteText) {
     elements.weekKitchenNoteStatus.textContent = t('week.operations.note.empty');
@@ -8542,14 +8629,17 @@ async function handleWeekKitchenNoteSave() {
   elements.weekKitchenNoteSave.disabled = true;
   elements.weekKitchenNoteStatus.textContent = t('week.operations.note.saving');
   try {
-    state.weekOperationalNote = await saveKitchenNote(
-      parseDateId(state.weekOperationalDateId),
+    const note = await saveKitchenNote(
+      parseDateId(context.dateId),
       noteText
     );
+    if (!context.isCurrent()) return;
+    state.weekOperationalNote = note;
     elements.weekKitchenNoteInput.value = '';
     renderWeekKitchenNotes();
     elements.weekKitchenNoteStatus.textContent = t('week.operations.note.saved');
   } catch (error) {
+    if (!context.isCurrent()) return;
     elements.weekKitchenNoteStatus.textContent = friendlyErrorMessage(error, 'Salvataggio non riuscito');
   } finally {
     elements.weekKitchenNoteSave.disabled = false;
@@ -8557,20 +8647,25 @@ async function handleWeekKitchenNoteSave() {
 }
 
 async function handleWeekKitchenNoteListClick(event) {
+  const context = captureWeekOperationContext();
+  if (!context.isCurrent()) return;
   const button = event.target.closest('[data-week-kitchen-note-remove]');
   if (!button) return;
   button.disabled = true;
   elements.weekKitchenNoteStatus.textContent = t('common.actions.deleting');
   try {
-    state.weekOperationalNote = await removeKitchenNoteMessage(
-      parseDateId(state.weekOperationalDateId),
+    const note = await removeKitchenNoteMessage(
+      parseDateId(context.dateId),
       button.dataset.weekKitchenNoteRemove
     );
+    if (!context.isCurrent()) return;
+    state.weekOperationalNote = note;
     renderWeekKitchenNotes();
     elements.weekKitchenNoteStatus.textContent = t('week.operations.note.removed');
   } catch (error) {
-    elements.weekKitchenNoteStatus.textContent = friendlyErrorMessage(error, 'Nota non rimossa');
     button.disabled = false;
+    if (!context.isCurrent()) return;
+    elements.weekKitchenNoteStatus.textContent = friendlyErrorMessage(error, 'Nota non rimossa');
   }
 }
 
@@ -9424,7 +9519,7 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
     },
     commit() {
       const savedAt = new Date();
-      const periods = [state.participantWeek, state.participantMonth];
+    const periods = [state.participantWeek, state.participantMonth, state.mealReminderDays];
       periods
         .flatMap((daysInPeriod) => daysInPeriod || [])
         .flatMap((day) => day.meals || [])
@@ -9453,6 +9548,9 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
 
   try {
     await saveParticipantMeal(state.selectedParticipant, meal, effect);
+    (state.mealReminderDays || []).flatMap((day) => day.meals || [])
+      .filter((item) => item.mealDate === meal.mealDate && item.mealTypeId === meal.mealTypeId)
+      .forEach((item) => { item.effect = effect; });
     if (typeof onSaved === 'function') onSaved();
     setParticipantStatus('Prenotazione salvata');
   } catch (error) {

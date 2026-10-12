@@ -24,6 +24,7 @@ export function setActiveCenterId(centerId, { updateUrl = true } = {}) {
     url.searchParams.set('c', centerId);
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
   }
+  window.dispatchEvent?.(new Event('centerchange'));
   return centerId;
 }
 

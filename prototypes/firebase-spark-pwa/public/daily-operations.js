@@ -1,14 +1,14 @@
 import {
   doc,
   getDoc,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
-import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { normalizeDietCode } from './diet-utils.mjs?v=20260823c';
+import { db } from './firebase-client.js?v=20261012b';
+import { getActiveCenterId } from './center-context.js?v=20261012b';
+import { formatDateId } from './date-utils.mjs?v=20261012b';
+import { normalizeDietCode } from './diet-utils.mjs?v=20261012b';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
 const DAILY_CACHE_MAX_ENTRIES = 30;
@@ -100,7 +100,7 @@ export async function loadDailyHealth(date = new Date(), options = {}) {
   const centerId = getActiveCenterId();
   const cached = readCenterCache(dailyHealthCache, dateId, centerId);
   if (!options.forceRefresh && cached && Date.now() - cached.loadedAt < DAILY_OPERATION_CACHE_MS) {
-    return cached.value;
+    return cloneDailyHealth(cached.value);
   }
   const snapshot = await getDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId));
   const data = snapshot.exists() ? snapshot.data() : {};
@@ -112,59 +112,87 @@ export async function loadDailyHealth(date = new Date(), options = {}) {
     updatedAt: data.updatedAt || null
   };
   writeCenterCache(dailyHealthCache, dateId, centerId, value);
-  return value;
+  return cloneDailyHealth(value);
 }
 
-export async function saveSickPeople(date, sickPeople) {
+function cloneDailyHealth(value) {
+  return { ...value, sickPeople: value.sickPeople.map((person) => ({ ...person })),
+    dietAssignments: value.dietAssignments.map((assignment) => ({ ...assignment })),
+    invitedMeals: { ...value.invitedMeals } };
+}
+
+export async function saveSickPeople(date, sickPeople, options = {}) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
   const centerId = getActiveCenterId();
   const normalizedPeople = normalizeSickPeople(sickPeople);
-  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
-    centerId,
-    dateId,
-    sickPeople: normalizedPeople,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
-  const value = {
-    dateId,
-    sickPeople: normalizedPeople,
-    dietAssignments: cachedValue?.dietAssignments || [],
-    invitedMeals: cachedValue?.invitedMeals || normalizeInvitedMeals(),
-    updatedAt: new Date()
-  };
+  const previous = normalizeSickPeople(options.previousPeople
+    ?? readCenterCache(dailyHealthCache, dateId, centerId)?.value.sickPeople);
+  const selectedIds = new Set(normalizedPeople.map((person) => person.participantId));
+  const previousIds = new Set(previous.map((person) => person.participantId));
+  const removedIds = new Set([...previousIds].filter((id) => !selectedIds.has(id)));
+  const additions = normalizedPeople.filter((person) => !previousIds.has(person.participantId));
+  const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
+  const value = await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    const people = new Map(normalizeSickPeople(current.sickPeople)
+      .filter((person) => !removedIds.has(person.participantId))
+      .map((person) => [person.participantId, person]));
+    additions.forEach((person) => people.set(person.participantId, person));
+    if (people.size > 100) throw new Error('Limite di 100 persone ammalate raggiunto');
+    const savedPeople = [...people.values()];
+    transaction.set(reference, {
+      centerId, dateId, sickPeople: savedPeople, updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { dateId, sickPeople: savedPeople,
+      dietAssignments: normalizeDietAssignments(current.dietAssignments),
+      invitedMeals: normalizeInvitedMeals(current.invitedMeals), updatedAt: new Date() };
+  });
   writeCenterCache(dailyHealthCache, dateId, centerId, value);
-  return value;
+  return cloneDailyHealth(value);
 }
 
-export async function saveDietAssignments(date, dietAssignments) {
+export async function saveDietAssignments(date, participantId, dietTag) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
   const dateId = formatDateId(date);
   const centerId = getActiveCenterId();
-  const normalizedAssignments = normalizeDietAssignments(dietAssignments);
-  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
-  const sickPeople = cachedValue?.sickPeople || [];
-  const invitedMeals = cachedValue?.invitedMeals || normalizeInvitedMeals();
-  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
-    centerId,
-    dateId,
-    dietAssignments: normalizedAssignments,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  const value = {
-    dateId,
-    sickPeople,
-    dietAssignments: normalizedAssignments,
-    invitedMeals,
-    updatedAt: new Date()
-  };
+  const normalizedId = String(participantId || '').trim();
+  const normalizedTag = normalizeDietCode(dietTag);
+  if (!normalizedId || (normalizedTag !== 'STANDARD'
+    && normalizeDietAssignments([{ participantId: normalizedId, dietTag: normalizedTag }]).length !== 1)) {
+    throw new Error('Persona o dieta non valida');
+  }
+  const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
+  const value = await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    const assignments = normalizeDietAssignments(current.dietAssignments)
+      .filter((assignment) => assignment.participantId !== normalizedId);
+    if (normalizedTag !== 'STANDARD') {
+      if (assignments.length >= 100) throw new Error('Limite di 100 diete giornaliere raggiunto');
+      assignments.push({ participantId: normalizedId, dietTag: normalizedTag });
+    }
+    transaction.set(reference, {
+      centerId,
+      dateId,
+      dietAssignments: assignments,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return {
+      dateId,
+      sickPeople: normalizeSickPeople(current.sickPeople),
+      dietAssignments: assignments,
+      invitedMeals: normalizeInvitedMeals(current.invitedMeals),
+      updatedAt: new Date()
+    };
+  });
   writeCenterCache(dailyHealthCache, dateId, centerId, value);
-  return value;
+  return cloneDailyHealth(value);
 }
 
 export async function saveInvitedMeals(date, invitedMeals) {
@@ -174,22 +202,19 @@ export async function saveInvitedMeals(date, invitedMeals) {
   const dateId = formatDateId(date);
   const centerId = getActiveCenterId();
   const normalizedInvitedMeals = normalizeInvitedMeals(invitedMeals);
-  const cachedValue = readCenterCache(dailyHealthCache, dateId, centerId)?.value;
-  await setDoc(doc(db, 'centers', centerId, 'dailyHealth', dateId), {
-    centerId,
-    dateId,
-    invitedMeals: normalizedInvitedMeals,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  const value = {
-    dateId,
-    sickPeople: cachedValue?.sickPeople || [],
-    dietAssignments: cachedValue?.dietAssignments || [],
-    invitedMeals: normalizedInvitedMeals,
-    updatedAt: new Date()
-  };
+  const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
+  const value = await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    transaction.set(reference, {
+      centerId, dateId, invitedMeals: normalizedInvitedMeals, updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { dateId, sickPeople: normalizeSickPeople(current.sickPeople),
+      dietAssignments: normalizeDietAssignments(current.dietAssignments),
+      invitedMeals: normalizedInvitedMeals, updatedAt: new Date() };
+  });
   writeCenterCache(dailyHealthCache, dateId, centerId, value);
-  return value;
+  return cloneDailyHealth(value);
 }
 
 function normalizeSickPeople(value) {

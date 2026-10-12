@@ -423,7 +423,8 @@ service cloud.firestore {
       let participantId = viceSession.get('participantId', '');
       let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
       let participant = get(participantPath).data;
-      return viceSession.get('centerId', '') == centerId
+      return center.get('status', '') == 'ACTIVE'
+        && viceSession.get('centerId', '') == centerId
         && viceSession.get('authUid', '') == request.auth.uid
         && viceSession.get('status', '') == 'ACTIVE'
         && request.time < viceSession.expiresAt
@@ -880,7 +881,9 @@ service cloud.firestore {
     }
 
     match /adminInvitations/{invitationId} {
-      allow read: if isBootstrapOwner()
+      allow list: if isBootstrapOwner()
+        || canManageAdministrativeRoles(resource.data.centerId);
+      allow get: if isBootstrapOwner()
         || canManageAdministrativeRoles(resource.data.centerId)
         || hasVerifiedAdministratorIdentity()
           && resource.data.role == 'ADMIN'

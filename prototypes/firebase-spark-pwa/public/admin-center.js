@@ -12,16 +12,16 @@ import {
   where,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20260816g';
+import { db, getCurrentUser } from './firebase-client.js?v=20261012b';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20261012b';
 import {
   createOwnedCenterId,
   getActiveCenterId,
   setActiveCenterId
-} from './center-context.js?v=20260816h';
-import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
+} from './center-context.js?v=20261012b';
+import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20261012b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261012b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261012b';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
 const CENTER_INVITATION_COLLECTION = 'centerInvitations';

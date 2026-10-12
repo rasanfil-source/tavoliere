@@ -10,15 +10,15 @@ import {
   getCurrentUser,
   setAdministratorTechnicalPassword,
   setResidentTechnicalPassword
-} from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
+} from './firebase-client.js?v=20261012b';
+import { getActiveCenterId } from './center-context.js?v=20261012b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
 import {
   addDaysToDateId,
   buildMealWindowRecords,
   daysBetweenDateIds,
   normalizeReservationCutoffs
-} from './schedule-utils.mjs?v=20260816g';
+} from './schedule-utils.mjs?v=20261012b';
 
 const MEAL_TYPES = [
   { mealTypeId: 'breakfast' },
@@ -56,6 +56,7 @@ export async function saveCenterConfiguration({
   administratorName,
   administratorSignature,
   adminEmail,
+  administratorSave,
   adaptationsOnly = false,
   onProgress
 }) {
@@ -105,6 +106,7 @@ export async function saveCenterConfiguration({
     adminTechnicalUid: typeof center.adminTechnicalUid === 'string' ? center.adminTechnicalUid : '',
     administratorName,
     administratorSignature,
+    ...(administratorSave ? { administratorParticipantId: administratorSave.participantId } : {}),
     adminEmail: typeof adminEmail === 'string' ? adminEmail : undefined
   };
   if (adaptationsOnly === true) {
@@ -118,6 +120,7 @@ export async function saveCenterConfiguration({
       typeof center.commonPassword === 'string' ? center.commonPassword : '',
       target.commonPassword
     );
+    reportProgress(onProgress, { status: 'AUTH_UPDATED', credential: 'resident' });
   }
   if (target.administratorSharedPassword !== null) {
     const technicalIdentity = await setAdministratorTechnicalPassword(
@@ -131,6 +134,7 @@ export async function saveCenterConfiguration({
     );
     target.adminTechnicalEmail = technicalIdentity.email;
     target.adminTechnicalUid = technicalIdentity.uid;
+    reportProgress(onProgress, { status: 'AUTH_UPDATED', credential: 'administrator' });
   }
   const activeJob = jobSnapshot?.exists() && jobSnapshot.data().status === 'ACTIVE'
     ? jobSnapshot.data()
@@ -142,7 +146,8 @@ export async function saveCenterConfiguration({
   const canResume = activeJob && jobMatchesTarget(activeJob, target);
 
   if (!scheduleChanged && !canResume) {
-    await saveCenterWithoutCalendarRewrite(centerRef, centerId, user.uid, target);
+    await saveCenterWithoutCalendarRewrite(centerRef, centerId, user.uid, target, administratorSave);
+    await administratorSave?.complete();
     reportProgress(onProgress, { completedDays: 0, totalDays: 0, status: 'COMPLETED' });
     return { ...target, administratorSharedPassword: null };
   }
@@ -228,14 +233,17 @@ export async function saveCenterConfiguration({
     userUid: user.uid,
     target,
     startDateId,
-    targetThrough
+    targetThrough,
+    administratorSave
   });
+  await administratorSave?.complete();
   reportProgress(onProgress, { completedDays: totalDays, totalDays, status: 'COMPLETED' });
   return { ...target, administratorSharedPassword: null };
 }
 
-async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, target) {
+async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, target, administratorSave) {
   await runTransaction(db, async (transaction) => {
+    await administratorSave?.write(transaction);
     const centerUpdate = {
       name: target.name,
       timezone: target.timezone,
@@ -251,6 +259,7 @@ async function saveCenterWithoutCalendarRewrite(centerRef, centerId, userUid, ta
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
+      ...(administratorSave ? { administratorParticipantId: administratorSave.participantId } : {}),
       administratorProfileComplete: true,
       updatedAt: serverTimestamp()
     };
@@ -302,13 +311,15 @@ async function completeConfiguration({
   userUid,
   target,
   startDateId,
-  targetThrough
+  targetThrough,
+  administratorSave
 }) {
   await runTransaction(db, async (transaction) => {
     const currentJob = await transaction.get(jobRef);
     if (!currentJob.exists() || currentJob.data().operationId !== operationId) {
       throw new Error('La configurazione è stata aggiornata da un altro amministratore. Ricarica il pannello.');
     }
+    await administratorSave?.write(transaction);
     const centerUpdate = {
       name: target.name,
       timezone: target.timezone,
@@ -324,6 +335,7 @@ async function completeConfiguration({
       language: target.language || 'it',
       administratorName: target.administratorName,
       administratorSignature: target.administratorSignature,
+      ...(administratorSave ? { administratorParticipantId: administratorSave.participantId } : {}),
       administratorProfileComplete: true,
       updatedAt: serverTimestamp()
     };

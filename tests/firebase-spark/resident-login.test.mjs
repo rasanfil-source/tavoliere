@@ -170,7 +170,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /get\('access'\) === 'friendly'/);
   assert.match(app, /\['participant', 'week'\]\.includes\(initialMode\)/);
   assert.match(app, /data-forget-device/);
-  assert.match(app, /const showResidentExit = isOrdinaryView/);
+  assert.match(app, /const showResidentExit = \(isOrdinaryView && showResidentLogin\)/);
   assert.match(app, /const showResidentLogin = needsResidentLogin\s*&& !isAdminView/);
   assert.match(app, /document\.body\.dataset\.residentLoginVisible = showResidentLogin \? 'true' : 'false'/);
   assert.match(app, /elements\.residentLogin\.hidden = !showResidentLogin/);
@@ -669,7 +669,7 @@ test('un bulk riuscito conserva createdAt e non ricrea gli override al clic succ
   const weekMealHandler = app.match(/async function handleWeekMealBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   const monthHandler = app.match(/async function handleMonthBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(optimisticBulk, /commit\(\)[\s\S]*meal\.createdAt = savedAt/);
-  assert.match(optimisticBulk, /\[state\.participantWeek, state\.participantMonth\]/);
+  assert.match(optimisticBulk, /\[state\.participantWeek, state\.participantMonth, state\.mealReminderDays\]/);
   assert.match(dayHandler, /optimistic\.commit\(\)/);
   assert.match(weekHandler, /result\.failed > 0[\s\S]*optimistic\.commit\(\)/);
   assert.match(weekMealHandler, /result\.failed > 0[\s\S]*optimistic\.commit\(\)/);

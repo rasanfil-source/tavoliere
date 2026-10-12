@@ -702,11 +702,12 @@
   "mealReminder.option.enabled": "On",
   "mealReminder.help": "Local lunch and dinner reminders on this device. You can also turn them off from the notification.",
   "mealReminder.status.disabled": "Reminders are off on this device.",
-  "mealReminder.status.enabled": "Reminders are on on this device.",
+  "mealReminder.status.enabled": "Reminders are active while the app is open. Alerts are not guaranteed when the app is suspended or closed.",
   "mealReminder.status.requesting": "Waiting for notification permission…",
   "mealReminder.status.denied": "Notifications are blocked in the device settings.",
   "mealReminder.status.unsupported": "This browser does not support local reminders.",
   "mealReminder.notification.title": "Time to book",
   "mealReminder.notification.body": "10 minutes left: remember to book {meal}.",
-  "mealReminder.notification.disable": "Turn off"
+  "mealReminder.notification.disable": "Turn off",
+  "mealReminder.status.failed": "Reminders could not be enabled. Try again with the app open and check notification permissions."
 }

@@ -77,9 +77,9 @@ test('le cache operative restano confinate al centro attivo', () => {
 test('diete e invitati aggiornano soltanto il proprio campo Firestore', () => {
   const diets = dailyOperations.match(/export async function saveDietAssignments[\s\S]*?\n}/)?.[0] || '';
   const invited = dailyOperations.match(/export async function saveInvitedMeals[\s\S]*?\n}/)?.[0] || '';
-  const dietsWrite = diets.match(/await setDoc[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
-  const invitedWrite = invited.match(/await setDoc[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
-  assert.match(dietsWrite, /dietAssignments: normalizedAssignments/);
+  const dietsWrite = diets.match(/transaction.set[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
+  const invitedWrite = invited.match(/transaction.set[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
+  assert.match(dietsWrite, /dietAssignments: assignments/);
   assert.doesNotMatch(dietsWrite, /\n\s*sickPeople,/);
   assert.match(invitedWrite, /invitedMeals: normalizedInvitedMeals/);
   assert.doesNotMatch(invitedWrite, /dietAssignments/);

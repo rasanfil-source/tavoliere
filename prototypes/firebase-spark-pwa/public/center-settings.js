@@ -4,11 +4,11 @@ import {
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
-import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20260823b';
+import { db, getCurrentUser } from './firebase-client.js?v=20261012b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261012b';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261012b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261012b';
+import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20261012b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -185,6 +185,7 @@ export async function updateCenterSettings({
   administratorName,
   administratorSignature,
   adminEmail,
+  administratorSave,
   adaptationsOnly = false,
   onProgress
 }) {
@@ -226,7 +227,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260825a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20261012b');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -257,6 +258,7 @@ export async function updateCenterSettings({
     administratorName: normalizedAdministratorName,
     administratorSignature: normalizedAdministratorSignature,
     adminEmail: normalizedAdministratorEmail,
+    administratorSave,
     adaptationsOnly: adaptationsOnly === true,
     onProgress
   });

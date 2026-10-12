@@ -10,8 +10,8 @@ import {
   setDoc,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
+import { db } from './firebase-client.js?v=20261012b';
+import { getActiveCenterId } from './center-context.js?v=20261012b';
 import {
   buildMealWindowRecords,
   createOperationalAccessExpiry,
@@ -20,9 +20,9 @@ import {
   addDaysToDateId,
   daysBetweenDateIds,
   normalizeReservationCutoffs
-} from './schedule-utils.mjs?v=20260816g';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20260822a';
+} from './schedule-utils.mjs?v=20261012b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20261012b';
 
 export const BOOTSTRAP_ADMIN_UID = 'kWYvLr1fkKVuhZ8I8HrVivN2ra03';
 

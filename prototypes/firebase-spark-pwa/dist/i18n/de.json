@@ -702,11 +702,12 @@
   "mealReminder.option.enabled": "Ein",
   "mealReminder.help": "Lokale Erinnerungen für Mittag- und Abendessen auf diesem Gerät. Sie können sie auch in der Benachrichtigung ausschalten.",
   "mealReminder.status.disabled": "Erinnerungen sind auf diesem Gerät ausgeschaltet.",
-  "mealReminder.status.enabled": "Erinnerungen sind auf diesem Gerät eingeschaltet.",
+  "mealReminder.status.enabled": "Erinnerungen sind aktiv, solange die App geöffnet ist. Bei pausierter oder geschlossener App sind Hinweise nicht gewährleistet.",
   "mealReminder.status.requesting": "Benachrichtigungsberechtigung wird angefordert…",
   "mealReminder.status.denied": "Benachrichtigungen sind in den Geräteeinstellungen blockiert.",
   "mealReminder.status.unsupported": "Dieser Browser unterstützt keine lokalen Erinnerungen.",
   "mealReminder.notification.title": "Zeit zum Buchen",
   "mealReminder.notification.body": "Noch 10 Minuten: Denken Sie an die Buchung für {meal}.",
-  "mealReminder.notification.disable": "Ausschalten"
+  "mealReminder.notification.disable": "Ausschalten",
+  "mealReminder.status.failed": "Erinnerungen konnten nicht aktiviert werden. Versuche es bei geöffneter App erneut und prüfe die Benachrichtigungsberechtigungen."
 }

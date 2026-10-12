@@ -104,7 +104,7 @@ test('la revoca del consenso o della condivisione del centro blocca le letture d
 
 test('la prima dieta si salva senza inizializzare ammalati o invitati', async () => {
   const daily = await dailyModule();
-  await daily.saveDietAssignments(date, [{ participantId: person, dietTag: '2' }]);
+  await daily.saveDietAssignments(date, person, '2');
   const saved = await daily.loadDailyHealth(date, { forceRefresh: true });
   assert.deepEqual(saved.dietAssignments, [{ participantId: person, dietTag: '2' }]);
   assert.deepEqual(saved.sickPeople, []);
@@ -115,13 +115,53 @@ test('invitati e diete si salvano su giornate nuove e le scritture concorrenti p
   const [first, second, third] = await Promise.all([dailyModule(), dailyModule(), dailyModule()]);
   await Promise.all([
     first.saveInvitedMeals(date, { lunch: 2 }),
-    second.saveDietAssignments(date, [{ participantId: person, dietTag: '2' }]),
+    second.saveDietAssignments(date, person, '2'),
     third.saveSickPeople(date, [{ participantId: person, displayName: 'Persona sintetica' }])
   ]);
   const saved = await first.loadDailyHealth(date, { forceRefresh: true });
   assert.equal(saved.invitedMeals.lunch, 2);
   assert.deepEqual(saved.dietAssignments, [{ participantId: person, dietTag: '2' }]);
   assert.equal(saved.sickPeople.length, 1);
+});
+
+test('due operatori con cache vecchie conservano le diete di persone diverse anche su due giorni', async () => {
+  const [first, second] = await Promise.all([dailyModule(), dailyModule()]);
+  const tomorrow = new Date(date);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  for (const day of [date, tomorrow]) {
+    await Promise.all([first.loadDailyHealth(day), second.loadDailyHealth(day)]);
+    await Promise.all([
+      first.saveDietAssignments(day, person, '1'),
+      second.saveDietAssignments(day, 'consenting_person', '2')
+    ]);
+    const saved = await first.loadDailyHealth(day, { forceRefresh: true });
+    assert.deepEqual(Object.fromEntries(saved.dietAssignments.map(x => [x.participantId, x.dietTag])),
+      { [person]: '1', consenting_person: '2' });
+    await Promise.all([
+      first.saveDietAssignments(day, person, 'STANDARD'),
+      second.saveDietAssignments(day, 'consenting_person', '3')
+    ]);
+    assert.deepEqual((await first.loadDailyHealth(day, { forceRefresh: true })).dietAssignments,
+      [{ participantId: 'consenting_person', dietTag: '3' }]);
+    await first.saveDietAssignments(day, 'consenting_person', '4');
+    await second.saveDietAssignments(day, 'consenting_person', '5');
+    assert.deepEqual((await first.loadDailyHealth(day, { forceRefresh: true })).dietAssignments,
+      [{ participantId: 'consenting_person', dietTag: '5' }]);
+  }
+});
+
+test('le diete rifiutano utenti non autorizzati e non perdono assegnazioni al limite di capienza', async () => {
+  const resident = await dailyModule('resident_one');
+  await assertFails(resident.saveDietAssignments(date, person, '1'));
+  const daily = await dailyModule();
+  const assignments = Array.from({ length: 100 }, (_, i) => ({ participantId: 'p' + i, dietTag: '1' }));
+  await firestore.setDoc(firestore.doc(database(), path('dailyHealth/' + dateId)), {
+    centerId: center, dateId, dietAssignments: assignments, updatedAt: firestore.serverTimestamp()
+  });
+  await assert.rejects(daily.saveDietAssignments(date, person, '2'), /100/);
+  assert.equal((await daily.loadDailyHealth(date, { forceRefresh: true })).dietAssignments.length, 100);
+  await daily.saveDietAssignments(date, 'p0', '3');
+  assert.equal((await daily.loadDailyHealth(date, { forceRefresh: true })).dietAssignments.length, 100);
 });
 
 test('le giornate parziali conservano i vincoli di schema e di ruolo', async () => {

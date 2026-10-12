@@ -702,11 +702,12 @@
   "mealReminder.option.enabled": "Attivati",
   "mealReminder.help": "Promemoria locali per pranzo e cena su questo dispositivo. Puoi disattivarli anche dalla notifica.",
   "mealReminder.status.disabled": "Promemoria disattivati su questo dispositivo.",
-  "mealReminder.status.enabled": "Promemoria attivi su questo dispositivo.",
+  "mealReminder.status.enabled": "Promemoria attivi mentre l’app è aperta. Con l’app sospesa o chiusa gli avvisi non sono garantiti.",
   "mealReminder.status.requesting": "Attendo l’autorizzazione alle notifiche…",
   "mealReminder.status.denied": "Le notifiche sono bloccate nelle impostazioni del dispositivo.",
   "mealReminder.status.unsupported": "Questo browser non supporta i promemoria locali.",
   "mealReminder.notification.title": "È ora di prenotare",
   "mealReminder.notification.body": "Mancano 10 minuti: ricordati di segnarti per {meal}.",
-  "mealReminder.notification.disable": "Disattiva"
+  "mealReminder.notification.disable": "Disattiva",
+  "mealReminder.status.failed": "Promemoria non attivati. Riprova con l’app aperta e verifica le autorizzazioni alle notifiche."
 }

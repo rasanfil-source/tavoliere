@@ -8,6 +8,13 @@ const releaseNonce = Date.now().toString(36);
 const assets = [
   { path: 'index.html', local: 'index.html' },
   { path: 'app.js', local: 'app.js' },
+  { path: 'daily-operations.js', local: 'daily-operations.js' },
+  { path: 'participant-data.js', local: 'participant-data.js' },
+  { path: 'calendar-configuration.js', local: 'calendar-configuration.js' },
+  { path: 'center-settings.js', local: 'center-settings.js' },
+  { path: 'center-context.js', local: 'center-context.js' },
+  { path: 'i18n/i18n.mjs', local: 'i18n/i18n.mjs' },
+  { path: 'i18n/it.json', local: 'i18n/it.json' },
   { path: 'styles.css', local: 'styles.css' },
   { path: 'sw.js', local: 'sw.js' }
 ];

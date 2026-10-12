@@ -4,10 +4,10 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { createOperationalAccessExpiry } from './schedule-utils.mjs?v=20260816g';
+import { db, getCurrentUser } from './firebase-client.js?v=20261012b';
+import { getActiveCenterId } from './center-context.js?v=20261012b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261012b';
+import { createOperationalAccessExpiry } from './schedule-utils.mjs?v=20261012b';
 
 const SETTINGS_DOCUMENT_ID = 'operationalLinks';
 const LEGACY_OPERATIONAL_TOKENS = new Set(['public_demo', 'kitchen_demo']);

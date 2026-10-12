@@ -126,7 +126,7 @@ La dieta di base è `STANDARD` oppure un codice numerico mostrato come `D1`, `D2
 
 La **Messa** è un incarico personale separato: amministratore, vice o residente possono gestirla soltanto se la relativa spunta è assegnata alla loro Persona.
 
-I **promemoria** sono locali al dispositivo e disattivati per impostazione predefinita. Se autorizzati, avvisano dieci minuti prima della chiusura di pranzo o cena non ancora prenotati. Si disattivano da Aspetto o dalla notifica.
+I **promemoria** sono locali al dispositivo e disattivati per impostazione predefinita. Se autorizzati, avvisano dieci minuti prima della chiusura di pranzo o cena non ancora prenotati, anche nella vista Riepilogo. Funzionano mentre l’app è aperta: con l’app sospesa o chiusa gli avvisi non sono garantiti, anche su iPhone. Si disattivano da Aspetto o dalla notifica.
 
 ## Pannello di controllo
 

@@ -26,33 +26,33 @@ import {
   waitForAuthReady,
   withResidentTechnicalSession,
   withAdministratorTechnicalSession
-} from './firebase-client.js?v=20260822a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
+} from './firebase-client.js?v=20261012b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261012b';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20260823b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260823c';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
+} from './reservation-state.mjs?v=20261012b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
+import { normalizeDietTags } from './diet-utils.mjs?v=20261012b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261012b';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816h';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823c';
-import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
+} from './domain/participant-profile.mjs?v=20261012b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261012b';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20261012b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261012b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20261012b';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20261012b';
 import {
   CENTER_BACKUP_SCHEMA_VERSION,
   RESTORABLE_CENTER_COLLECTIONS
-} from './domain/center-backup.mjs?v=20260823a';
+} from './domain/center-backup.mjs?v=20261012b';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260825a';
+} from './center-settings.js?v=20261012b';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -61,7 +61,7 @@ export {
   restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260825a';
+} from './center-settings.js?v=20261012b';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -1241,22 +1241,13 @@ function groupRulesByParticipant(rules) {
   return grouped;
 }
 
-export async function saveAdminParticipant(participantId, profile) {
+export async function saveAdminParticipant(participantId, profile, { prepareOnly = false } = {}) {
   const normalizedProfile = validateParticipantProfile(profile);
   const kitchenDietLegend = profile.kitchenDietLegend === undefined
     ? null
     : normalizeKitchenDietLegend(profile.kitchenDietLegend);
   const { displayName, signature, initials, groupId, dietTags, phone } = normalizedProfile;
   const expectedRevision = normalizeRevision(profile.expectedRevision);
-
-  const duplicateSnapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'publicParticipants'),
-    where('signature', '==', signature)
-  ));
-  const duplicate = duplicateSnapshot.docs.find((item) => item.id !== participantId);
-  if (duplicate) {
-    throw new Error('Questa sigla è già utilizzata');
-  }
 
   const resolvedId = participantId || `participant_${crypto.randomUUID?.() || createRequestId()}`;
   const centerId = getActiveCenterId();
@@ -1280,7 +1271,17 @@ export async function saveAdminParticipant(participantId, profile) {
     status,
     updatedAt: serverTimestamp()
   };
-  await runTransaction(db, async (transaction) => {
+  const write = async (transaction) => {
+    // Tutti i salvataggi anagrafici leggono e aggiornano lo stesso documento.
+    // Un concorrente provoca il retry, inclusa la query dei duplicati.
+    await transaction.get(metadataRef);
+    const duplicateSnapshot = await getDocs(query(
+      collection(db, 'centers', centerId, 'publicParticipants'),
+      where('signature', '==', signature)
+    ));
+    if (duplicateSnapshot.docs.some((item) => item.id !== resolvedId)) {
+      throw new Error('Questa sigla è già utilizzata');
+    }
     const participantSnapshot = await transaction.get(participantRef);
     const ruleSnapshot = participantId ? await transaction.get(ruleRef) : null;
     if (participantId && !participantSnapshot.exists()) {
@@ -1334,15 +1335,18 @@ export async function saveAdminParticipant(participantId, profile) {
       targetId: resolvedId,
       summary: participantId ? `Anagrafica aggiornata: ${displayName}` : `Persona aggiunta: ${displayName}`
     });
-  });
-  if (status === 'DISABLED') {
-    await deleteParticipantAccessCredentials(centerId, resolvedId);
-  }
-  participantRulesCache.delete(resolvedId);
-  publicParticipantsCache = null;
-  summaryParticipantsCache = null;
-  summaryRulesCache = null;
-  invalidateCenterContactSettingsCache();
+  };
+  const complete = async () => {
+    participantRulesCache.delete(resolvedId);
+    publicParticipantsCache = null;
+    summaryParticipantsCache = null;
+    summaryRulesCache = null;
+    invalidateCenterContactSettingsCache();
+    if (status === 'DISABLED') await deleteParticipantAccessCredentials(centerId, resolvedId);
+  };
+  if (prepareOnly) return { participantId: resolvedId, write, complete };
+  await runTransaction(db, write);
+  await complete();
   return resolvedId;
 }
 

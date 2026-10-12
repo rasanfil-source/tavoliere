@@ -702,11 +702,12 @@
   "mealReminder.option.enabled": "Activados",
   "mealReminder.help": "Recordatorios locales para comida y cena en este dispositivo. También puedes desactivarlos desde la notificación.",
   "mealReminder.status.disabled": "Recordatorios desactivados en este dispositivo.",
-  "mealReminder.status.enabled": "Recordatorios activados en este dispositivo.",
+  "mealReminder.status.enabled": "Los recordatorios están activos mientras la aplicación está abierta. Los avisos no están garantizados si está suspendida o cerrada.",
   "mealReminder.status.requesting": "Esperando permiso para las notificaciones…",
   "mealReminder.status.denied": "Las notificaciones están bloqueadas en los ajustes del dispositivo.",
   "mealReminder.status.unsupported": "Este navegador no admite recordatorios locales.",
   "mealReminder.notification.title": "Es hora de reservar",
   "mealReminder.notification.body": "Quedan 10 minutos: recuerda apuntarte para {meal}.",
-  "mealReminder.notification.disable": "Desactivar"
+  "mealReminder.notification.disable": "Desactivar",
+  "mealReminder.status.failed": "No se pudieron activar los recordatorios. Inténtalo con la aplicación abierta y revisa los permisos de notificación."
 }

@@ -702,11 +702,12 @@
   "mealReminder.option.enabled": "Activés",
   "mealReminder.help": "Rappels locaux pour le déjeuner et le dîner sur cet appareil. Vous pouvez aussi les désactiver depuis la notification.",
   "mealReminder.status.disabled": "Rappels désactivés sur cet appareil.",
-  "mealReminder.status.enabled": "Rappels activés sur cet appareil.",
+  "mealReminder.status.enabled": "Les rappels sont actifs lorsque l’application est ouverte. Les alertes ne sont pas garanties si elle est suspendue ou fermée.",
   "mealReminder.status.requesting": "En attente de l’autorisation des notifications…",
   "mealReminder.status.denied": "Les notifications sont bloquées dans les réglages de l’appareil.",
   "mealReminder.status.unsupported": "Ce navigateur ne prend pas en charge les rappels locaux.",
   "mealReminder.notification.title": "Il est temps de réserver",
   "mealReminder.notification.body": "Il reste 10 minutes : pensez à vous inscrire pour {meal}.",
-  "mealReminder.notification.disable": "Désactiver"
+  "mealReminder.notification.disable": "Désactiver",
+  "mealReminder.status.failed": "Impossible d’activer les rappels. Réessayez avec l’application ouverte et vérifiez les autorisations de notification."
 }

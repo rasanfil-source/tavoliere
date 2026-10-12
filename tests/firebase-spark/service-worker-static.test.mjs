@@ -85,7 +85,8 @@ test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () =
 test('service worker handles only navigation, app resources, and Firebase SDK requests', () => {
   assert.match(serviceWorker, /event\.request\.mode === 'navigate'/);
   assert.match(serviceWorker, /url\.origin === self\.location\.origin && isAppResourcePath\(url\.pathname\)/);
-  assert.match(serviceWorker, /url\.hostname === 'www\.gstatic\.com' && url\.pathname\.includes\('\/firebasejs\/'\)/);
+  assert.match(serviceWorker, /url\.origin === 'https:\/\/www\.gstatic\.com'/);
+  assert.match(serviceWorker, /event\.respondWith\(sdkCacheFirst\(event\.request\)\)/);
 });
 
 test('service worker keeps navigation network-first with an offline cache fallback', () => {
@@ -105,13 +106,14 @@ test('versioned app shell files load the exact release with an offline fallback'
 });
 
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
-  assert.match(index, /styles\.css\?v=20260824e/);
+  assert.match(index, /styles\.css\?v=20261012b/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260824b/);
-  assert.match(index, /app\.js\?v=20260929a/);
+  assert.match(index, /app\.js\?v=20261012b/);
+  assert.match(app, /daily-operations\.js\?v=20261012b/);
   assert.match(index, /manifest\.webmanifest\?v=20260824b/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
-  assert.match(app, /center-settings\.js\?v=20260825a/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v447'/);
+  assert.match(app, /center-settings\.js\?v=20261012b/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v451'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);

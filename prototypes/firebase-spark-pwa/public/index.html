@@ -24,19 +24,33 @@
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
+        function syncManifest() {
+          var current = new URLSearchParams(window.location.search);
+          var center = current.get('c') || '';
+          try { center = center || localStorage.getItem('tavolaComune.centerId') || ''; } catch (_) {}
+          var path = current.get('view') === 'kitchen'
+            ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
+          var manifest = new URL(path, window.location.origin);
+          manifest.searchParams.set('v', '20261012b');
+          if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) manifest.searchParams.set('c', center);
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) manifest.searchParams.set('controlled', '1');
+          document.querySelector('[data-app-manifest]').href = manifest.href;
+        }
+        syncManifest();
+        if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', syncManifest);
+        window.addEventListener('centerchange', syncManifest);
         if (params.get('view') !== 'kitchen') {
           return;
         }
 
-        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260824d';
         document.title = 'Prenotazione pasti - Cucina';
         document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260824e">
+    <link rel="stylesheet" href="/styles.css?v=20261012b">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260824b">
-    <script type="module" src="/app.js?v=20260929a"></script>
+    <script type="module" src="/app.js?v=20261012b"></script>
   </head>
   <body>
     <div class="startup-gate" data-startup-gate aria-hidden="true">
