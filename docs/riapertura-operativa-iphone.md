@@ -1,6 +1,6 @@
 # Riapertura operativa di Tavola Comune su iPhone
 
-Analisi e intervento locale del 14 ottobre 2026, rispetto al commit `56d9aa8`. Build prodotta: `f09e0818af22b1c3`, Firebase completo `12.17.0`. Queste modifiche non sono pubblicate.
+Analisi e intervento del 14 ottobre 2026, rispetto al commit `56d9aa8`. Build `f09e0818af22b1c3`, Firebase completo `12.17.0`, codice nel commit `4a3d216`. Pubblicata il 14 ottobre 2026 su [Tavola Comune](https://tavola-comune.web.app), dopo autorizzazione dell'utente. Alle 22:40 CEST il confronto SHA-256 ha confermato la corrispondenza di tutti i 95 file della build e del manifest online con i file locali verificati. Rilascio limitato a Hosting; regole, indici e dati Firestore non modificati.
 
 È stata eliminata una dipendenza di rete: nella riapertura con accesso personale persistente, il profilo non deve più terminare prima che inizino le prenotazioni. Profilo, impostazioni essenziali e calendario ora avanzano insieme **dopo** il ripristino di Auth e della sessione. La griglia ordinaria viene pubblicata soltanto dopo tutti i controlli. Nessuna anteprima, griglia parziale o nuova diagnostica per i residenti.
 
@@ -99,4 +99,4 @@ pwsh.exe -NoLogo -NoProfile -Command "node tools/compare-resident-reopen.mjs 56d
 
 Il launcher npm PowerShell presente nell'ambiente non trovava `npm-cli.js`: sono stati usati i corrispondenti script Node del progetto. Il primo gate si è fermato sul limite della sandbox nell'accesso alle directory di esbuild; l'esecuzione autorizzata fuori sandbox ha completato build e relativi test. Non sono state modificate impostazioni globali o dipendenze per aggirare questi problemi.
 
-Nessuna prova su iPhone fisico, nessuna misura richiesta ai residenti, nessun deploy. Il limite residuo è la latenza completa della PWA installata: i confronti dimostrano meno attese seriali e meno lavoro CPU, non quantificano il tempo risparmiato sul dispositivo.
+Nessuna prova su iPhone fisico e nessuna misura richiesta ai residenti. Il limite residuo è la latenza completa della PWA installata: i confronti dimostrano meno attese seriali e meno lavoro CPU, non quantificano il tempo risparmiato sul dispositivo. La verifica del rilascio conferma i file distribuiti, non misura le prestazioni del dispositivo.
