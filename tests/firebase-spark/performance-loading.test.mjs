@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
 const readPublic = (name) => readFile(
@@ -39,7 +40,7 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
 });
 
-test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impostazioni senza bloccare', () => {
+test('la schermata iniziale avvia Auth prima delle lingue e attende il calendario senza anteprime', async () => {
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
   assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
@@ -53,6 +54,29 @@ test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impost
   assert.match(bootstrap, /const keepStartupGate =[\s\S]*isDirectMealRoute/);
   assert.match(bootstrap, /void refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
   assert.doesNotMatch(bootstrap, /if \(!isPlainResidentLogin\)/);
+
+  for (const mode of ['week', 'participant']) {
+    const calls = [];
+    let fallback;
+    const context = vm.createContext({
+      state: { mode, friendlyAccess: true, residentRestorePending: true, centerContactSettings: {} },
+      watchAuth() {}, syncStartupSplashPresentation() {}, applyMealReminderUrlPreference() {},
+      registerServiceWorker() {}, updateConnectivityState() {}, initializeOperationalLinks() {}, initializeResidentAccess() {},
+      hasAdminInterface: true, initializeAuthPanel: () => calls.push('auth'),
+      window: { location: { hostname: 'localhost' }, setTimeout: (callback, delay) => {
+        assert.equal(delay, 8000); fallback = callback;
+      } },
+      initI18n: () => { calls.push('i18n'); return new Promise(() => {}); },
+      renderMode() {}, renderAllViews() {}, renderCalendarPlaceholder() {},
+      loadStoredResidentSignature: () => 'RM', canUseWeekWithoutParticipant: () => false,
+      hideStartupSplash: () => calls.push('hide'), refreshNow: (source) => calls.push(source), console
+    });
+    vm.runInContext(bootstrap, context);
+    await context.bootstrapApp();
+    assert.deepEqual(calls, ['auth', 'i18n', 'avvio'], 'start data reads without dismissing the startup presentation');
+    fallback();
+    assert.equal(calls.at(-1), 'hide', 'retain the timeout escape for a slow or stalled connection');
+  }
 });
 
 test('l applicazione non conserva telemetria o contatori diagnostici globali', () => {

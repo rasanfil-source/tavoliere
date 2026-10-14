@@ -717,7 +717,7 @@ test('il primo caricamento mostra subito le selezioni del periodo corrente', () 
   const anchor = app.match(/function anchorCalendarToCenterToday\(\)[\s\S]*?\n}/)?.[0] || '';
   const calendarLoad = app.match(/async function loadCurrentParticipantCalendar\(options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
 
-  assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);[\s\S]*?showPersonalCalendarPreview\(\);\s*}/);
+  assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);\s*}/);
   assert.match(anchor, /state\.calendarAnchoredToCenter[\s\S]*return false/);
   assert.match(anchor, /state\.calendarAnchoredToCenter = true;\s*return true/);
   assert.match(calendarLoad, /const participantMonth = await \(options\.calendarRead \|\| loadParticipantMonthData\(/);

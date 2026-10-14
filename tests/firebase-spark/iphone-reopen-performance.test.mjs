@@ -57,27 +57,20 @@ test('snapshot cache is bounded, expires and tolerates corrupt/unavailable stora
   assert.equal(savePersonalCalendarSnapshot(scope, days.slice(1), { storage, serverConfirmed: true }), false);
 });
 
-test('cached selections render without edit controls and disappear when the Auth UID changes', () => {
-  let uid = scope.uid;
-  const target = { dataset: { renderKey: 'old-grid' }, innerHTML: '' };
-  const context = vm.createContext({ state: { mode: 'week', weekStartDate: new Date('2026-10-12T00:00:00Z'),
-    personalCalendarPreview: { scope, days, savedAt: 100 } },
-    elements: { participantMeals: target, weekOperations: {} },
-    currentPersonalCalendarScope: () => ({ ...scope, uid }), formatDateTime: () => 'saved time',
-    formatWeekDayCode: (date) => date, getLocalizedMealLabel: (_, label) => label || 'Meal',
-    escapeHtml: (value) => value, t: (key) => key, renderWeekControls() {},
-    addCalendarDays: (date, index) => new Date(date.getTime() + index * 86400000),
-    formatDateId: (date) => date.toISOString().slice(0, 10)
-  });
-  vm.runInContext(extract(app, 'renderCalendarPlaceholder'), context);
-  context.renderCalendarPlaceholder();
-  assert.match(target.innerHTML, /✓/);
-  assert.doesNotMatch(target.innerHTML, /<button|<input|data-week-meal|data-month-meal/);
-  assert.equal(target.dataset.renderKey, undefined);
-  uid = 'another-user';
-  context.renderCalendarPlaceholder();
-  assert.doesNotMatch(target.innerHTML, /✓|calendar.preview.saved/);
-  assert.match(target.innerHTML, /common.status.loading/);
+test('week and month loading show a status without a reduced grid or cached selections', () => {
+  for (const mode of ['week', 'participant']) {
+    const target = { dataset: { renderKey: 'old-grid' }, innerHTML: '' };
+    const context = vm.createContext({ state: { mode },
+      elements: { participantMeals: target, monthGrid: target, weekOperations: {} },
+      escapeHtml: (value) => value, t: (key) => key, renderWeekControls() {}, renderCalendarControls() {}
+    });
+    vm.runInContext(extract(app, 'renderCalendarPlaceholder'), context);
+    context.renderCalendarPlaceholder();
+    assert.match(target.innerHTML, /role="status"[^]*common.status.loading/);
+    assert.doesNotMatch(target.innerHTML, /<table|<button|<input|✓|—|…|calendar-preview|data-week-meal|data-month-meal/);
+    assert.equal(target.dataset.renderKey, undefined);
+    assert.equal(context.elements.weekOperations.hidden, true);
+  }
 });
 
 test('month reuse is scoped to the confirmed timezone, language and Auth identity', async () => {
@@ -167,23 +160,32 @@ test('an offline versioned module never falls back to a different release', asyn
 
 test('meals become usable while roles, presentation and accessory continuation remain pending', async () => {
   const calls = [];
+  const meals = deferred();
+  let splashHidden = false;
   const state = { mode: 'week', friendlyAccess: true, residentReady: true, residentAuthTransition: '',
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
   const context = vm.createContext({ state, console,
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     preparePersonalCalendarRead: () => null,
-    getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {}, showPersonalCalendarPreview() {},
+    getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => calls.push('session'),
     loadCenterCalendarSettings: async () => { calls.push('critical-settings'); return {}; },
     loadCenterContactSettings: () => { throw Error('presentation must not block'); },
     applyResidentPreferences: (value) => value, anchorCalendarToCenterToday: () => false,
-    loadCurrentParticipantCalendar: async () => { calls.push('meals'); return true; },
-    renderMode() {}, renderParticipantMeals: () => calls.push('render'), hideStartupSplash() {},
+    loadCurrentParticipantCalendar: async () => { calls.push('meals'); await meals.promise; return true; },
+    renderMode() {}, renderParticipantMeals: () => calls.push('render'),
+    hideStartupSplash: () => { assert.ok(calls.includes('render')); splashHidden = true; },
     markStartupStage: (name) => calls.push(name), refreshParticipantExtras: () => { calls.push('extras'); return new Promise(() => {}); },
     refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => 'updated'
   });
   vm.runInContext(extract(app, 'refreshParticipant'), context);
-  assert.equal(await context.refreshParticipant('avvio'), true);
+  const refresh = context.refreshParticipant('avvio');
+  await turn();
+  assert.deepEqual(calls, ['session', 'critical-settings', 'meals']);
+  assert.equal(splashHidden, false, 'keep the startup presentation while the real calendar is pending');
+  meals.resolve();
+  assert.equal(await refresh, true);
+  assert.equal(splashHidden, true);
   assert.deepEqual(calls, ['session', 'critical-settings', 'meals', 'render', 'extras']);
 });
 
@@ -306,7 +308,7 @@ test('essential meal reads start while current center settings are still pending
     centerContactSettings: { timezone: 'Europe/Rome' }, weekStartDate: new Date(2026, 9, 12) };
   const context = vm.createContext({ state, console, participantCalendarRevision: 0,
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
-    getCurrentUser: () => ({ uid: scope.uid }), getLocale: () => 'it', renderCalendarPlaceholder() {}, showPersonalCalendarPreview() {},
+    getCurrentUser: () => ({ uid: scope.uid }), getLocale: () => 'it', renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => {},
     loadParticipantWeek: () => { calls.push('meals-start'); return meals.promise; },
     loadCenterCalendarSettings: () => { calls.push('settings-start'); return settings.promise; },

@@ -22,7 +22,15 @@ Confronto del grafo JavaScript statico necessario a `app.js` e al modulo residen
 
 Il codice scende del **26,1%**; la dimensione gzip del **24,5%**. Il confronto non include HTML, CSS o dati Firestore e non è una misurazione della latenza su iPhone. I byte effettivamente trasferiti dipendono anche dalla compressione del server e dalle cache già presenti. Il primo aggiornamento deve acquisire i nuovi file; le riaperture successive possono riusarli.
 
-La riduzione dei file, del codice da analizzare e dell'attesa seriale può anticipare anche l'operatività del calendario. Non viene promessa una riduzione percentuale equivalente dei secondi di apertura: rete, ripristino WebKit e verifica della sessione restano variabili. L'anteprima locale resta distinta dai dati modificabili.
+La riduzione dei file, del codice da analizzare e dell'attesa seriale può anticipare anche l'operatività del calendario. Non viene promessa una riduzione percentuale equivalente dei secondi di apertura: rete, ripristino WebKit e verifica della sessione restano variabili. I valori della tabella si riferiscono alla build `65ae0dc`.
+
+## Presentazione all'apertura
+
+Su richiesta dell'utente è stata rimossa la tabella provvisoria con trattini, spunte e puntini. All'apertura resta la presentazione iniziale già esistente, seguita direttamente dal calendario ordinario quando i dati essenziali sono pronti. Restano il timeout di sicurezza e l'uscita dallo splash in caso di errore: se la rete tarda, viene mostrato soltanto lo stato di caricamento, senza una seconda griglia ridotta.
+
+La modifica riguarda la presentazione. Restano bundling, moduli differiti, letture in parallelo, cache Firestore e applicative, precaricamento del mese successivo e autenticazione persistente. La copia locale del calendario continua a essere salvata e invalidata con le stesse regole, ma non viene più letta per costruire un'anteprima; non viene usata per autorizzare modifiche. Il calendario continua a diventare disponibile senza attendere ruoli, presentazione completa, dati accessori o promemoria.
+
+Per questa correzione sono stati rieseguiti sintassi, traduzioni, tutti i **500 test applicativi** e i **5 test della build**, con esito positivo. I test di avvio ora verificano che Mese e Settimana mantengano lo splash durante il caricamento, senza bloccare Auth o attendere le traduzioni; verificano inoltre l'uscita al calendario utilizzabile mentre gli accessori sono ancora in attesa, e il timeout di sicurezza. La pagina di accesso della build è stata controllata nel browser a larghezza mobile e desktop; la riapertura autenticata è coperta dai test con dati sintetici, non da una prova su iPhone fisico. La build residente resta di 16 file JavaScript e scende a 960.006 byte.
 
 ## Verifiche completate
 

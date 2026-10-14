@@ -70,7 +70,6 @@ import {
 import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
 import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 import {
-  loadPersonalCalendarSnapshot,
   savePersonalCalendarSnapshot,
   clearPersonalCalendarSnapshots
 } from './core/personal-calendar-cache.mjs?v=20261014b';
@@ -612,7 +611,6 @@ const state = {
   activeRefreshKey: '',
   pendingRefreshKey: '',
   participantRequestVersion: 0,
-  personalCalendarPreview: null,
   personalCalendarScope: null,
   weekMassReady: false,
   weekExtrasReady: false,
@@ -752,7 +750,6 @@ function invalidateViewRequests() {
   state.kitchenRequestVersion += 1;
   state.weekMassReady = false;
   state.weekExtrasReady = false;
-  state.personalCalendarPreview = null;
 }
 
 function beginParticipantRequest() {
@@ -1451,9 +1448,8 @@ function renderAllViews() {
 
 async function bootstrapApp() {
   watchAuth((user) => {
-    const scope = state.personalCalendarScope || state.personalCalendarPreview?.scope;
+    const scope = state.personalCalendarScope;
     if (scope && scope.uid !== user?.uid) {
-      state.personalCalendarPreview = null;
       state.personalCalendarScope = null;
       state.participantWeek = [];
       state.participantMonth = [];
@@ -1491,10 +1487,6 @@ async function bootstrapApp() {
   // route paint. Complete catalogs are reconciled immediately afterwards,
   // but they no longer hold Firebase Auth or the basic resident entry gate.
   renderMode();
-  if (state.residentRestorePending && ['participant', 'week'].includes(state.mode)) {
-    renderCalendarPlaceholder();
-    hideStartupSplash();
-  }
   const isDirectMealRoute = ['participant', 'week'].includes(state.mode);
   const isPlainResidentLogin = state.friendlyAccess
     && isDirectMealRoute
@@ -3967,51 +3959,13 @@ function preparePersonalCalendarRead(forceStaticRefresh) {
   return { scope, timezone, revision, result };
 }
 
-function showPersonalCalendarPreview() {
-  if (!['week', 'participant'].includes(state.mode) || state.residentAuthTransition) return;
-  const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
-  if (days.length) return;
-  let participantId = state.selectedParticipant?.participantId;
-  // Only resolved Firebase Auth can select its own previously confirmed copy.
-  if (!participantId && getCurrentUser()?.isAnonymous && !isResidentEntryGateClosed()) {
-    try {
-      participantId = window.localStorage.getItem(getCenterScopedStorageKey('tavolaComune.residentParticipantId'));
-    } catch { return; }
-  }
-  const scope = currentPersonalCalendarScope(participantId);
-  const cached = scope && loadPersonalCalendarSnapshot(scope);
-  state.personalCalendarPreview = cached ? { ...cached, scope } : null;
-  renderCalendarPlaceholder();
-  if (state.residentRestorePending || state.residentReady) hideStartupSplash();
-}
-
 function renderCalendarPlaceholder() {
   if (!['week', 'participant'].includes(state.mode)) return;
-  const preview = state.personalCalendarPreview;
-  const scope = preview && currentPersonalCalendarScope(preview.scope.participantId);
-  const verifiedPreview = scope && JSON.stringify(scope) === JSON.stringify(preview.scope) ? preview : null;
-  const start = state.mode === 'week' ? state.weekStartDate : startOfMonth(state.monthDate);
-  const count = state.mode === 'week' ? 7 : daysInMonth(start);
-  const days = verifiedPreview?.days || Array.from({ length: count }, (_, index) => ({
-    date: formatDateId(addCalendarDays(start, index)), meals: []
-  }));
-  const headings = verifiedPreview?.days[0]?.meals || [
-    { mealTypeId: 'breakfast' }, { mealTypeId: 'lunch' }, { mealTypeId: 'dinner' }
-  ];
-  const message = verifiedPreview
-    ? t('calendar.preview.saved', { date: formatDateTime(new Date(verifiedPreview.savedAt),
-      { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) })
-    : t('common.status.loading');
   const target = state.mode === 'week' ? elements.participantMeals : elements.monthGrid;
   delete target.dataset.renderKey;
-  target.innerHTML = `<div class="calendar-preview" aria-busy="true">
-    <p role="status">${escapeHtml(message)}</p>
-    <table><thead><tr><th scope="col">${escapeHtml(t('calendar.day'))}</th>${headings.map((meal) =>
-      `<th scope="col">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</th>`).join('')}</tr></thead>
-    <tbody>${days.map((day) => `<tr><th scope="row">${escapeHtml(formatWeekDayCode(day.date))}</th>${headings.map((heading) => {
-      const meal = day.meals.find((item) => item.mealTypeId === heading.mealTypeId);
-      return `<td>${meal ? `<span aria-label="${escapeHtml(t(meal.effect === 'PRESENT' ? 'meal.status.booked' : 'meal.status.notBooked'))}">${meal.effect === 'PRESENT' ? '✓' : '—'}</span>` : `<span aria-label="${escapeHtml(t('a11y.loading'))}">…</span>`}</td>`;
-    }).join('')}</tr>`).join('')}</tbody></table></div>`;
+  // Keep the startup presentation until the real calendar is ready. If the
+  // safety timeout expires, show a status instead of a second, reduced grid.
+  target.innerHTML = `<p class="empty-state" role="status">${escapeHtml(t('common.status.loading'))}</p>`;
   elements.weekOperations.hidden = true;
   if (state.mode === 'week') renderWeekControls();
   else renderCalendarControls();
@@ -4086,7 +4040,6 @@ async function refreshParticipant(source, options = {}) {
     state.participantWeek = [];
     state.participantMonth = [];
     state.personalCalendarScope = null;
-    state.personalCalendarPreview = null;
     state.weekMassReady = false;
     state.weekExtrasReady = false;
   }
@@ -4117,7 +4070,6 @@ async function refreshParticipant(source, options = {}) {
         return;
       }
       state.residentRestorePending = Boolean(loadStoredResidentSignature());
-      showPersonalCalendarPreview();
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession({
@@ -4148,7 +4100,6 @@ async function refreshParticipant(source, options = {}) {
           request = beginParticipantRequest();
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
-        state.personalCalendarPreview = null;
         state.residentRestorePending = false;
         renderResidentAccess(true);
         hideStartupSplash();
@@ -4160,7 +4111,6 @@ async function refreshParticipant(source, options = {}) {
     }
     if (!isCurrentParticipantRequest(request)) return;
     request.authUid = getCurrentUser()?.uid;
-    showPersonalCalendarPreview();
     let sessionPromise = Promise.resolve();
     if (state.friendlyAccess && state.residentReady) {
       sessionPromise = ensureStoredResidentSession();
@@ -4198,8 +4148,6 @@ async function refreshParticipant(source, options = {}) {
     // the data loaded for the current period is also rendered immediately.
     if (anchorCalendarToCenterToday()) {
       request = beginParticipantRequest();
-      state.personalCalendarPreview = null;
-      showPersonalCalendarPreview();
     }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
@@ -4293,7 +4241,6 @@ async function refreshParticipant(source, options = {}) {
       }
     }
     if (options.loginHandshake && !isRecoverableSessionError(error)) {
-      state.personalCalendarPreview = null;
       state.residentReady = false;
       state.residentRestorePending = false;
       renderResidentAccess(true);
@@ -4348,7 +4295,6 @@ function isCenterAccessRevokedError(error) {
 
 function clearParticipantDataAfterAccessRevocation() {
   clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
-  state.personalCalendarPreview = null;
   state.personalCalendarScope = null;
   state.residentReady = false;
   state.residentRestorePending = false;
@@ -4507,7 +4453,6 @@ function togglePasswordVisibility(input, toggle) {
 async function handleForgetDevice() {
   if (state.residentAuthTransition) return;
   clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
-  state.personalCalendarPreview = null;
   state.personalCalendarScope = null;
   state.pendingMealKeys = new Set();
   state.residentAuthTransition = 'signing-out';
@@ -9516,7 +9461,6 @@ async function loadCurrentParticipantCalendar(options = {}) {
       timezone: state.centerContactSettings.timezone
     });
   }
-  state.personalCalendarPreview = null;
   state.personalCalendarScope = scope;
   const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
   if (!state.pendingMealKeys.size && days.serverConfirmed === true) {

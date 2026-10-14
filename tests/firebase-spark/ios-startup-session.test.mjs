@@ -118,7 +118,7 @@ test('first login keeps its identity if the calendar network read fails', async 
   const context = vm.createContext({ state, console: { error() {} },
     currentPersonalCalendarScope: () => null, getCurrentUser: () => ({ uid: 'user' }),
     preparePersonalCalendarRead: () => null,
-    renderCalendarPlaceholder() {}, showPersonalCalendarPreview() {},
+    renderCalendarPlaceholder() {},
     loadCenterCalendarSettings: async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); },
     beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     setParticipantStatus() {}, ensureStoredResidentSession: async () => {},
