@@ -3,7 +3,6 @@
   "name": "Prenotazione pasti - Cucina",
   "short_name": "Cucina",
   "description": "Conteggi pasti e indicazioni operative per la cucina.",
-  "start_url": "/?view=kitchen",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -63,7 +63,7 @@ test('la vista cucina usa un manifest installabile distinto', () => {
 test('il desktop mobile presenta l app principale come Oggi a tavola', () => {
   assert.equal(appManifest.name, 'Oggi a tavola');
   assert.equal(appManifest.short_name, 'Oggi a tavola');
-  assert.equal(appManifest.start_url, '/?access=friendly');
+  assert.equal(appManifest.start_url, undefined, 'without a service worker installation must retain the document URL and center');
   assert.equal(kitchenManifest.short_name, 'Cucina');
 });
 
@@ -91,29 +91,29 @@ test('service worker handles only navigation, app resources, and Firebase SDK re
 
 test('service worker keeps navigation network-first with an offline cache fallback', () => {
   assert.match(serviceWorker, /const response = await fetch\(request\)/);
-  assert.match(serviceWorker, /cache\.put\(fallbackPath \|\| request, response\.clone\(\)\)/);
-  assert.match(serviceWorker, /cache\.match\(fallbackPath \|\| request, \{ ignoreSearch: true \}\)/);
-  assert.match(serviceWorker, /networkFirst\(event\.request, '\/index\.html'\)/);
+  assert.match(serviceWorker, /cache\?\.put\(fallbackPath \|\| '\/index\.html', copy\)/);
+  assert.match(serviceWorker, /cache\?\.match\(fallbackPath \|\| '\/index\.html'\)/);
+  assert.match(serviceWorker, /networkFirst\(event\.request, '\/index\.html', event\)/);
 });
 
 test('versioned app shell files load the exact release with an offline fallback', () => {
   assert.match(serviceWorker, /url\.searchParams\.has\('v'\)/);
   assert.match(serviceWorker, /versionedCacheFirst\(event\.request, url\.pathname\)/);
-  assert.match(serviceWorker, /const exactMatch = await cache\.match\(request\)/);
+  assert.match(serviceWorker, /const exactMatch = await cache\?\.match\(request\)/);
   assert.match(serviceWorker, /cache\.put\(request, response\.clone\(\)\)/);
   assert.match(serviceWorker, /cache\.put\(fallbackPath, response\.clone\(\)\)/);
-  assert.match(serviceWorker, /const fallback = await cache\.match\(fallbackPath\)/);
+  assert.match(serviceWorker, /const fallback = await cache\?\.match\(fallbackPath\)/);
 });
 
 test('la release corrente invalida insieme applicazione stile impostazioni e cache PWA', () => {
-  assert.match(index, /styles\.css\?v=20261012b/);
+  assert.match(index, /styles\.css\?v=20261014b/);
   assert.match(index, /summary-matrix-refinements\.css\?v=20260824b/);
-  assert.match(index, /app\.js\?v=20261012b/);
-  assert.match(app, /daily-operations\.js\?v=20261012b/);
+  assert.match(index, /app\.js\?v=20261014b/);
+  assert.match(app, /daily-operations\.js\?v=20261014b/);
   assert.match(index, /manifest\.webmanifest\?v=20260824b/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
-  assert.match(app, /center-settings\.js\?v=20261012b/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v451'/);
+  assert.match(app, /center-settings\.js\?v=20261014b/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v454'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
@@ -152,5 +152,5 @@ test('refresh di mese e settimana non riusa una vecchia shell HTML', () => {
   );
   const networkFirst = serviceWorker.match(/async function networkFirst\([\s\S]*?\n}/)?.[0] || '';
   assert.match(networkFirst, /fetch\(request, \{ cache: 'no-cache' \}\)/);
-  assert.match(networkFirst, /cache\.match\(fallbackPath \|\| request/);
+  assert.match(networkFirst, /cache\?\.match\(fallbackPath \|\| '\/index\.html'/);
 });

@@ -8,6 +8,12 @@ const releaseNonce = Date.now().toString(36);
 const assets = [
   { path: 'index.html', local: 'index.html' },
   { path: 'app.js', local: 'app.js' },
+  { path: 'firebase-client.js', local: 'firebase-client.js' },
+  { path: 'core/firebase-runtime-policy.mjs', local: 'core/firebase-runtime-policy.mjs' },
+  { path: 'core/startup-timing.mjs', local: 'core/startup-timing.mjs' },
+  { path: 'core/personal-calendar-cache.mjs', local: 'core/personal-calendar-cache.mjs' },
+  { path: 'manifest.webmanifest', local: 'manifest.webmanifest' },
+  { path: 'manifest-kitchen.webmanifest', local: 'manifest-kitchen.webmanifest' },
   { path: 'daily-operations.js', local: 'daily-operations.js' },
   { path: 'participant-data.js', local: 'participant-data.js' },
   { path: 'calendar-configuration.js', local: 'calendar-configuration.js' },

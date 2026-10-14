@@ -1,4 +1,11 @@
 {
+  "calendar.day": "Día",
+  "calendar.preview.saved": "Selecciones guardadas el {date}. Verificación en curso; podrás hacer cambios después de la actualización.",
+  "calendar.status.extrasUnavailable": "Comidas actualizadas; algunos datos adicionales no están disponibles. Vuelve a intentarlo con Actualizar.",
+  "admin.adaptations.weekStartsOn.label": "Inicio de la semana",
+  "admin.adaptations.weekStartsOn.monday": "Lunes",
+  "admin.adaptations.weekStartsOn.sunday": "Domingo",
+  "admin.adaptations.weekStartsOn.help": "Se aplica solo a tus vistas de mes y semana en este dispositivo.",
   "_meta.languageName": "Espanol",
   "_meta.locale": "es",
   "a11y.closeDialog": "Cerrar ventana",

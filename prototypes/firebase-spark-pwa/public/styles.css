@@ -7256,3 +7256,10 @@ body[data-mode="admin"] .admin-shell-body {
     padding-inline: clamp(8px, 3vw, 14px);
   }
 }
+/* The first calendar paint is explicitly read-only while Auth/data settle. */
+.calendar-preview { width: 100%; color: var(--text, #24302b); }
+.calendar-preview p { font-size: .85rem; line-height: 1.45; margin: .5rem 0 1rem; }
+.calendar-preview table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.calendar-preview th, .calendar-preview td { text-align: center; padding: .7rem .2rem; border-bottom: 1px solid #8884; }
+.calendar-preview thead { font-size: .85rem; }
+.calendar-preview td { font-size: 1.15rem; }

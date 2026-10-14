@@ -28,10 +28,20 @@
           var current = new URLSearchParams(window.location.search);
           var center = current.get('c') || '';
           try { center = center || localStorage.getItem('tavolaComune.centerId') || ''; } catch (_) {}
+          if (!/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) {
+            try { center = document.cookie.split(';').map(function (item) { return item.trim(); })
+              .find(function (item) { return item.indexOf('tavolaComune.centerId=') === 0; })?.slice('tavolaComune.centerId='.length) || ''; } catch (_) {}
+          }
+          // Without service-worker interception, the static manifest defaults to
+          // this document URL. Keep the center in that URL before installation.
+          if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center) && !current.get('c')) {
+            current.set('c', center);
+            window.history.replaceState(window.history.state, '', window.location.pathname + '?' + current + window.location.hash);
+          }
           var path = current.get('view') === 'kitchen'
             ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
           var manifest = new URL(path, window.location.origin);
-          manifest.searchParams.set('v', '20261012b');
+          manifest.searchParams.set('v', '20261014b');
           if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) manifest.searchParams.set('c', center);
           if (navigator.serviceWorker && navigator.serviceWorker.controller) manifest.searchParams.set('controlled', '1');
           document.querySelector('[data-app-manifest]').href = manifest.href;
@@ -48,9 +58,9 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20261012b">
+    <link rel="stylesheet" href="/styles.css?v=20261014b">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260824b">
-    <script type="module" src="/app.js?v=20261012b"></script>
+    <script type="module" src="/app.js?v=20261014b"></script>
   </head>
   <body>
     <div class="startup-gate" data-startup-gate aria-hidden="true">
@@ -750,6 +760,14 @@
                         <option value="signature" data-i18n="admin.adaptations.summaryResidentLabel.signature">Sigla</option>
                         <option value="initials" data-i18n="admin.adaptations.summaryResidentLabel.initials">Iniziali</option>
                       </select>
+                    </label>
+                    <label class="field-label" for="admin-week-starts-on-select">
+                      <span data-i18n="admin.adaptations.weekStartsOn.label">Inizio della settimana</span>
+                      <select id="admin-week-starts-on-select" data-admin-week-starts-on-select>
+                        <option value="monday" data-i18n="admin.adaptations.weekStartsOn.monday">Lunedì</option>
+                        <option value="sunday" data-i18n="admin.adaptations.weekStartsOn.sunday">Domenica</option>
+                      </select>
+                      <small class="field-help" data-i18n="admin.adaptations.weekStartsOn.help">Si applica solo alle tue viste mese e settimana su questo dispositivo.</small>
                     </label>
                     <label class="field-label admin-month-controls-side" for="admin-month-controls-side-select">
                       <span data-i18n="admin.adaptations.monthControlsSide.label">Pulsanti nella vista mese</span>

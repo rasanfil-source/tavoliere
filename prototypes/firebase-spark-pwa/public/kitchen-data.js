@@ -9,17 +9,17 @@ import {
   setDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20261012b';
-import { getActiveCenterId } from './center-context.js?v=20261012b';
+import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20261014b';
+import { getActiveCenterId } from './center-context.js?v=20261014b';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20261012b';
-import { formatDateId } from './date-utils.mjs?v=20261012b';
-import { formatDietLabel } from './diet-utils.mjs?v=20261012b';
-import { t } from './i18n/i18n.mjs?v=20261012b';
-import { isConnectionAvailable } from './core/connectivity.mjs?v=20261012b';
+} from './reservation-state.mjs?v=20261014b';
+import { formatDateId } from './date-utils.mjs?v=20261014b';
+import { formatDietLabel } from './diet-utils.mjs?v=20261014b';
+import { t } from './i18n/i18n.mjs?v=20261014b';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20261014b';
 
 const SESSION_LIFETIME_DAYS = 30;
 const SESSION_RECHECK_MS = 5 * 60 * 1000;

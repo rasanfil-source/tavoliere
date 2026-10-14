@@ -1,0 +1,1 @@
+async function s(n,a){const r=typeof window<"u"&&new URLSearchParams(window.location.search).get("diagnostics")==="startup",t=globalThis.performance;if(!r||!t?.now)return a();const e=t.now();try{return await a()}finally{const o=t.now();try{t.measure(`tat:${n}`,{start:e,end:o})}catch{}console.info("[tat-startup]",n,Math.round(o-e),"ms")}}export{s as measureStartupStep};

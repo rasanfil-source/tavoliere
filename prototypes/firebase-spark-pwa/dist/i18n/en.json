@@ -1,4 +1,11 @@
 {
+  "calendar.day": "Day",
+  "calendar.preview.saved": "Selections saved on {date}. Checking for updates; editing will be available once the update is complete.",
+  "calendar.status.extrasUnavailable": "Meals updated; some additional data is unavailable. Try Refresh again.",
+  "admin.adaptations.weekStartsOn.label": "Start of the week",
+  "admin.adaptations.weekStartsOn.monday": "Monday",
+  "admin.adaptations.weekStartsOn.sunday": "Sunday",
+  "admin.adaptations.weekStartsOn.help": "Applies only to your month and week views on this device.",
   "_meta.languageName": "English",
   "_meta.locale": "en",
   "a11y.closeDialog": "Close window",

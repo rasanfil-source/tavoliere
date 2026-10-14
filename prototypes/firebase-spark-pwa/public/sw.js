@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v451';
+const CACHE_NAME = CACHE_PREFIX + 'v454';
+const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Only public, immutable SDK files: never Auth API responses or session data.
 const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
   .map((file) => `https://www.gstatic.com/firebasejs/12.17.0/${file}`);
@@ -11,6 +12,9 @@ const APP_SHELL = [
   '/summary-contact-hint.mjs',
   '/html-utils.js',
   '/firebase-client.js',
+  '/core/firebase-runtime-policy.mjs',
+  '/core/startup-timing.mjs',
+  '/core/personal-calendar-cache.mjs',
   '/center-context.js',
   '/center-settings.js',
   '/refresh-schedule.js',
@@ -63,7 +67,8 @@ const LAZY_MODULES = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => cache.addAll(APP_SHELL.map((path) =>
+        /\.(?:m?js|css)$/.test(path) ? `${path}?v=20261014b` : path)))
   );
 });
 
@@ -127,7 +132,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirst(event.request, '/index.html'));
+    event.respondWith(networkFirst(event.request, '/index.html', event));
     return;
   }
 
@@ -149,7 +154,8 @@ async function centerManifest(url) {
   const cache = await caches.open(CACHE_NAME);
   const response = await cache.match(url.pathname) || await fetch(url.pathname);
   const manifest = await response.json();
-  const start = new URL(manifest.start_url, self.location.origin);
+  const start = new URL(url.pathname === '/manifest-kitchen.webmanifest'
+    ? '/?view=kitchen' : '/?access=friendly', self.location.origin);
   start.searchParams.set('c', url.searchParams.get('c'));
   manifest.start_url = start.pathname + start.search;
   // Identità stabile per centro e vista, indipendente dalla versione degli asset.
@@ -176,58 +182,64 @@ async function sdkCacheFirst(request) {
 }
 
 async function versionedCacheFirst(request, fallbackPath) {
-  const cache = await caches.open(CACHE_NAME);
-  const exactMatch = await cache.match(request);
+  const cache = await caches.open(CACHE_NAME).catch(() => null);
+  const exactMatch = await cache?.match(request).catch(() => undefined);
   if (exactMatch) {
     return exactMatch;
   }
 
   try {
     const response = await fetch(request);
-    if (response && (response.ok || response.type === 'opaque')) {
+    if (cache && response && (response.ok || response.type === 'opaque')) {
       await Promise.all([
         cache.put(request, response.clone()),
         cache.put(fallbackPath, response.clone())
-      ]);
+      ]).catch(() => undefined);
     }
     return response;
   } catch (error) {
-    const fallback = await cache.match(fallbackPath);
-    if (fallback) {
+    const fallback = await cache?.match(fallbackPath).catch(() => undefined);
+    // Never combine a new HTML/module graph with a different cached release.
+    if (fallback?.url && new URL(fallback.url).searchParams.get('v')
+        === new URL(request.url || request, self.location.origin).searchParams.get('v')) {
       return fallback;
     }
     throw error;
   }
 }
 
-async function networkFirst(request, fallbackPath) {
-  const cache = await caches.open(CACHE_NAME);
+async function networkFirst(request, fallbackPath, event) {
+  // Start the network and cache lookup together. Cache Storage can be
+  // unavailable on iOS; that must never turn a successful fetch into an error.
+  const cachePromise = caches.open(CACHE_NAME).catch(() => null);
+  const cachedPromise = cachePromise.then((cache) =>
+    cache?.match(fallbackPath || '/index.html').catch(() => undefined));
+  const network = fetch(request, { cache: 'no-cache' });
+  const update = network.then(async (response) => {
+    if (!response?.ok) return;
+    const copy = response.clone();
+    const cache = await cachePromise;
+    // Never persist a navigation URL: it can contain an access token.
+    await cache?.put(fallbackPath || '/index.html', copy);
+  }).catch(() => undefined);
+  event?.waitUntil(update);
+  let timer;
   try {
-    // Le viste dell'app condividono la stessa shell HTML e differiscono solo
-    // nei parametri (?view=week, ?view=summary, ...). Il normale HTTP cache
-    // del browser poteva quindi restituire per un'ora una shell precedente,
-    // mentre il passaggio a un altro parametro caricava quella nuova. La
-    // Cache Storage resta il ripiego offline; online la navigazione deve
-    // sempre riconvalidare la shell pubblicata.
-    const response = await fetch(request, { cache: 'no-cache' });
-    if (response && (response.ok || response.type === 'opaque')) {
-      // Gli URL di navigazione possono contenere centro e token di accesso.
-      // Una chiave canonica conserva una sola copia della struttura applicativa.
-      await cache.put(fallbackPath || request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    const directMatch = await cache.match(fallbackPath || request, { ignoreSearch: true });
-    if (directMatch) {
-      return directMatch;
-    }
-    if (fallbackPath) {
-      const fallback = await cache.match(fallbackPath);
-      if (fallback) {
-        return fallback;
-      }
-    }
-    throw error;
+    const result = await Promise.race([
+      network.then((response) => ({ response }), (error) => ({ error })),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ timedOut: true }), HTML_NETWORK_TIMEOUT_MS);
+      })
+    ]);
+    if (result.response?.ok) return result.response;
+    const cached = await cachedPromise;
+    if (cached) return cached;
+    // With no saved shell, keep the original request (no duplicate fetch).
+    if (result.response) return result.response;
+    if (result.error) throw result.error;
+    return await network;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

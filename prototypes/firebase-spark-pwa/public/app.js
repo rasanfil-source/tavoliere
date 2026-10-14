@@ -7,11 +7,11 @@ import {
   formatTime,
   applyTranslations,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20261012b';
+} from './i18n/i18n.mjs?v=20261014b';
 import {
   getRecommendedRefreshDelayMs
-} from './refresh-schedule.js?v=20261012b';
-import { escapeHtml } from './html-utils.js?v=20261012b';
+} from './refresh-schedule.js?v=20261014b';
+import { escapeHtml } from './html-utils.js?v=20261014b';
 import {
   getCurrentUser,
   authorizeResidentAdministratorSession,
@@ -27,12 +27,12 @@ import {
   watchAuth,
   updateAdministratorPassword,
   sendAdminPasswordResetEmail
-} from './firebase-client.js?v=20261012b';
+} from './firebase-client.js?v=20261014b';
 import {
   getActiveCenterId,
   getCenterScopedStorageKey,
   setActiveCenterId
-} from './center-context.js?v=20261012b';
+} from './center-context.js?v=20261014b';
 import {
   DEFAULT_APP_DISPLAY_NAME,
   DEFAULT_APP_DISPLAY_SUBTITLE,
@@ -40,54 +40,61 @@ import {
   loadCachedCenterAvatar,
   loadCachedCenterContactSettings,
   loadCenterContactSettings,
+  loadCenterCalendarSettings,
   removeCenterAvatar,
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
   updateCenterSettings
-} from './center-settings.js?v=20261012b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
+} from './center-settings.js?v=20261014b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
 import {
   formatDietLabel,
   normalizeDietCode
-} from './diet-utils.mjs?v=20261012b';
+} from './diet-utils.mjs?v=20261014b';
 import {
   isValidKitchenDietLabel,
   kitchenDietLabelForCode,
   normalizeKitchenDietLabel,
   updateKitchenDietLegendEntry
-} from './diet-legend.mjs?v=20261012b';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20261012b';
-import { buildMealReminderPlan } from './meal-reminders.mjs?v=20261012b';
-import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20261012b';
-import { createOperationGuard } from './core/operation-guard.mjs?v=20261012b';
-import { createStateStore } from './core/state-store.mjs?v=20261012b';
+} from './diet-legend.mjs?v=20261014b';
+import { getMealCutoffDate } from './schedule-utils.mjs?v=20261014b';
+import { buildMealReminderPlan } from './meal-reminders.mjs?v=20261014b';
+import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20261014b';
+import { createOperationGuard } from './core/operation-guard.mjs?v=20261014b';
+import { createStateStore } from './core/state-store.mjs?v=20261014b';
 import {
   createInitialAuthState,
   reduceAuthState,
   selectAuthSurface
-} from './core/auth-state-machine.mjs?v=20261012b';
-import { toUserMessage } from './core/user-error.mjs?v=20261012b';
+} from './core/auth-state-machine.mjs?v=20261014b';
+import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
+import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
+import {
+  loadPersonalCalendarSnapshot,
+  savePersonalCalendarSnapshot,
+  clearPersonalCalendarSnapshots
+} from './core/personal-calendar-cache.mjs?v=20261014b';
 import {
   shouldBlockResidentEntryRestore,
   shouldPreserveResidentViewAfterRefreshError,
   shouldProcessAdminAuthEvent
-} from './core/auth-session-policy.mjs?v=20261012b';
+} from './core/auth-session-policy.mjs?v=20261014b';
 import {
   NETWORK_ACTION_SELECTOR,
   actionRequiresConnection,
   isConnectionAvailable
-} from './core/connectivity.mjs?v=20261012b';
+} from './core/connectivity.mjs?v=20261014b';
 import {
   normalizePhoneNumber,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20261012b';
-import { buildAdminOverview } from './domain/admin-overview.mjs?v=20261012b';
-import { inspectCenterBackup } from './domain/center-backup.mjs?v=20261012b';
-import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20261012b';
+} from './domain/participant-profile.mjs?v=20261014b';
+import { buildAdminOverview } from './domain/admin-overview.mjs?v=20261014b';
+import { inspectCenterBackup } from './domain/center-backup.mjs?v=20261014b';
+import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20261014b';
 import {
   nextSummaryContactHintVisitCount,
   shouldShowSummaryContactHint
-} from './summary-contact-hint.mjs?v=20261012b';
+} from './summary-contact-hint.mjs?v=20261014b';
 
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -116,15 +123,15 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
 ];
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 const domainModulePaths = {
-  accessLinks: './access-links.js?v=20261012b',
-  admin: './admin-center.js?v=20261012b',
-  audit: './audit-log.js?v=20261012b',
-  bootstrap: './bootstrap-demo.js?v=20261012b',
-  daily: './daily-operations.js?v=20261012b',
-  kitchen: './kitchen-data.js?v=20261012b',
-  notes: './kitchen-notes.js?v=20261012b',
-  participant: './participant-data.js?v=20261012b',
-  summaryView: './summary-matrix-view.js?v=20261012b'
+  accessLinks: './access-links.js?v=20261014b',
+  admin: './admin-center.js?v=20261014b',
+  audit: './audit-log.js?v=20261014b',
+  bootstrap: './bootstrap-demo.js?v=20261014b',
+  daily: './daily-operations.js?v=20261014b',
+  kitchen: './kitchen-data.js?v=20261014b',
+  notes: './kitchen-notes.js?v=20261014b',
+  participant: './participant-data.js?v=20261014b',
+  summaryView: './summary-matrix-view.js?v=20261014b'
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -157,7 +164,10 @@ function loadDomainModule(name) {
 }
 
 function callDomain(name, exportName) {
-  return (...args) => loadDomainModule(name).then((module) => module[exportName](...args));
+  return (...args) => measureStartupStep(`domain:${exportName}`, async () => {
+    const module = await loadDomainModule(name);
+    return module[exportName](...args);
+  });
 }
 
 function preloadActiveViewModules() {
@@ -170,8 +180,7 @@ function preloadActiveViewModules() {
     loadDomainModule('kitchen');
     loadDomainModule('notes');
   }
-  if (['kitchen', 'summary'].includes(initialMode)
-      || (initialMode === 'week' && hasStoredResidentIdentity)) {
+  if (['kitchen', 'summary'].includes(initialMode)) {
     loadDomainModule('daily');
   }
   if (['kitchen', 'summary'].includes(initialMode)) {
@@ -442,7 +451,7 @@ const PERSONAL_APPEARANCE_DEFAULTS = Object.freeze({
   themePalette: 'inchiostro', interfaceStyle: 'urban-plus',
   defaultView: DEFAULT_OPENING_VIEW, summaryLayout: 'classic',
   kitchenLayout: 'classic', summaryResidentLabel: 'name',
-  monthControlsSide: 'right', language: 'it'
+  monthControlsSide: 'right', weekStartsOn: 'monday', language: 'it'
 });
 
 function getPersonalPreferencesStorageKey() {
@@ -472,6 +481,7 @@ function applyResidentPreferences(settings) {
   const preferences = loadResidentPreferences();
   const appearance = Object.fromEntries(Object.entries(PERSONAL_APPEARANCE_DEFAULTS)
     .map(([key, fallback]) => [key, preferences[key] || fallback]));
+  appearance.weekStartsOn = preferences.weekStartsOn === 'sunday' ? 'sunday' : 'monday';
   return { ...settings, ...appearance };
 }
 
@@ -598,6 +608,10 @@ const state = {
   activeRefreshKey: '',
   pendingRefreshKey: '',
   participantRequestVersion: 0,
+  personalCalendarPreview: null,
+  personalCalendarScope: null,
+  weekMassReady: false,
+  weekExtrasReady: false,
   weekOperationsRequestVersion: 0,
   kitchenRequestVersion: 0,
   pendingMealKeys: new Set(),
@@ -642,7 +656,7 @@ const state = {
   summaryDailyHealth: null,
   kitchenUpdatedAt: null,
   selectedSummaryDate: formatDateId(new Date()),
-  weekStartDate: startOfWeek(new Date()),
+  weekStartDate: startOfWeek(new Date(), 'monday'),
   monthDate: startOfMonth(new Date()),
   adminRole: '',
   adminAuthUid: '',
@@ -732,12 +746,16 @@ function invalidateViewRequests() {
   state.participantRequestVersion += 1;
   state.weekOperationsRequestVersion += 1;
   state.kitchenRequestVersion += 1;
+  state.weekMassReady = false;
+  state.weekExtrasReady = false;
+  state.personalCalendarPreview = null;
 }
 
 function beginParticipantRequest() {
   state.participantRequestVersion += 1;
   return {
     version: state.participantRequestVersion,
+    centerId: getActiveCenterId(),
     mode: state.mode,
     monthDate: state.monthDate.getTime(),
     weekStartDate: state.weekStartDate.getTime(),
@@ -747,6 +765,8 @@ function beginParticipantRequest() {
 
 function isCurrentParticipantRequest(request) {
   return request.version === state.participantRequestVersion
+    && request.centerId === getActiveCenterId()
+    && (request.authUid === undefined || request.authUid === getCurrentUser()?.uid)
     && request.mode === state.mode
     && request.monthDate === state.monthDate.getTime()
     && request.weekStartDate === state.weekStartDate.getTime()
@@ -833,6 +853,7 @@ const elements = {
   adminSummaryLayoutSelect: document.querySelector('[data-admin-summary-layout-select]'),
   adminKitchenLayoutSelect: document.querySelector('[data-admin-kitchen-layout-select]'),
   adminMonthControlsSideSelect: document.querySelector('[data-admin-month-controls-side-select]'),
+  adminWeekStartsOnSelect: document.querySelector('[data-admin-week-starts-on-select]'),
   adminSummaryResidentLabelSelect: document.querySelector('[data-admin-summary-resident-label-select]'),
   adminAdaptationsTitle: document.querySelector('[data-admin-adaptations-title]'),
   adminAdaptationsDescription: document.querySelector('[data-admin-adaptations-description]'),
@@ -1425,6 +1446,19 @@ function renderAllViews() {
 }
 
 async function bootstrapApp() {
+  watchAuth((user) => {
+    const scope = state.personalCalendarScope || state.personalCalendarPreview?.scope;
+    if (scope && scope.uid !== user?.uid) {
+      state.personalCalendarPreview = null;
+      state.personalCalendarScope = null;
+      state.participantWeek = [];
+      state.participantMonth = [];
+      state.pendingMealKeys = new Set();
+      state.weekMassReady = false;
+      state.weekExtrasReady = false;
+      renderParticipantMeals();
+    }
+  });
   syncStartupSplashPresentation();
   applyMealReminderUrlPreference();
   registerServiceWorker();
@@ -1440,7 +1474,7 @@ async function bootstrapApp() {
   // La vista Cucina deve creare prima la propria sessione: un caricamento
   // anticipato delle impostazioni protette può essere negato e condiviso con
   // il refresh successivo, facendo fallire proprio la prima apertura.
-  const settingsPromise = state.mode === 'kitchen'
+  const settingsPromise = ['kitchen', 'participant', 'week'].includes(state.mode)
     ? Promise.resolve(null)
     : loadCenterContactSettings().catch(() => null);
   window.setTimeout(hideStartupSplash, 8000);
@@ -1453,6 +1487,10 @@ async function bootstrapApp() {
   // route paint. Complete catalogs are reconciled immediately afterwards,
   // but they no longer hold Firebase Auth or the basic resident entry gate.
   renderMode();
+  if (state.residentRestorePending && ['participant', 'week'].includes(state.mode)) {
+    renderCalendarPlaceholder();
+    hideStartupSplash();
+  }
   const isDirectMealRoute = ['participant', 'week'].includes(state.mode);
   const isPlainResidentLogin = state.friendlyAccess
     && isDirectMealRoute
@@ -1463,8 +1501,7 @@ async function bootstrapApp() {
     setParticipantStatus(t('auth.resident.status'));
   }
 
-  await i18nPromise;
-  renderAllViews();
+  void i18nPromise.then(renderAllViews).catch(console.error);
   // Su un accesso diretto a Mese o Settimana Firebase Auth non ha ancora
   // ripristinato l'eventuale account amministratore. Non mostrare per un
   // istante il login residenti: refreshParticipant attende Auth, ricostruisce
@@ -3003,6 +3040,7 @@ async function handleAuthButton() {
 }
 
 async function handleOwnerExit() {
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
   if (!isFirebaseConfigured || state.residentAuthTransition) return;
   if (state.residentSettingsMode) {
     // Il pannello ristretto usa lo stesso comando interno del pannello
@@ -3313,6 +3351,18 @@ async function refreshMealReminderDays(isCurrent = () => true) {
     state.mealReminderDays = days;
     state.mealReminderParticipantId = participantId;
   }
+}
+
+async function refreshMealRemindersAfterCalendar(isCurrent) {
+  try {
+    await refreshMealReminderDays(isCurrent);
+  } catch {
+    if (!isCurrent()) return;
+    state.mealReminderDays = [];
+    clearMealReminderTimers();
+    syncMealReminderControl('mealReminder.status.failed');
+  }
+  if (isCurrent()) scheduleMealRemindersFromCurrentCalendar();
 }
 
 function syncMealReminderControl(statusKey = '') {
@@ -3890,16 +3940,159 @@ async function performRefresh(source) {
   hideStartupSplash();
 }
 
+function currentPersonalCalendarScope(participantId = state.selectedParticipant?.participantId) {
+  const uid = getCurrentUser()?.uid;
+  if (!uid || !participantId || !['week', 'participant'].includes(state.mode)) return null;
+  const start = state.mode === 'week' ? state.weekStartDate : startOfMonth(state.monthDate);
+  const count = state.mode === 'week' ? 7 : daysInMonth(start);
+  return { centerId: getActiveCenterId(), uid, participantId, view: state.mode,
+    start: formatDateId(start), end: formatDateId(addCalendarDays(start, count - 1)) };
+}
+
+function preparePersonalCalendarRead(forceStaticRefresh) {
+  const scope = currentPersonalCalendarScope();
+  if (!scope) return null;
+  const timezone = state.centerContactSettings.timezone;
+  const revision = participantCalendarRevision;
+  const options = { requireServer: true, forceStaticRefresh, timezone, locale: getLocale() };
+  const read = state.mode === 'week'
+    ? loadParticipantWeek(scope.participantId, state.weekStartDate, 7, options)
+    : loadParticipantMonthData(scope.participantId, startOfMonth(state.monthDate), options);
+  // Settle errors now, even if a settings/date change makes this read obsolete.
+  const result = read.then((value) => ({ value }), (error) => ({ error }));
+  return { scope, timezone, revision, result };
+}
+
+function showPersonalCalendarPreview() {
+  if (!['week', 'participant'].includes(state.mode) || state.residentAuthTransition) return;
+  const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
+  if (days.length) return;
+  let participantId = state.selectedParticipant?.participantId;
+  // Only resolved Firebase Auth can select its own previously confirmed copy.
+  if (!participantId && getCurrentUser()?.isAnonymous && !isResidentEntryGateClosed()) {
+    try {
+      participantId = window.localStorage.getItem(getCenterScopedStorageKey('tavolaComune.residentParticipantId'));
+    } catch { return; }
+  }
+  const scope = currentPersonalCalendarScope(participantId);
+  const cached = scope && loadPersonalCalendarSnapshot(scope);
+  state.personalCalendarPreview = cached ? { ...cached, scope } : null;
+  renderCalendarPlaceholder();
+  if (state.residentRestorePending || state.residentReady) hideStartupSplash();
+}
+
+function renderCalendarPlaceholder() {
+  if (!['week', 'participant'].includes(state.mode)) return;
+  const preview = state.personalCalendarPreview;
+  const scope = preview && currentPersonalCalendarScope(preview.scope.participantId);
+  const verifiedPreview = scope && JSON.stringify(scope) === JSON.stringify(preview.scope) ? preview : null;
+  const start = state.mode === 'week' ? state.weekStartDate : startOfMonth(state.monthDate);
+  const count = state.mode === 'week' ? 7 : daysInMonth(start);
+  const days = verifiedPreview?.days || Array.from({ length: count }, (_, index) => ({
+    date: formatDateId(addCalendarDays(start, index)), meals: []
+  }));
+  const headings = verifiedPreview?.days[0]?.meals || [
+    { mealTypeId: 'breakfast' }, { mealTypeId: 'lunch' }, { mealTypeId: 'dinner' }
+  ];
+  const message = verifiedPreview
+    ? t('calendar.preview.saved', { date: formatDateTime(new Date(verifiedPreview.savedAt),
+      { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) })
+    : t('common.status.loading');
+  const target = state.mode === 'week' ? elements.participantMeals : elements.monthGrid;
+  delete target.dataset.renderKey;
+  target.innerHTML = `<div class="calendar-preview" aria-busy="true">
+    <p role="status">${escapeHtml(message)}</p>
+    <table><thead><tr><th scope="col">${escapeHtml(t('calendar.day'))}</th>${headings.map((meal) =>
+      `<th scope="col">${escapeHtml(getLocalizedMealLabel(meal.mealTypeId, meal.label))}</th>`).join('')}</tr></thead>
+    <tbody>${days.map((day) => `<tr><th scope="row">${escapeHtml(formatWeekDayCode(day.date))}</th>${headings.map((heading) => {
+      const meal = day.meals.find((item) => item.mealTypeId === heading.mealTypeId);
+      return `<td>${meal ? `<span aria-label="${escapeHtml(t(meal.effect === 'PRESENT' ? 'meal.status.booked' : 'meal.status.notBooked'))}">${meal.effect === 'PRESENT' ? '✓' : '—'}</span>` : `<span aria-label="${escapeHtml(t('a11y.loading'))}">…</span>`}</td>`;
+    }).join('')}</tr>`).join('')}</tbody></table></div>`;
+  elements.weekOperations.hidden = true;
+  if (state.mode === 'week') renderWeekControls();
+  else renderCalendarControls();
+}
+
+async function refreshParticipantExtras(source, request) {
+  const uid = getCurrentUser()?.uid;
+  const participantId = state.selectedParticipant?.participantId;
+  const isCurrent = () => isCurrentParticipantRequest(request)
+    && getCurrentUser()?.uid === uid && state.selectedParticipant?.participantId === participantId
+    && !state.residentAuthTransition;
+  // Yield the current JS task; this is not a guarantee about paint or sockets.
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  if (!isCurrent()) return;
+  const forceRefresh = source === 'manuale';
+  const report = () => {
+    if (isCurrent()) setParticipantStatus(t('calendar.status.extrasUnavailable'), 'previous');
+  };
+  const presentation = loadCenterContactSettings({ forceRefresh }).then(async (settings) => {
+    if (!isCurrent()) return;
+    // A presentation cache must not replace the settings that just confirmed
+    // the editable calendar. These fields are refreshed on the critical path.
+    const { timezone, reservationCutoffs, adminPasswordVersion } = state.centerContactSettings;
+    state.centerContactSettings = applyResidentPreferences({
+      ...settings, timezone, reservationCutoffs, adminPasswordVersion
+    });
+    await applyCenterDefaultLanguage(settings);
+    if (isCurrent()) { renderMode(); renderParticipantMeals(); }
+  }).catch(report);
+  try {
+    await refreshResidentAdministratorAuthorization(isCurrent);
+    if (!isCurrent()) return;
+    await refreshStrongAdministratorOperationalAuthorization(isCurrent);
+    if (!isCurrent()) return;
+    renderMode();
+    if (state.mode !== 'week') return;
+    const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(state.weekStartDate, index));
+    const mass = canManageMass() ? loadDailyOperations(dates, { forceRefresh }).then((operations) => {
+      if (!isCurrent()) return;
+      state.weekDailyOperations = operations;
+      state.weekMassReady = true;
+      renderParticipantMeals();
+    }).catch(report) : Promise.resolve();
+    const operationalDate = canManageDailyOperations() ? prepareWeekOperationalDate(dates) : null;
+    const operationsVersion = ++state.weekOperationsRequestVersion;
+    const operationsCurrent = () => isCurrent() && operationsVersion === state.weekOperationsRequestVersion
+      && state.weekOperationalDateId === formatDateId(operationalDate);
+    const operations = operationalDate ? Promise.all([
+      listPublicParticipants({ forceRefresh, staticVersion: state.centerContactSettings.participantDataVersion || '0' }),
+      loadDailyHealth(operationalDate, { forceRefresh }),
+      loadKitchenNote(operationalDate, { forceRefresh })
+    ]).then(([participants, health, note]) => {
+      if (!operationsCurrent()) return;
+      state.adminParticipants = participants;
+      state.weekOperationalHealth = health;
+      state.weekOperationalNote = note;
+      state.weekExtrasReady = true;
+      renderWeekOperations();
+    }).catch(report) : Promise.resolve();
+    await Promise.all([mass, operations, presentation]);
+  } catch { report(); }
+}
+
 async function refreshParticipant(source, options = {}) {
   const retryPermission = !String(source || '').endsWith(':auth-retry');
-  if (state.residentAuthTransition) return;
+  // A completed write schedules the refresh. Reading while an optimistic
+  // selection is still pending could replace it with the previous value.
+  if (state.residentAuthTransition || state.pendingMealKeys?.size) return;
   let request = beginParticipantRequest();
+  const scope = currentPersonalCalendarScope();
+  if (state.personalCalendarScope && JSON.stringify(scope) !== JSON.stringify(state.personalCalendarScope)) {
+    state.participantWeek = [];
+    state.participantMonth = [];
+    state.personalCalendarScope = null;
+    state.personalCalendarPreview = null;
+    state.weekMassReady = false;
+    state.weekExtrasReady = false;
+  }
   const hadVisibleData = state.mode === 'summary'
     ? state.todayOverview.length > 0
     : state.mode === 'week'
       ? state.participantWeek.length > 0
       : state.participantMonth.length > 0;
   setParticipantStatus('Aggiorno...');
+  if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
@@ -3908,6 +4101,7 @@ async function refreshParticipant(source, options = {}) {
       // sessione Gmail/email forte persistente deve poter ricostruire Mese o
       // Settimana senza essere scambiata per un nuovo accesso residente.
       await waitForAuthReady();
+      if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (shouldBlockResidentEntryRestore({
         entryGateClosed: isResidentEntryGateClosed(),
         strongAuthUser: hasStrongAdministratorIdentity()
@@ -3919,6 +4113,7 @@ async function refreshParticipant(source, options = {}) {
         return;
       }
       state.residentRestorePending = Boolean(loadStoredResidentSignature());
+      showPersonalCalendarPreview();
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession();
@@ -3926,6 +4121,7 @@ async function refreshParticipant(source, options = {}) {
       // was awaiting Firebase. A stale request must never remount the login.
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (restored) {
+        request.authUid = getCurrentUser()?.uid;
         state.participants = restored.participants;
         state.selectedParticipant = restored.participant;
         state.residentReady = true;
@@ -3940,6 +4136,7 @@ async function refreshParticipant(source, options = {}) {
           request = beginParticipantRequest();
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
+        state.personalCalendarPreview = null;
         state.residentRestorePending = false;
         renderResidentAccess(true);
         hideStartupSplash();
@@ -3950,6 +4147,8 @@ async function refreshParticipant(source, options = {}) {
       renderMode();
     }
     if (!isCurrentParticipantRequest(request)) return;
+    request.authUid = getCurrentUser()?.uid;
+    showPersonalCalendarPreview();
     let sessionPromise = Promise.resolve();
     if (state.friendlyAccess && state.residentReady) {
       sessionPromise = ensureStoredResidentSession();
@@ -3961,31 +4160,34 @@ async function refreshParticipant(source, options = {}) {
       throw error;
     });
     await sessionPromise;
-    const centerSettings = await loadCenterContactSettings({
+    if (!isCurrentParticipantRequest(request)) return;
+    // Personal meals need only dates/cutoffs from the center document.
+    // Avatar, presentation and privileged data must not hold their first paint.
+    const personalRoute = ['participant', 'week'].includes(state.mode);
+    // The saved timezone lets both independent reads start together. Never
+    // publish this calendar until current settings confirm its date context.
+    const preparedCalendar = personalRoute ? preparePersonalCalendarRead(source === 'manuale') : null;
+    const centerSettings = await (personalRoute ? loadCenterCalendarSettings : loadCenterContactSettings)({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    state.centerContactSettings = applyResidentPreferences(centerSettings);
-    await applyCenterDefaultLanguage(state.centerContactSettings);
-    await refreshResidentAdministratorAuthorization();
-    await refreshStrongAdministratorOperationalAuthorization();
-    if (state.mode === 'week'
-        && canManageDailyOperations()
-        && (state.adminParticipants.length === 0 || source === 'manuale')) {
-      state.adminParticipants = await listPublicParticipants({
-        forceRefresh: source === 'manuale',
-        staticVersion: centerSettings.participantDataVersion || '0'
-      });
-    }
     if (!isCurrentParticipantRequest(request)) return;
+    state.centerContactSettings = applyResidentPreferences({ ...state.centerContactSettings, ...centerSettings });
+    if (!personalRoute) {
+      await applyCenterDefaultLanguage(state.centerContactSettings);
+      await refreshResidentAdministratorAuthorization(() => isCurrentParticipantRequest(request));
+      await refreshStrongAdministratorOperationalAuthorization(() => isCurrentParticipantRequest(request));
+    }
     // The request snapshot is created before the centre timezone is known.
     // On the first resident load, anchoring the calendar can therefore change
     // the active month/week and make that snapshot stale.  Renew it here so
     // the data loaded for the current period is also rendered immediately.
     if (anchorCalendarToCenterToday()) {
       request = beginParticipantRequest();
+      state.personalCalendarPreview = null;
+      showPersonalCalendarPreview();
     }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
@@ -4035,10 +4237,13 @@ async function refreshParticipant(source, options = {}) {
     }
     state.participants = state.selectedParticipant ? [state.selectedParticipant] : [];
     if (state.selectedParticipant && state.mode !== 'summary') {
-      await loadCurrentParticipantCalendar({
+      const loaded = await loadCurrentParticipantCalendar({
+        preparedCalendar,
+        requireServer: true,
         forceStaticRefresh: source === 'manuale',
         isCurrentRequest: () => isCurrentParticipantRequest(request)
       });
+      if (loaded === false) return;
     } else if (state.mode === 'week' && canUseWeekWithoutParticipant()) {
       await loadCurrentParticipantWeek({
         forceStaticRefresh: source === 'manuale',
@@ -4048,17 +4253,14 @@ async function refreshParticipant(source, options = {}) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
-    try {
-      await refreshMealReminderDays(() => isCurrentParticipantRequest(request));
-    } catch {
-      // I promemoria facoltativi non devono impedire l'accesso al calendario.
-      if (!isCurrentParticipantRequest(request)) return;
-      state.mealReminderDays = [];
-      clearMealReminderTimers();
-      syncMealReminderControl('mealReminder.status.failed');
+    if (personalRoute) {
+      // This continuation is deliberately outside the calendar/login promise.
+      void refreshParticipantExtras(source, request);
     }
-    if (!isCurrentParticipantRequest(request)) return;
-    scheduleMealRemindersFromCurrentCalendar();
+    // The visible calendar is ready. Optional notification reads must not
+    // keep the startup overlay or the login handshake waiting on the network.
+    hideStartupSplash();
+    void refreshMealRemindersAfterCalendar(() => isCurrentParticipantRequest(request));
     state.lastSuccessfulRefreshAt = new Date();
     setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
   } catch (error) {
@@ -4078,7 +4280,8 @@ async function refreshParticipant(source, options = {}) {
         error = retryError;
       }
     }
-    if (options.loginHandshake) {
+    if (options.loginHandshake && !isRecoverableSessionError(error)) {
+      state.personalCalendarPreview = null;
       state.residentReady = false;
       state.residentRestorePending = false;
       renderResidentAccess(true);
@@ -4132,6 +4335,9 @@ function isCenterAccessRevokedError(error) {
 }
 
 function clearParticipantDataAfterAccessRevocation() {
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
+  state.personalCalendarPreview = null;
+  state.personalCalendarScope = null;
   state.residentReady = false;
   state.residentRestorePending = false;
   state.residentEntryKind = '';
@@ -4195,19 +4401,18 @@ async function handleResidentLogin(event) {
   try {
     let result;
     try {
+      result = await signInFriendlyResident(
+        elements.residentSignatureInput.value,
+        elements.residentPasswordInput.value
+      );
+    } catch (error) {
+      // Try shared administrator credentials only when the common password
+      // was rejected. Network errors must never trigger extra login attempts.
+      if (!canFallbackFromResidentLogin(error)) throw error;
       result = await signInFriendlyViceAdministrator(
         elements.residentSignatureInput.value,
         elements.residentPasswordInput.value,
         state.centerContactSettings
-      );
-    } catch (error) {
-      // Lo stesso modulo accetta anche la password amministratori per un
-      // residente già qualificato come vice. Se la persona non è un vice o la
-      // password non coincide, proseguiamo con il normale accesso residente.
-      if (!canFallbackFromViceLogin(error)) throw error;
-      result = await signInFriendlyResident(
-        elements.residentSignatureInput.value,
-        elements.residentPasswordInput.value
       );
     }
     state.participants = result.participants;
@@ -4269,17 +4474,12 @@ async function handleResidentLogin(event) {
   }
 }
 
-function canFallbackFromViceLogin(error) {
+function canFallbackFromResidentLogin(error) {
   return new Set([
     'auth/invalid-credential',
     'auth/wrong-password',
     'auth/user-not-found',
-    'auth/invalid-email',
-    'resident/credentials-missing',
-    'resident/vice-not-configured',
-    'resident/participant-not-found',
-    'resident/not-vice',
-    'resident/vice-auth-failed'
+    'auth/invalid-email'
   ]).has(error?.code);
 }
 
@@ -4294,6 +4494,10 @@ function togglePasswordVisibility(input, toggle) {
 
 async function handleForgetDevice() {
   if (state.residentAuthTransition) return;
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
+  state.personalCalendarPreview = null;
+  state.personalCalendarScope = null;
+  state.pendingMealKeys = new Set();
   state.residentAuthTransition = 'signing-out';
   invalidateViewRequests();
   const leavingAdminPanel = state.mode === 'admin';
@@ -5589,6 +5793,9 @@ function setContextualTranslation(element, key) {
 }
 
 function syncAdminAdaptationsForm() {
+  if (elements.adminWeekStartsOnSelect) {
+    elements.adminWeekStartsOnSelect.value = state.centerContactSettings.weekStartsOn || 'monday';
+  }
   syncAdaptationsContextCopy();
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
   const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'urban-plus';
@@ -5713,6 +5920,7 @@ async function handleAdminAdaptationsSave() {
       kitchenLayout: elements.adminKitchenLayoutSelect?.value || state.centerContactSettings.kitchenLayout,
       summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
       monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
+      weekStartsOn: elements.adminWeekStartsOnSelect?.value || state.centerContactSettings.weekStartsOn || 'monday',
       language: languageToSave
     };
     storeResidentPreferences(preferences);
@@ -5895,6 +6103,11 @@ function loadImage(source) {
 
 function renderMode() {
   state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
+  if (state.weekStartDate.getDay() !== (state.centerContactSettings.weekStartsOn === 'sunday' ? 0 : 1)) {
+    const anchor = new Date(state.weekStartDate);
+    anchor.setDate(anchor.getDate() + 3);
+    state.weekStartDate = startOfWeek(anchor);
+  }
   const activePalette = state.pendingThemePalette
     || state.centerContactSettings.themePalette
     || 'inchiostro';
@@ -6717,6 +6930,12 @@ function syncAdminCheckboxes() {
 }
 
 function renderParticipantMeals() {
+  const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
+  if (['participant', 'week'].includes(state.mode) && !days.length
+      && (state.residentRestorePending || state.residentReady)) {
+    renderCalendarPlaceholder();
+    return;
+  }
   if (!state.selectedParticipant && !(state.mode === 'week' && canUseWeekWithoutParticipant())) {
     elements.weekOperations.hidden = true;
     if (state.mode === 'summary') {
@@ -6766,7 +6985,7 @@ function renderParticipantMeals() {
   const weekMeals = state.participantWeek.flatMap((day) => day.meals || []);
   const weekEffect = getBulkSelectionEffect(weekMeals);
   const weekHasOpenMeals = weekMeals.some((meal) => meal.isOpen);
-  const showMassColumn = canManageMass();
+  const showMassColumn = canManageMass() && state.weekMassReady;
   const massByDate = new Map(state.weekDailyOperations.map((operation) => [operation.dateId, operation]));
   const openMassDays = showMassColumn
     ? state.participantWeek.filter((day) => getMassWindowState(day).isOpen)
@@ -7301,7 +7520,7 @@ function renderMonthGrid() {
   }
 
   const monthWeeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7));
-  const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
+  const weekdayLabels = getCalendarWeekdayLabels();
   const monthEffect = getMonthSelectionEffect();
   const monthHasOpenMeals = state.participantMonth
     .flatMap((day) => day.meals || [])
@@ -7671,11 +7890,13 @@ async function handleWeekBulkButton(button) {
       optimistic.saveDays,
       effect
     );
+    if (!optimistic.isCurrent()) return;
     if (result.failed > 0) {
       await loadCurrentParticipantCalendar({ forceStaticRefresh: true });
     } else {
       optimistic.commit();
     }
+    if (!optimistic.isCurrent()) return;
     if (result.requested === 0) {
       setParticipantStatus('Nessuna modifica necessaria');
     } else if (result.failed === 0) {
@@ -7687,12 +7908,14 @@ async function handleWeekBulkButton(button) {
     }
   } catch (error) {
     optimistic.rollback();
+    if (!optimistic.isCurrent()) return;
     await loadCurrentParticipantCalendar({ forceStaticRefresh: true }).catch(() => undefined);
+    if (!optimistic.isCurrent()) return;
     setParticipantStatus(friendlyErrorMessage(error, 'Salvataggio settimana non riuscito'));
   } finally {
     optimistic.finish();
     button.removeAttribute('aria-busy');
-    syncWeekGridFromState();
+    if (optimistic.isCurrent()) syncWeekGridFromState();
   }
 }
 
@@ -7719,11 +7942,13 @@ async function handleWeekMealBulkButton(button) {
       effect,
       mealTypeId
     );
+    if (!optimistic.isCurrent()) return;
     if (result.failed > 0) {
       await loadCurrentParticipantCalendar({ forceStaticRefresh: true });
     } else {
       optimistic.commit();
     }
+    if (!optimistic.isCurrent()) return;
     if (result.requested === 0) {
       setParticipantStatus('Nessuna modifica necessaria');
     } else if (result.failed === 0) {
@@ -7735,12 +7960,14 @@ async function handleWeekMealBulkButton(button) {
     }
   } catch (error) {
     optimistic.rollback();
+    if (!optimistic.isCurrent()) return;
     await loadCurrentParticipantCalendar({ forceStaticRefresh: true }).catch(() => undefined);
+    if (!optimistic.isCurrent()) return;
     setParticipantStatus(friendlyErrorMessage(error, `Salvataggio ${mealLabel.toLowerCase()} non riuscito`));
   } finally {
     optimistic.finish();
     button.removeAttribute('aria-busy');
-    syncWeekGridFromState();
+    if (optimistic.isCurrent()) syncWeekGridFromState();
   }
 }
 
@@ -7788,6 +8015,7 @@ async function handleMonthBulkButton(button) {
   const scope = button.dataset.monthScope;
   const effect = button.dataset.monthEffect;
   const mealTypeId = button.dataset.mealType || null;
+  let optimistic;
 
   button.setAttribute('aria-busy', 'true');
   try {
@@ -7802,7 +8030,7 @@ async function handleMonthBulkButton(button) {
           && date.getMonth() === state.monthDate.getMonth()
           && date.getFullYear() === state.monthDate.getFullYear();
       });
-    const optimistic = beginOptimisticBulkSelection(days, effect, mealTypeId);
+    optimistic = beginOptimisticBulkSelection(days, effect, mealTypeId);
     if (optimistic.meals.length === 0) {
       setParticipantStatus('Nessuna modifica necessaria');
       return;
@@ -7818,6 +8046,7 @@ async function handleMonthBulkButton(button) {
         effect,
         mealTypeId
       );
+      if (!optimistic.isCurrent()) return;
       if (result.failed === 0) {
         optimistic.commit();
       }
@@ -7830,6 +8059,7 @@ async function handleMonthBulkButton(button) {
     if (result.failed > 0) {
       await loadCurrentParticipantCalendar({ forceStaticRefresh: true });
     }
+    if (!optimistic.isCurrent()) return;
     syncMonthGridFromState();
     if (result.requested === 0) {
       setParticipantStatus('Nessuna modifica necessaria');
@@ -7841,12 +8071,14 @@ async function handleMonthBulkButton(button) {
       setParticipantStatus('Nessuna prenotazione salvata. Aggiorna e riprova.');
     }
   } catch (error) {
+    if (optimistic && !optimistic.isCurrent()) return;
     await loadCurrentParticipantCalendar({ forceStaticRefresh: true }).catch(() => undefined);
+    if (optimistic && !optimistic.isCurrent()) return;
     syncMonthGridFromState();
     setParticipantStatus(friendlyErrorMessage(error, 'Salvataggio non riuscito'));
   } finally {
     button.removeAttribute('aria-busy');
-    syncMonthGridFromState();
+    if (!optimistic || optimistic.isCurrent()) syncMonthGridFromState();
   }
 }
 
@@ -8107,7 +8339,7 @@ async function refreshWeekOperations(forceRefresh = false) {
 }
 
 function renderWeekOperations() {
-  const allowed = state.mode === 'week' && canManageDailyOperations();
+  const allowed = state.mode === 'week' && canManageDailyOperations() && state.weekExtrasReady;
   elements.weekOperations.hidden = !allowed;
   if (!allowed) return;
 
@@ -8162,7 +8394,7 @@ function renderFutureMonth() {
   const monthCells = buildMonthCells(state.monthDate, state.participantMonth);
   const weeks = Array.from({ length: 6 }, (_, index) => monthCells.slice(index * 7, index * 7 + 7))
     .filter((week) => week.some((day) => day.inCurrentMonth));
-  const weekdayLabels = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
+  const weekdayLabels = getCalendarWeekdayLabels();
   const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const monthScopeButton = renderFutureMonthScopeButton('Mese', null, null, { scope: 'month' });
   const focusSnapshot = captureFocusWithin(elements.monthGrid);
@@ -8299,7 +8531,7 @@ function renderResidentSettingsPanel() {
   applyAdminCapabilityVisibility();
 }
 
-async function refreshResidentAdministratorAuthorization() {
+async function refreshResidentAdministratorAuthorization(isCurrent = () => true) {
   if (!state.residentReady) {
     state.residentAdministratorAuthorized = false;
     return false;
@@ -8313,6 +8545,7 @@ async function refreshResidentAdministratorAuthorization() {
   }
   try {
     const authorization = await loadResidentAdministratorAuthorization();
+    if (!isCurrent()) return false;
     state.residentAdministratorAuthorized = authorization.active === true
       && Number(authorization.passwordVersion || 0)
         === Number(state.centerContactSettings.adminPasswordVersion || 0);
@@ -8320,6 +8553,7 @@ async function refreshResidentAdministratorAuthorization() {
       state.residentEntryKind = 'shared-admin';
     }
   } catch {
+    if (!isCurrent()) return false;
     state.residentAdministratorAuthorized = false;
   }
   return state.residentAdministratorAuthorized;
@@ -8333,7 +8567,7 @@ function clearStrongAdministratorOperationalAuthorization() {
   state.adminCanManageDailyOperations = false;
 }
 
-async function refreshStrongAdministratorOperationalAuthorization() {
+async function refreshStrongAdministratorOperationalAuthorization(isCurrent = () => true) {
   // An ordinary resident session must never inherit the Firebase account that
   // may still be persisted on a shared device. Only the resident identity
   // explicitly restored from an authorised strong administrator can use it.
@@ -8345,7 +8579,7 @@ async function refreshStrongAdministratorOperationalAuthorization() {
   const membership = await loadCurrentAdminMembership(user);
   // A logout, a resident login or another auth transition may have completed
   // while Firestore was loading the membership. Ignore that obsolete result.
-  if (state.residentEntryKind !== 'strong-admin'
+  if (!isCurrent() || state.residentEntryKind !== 'strong-admin'
       || getCurrentUser()?.uid !== user?.uid
       || !hasStrongAdministratorIdentity()) {
     return false;
@@ -9138,26 +9372,11 @@ async function loadCurrentParticipantWeek(options = {}) {
     isToday: formatDateId(date) === formatDateId(getCenterToday()),
     meals: []
   }));
-  const operationalDate = canManageDailyOperations() ? prepareWeekOperationalDate(dates) : null;
-  const [participantWeek, dailyOperations, operationalHealth, operationalNote] = await Promise.all([
-    state.selectedParticipant
-      ? loadParticipantWeek(state.selectedParticipant.participantId, state.weekStartDate, 7, participantOptions)
-      : Promise.resolve(emptyWeek),
-    canManageMass()
-      ? loadDailyOperations(dates, { forceRefresh: options.forceStaticRefresh === true })
-      : Promise.resolve([]),
-    operationalDate
-      ? loadDailyHealth(operationalDate, { forceRefresh: options.forceStaticRefresh === true })
-      : Promise.resolve(null),
-    operationalDate
-      ? loadKitchenNote(operationalDate, { forceRefresh: options.forceStaticRefresh === true })
-      : Promise.resolve(null)
-  ]);
+  const participantWeek = state.selectedParticipant
+    ? await (options.calendarRead || loadParticipantWeek(state.selectedParticipant.participantId, state.weekStartDate, 7, participantOptions))
+    : emptyWeek;
   if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
   state.participantWeek = participantWeek;
-  state.weekDailyOperations = dailyOperations;
-  state.weekOperationalHealth = operationalHealth;
-  state.weekOperationalNote = operationalNote;
   const selectedDay = getSelectedDay() || state.participantWeek[0] || null;
   if (selectedDay) {
     state.selectedSummaryDate = selectedDay.date;
@@ -9168,21 +9387,34 @@ async function loadCurrentParticipantWeek(options = {}) {
 const PARTICIPANT_MONTH_CACHE_MS = 60 * 1000;
 const PARTICIPANT_MONTH_CACHE_MAX = 3;
 const participantMonthCache = new Map();
+let participantCalendarRevision = 0;
+
+function invalidateParticipantCalendarCache() {
+  participantCalendarRevision++;
+  participantMonthCache.clear();
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId(),
+    uid: getCurrentUser()?.uid, participantId: state.selectedParticipant?.participantId });
+}
 
 function participantMonthCacheKey(participantId, monthStart, options = {}) {
   return [
     getActiveCenterId(),
+    getCurrentUser()?.uid || '',
     participantId,
     formatMonthId(monthStart),
+    options.timezone || 'Europe/Rome',
+    options.locale || getLocale(),
     String(options.staticVersion || '')
   ].join(':');
 }
 
 async function loadParticipantMonthData(participantId, monthStart, options = {}) {
+  const revision = participantCalendarRevision;
   const key = participantMonthCacheKey(participantId, monthStart, options);
   const cached = participantMonthCache.get(key);
   if (!options.forceStaticRefresh
       && cached
+      && (!options.requireServer || cached.value.serverConfirmed === true)
       && Date.now() - cached.loadedAt < PARTICIPANT_MONTH_CACHE_MS) {
     return cached.value;
   }
@@ -9192,6 +9424,7 @@ async function loadParticipantMonthData(participantId, monthStart, options = {})
     daysInMonth(monthStart),
     options
   );
+  if (revision !== participantCalendarRevision) return value;
   participantMonthCache.delete(key);
   participantMonthCache.set(key, { loadedAt: Date.now(), value });
   while (participantMonthCache.size > PARTICIPANT_MONTH_CACHE_MAX) {
@@ -9204,6 +9437,7 @@ function prefetchNextParticipantMonth(participantId, monthStart, options = {}) {
   const nextMonth = new Date(monthStart);
   nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
   const run = () => {
+    if (options.isCurrentRequest && !options.isCurrentRequest()) return;
     void loadParticipantMonthData(participantId, nextMonth, {
       ...options,
       forceStaticRefresh: false,
@@ -9218,6 +9452,27 @@ function prefetchNextParticipantMonth(participantId, monthStart, options = {}) {
 }
 
 async function loadCurrentParticipantCalendar(options = {}) {
+  const scope = currentPersonalCalendarScope();
+  const revision = participantCalendarRevision;
+  const request = { version: state.participantRequestVersion, mode: state.mode,
+    centerId: getActiveCenterId(), uid: getCurrentUser()?.uid,
+    participantId: state.selectedParticipant?.participantId };
+  const originalGuard = options.isCurrentRequest;
+  const isCurrentRequest = () => (!originalGuard || originalGuard())
+    && request.version === state.participantRequestVersion && request.mode === state.mode
+    && request.centerId === getActiveCenterId() && request.uid === getCurrentUser()?.uid
+    && request.participantId === state.selectedParticipant?.participantId
+    && revision === participantCalendarRevision;
+  options = { ...options, requireServer: true, isCurrentRequest };
+  const prepared = options.preparedCalendar;
+  if (prepared && prepared.revision === revision
+      && prepared.timezone === state.centerContactSettings.timezone
+      && JSON.stringify(prepared.scope) === JSON.stringify(scope)) {
+    options.calendarRead = prepared.result.then(({ value, error }) => {
+      if (error) throw error;
+      return value;
+    });
+  }
   if (!state.selectedParticipant && !(state.mode === 'week' && canUseWeekWithoutParticipant())) {
     state.participantWeek = [];
     state.participantMonth = [];
@@ -9231,14 +9486,14 @@ async function loadCurrentParticipantCalendar(options = {}) {
     state.participantMonth = [];
   } else {
     const monthStart = startOfMonth(state.monthDate);
-    const participantMonth = await loadParticipantMonthData(
+    const participantMonth = await (options.calendarRead || loadParticipantMonthData(
       state.selectedParticipant.participantId,
       monthStart,
       {
         ...options,
         timezone: state.centerContactSettings.timezone
       }
-    );
+    ));
     if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
     state.participantMonth = participantMonth;
     state.participantWeek = [];
@@ -9247,6 +9502,12 @@ async function loadCurrentParticipantCalendar(options = {}) {
       ...options,
       timezone: state.centerContactSettings.timezone
     });
+  }
+  state.personalCalendarPreview = null;
+  state.personalCalendarScope = scope;
+  const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
+  if (!state.pendingMealKeys.size && days.serverConfirmed === true) {
+    savePersonalCalendarSnapshot(scope, days, { serverConfirmed: true });
   }
   return true;
 }
@@ -9486,6 +9747,14 @@ function syncMonthGridFromState() {
 }
 
 function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
+  const participantId = state.selectedParticipant?.participantId;
+  const uid = getCurrentUser()?.uid;
+  const centerId = getActiveCenterId();
+  const pendingKeys = state.pendingMealKeys;
+  const isCurrent = () => participantId === state.selectedParticipant?.participantId
+    && uid === getCurrentUser()?.uid && centerId === getActiveCenterId()
+    && pendingKeys === state.pendingMealKeys && !state.residentAuthTransition;
+  invalidateParticipantCalendarCache();
   const meals = days
     .flatMap((day) => day.meals || [])
     .filter((meal) => meal.isOpen && (!mealTypeId || meal.mealTypeId === mealTypeId))
@@ -9512,14 +9781,16 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
   return {
     meals,
     saveDays,
+    isCurrent,
     rollback() {
       previousEffects.forEach((previousEffect, meal) => {
         meal.effect = previousEffect;
       });
     },
     commit() {
+      if (!isCurrent()) return;
       const savedAt = new Date();
-    const periods = [state.participantWeek, state.participantMonth, state.mealReminderDays];
+      const periods = [state.participantWeek, state.participantMonth, state.mealReminderDays];
       periods
         .flatMap((daysInPeriod) => daysInPeriod || [])
         .flatMap((day) => day.meals || [])
@@ -9531,15 +9802,27 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
         });
     },
     finish() {
-      mealKeys.forEach((key) => state.pendingMealKeys.delete(key));
+      mealKeys.forEach((key) => pendingKeys.delete(key));
+      if (!isCurrent()) return;
+      invalidateParticipantCalendarCache();
+      if (!state.pendingMealKeys.size && state.residentReady) scheduleBackgroundRefresh('salvataggio');
       scheduleMealRemindersFromCurrentCalendar();
     }
   };
 }
 
 async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
+  if (!meal.isOpen) return;
+  const participant = state.selectedParticipant;
+  const uid = getCurrentUser()?.uid;
+  const centerId = getActiveCenterId();
+  const pendingKeys = state.pendingMealKeys;
+  const isCurrent = () => participant?.participantId === state.selectedParticipant?.participantId
+    && uid === getCurrentUser()?.uid && centerId === getActiveCenterId()
+    && pendingKeys === state.pendingMealKeys && !state.residentAuthTransition;
   const pendingKey = getMealPendingKey(meal.mealDate, meal.mealTypeId);
   if (state.pendingMealKeys.has(pendingKey)) return;
+  invalidateParticipantCalendarCache();
   const previousEffect = meal.effect;
   state.pendingMealKeys.add(pendingKey);
   meal.effect = effect;
@@ -9547,19 +9830,29 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
   setParticipantStatus('Salvo...');
 
   try {
-    await saveParticipantMeal(state.selectedParticipant, meal, effect);
-    (state.mealReminderDays || []).flatMap((day) => day.meals || [])
+    await saveParticipantMeal(participant, meal, effect);
+    if (!isCurrent()) return;
+    [state.participantWeek, state.participantMonth, state.mealReminderDays]
+      .flatMap((days) => days || []).flatMap((day) => day.meals || [])
       .filter((item) => item.mealDate === meal.mealDate && item.mealTypeId === meal.mealTypeId)
-      .forEach((item) => { item.effect = effect; });
+      .forEach((item) => {
+        item.effect = effect;
+        item.createdAt = meal.createdAt;
+        item.updatedAt = meal.updatedAt;
+      });
     if (typeof onSaved === 'function') onSaved();
     setParticipantStatus('Prenotazione salvata');
   } catch (error) {
     meal.effect = previousEffect;
-    setParticipantStatus(friendlyErrorMessage(error, 'Salvataggio non riuscito'));
+    if (isCurrent()) setParticipantStatus(friendlyErrorMessage(error, 'Salvataggio non riuscito'));
   } finally {
-    state.pendingMealKeys.delete(pendingKey);
-    sync();
-    scheduleMealRemindersFromCurrentCalendar();
+    pendingKeys.delete(pendingKey);
+    if (isCurrent()) {
+      invalidateParticipantCalendarCache();
+      if (!state.pendingMealKeys.size && state.residentReady) scheduleBackgroundRefresh('salvataggio');
+      sync();
+      scheduleMealRemindersFromCurrentCalendar();
+    }
   }
 }
 
@@ -9599,10 +9892,17 @@ function formatWeekRangeFrom(startDate) {
   }, getLocale());
 }
 
-function startOfWeek(date) {
+function getCalendarWeekdayLabels() {
+  return state.centerContactSettings.weekStartsOn === 'sunday'
+    ? ['D', 'L', 'M', 'X', 'G', 'V', 'S']
+    : ['L', 'M', 'X', 'G', 'V', 'S', 'D'];
+}
+
+function startOfWeek(date, weekStartsOn = state.centerContactSettings.weekStartsOn) {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
-  result.setDate(result.getDate() - result.getDay());
+  const firstWeekday = weekStartsOn === 'sunday' ? 0 : 1;
+  result.setDate(result.getDate() - (result.getDay() - firstWeekday + 7) % 7);
   return result;
 }
 
@@ -9636,8 +9936,7 @@ function parseDateId(value) {
 
 function buildMonthCells(monthDate, monthDays) {
   const firstDay = startOfMonth(monthDate);
-  const gridStart = new Date(firstDay);
-  gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+  const gridStart = startOfWeek(firstDay);
   const todayId = formatDateId(getCenterToday());
   return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);

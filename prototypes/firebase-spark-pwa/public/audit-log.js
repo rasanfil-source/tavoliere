@@ -8,8 +8,8 @@ import {
   serverTimestamp,
   startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20261012b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261012b';
+import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
 const RESIDENT_PARTICIPANT_STORAGE_KEY = 'tavolaComune.residentParticipantId';

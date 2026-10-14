@@ -308,8 +308,8 @@ test('participant overrides are queried by participant and date range', () => {
 
 test('static participant calendar data uses a short cache with manual bypass', () => {
   assert.match(participantData, /STATIC_QUERY_CACHE_MS\s*=\s*10 \* 60 \* 1000/);
-  assert.match(participantData, /getMealWindowsInRange\(startDateId, endDateId, options\.forceStaticRefresh\)/);
-  assert.match(participantData, /if \(!forceRefresh && isFreshCacheEntry\(cached\)\)/);
+  assert.match(participantData, /getMealWindowsInRange\(startDateId, endDateId, options\.forceStaticRefresh, options\.requireServer\)/);
+  assert.match(participantData, /if \(!forceRefresh && \(!requireServer \|\| cached\?\.value\.serverConfirmed === true\) && isFreshCacheEntry\(cached\)\)/);
 });
 
 test('summary static data is cached and invalidated by the participant version', () => {

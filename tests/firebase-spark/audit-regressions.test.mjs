@@ -41,7 +41,7 @@ test('il vice usa solo il ruolo esplicito e una sessione aggiornata', () => {
   assert.match(viceRestore, /participant\.viceAdminRole === true/);
   assert.match(viceRestore, /await deleteDoc\(viceSessionRef\)\.catch/);
   assert.doesNotMatch(viceRestore, /administratorSignature/);
-  assert.match(app, /canFallbackFromViceLogin\(error\)/);
+  assert.match(app, /canFallbackFromResidentLogin\(error\)/);
 });
 
 test('le letture opzionali non nascondono i dati principali', () => {

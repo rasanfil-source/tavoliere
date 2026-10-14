@@ -1,0 +1,1 @@
+function n(e={}){const t=String(e.userAgent||""),i=/iPad|iPhone|iPod/i.test(t)||e.platform==="MacIntel"&&Number(e.maxTouchPoints)>1,o=/Macintosh/.test(t)&&/Safari/.test(t)&&!/Chrome|Chromium|Edg|OPR|Android/i.test(t);return i||o?{experimentalForceLongPolling:!0,useFetchStreams:!1}:{}}export{n as firestoreSettingsForBrowser};

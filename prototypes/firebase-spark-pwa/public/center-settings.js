@@ -1,14 +1,16 @@
 import {
   doc,
   getDoc,
+  getDocFromServer,
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20261012b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261012b';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261012b';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261012b';
-import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20261012b';
+import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
+import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261014b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
+import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20261014b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -36,6 +38,49 @@ const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban-plus', 'fut
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 let centerContactSettingsRevision = 0;
+let calendarSettingsLoad = null;
+let calendarSettingsCache = null;
+
+// Only the center document is needed to interpret calendar dates/cutoffs.
+// Presentation, participant metadata and the avatar are loaded after meals.
+export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) {
+  const centerId = getActiveCenterId();
+  const revision = centerContactSettingsRevision;
+  if (!forceRefresh && calendarSettingsCache?.centerId === centerId
+      && Date.now() - calendarSettingsCache.cachedAt < CENTER_SETTINGS_CACHE_MS) {
+    return calendarSettingsCache.value;
+  }
+  if (calendarSettingsLoad?.centerId === centerId && calendarSettingsLoad.revision === revision) {
+    return calendarSettingsLoad.promise;
+  }
+  const pending = { centerId, revision };
+  pending.promise = measureStartupStep('calendar-settings', async () => {
+    const snapshot = await getDocFromServer(doc(db, 'centers', centerId));
+    if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) {
+      const error = new Error('Impostazioni in attesa di conferma');
+      error.code = 'unavailable';
+      throw error;
+    }
+    const data = snapshot.exists() ? snapshot.data() : {};
+    const value = {
+      timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
+      reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
+      adminPasswordVersion: Number(data.adminPasswordVersion || 0)
+    };
+    if (centerId === getActiveCenterId() && revision !== centerContactSettingsRevision) {
+      if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
+      return loadCenterCalendarSettings({ forceRefresh: true });
+    }
+    if (getActiveCenterId() === centerId && revision === centerContactSettingsRevision) {
+      calendarSettingsCache = { centerId, value, snapshot, cachedAt: Date.now() };
+    }
+    return value;
+  }).finally(() => {
+    if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
+  });
+  calendarSettingsLoad = pending;
+  return pending.promise;
+}
 
 export function loadCachedCenterContactSettings() {
   try {
@@ -124,6 +169,8 @@ export function invalidateCenterContactSettingsCache() {
   // Do not let a read started before a save remain the shared promise for a
   // later caller. Its completion is guarded by the revision below.
   centerContactSettingsLoad = null;
+  calendarSettingsLoad = null;
+  calendarSettingsCache = null;
 }
 
 export async function synchronizeCenterOwnerEmail(email) {
@@ -146,6 +193,7 @@ export async function synchronizeCenterOwnerEmail(email) {
   }
   if (centerContactSettingsCache) {
     centerContactSettingsCache = {
+      ...centerContactSettingsCache,
       value: { ...centerContactSettingsCache.value, adminEmail: normalizedEmail },
       cachedAt: Date.now()
     };
@@ -154,13 +202,13 @@ export async function synchronizeCenterOwnerEmail(email) {
 }
 
 export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
-  if (!forceRefresh && centerContactSettingsCache) {
+  if (!forceRefresh && centerContactSettingsCache?.centerId === getActiveCenterId()) {
     if (Date.now() - centerContactSettingsCache.cachedAt >= CENTER_SETTINGS_CACHE_MS) {
       refreshCenterContactSettings().catch(() => undefined);
     }
     return centerContactSettingsCache.value;
   }
-  return refreshCenterContactSettings();
+  return measureStartupStep('center-settings', refreshCenterContactSettings);
 }
 
 export async function updateCenterSettings({
@@ -227,7 +275,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20261012b');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20261014b');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -366,7 +414,10 @@ function refreshCenterContactSettings() {
   let request;
   const centerId = getActiveCenterId();
   request = Promise.all([
-    getDoc(doc(db, 'centers', centerId)),
+    calendarSettingsCache?.centerId === centerId
+      && Date.now() - calendarSettingsCache.cachedAt < CENTER_SETTINGS_CACHE_MS
+      ? Promise.resolve(calendarSettingsCache.snapshot)
+      : getDoc(doc(db, 'centers', centerId)),
     getDoc(doc(db, 'centers', centerId, 'presentationSettings', 'current')).catch(() => null),
     getDoc(doc(db, 'centers', centerId, 'participantMetadata', 'current')).catch(() => null)
   ])
@@ -374,7 +425,7 @@ function refreshCenterContactSettings() {
       // A save may have invalidated this request while Firestore was still
       // resolving. Re-read authoritative settings instead of publishing the
       // stale snapshot into memory or localStorage.
-      if (requestRevision !== centerContactSettingsRevision) {
+      if (requestRevision !== centerContactSettingsRevision || centerId !== getActiveCenterId()) {
         if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
         return refreshCenterContactSettings();
       }
@@ -387,6 +438,10 @@ function refreshCenterContactSettings() {
       const avatarVersion = typeof data.avatarVersion === 'string' ? data.avatarVersion : '';
       const avatarDataUrl = await resolveCenterAvatar(avatarVersion)
         .catch(() => loadCachedCenterAvatar());
+      if (requestRevision !== centerContactSettingsRevision || centerId !== getActiveCenterId()) {
+        if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
+        return refreshCenterContactSettings();
+      }
       const value = {
         name: normalizeCenterName(data.name),
         appDisplayName: normalizeAppDisplayName(data.appDisplayName),
@@ -427,7 +482,7 @@ function refreshCenterContactSettings() {
       };
       cacheDefaultView(value.defaultView);
       storeCachedCenterContactSettings(value);
-      centerContactSettingsCache = { value, cachedAt: Date.now() };
+      centerContactSettingsCache = { centerId, value, cachedAt: Date.now() };
       return value;
     })
     .finally(() => {

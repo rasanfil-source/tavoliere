@@ -1,4 +1,11 @@
 {
+  "calendar.day": "Tag",
+  "calendar.preview.saved": "Auswahl vom {date}. Aktualisierung wird geprüft; Änderungen sind nach der Aktualisierung möglich.",
+  "calendar.status.extrasUnavailable": "Mahlzeiten aktualisiert; einige zusätzliche Daten sind nicht verfügbar. Bitte erneut aktualisieren.",
+  "admin.adaptations.weekStartsOn.label": "Wochenbeginn",
+  "admin.adaptations.weekStartsOn.monday": "Montag",
+  "admin.adaptations.weekStartsOn.sunday": "Sonntag",
+  "admin.adaptations.weekStartsOn.help": "Gilt nur für deine Monats- und Wochenansicht auf diesem Gerät.",
   "_meta.languageName": "Deutsch",
   "_meta.locale": "de",
   "a11y.closeDialog": "Fenster schliessen",

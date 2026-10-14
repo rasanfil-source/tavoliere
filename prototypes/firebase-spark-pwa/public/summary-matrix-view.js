@@ -1,11 +1,11 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20261012b";
-import { escapeHtml } from "./html-utils.js?v=20261012b";
-import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20261012b";
-import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20261012b";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20261014b";
+import { escapeHtml } from "./html-utils.js?v=20261014b";
+import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20261014b";
+import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20261014b";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20261012b";
+} from "./summary-matrix-model.js?v=20261014b";
 
 let contactPopupSequence = 0;
 

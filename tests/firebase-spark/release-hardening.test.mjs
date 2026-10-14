@@ -59,11 +59,11 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
 });
 
 test('cache busting e chiavi sincrone non caricano copie divergenti dei moduli', () => {
-  assert.match(app, /audit: '\.\/audit-log\.js\?v=20261012b'/);
-  assert.match(adminCenter, /audit-log\.js\?v=20261012b/);
-  assert.match(participantData, /audit-log\.js\?v=20261012b/);
-  assert.match(accessLinks, /audit-log\.js\?v=20261012b/);
-  assert.match(centerRestore, /center-backup\.mjs\?v=20261012b/);
+  assert.match(app, /audit: '\.\/audit-log\.js\?v=20261014b'/);
+  assert.match(adminCenter, /audit-log\.js\?v=20261014b/);
+  assert.match(participantData, /audit-log\.js\?v=20261014b/);
+  assert.match(accessLinks, /audit-log\.js\?v=20261014b/);
+  assert.match(centerRestore, /center-backup\.mjs\?v=20261014b/);
   for (const source of [app, participantData, auditLog]) {
     assert.match(source, /RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune\.residentSignature'/);
   }

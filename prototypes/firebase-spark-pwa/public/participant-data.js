@@ -4,6 +4,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocFromServer,
+  getDocsFromServer,
   query,
   serverTimestamp,
   setDoc,
@@ -26,33 +28,34 @@ import {
   waitForAuthReady,
   withResidentTechnicalSession,
   withAdministratorTechnicalSession
-} from './firebase-client.js?v=20261012b';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261012b';
+} from './firebase-client.js?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20261012b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261012b';
-import { normalizeDietTags } from './diet-utils.mjs?v=20261012b';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261012b';
+} from './reservation-state.mjs?v=20261014b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
+import { normalizeDietTags } from './diet-utils.mjs?v=20261014b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
 import {
   normalizeResidentSignature,
   validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20261012b';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261012b';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20261012b';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261012b';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20261012b';
-import { isConnectionAvailable } from './core/connectivity.mjs?v=20261012b';
+} from './domain/participant-profile.mjs?v=20261014b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
+import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20261014b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20261014b';
+import { clearPersonalCalendarSnapshots } from './core/personal-calendar-cache.mjs?v=20261014b';
 import {
   CENTER_BACKUP_SCHEMA_VERSION,
   RESTORABLE_CENTER_COLLECTIONS
-} from './domain/center-backup.mjs?v=20261012b';
+} from './domain/center-backup.mjs?v=20261014b';
 import {
   invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20261012b';
+} from './center-settings.js?v=20261014b';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -61,7 +64,7 @@ export {
   restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20261012b';
+} from './center-settings.js?v=20261014b';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -303,8 +306,13 @@ export async function signInFriendlyResident(signature, commonPassword) {
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };
   } catch (error) {
-    clearCurrentSession();
-    if (!keepStrongAdministratorSession) {
+    // A failed credential check or temporary network error must not sign out
+    // an existing resident session. Only clean up a newly replaced identity.
+    if (getCurrentUser()?.uid !== existingUser?.uid) {
+      clearCurrentSession();
+    }
+    if (!keepStrongAdministratorSession && getCurrentUser()?.uid !== existingUser?.uid
+        && !isRecoverableSessionError(error)) {
       await signOutCurrentUser();
     }
     throw error;
@@ -343,9 +351,9 @@ export async function restoreFriendlyResidentSession() {
     });
     return { participant, participants: [participant] };
   } catch (error) {
-    const permissionError = error?.code === 'permission-denied'
-      || error?.code === 'firestore/permission-denied';
-    if (isRecoverableSessionError(error) && (!permissionError || !isConnectionAvailable())) {
+    // An online permission error can also occur during token/session recovery.
+    // Keep device credentials for a subsequent retry; rules still deny access.
+    if (isRecoverableSessionError(error)) {
       error.preserveResidentIdentity = true;
       throw error;
     }
@@ -414,6 +422,7 @@ export async function forgetResidentDevice() {
 }
 
 function clearStoredResidentIdentity() {
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
   window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY));
   window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY));
   window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY));
@@ -618,12 +627,12 @@ export async function loadResidentAdministratorAuthorization() {
   if (!user?.isAnonymous || !participantId) return { active: false };
   const centerId = getActiveCenterId();
   const viceSessionRef = doc(db, 'centers', centerId, 'viceSessions', user.uid);
-  const [snapshot, centerSnapshot, participantSnapshot] = await Promise.all([
-    getDoc(viceSessionRef),
+  const snapshot = await getDoc(viceSessionRef);
+  if (!snapshot.exists()) return { active: false };
+  const [centerSnapshot, participantSnapshot] = await Promise.all([
     getDoc(doc(db, 'centers', centerId)),
     getDoc(doc(db, 'centers', centerId, 'publicParticipants', participantId))
   ]);
-  if (!snapshot.exists()) return { active: false };
   const data = snapshot.data();
   const expiresAt = data.expiresAt ? toDate(data.expiresAt) : null;
   const center = sanitizeCenterBackupDocument(centerSnapshot.exists() ? centerSnapshot.data() : {});
@@ -892,13 +901,13 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
   const startDateId = formatDateId(dates[0]);
   const endDateId = formatDateId(dates[dates.length - 1]);
   const [mealTypes, windows, overrides, rules] = await Promise.all([
-    tagResidentCalendarRead(getMealTypes(options.forceStaticRefresh), 'mealTypes'),
+    tagResidentCalendarRead(getMealTypes(options.forceStaticRefresh, options.requireServer), 'mealTypes'),
     tagResidentCalendarRead(
-      getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh),
+      getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh, options.requireServer),
       'mealWindows'
     ),
-    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId), 'reservationOverrides'),
-    tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh), 'reservationRule')
+    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId, options.requireServer), 'reservationOverrides'),
+    tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh, options.requireServer), 'reservationRule')
   ]);
   const windowsByKey = new Map(
     windows.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
@@ -907,7 +916,7 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
     overrides.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
   );
 
-  return dates.map((date) => {
+  const result = dates.map((date) => {
     const mealDate = formatDateId(date);
     const meals = mealTypes.map((meal) => {
       const key = mealDate + '_' + meal.mealTypeId;
@@ -939,6 +948,10 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
       meals
     };
   });
+  Object.defineProperty(result, 'serverConfirmed', {
+    value: [mealTypes, windows, overrides, rules].every((values) => values.serverConfirmed === true)
+  });
+  return result;
 }
 
 function tagResidentCalendarRead(promise, stage) {
@@ -1107,59 +1120,76 @@ function markMealSaved(meal, effect) {
   }
 }
 
-async function getMealTypes(forceRefresh = false) {
-  if (!forceRefresh && isFreshCacheEntry(mealTypesCache)) {
+function calendarValues(snapshot, values, requireServer) {
+  const serverConfirmed = snapshot.metadata?.fromCache === false
+    && snapshot.metadata?.hasPendingWrites === false;
+  if (requireServer && !serverConfirmed) {
+    const error = new Error('Calendario in attesa di conferma dal server');
+    error.code = 'unavailable';
+    throw error;
+  }
+  Object.defineProperty(values, 'serverConfirmed', { value: serverConfirmed });
+  return values;
+}
+
+async function getMealTypes(forceRefresh = false, requireServer = false) {
+  if (!forceRefresh && (!requireServer || mealTypesCache?.value.serverConfirmed === true) && isFreshCacheEntry(mealTypesCache)) {
     return mealTypesCache.value;
   }
   const centerId = getActiveCenterId();
-  return shareStaticQuery(`mealTypes:${centerId}`, async () => {
-    const snapshot = await getDocs(collection(db, 'centers', centerId, 'mealTypes'));
+  return shareStaticQuery(`mealTypes:${centerId}:${requireServer ? 'server' : 'default'}`, async () => {
+    const snapshot = await (requireServer ? getDocsFromServer : getDocs)(collection(db, 'centers', centerId, 'mealTypes'));
     const value = snapshot.docs
       .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
       .filter((meal) => meal.status === 'ACTIVE')
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    calendarValues(snapshot, value, requireServer);
     mealTypesCache = { centerId, loadedAt: Date.now(), value };
     return value;
   });
 }
 
-async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false) {
+async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false, requireServer = false) {
+  const centerId = getActiveCenterId();
   const cacheKey = `${startDateId}_${endDateId}`;
   const cached = mealWindowsCache.get(cacheKey);
-  if (!forceRefresh && isFreshCacheEntry(cached)) {
+  if (!forceRefresh && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
     return cached.value;
   }
-  const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'mealWindows'),
+  const snapshot = await (requireServer ? getDocsFromServer : getDocs)(query(
+    collection(db, 'centers', centerId, 'mealWindows'),
     where('mealDate', '>=', startDateId),
     where('mealDate', '<=', endDateId)
   ));
   const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
-  mealWindowsCache.set(cacheKey, { centerId: getActiveCenterId(), loadedAt: Date.now(), value });
+  calendarValues(snapshot, value, requireServer);
+  mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
   return value;
 }
 
-async function getOwnOverrides(participantId, startDateId, endDateId) {
+async function getOwnOverrides(participantId, startDateId, endDateId, requireServer = false) {
   const overrides = collection(db, 'centers', getActiveCenterId(), 'reservationOverrides');
+  const read = requireServer ? getDocsFromServer : getDocs;
   try {
-    const snapshot = await getDocs(query(
+    const snapshot = await read(query(
       overrides,
       where('participantId', '==', participantId),
       where('mealDate', '>=', startDateId),
       where('mealDate', '<=', endDateId)
     ));
-    return snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }));
+    return calendarValues(snapshot,
+      snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() })), requireServer);
   } catch (error) {
     if (error?.code !== 'failed-precondition') {
       throw error;
     }
-    const snapshot = await getDocs(query(
+    const snapshot = await read(query(
       overrides,
       where('participantId', '==', participantId)
     ));
-    return snapshot.docs
+    return calendarValues(snapshot, snapshot.docs
       .map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }))
-      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId);
+      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId), requireServer);
   }
 }
 
@@ -1660,26 +1690,31 @@ async function getRules(options = {}) {
   });
 }
 
-async function getParticipantRules(participantId, forceRefresh = false) {
+async function getParticipantRules(participantId, forceRefresh = false, requireServer = false) {
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid;
   const cached = participantRulesCache.get(participantId);
-  if (!forceRefresh && isFreshCacheEntry(cached)) {
+  if (!forceRefresh && cached?.uid === uid
+      && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
     return cached.value;
   }
   // La regola personale ha un identificativo deterministico. La lettura
   // diretta evita che il primo calendario dipenda dalla valutazione di una
   // query protetta (le regole Firestore non funzionano come filtri).
-  const snapshot = await getDoc(doc(
+  const snapshot = await (requireServer ? getDocFromServer : getDoc)(doc(
     db,
     'centers',
-    getActiveCenterId(),
+    centerId,
     'reservationRules',
     `rule_${participantId}`
   ));
   const value = snapshot.exists()
     ? [{ ruleId: snapshot.id, ...snapshot.data() }]
     : [];
+  calendarValues(snapshot, value, requireServer);
   participantRulesCache.set(participantId, {
-    centerId: getActiveCenterId(),
+    centerId,
+    uid,
     loadedAt: Date.now(),
     value
   });

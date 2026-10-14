@@ -42,9 +42,10 @@ test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impost
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
   assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
-  assert.match(bootstrap, /state\.mode === 'kitchen'[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
+  assert.match(bootstrap, /\['kitchen', 'participant', 'week'\]\.includes\(state\.mode\)[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
-  assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*await i18nPromise/);
+  assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*void i18nPromise\.then/);
+  assert.doesNotMatch(bootstrap, /await i18nPromise/);
   assert.match(bootstrap, /void settingsPromise\.then\(async \(centerSettings\)/);
   assert.match(bootstrap, /const isDirectMealRoute = \['participant', 'week'\]\.includes\(state\.mode\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);

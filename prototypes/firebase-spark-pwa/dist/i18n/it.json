@@ -1,4 +1,11 @@
 {
+  "calendar.day": "Giorno",
+  "calendar.preview.saved": "Selezioni salvate il {date}. Verifica in corso; modifiche disponibili dopo l’aggiornamento.",
+  "calendar.status.extrasUnavailable": "Pasti aggiornati; alcuni dati accessori non sono disponibili. Riprova con Aggiorna.",
+  "admin.adaptations.weekStartsOn.label": "Inizio della settimana",
+  "admin.adaptations.weekStartsOn.monday": "Lunedì",
+  "admin.adaptations.weekStartsOn.sunday": "Domenica",
+  "admin.adaptations.weekStartsOn.help": "Si applica solo alle tue viste mese e settimana su questo dispositivo.",
   "_meta.languageName": "Italiano",
   "_meta.locale": "it",
   "a11y.closeDialog": "Chiudi finestra",
