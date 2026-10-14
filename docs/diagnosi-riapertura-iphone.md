@@ -1,6 +1,6 @@
 **Riapertura da Home su iPhone — implementazione del 14 ottobre 2026**
 
-Le modifiche sono implementate nel progetto locale. L'obiettivo è rendere disponibili prima anche le modifiche ai pasti, preservando l'accesso persistente. Questa relazione sostituisce la precedente proposta: non è previsto alcun pannello diagnostico in Aspetto e non sono richieste misurazioni ai residenti o all'amministratore. Nessuna pubblicazione in produzione è stata eseguita in questa fase.
+Le modifiche sono implementate e pubblicate su [tavola-comune.web.app](https://tavola-comune.web.app). L'obiettivo è rendere disponibili prima anche le modifiche ai pasti, preservando l'accesso persistente. Questa relazione sostituisce la precedente proposta: non è previsto alcun pannello diagnostico in Aspetto e non sono richieste misurazioni ai residenti o all'amministratore.
 
 Il problema riferito compare soltanto alla riapertura dall'icona Home, soprattutto nella settimana. Non disponiamo della versione iOS né di una prova sul dispositivo: le cause individuate sono dipendenze riprodotte nel codice, compatibili con il sintomo; non possiamo attribuire con certezza l'intero ritardo a una singola causa.
 
@@ -55,6 +55,10 @@ La verifica comprende sintassi JavaScript, cataloghi delle cinque lingue, suite 
 - conservazione delle selezioni durante un salvataggio e invalidazione delle copie obsolete.
 
 Esito del 14 ottobre: gate superato con **494 test riusciti**, zero fallimenti e build completata. Il controllo mirato comprende 45 test, già inclusi nella suite, e conferma la corrispondenza di otto coppie sorgente/build. Anche il controllo delle differenze Git non segnala errori di spaziatura.
+
+Pubblicazione completata il **14 ottobre 2026**, con verifica alle **17:43 CEST**. Il commit applicativo [3850ef5](https://github.com/rasanfil-source/tavoliere/commit/3850ef58cf27f50f5fe5abda367f7ce9a79cac25) è disponibile sul ramo `codex/interface-style-cool`. Il deploy ha aggiornato Firebase Hosting; il confronto SHA-256 dei 17 file previsti da `tools/verify-hosting-release.mjs` conferma la corrispondenza con la build locale, inclusi HTML, autenticazione, calendario, manifest e service worker. La build dopo il deploy coincide con quella del commit.
+
+Per acquisire l'aggiornamento della PWA, chiudere tutte le sue finestre e riaprirla mantenendo i dati del sito e l'accesso salvato.
 
 Comandi locali:
 
