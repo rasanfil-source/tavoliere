@@ -10,7 +10,6 @@ import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261014b';
 import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
-import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20261014b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -331,6 +330,7 @@ export async function restoreCenterConfiguration(backup) {
     throw new Error('Solo il responsabile può ripristinare la configurazione');
   }
 
+  const { buildCenterConfigurationRestore } = await import('./domain/center-restore.mjs?v=20261014b');
   const restore = buildCenterConfigurationRestore(backup, { expectedCenterId: centerId });
   const current = await loadCenterContactSettings({ forceRefresh: true });
   await updateCenterSettings({

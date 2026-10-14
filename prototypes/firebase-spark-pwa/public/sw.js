@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v454';
+const CACHE_NAME = CACHE_PREFIX + 'v455';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Only public, immutable SDK files: never Auth API responses or session data.
 const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
@@ -53,6 +53,7 @@ const LAZY_MODULES = [
   '/kitchen-data.js',
   '/kitchen-notes.js',
   '/participant-data.js',
+  '/admin-participant-data.js',
   '/reservation-state.mjs',
   '/core/revision.mjs',
   '/domain/center-backup.mjs',
@@ -68,7 +69,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL.map((path) =>
-        /\.(?:m?js|css)$/.test(path) ? `${path}?v=20261014b` : path)))
+        /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261014b` : path)))
   );
 });
 
@@ -136,6 +137,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.origin === self.location.origin && isBundledAssetPath(url.pathname)) {
+    event.respondWith(sdkCacheFirst(event.request));
+    return;
+  }
+
   if (url.origin === self.location.origin && isAppResourcePath(url.pathname)) {
     if (url.searchParams.has('v')) {
       event.respondWith(versionedCacheFirst(event.request, url.pathname));
@@ -167,6 +173,10 @@ async function centerManifest(url) {
 
 function isAppResourcePath(pathname) {
   return APP_SHELL.some((path) => path.split('?')[0] === pathname) || LAZY_MODULES.includes(pathname);
+}
+
+function isBundledAssetPath(pathname) {
+  return /^\/assets\/[a-zA-Z0-9_-]+-[A-Z0-9]{8}\.(?:js|css)$/.test(pathname);
 }
 
 async function sdkCacheFirst(request) {

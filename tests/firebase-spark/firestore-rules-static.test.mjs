@@ -8,6 +8,8 @@ const rules = readFileSync(
 );
 
 const participantData = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/admin-participant-data.js', import.meta.url), 'utf8'
+) + readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/participant-data.js', import.meta.url),
   'utf8'
 );

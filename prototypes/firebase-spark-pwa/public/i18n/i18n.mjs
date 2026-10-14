@@ -442,7 +442,10 @@ async function loadCatalogUncached(locale) {
   }
 
   try {
-    const catalogUrl = new URL(`./${locale}.json`, import.meta.url);
+    // A bundle lives in /assets; catalogs retain their stable public path.
+    const catalogUrl = typeof window !== 'undefined'
+      ? new URL(`/i18n/${locale}.json`, window.location.href)
+      : new URL(`./${locale}.json`, import.meta.url);
     const catalogFetchUrl = new URL(catalogUrl.href);
     catalogFetchUrl.searchParams.set('v', CATALOG_RELEASE);
     let catalog = null;

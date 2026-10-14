@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const participantData = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/admin-participant-data.js', import.meta.url), 'utf8'
+) + readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/participant-data.js', import.meta.url),
   'utf8'
 );
@@ -311,7 +313,7 @@ test('un aggiornamento fallito conserva i dati partecipante già visibili', () =
 });
 
 test('un errore temporaneo conserva identita e sessione residente', () => {
-  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
   assert.match(restore, /isRecoverableSessionError\(error\)/);
   assert.match(restore, /error\.preserveResidentIdentity = true/);
   assert.match(restore, /throw error/);
@@ -321,7 +323,7 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
 });
 
 test('un amministratore forte ripristina la propria persona anche senza una vecchia sessione residente locale', () => {
-  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
   const restoreAdmin = participantData.match(/export async function restoreResidentIdentityForAuthorizedAdministrator\([\s\S]*?\n}/)?.[0] || '';
   assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\);/);
   assert.match(restoreAdmin, /membershipSnapshot\.exists\(\)[\s\S]*membershipSnapshot\.data\(\)\.status !== 'ACTIVE'/);
@@ -494,7 +496,7 @@ test('il refresh pasti attende Firebase e lascia passare l amministratore forte 
   assert.match(refresh, /await waitForAuthReady\(\)[\s\S]*shouldBlockResidentEntryRestore/);
   assert.match(refresh, /entryGateClosed: isResidentEntryGateClosed\(\)/);
   assert.match(refresh, /strongAuthUser: hasStrongAdministratorIdentity\(\)/);
-  assert.match(refresh, /restoreFriendlyResidentSession\(\)/);
+  assert.match(refresh, /restoreFriendlyResidentSession\(\{/);
 });
 
 test('il ritorno dal pannello carica gli stili moderni per mese settimana e riepilogo', () => {
@@ -836,7 +838,7 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   const plainLoginBranch = bootstrap.match(/if \(isPlainResidentLogin\) \{[\s\S]*?\n  }/)?.[0] || '';
   assert.match(plainLoginBranch, /setParticipantStatus/);
   assert.doesNotMatch(plainLoginBranch, /hideStartupSplash\(\)/);
-  assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
+  assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\{/);
   assert.match(participantRefresh, /void refreshParticipantExtras\(source, request\)/);
   assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
   assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);

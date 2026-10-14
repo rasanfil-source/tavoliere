@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
-const publicRoot = resolve(process.cwd(), 'prototypes/firebase-spark-pwa/public');
+const publicRoot = resolve(process.env.TAT_SERVE_ROOT || 'prototypes/firebase-spark-pwa/public');
 const port = Number(process.env.PORT || 4180);
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',

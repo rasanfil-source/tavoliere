@@ -30,7 +30,8 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
     assert.doesNotMatch(app, new RegExp(`from ['"]\\./${moduleName.replace('.', '\\.')}[^'"]*['"]`));
     assert.match(app, new RegExp(moduleName.replace('.', '\\.')));
   }
-  assert.match(app, /import\(domainModulePaths\[name\]\)/);
+  assert.match(app, /domainModuleLoaders\[name\]\(\)/);
+  assert.match(app, /admin: \(\) => import\('\.\/admin-center\.js/);
   assert.match(app, /if \(initialMode === 'kitchen'\)/);
   assert.match(app, /const hasStoredResidentIdentity = Boolean\(loadStoredResidentSignature\(\)\)/);
   assert.match(app, /initialMode === 'summary'[\s\S]*hasStoredResidentIdentity/);
@@ -229,10 +230,11 @@ test('le risposte tardive non sostituiscono una vista o una data piu recenti', (
   assert.match(app, /kitchenDayOffset !== state\.kitchenDayOffset/);
 });
 
-test('l esportazione legge le collezioni in parallelo e usa pagine ampie', () => {
-  assert.match(participantData, /Promise\.all\(collections\.map/);
-  assert.match(participantData, /limit\(1000\)/);
-  assert.match(participantData, /snapshot\.size < 1000/);
+test('l esportazione legge le collezioni in parallelo e usa pagine ampie', async () => {
+  const administration = await readPublic('admin-participant-data.js');
+  assert.match(administration, /Promise\.all\(collections\.map/);
+  assert.match(administration, /limit\(1000\)/);
+  assert.match(administration, /snapshot\.size < 1000/);
 });
 
 test('il deploy genera asset minificati in una cartella distinta dalle sorgenti', () => {

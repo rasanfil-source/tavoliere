@@ -5,25 +5,9 @@ import { resolve } from 'node:path';
 const baseUrl = new URL(process.argv[2] || 'https://tavola-comune.web.app/');
 const buildRoot = resolve(process.env.TAT_BUILD_OUTPUT || 'prototypes/firebase-spark-pwa/dist');
 const releaseNonce = Date.now().toString(36);
-const assets = [
-  { path: 'index.html', local: 'index.html' },
-  { path: 'app.js', local: 'app.js' },
-  { path: 'firebase-client.js', local: 'firebase-client.js' },
-  { path: 'core/firebase-runtime-policy.mjs', local: 'core/firebase-runtime-policy.mjs' },
-  { path: 'core/startup-timing.mjs', local: 'core/startup-timing.mjs' },
-  { path: 'core/personal-calendar-cache.mjs', local: 'core/personal-calendar-cache.mjs' },
-  { path: 'manifest.webmanifest', local: 'manifest.webmanifest' },
-  { path: 'manifest-kitchen.webmanifest', local: 'manifest-kitchen.webmanifest' },
-  { path: 'daily-operations.js', local: 'daily-operations.js' },
-  { path: 'participant-data.js', local: 'participant-data.js' },
-  { path: 'calendar-configuration.js', local: 'calendar-configuration.js' },
-  { path: 'center-settings.js', local: 'center-settings.js' },
-  { path: 'center-context.js', local: 'center-context.js' },
-  { path: 'i18n/i18n.mjs', local: 'i18n/i18n.mjs' },
-  { path: 'i18n/it.json', local: 'i18n/it.json' },
-  { path: 'styles.css', local: 'styles.css' },
-  { path: 'sw.js', local: 'sw.js' }
-];
+const manifest = JSON.parse(await readFile(resolve(buildRoot, 'build-manifest.json'), 'utf8'));
+const assets = [...Object.keys(manifest.files).map(path => ({ path: path.slice(1), local: path.slice(1) })),
+  { path: 'build-manifest.json', local: 'build-manifest.json' }];
 
 const results = [];
 for (const asset of assets) {

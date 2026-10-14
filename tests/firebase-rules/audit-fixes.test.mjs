@@ -74,9 +74,10 @@ test('concurrent creation reserves a signature for only one participant', async 
   const audit = await loadBrowserModule('audit-log.js', { ...firestore, db,
     getCurrentUser: () => identity('owner'), getActiveCenterId: () => center,
     getCenterScopedStorageKey: key => key }, ['appendAuditEvent', 'AUDIT_ACTIONS']);
-  const make = () => loadBrowserModule('participant-data.js', { ...firestore, ...dates, ...diets,
+  const make = () => loadBrowserModule('admin-participant-data.js', { ...firestore, ...dates, ...diets,
     ...profiles, ...revisions, ...audit, db, crypto: webcrypto,
     getActiveCenterId: () => center, invalidateCenterContactSettingsCache: () => {},
+    invalidateParticipantDataCaches: () => {},
     loadCenterContactSettings: async () => ({ timezone: 'Europe/Rome' }),
     getDocs: async q => {
       const result = await firestore.getDocs(q);
@@ -144,9 +145,10 @@ async function configurationHarness() {
   const audit = await loadBrowserModule('audit-log.js', { ...firestore, db,
     getCurrentUser: () => identity('owner'), getActiveCenterId: () => center,
     getCenterScopedStorageKey: key => key }, ['appendAuditEvent', 'AUDIT_ACTIONS']);
-  const participant = await loadBrowserModule('participant-data.js', { ...firestore, ...dates, ...diets,
+  const participant = await loadBrowserModule('admin-participant-data.js', { ...firestore, ...dates, ...diets,
     ...profiles, ...revisions, ...audit, db, crypto: webcrypto,
     getActiveCenterId: () => center, invalidateCenterContactSettingsCache: () => {},
+    invalidateParticipantDataCaches: () => {},
     loadCenterContactSettings: async () => ({ timezone: 'Europe/Rome' }) }, ['saveAdminParticipant']);
   const configuration = await loadBrowserModule('calendar-configuration.js', {
     ...firestore, ...dates, ...schedule, db, getActiveCenterId: () => center,

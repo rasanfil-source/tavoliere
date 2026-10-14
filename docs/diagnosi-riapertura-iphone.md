@@ -1,5 +1,7 @@
 **Riapertura da Home su iPhone — implementazione del 14 ottobre 2026**
 
+Aggiornamento successivo: la [seconda ottimizzazione, mantenendo Firestore completo](ottimizzazione-avvio-firestore-completo.md), documenta la build con moduli raggruppati, il caricamento differito delle anagrafiche amministrative e l'ulteriore sovrapposizione delle letture. Le versioni e i conteggi riportati sotto descrivono il primo rilascio.
+
 Le modifiche sono implementate e pubblicate su [tavola-comune.web.app](https://tavola-comune.web.app). L'obiettivo è rendere disponibili prima anche le modifiche ai pasti, preservando l'accesso persistente. Questa relazione sostituisce la precedente proposta: non è previsto alcun pannello diagnostico in Aspetto e non sono richieste misurazioni ai residenti o all'amministratore.
 
 Il problema riferito compare soltanto alla riapertura dall'icona Home, soprattutto nella settimana. Non disponiamo della versione iOS né di una prova sul dispositivo: le cause individuate sono dipendenze riprodotte nel codice, compatibili con il sintomo; non possiamo attribuire con certezza l'intero ritardo a una singola causa.

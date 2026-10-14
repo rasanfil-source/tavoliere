@@ -89,7 +89,6 @@ import {
   validateParticipantProfile
 } from './domain/participant-profile.mjs?v=20261014b';
 import { buildAdminOverview } from './domain/admin-overview.mjs?v=20261014b';
-import { inspectCenterBackup } from './domain/center-backup.mjs?v=20261014b';
 import { requiresAdministratorPassword } from './domain/administrator-auth.mjs?v=20261014b';
 import {
   nextSummaryContactHintVisitCount,
@@ -122,16 +121,17 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
   'diet.legend.preset.plain'
 ];
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
-const domainModulePaths = {
-  accessLinks: './access-links.js?v=20261014b',
-  admin: './admin-center.js?v=20261014b',
-  audit: './audit-log.js?v=20261014b',
-  bootstrap: './bootstrap-demo.js?v=20261014b',
-  daily: './daily-operations.js?v=20261014b',
-  kitchen: './kitchen-data.js?v=20261014b',
-  notes: './kitchen-notes.js?v=20261014b',
-  participant: './participant-data.js?v=20261014b',
-  summaryView: './summary-matrix-view.js?v=20261014b'
+// Literal imports let the production build split each optional feature.
+const domainModuleLoaders = {
+  accessLinks: () => import('./access-links.js?v=20261014b'),
+  admin: () => import('./admin-center.js?v=20261014b'),
+  audit: () => import('./audit-log.js?v=20261014b'),
+  bootstrap: () => import('./bootstrap-demo.js?v=20261014b'),
+  daily: () => import('./daily-operations.js?v=20261014b'),
+  kitchen: () => import('./kitchen-data.js?v=20261014b'),
+  notes: () => import('./kitchen-notes.js?v=20261014b'),
+  participant: () => import('./participant-data.js?v=20261014b'),
+  summaryView: () => import('./summary-matrix-view.js?v=20261014b')
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -140,7 +140,7 @@ const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260824a';
 let summaryStylesheetLoad = null;
 
 function ensureSummaryStyles() {
-  if (document.querySelector('link[href*="summary-matrix-refinements.css"]')) {
+  if (document.querySelector('link[href*="summary-matrix-refinements"]')) {
     return Promise.resolve();
   }
   if (summaryStylesheetLoad) return summaryStylesheetLoad;
@@ -158,7 +158,11 @@ function ensureSummaryStyles() {
 
 function loadDomainModule(name) {
   if (!domainModuleLoads.has(name)) {
-    domainModuleLoads.set(name, import(domainModulePaths[name]));
+    const pending = domainModuleLoaders[name]().catch((error) => {
+      domainModuleLoads.delete(name);
+      throw error;
+    });
+    domainModuleLoads.set(name, pending);
   }
   return domainModuleLoads.get(name);
 }
@@ -174,17 +178,17 @@ function preloadActiveViewModules() {
   const hasStoredResidentIdentity = Boolean(loadStoredResidentSignature());
   if (initialMode === 'summary'
       || (['participant', 'week'].includes(initialMode) && hasStoredResidentIdentity)) {
-    loadDomainModule('participant');
+    loadDomainModule('participant').catch(() => undefined);
   }
   if (initialMode === 'kitchen') {
-    loadDomainModule('kitchen');
-    loadDomainModule('notes');
+    loadDomainModule('kitchen').catch(() => undefined);
+    loadDomainModule('notes').catch(() => undefined);
   }
   if (['kitchen', 'summary'].includes(initialMode)) {
-    loadDomainModule('daily');
+    loadDomainModule('daily').catch(() => undefined);
   }
   if (['kitchen', 'summary'].includes(initialMode)) {
-    loadDomainModule('summaryView');
+    loadDomainModule('summaryView').catch(() => undefined);
   }
 }
 
@@ -4116,7 +4120,15 @@ async function refreshParticipant(source, options = {}) {
       showPersonalCalendarPreview();
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
-        : await restoreFriendlyResidentSession();
+        : await restoreFriendlyResidentSession({
+          onSessionReady: () => {
+            if (source === 'manuale' || !isCurrentParticipantRequest(request) || state.residentAuthTransition
+                || !['participant', 'week'].includes(state.mode)) return;
+            // Auth and the personal session are confirmed. Share this read
+            // with the critical path while the resident profile is loading.
+            void loadCenterCalendarSettings({ forceRefresh: source === 'manuale' }).catch(() => undefined);
+          }
+        });
       // A login/logout may have superseded this refresh while session restore
       // was awaiting Firebase. A stale request must never remount the login.
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
@@ -8962,6 +8974,7 @@ async function performAdminConfigurationRestore(file) {
     } catch {
       throw new Error(t('admin.backup.invalidJson'));
     }
+    const { inspectCenterBackup } = await import('./domain/center-backup.mjs?v=20261014b');
     const inspection = inspectCenterBackup(backup, { expectedCenterId: getActiveCenterId() });
     if (!inspection.valid) {
       const error = new Error(inspection.errors.join(' '));

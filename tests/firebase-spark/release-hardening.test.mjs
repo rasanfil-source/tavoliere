@@ -10,7 +10,8 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
 const index = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const adminCenter = fs.readFileSync(path.join(publicDir, 'admin-center.js'), 'utf8');
-const participantData = fs.readFileSync(path.join(publicDir, 'participant-data.js'), 'utf8');
+const participantData = fs.readFileSync(path.join(publicDir, 'admin-participant-data.js'), 'utf8')
+  + fs.readFileSync(path.join(publicDir, 'participant-data.js'), 'utf8');
 const kitchenData = fs.readFileSync(path.join(publicDir, 'kitchen-data.js'), 'utf8');
 const bootstrap = fs.readFileSync(path.join(publicDir, 'bootstrap-demo.js'), 'utf8');
 const accessLinks = fs.readFileSync(path.join(publicDir, 'access-links.js'), 'utf8');
@@ -59,7 +60,7 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
 });
 
 test('cache busting e chiavi sincrone non caricano copie divergenti dei moduli', () => {
-  assert.match(app, /audit: '\.\/audit-log\.js\?v=20261014b'/);
+  assert.match(app, /audit: \(\) => import\('\.\/audit-log\.js\?v=20261014b'\)/);
   assert.match(adminCenter, /audit-log\.js\?v=20261014b/);
   assert.match(participantData, /audit-log\.js\?v=20261014b/);
   assert.match(accessLinks, /audit-log\.js\?v=20261014b/);
