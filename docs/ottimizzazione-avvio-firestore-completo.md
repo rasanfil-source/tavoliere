@@ -51,4 +51,10 @@ Documentazione tecnica: [bundling Firebase](https://firebase.google.com/docs/web
 
 ## Pubblicazione
 
-Build pronta e verificata; pubblicazione e confronto remoto da completare.
+Pubblicazione completata il **14 ottobre 2026**, con confronto remoto concluso alle **18:53 CEST**. Il commit applicativo [65ae0dc](https://github.com/rasanfil-source/tavoliere/commit/65ae0dc) è sul ramo `codex/interface-style-cool` e la release `1694d63d2f53dd85` è online su [tavola-comune.web.app](https://tavola-comune.web.app).
+
+Il deploy ha aggiornato soltanto Firebase Hosting. Tutti i **96 file** pubblicati coincidono byte per byte, tramite SHA-256, con la build verificata; la rigenerazione durante il deploy non ha prodotto differenze rispetto al commit. Sono state controllate anche le intestazioni HTTP: HTML e service worker richiedono rivalidazione, i bundle con hash hanno cache `public, max-age=31536000, immutable`.
+
+Il primo tentativo di invio a GitHub non era stato eseguito a causa del limite del sistema automatico di approvazione. Alla ripresa autorizzata il push, il deploy e le verifiche sono riusciti.
+
+Per acquisire l'aggiornamento della PWA, chiudere tutte le sue finestre e riaprirla. Non è necessario cancellare i dati del sito o ripetere l'accesso. La prima apertura può ancora dover scaricare i nuovi moduli.
