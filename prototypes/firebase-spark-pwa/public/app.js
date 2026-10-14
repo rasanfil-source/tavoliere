@@ -3945,18 +3945,19 @@ function currentPersonalCalendarScope(participantId = state.selectedParticipant?
     start: formatDateId(start), end: formatDateId(addCalendarDays(start, count - 1)) };
 }
 
-function preparePersonalCalendarRead(forceStaticRefresh) {
-  const scope = currentPersonalCalendarScope();
+function preparePersonalCalendarRead(forceStaticRefresh, participantId) {
+  const scope = currentPersonalCalendarScope(participantId);
   if (!scope) return null;
   const timezone = state.centerContactSettings.timezone;
+  const locale = getLocale();
   const revision = participantCalendarRevision;
-  const options = { requireServer: true, forceStaticRefresh, timezone, locale: getLocale() };
+  const options = { requireServer: true, forceStaticRefresh, timezone, locale };
   const read = state.mode === 'week'
     ? loadParticipantWeek(scope.participantId, state.weekStartDate, 7, options)
     : loadParticipantMonthData(scope.participantId, startOfMonth(state.monthDate), options);
   // Settle errors now, even if a settings/date change makes this read obsolete.
   const result = read.then((value) => ({ value }), (error) => ({ error }));
-  return { scope, timezone, revision, result };
+  return { scope, timezone, locale, revision, result };
 }
 
 function renderCalendarPlaceholder() {
@@ -4050,6 +4051,7 @@ async function refreshParticipant(source, options = {}) {
       : state.participantMonth.length > 0;
   setParticipantStatus('Aggiorno...');
   if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
+  let preparedCalendar = null;
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
@@ -4073,12 +4075,15 @@ async function refreshParticipant(source, options = {}) {
       const restored = canUseWeekWithoutParticipant() && state.mode === 'week'
         ? await restoreResidentIdentityForAuthorizedAdministrator()
         : await restoreFriendlyResidentSession({
-          onSessionReady: () => {
+          onSessionReady: ({ participantId, uid }) => {
             if (source === 'manuale' || !isCurrentParticipantRequest(request) || state.residentAuthTransition
-                || !['participant', 'week'].includes(state.mode)) return;
-            // Auth and the personal session are confirmed. Share this read
-            // with the critical path while the resident profile is loading.
+                || uid !== getCurrentUser()?.uid || !['participant', 'week'].includes(state.mode)) return;
+            request.authUid = uid;
+            // Session-derived identity may start protected reads, but cannot
+            // publish a calendar: profile/signature and current settings must
+            // still pass below. Reuse the same reads after profile validation.
             void loadCenterCalendarSettings({ forceRefresh: source === 'manuale' }).catch(() => undefined);
+            preparedCalendar = preparePersonalCalendarRead(false, participantId);
           }
         });
       // A login/logout may have superseded this refresh while session restore
@@ -4128,7 +4133,7 @@ async function refreshParticipant(source, options = {}) {
     const personalRoute = ['participant', 'week'].includes(state.mode);
     // The saved timezone lets both independent reads start together. Never
     // publish this calendar until current settings confirm its date context.
-    const preparedCalendar = personalRoute ? preparePersonalCalendarRead(source === 'manuale') : null;
+    if (personalRoute && !preparedCalendar) preparedCalendar = preparePersonalCalendarRead(source === 'manuale');
     const centerSettings = await (personalRoute ? loadCenterCalendarSettings : loadCenterContactSettings)({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
@@ -9323,16 +9328,19 @@ async function loadCurrentParticipantWeek(options = {}) {
     timezone: state.centerContactSettings.timezone,
     locale: getLocale()
   };
-  const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(state.weekStartDate, index));
-  const emptyWeek = dates.map((date) => ({
-    date: formatDateId(date),
-    label: formatCalendarWeekLabel(date),
-    isToday: formatDateId(date) === formatDateId(getCenterToday()),
-    meals: []
-  }));
-  const participantWeek = state.selectedParticipant
-    ? await (options.calendarRead || loadParticipantWeek(state.selectedParticipant.participantId, state.weekStartDate, 7, participantOptions))
-    : emptyWeek;
+  let participantWeek;
+  if (state.selectedParticipant) {
+    participantWeek = await (options.calendarRead || loadParticipantWeek(
+      state.selectedParticipant.participantId, state.weekStartDate, 7, participantOptions
+    ));
+  } else {
+    const todayId = formatDateId(getCenterToday());
+    participantWeek = Array.from({ length: 7 }, (_, index) => {
+      const date = addCalendarDays(state.weekStartDate, index);
+      return { date: formatDateId(date), label: formatCalendarWeekLabel(date),
+        isToday: formatDateId(date) === todayId, meals: [] };
+    });
+  }
   if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
   state.participantWeek = participantWeek;
   const selectedDay = getSelectedDay() || state.participantWeek[0] || null;
@@ -9425,6 +9433,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
   const prepared = options.preparedCalendar;
   if (prepared && prepared.revision === revision
       && prepared.timezone === state.centerContactSettings.timezone
+      && prepared.locale === getLocale()
       && JSON.stringify(prepared.scope) === JSON.stringify(scope)) {
     options.calendarRead = prepared.result.then(({ value, error }) => {
       if (error) throw error;
@@ -9463,6 +9472,14 @@ async function loadCurrentParticipantCalendar(options = {}) {
   }
   state.personalCalendarScope = scope;
   const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
+  // A prefetched/cached calendar may have waited for profile or settings.
+  // Recheck time at publication; a meal closed by the server stays closed.
+  const now = Date.now();
+  for (const day of days) {
+    for (const meal of day.meals) {
+      meal.isOpen = meal.isOpen === true && new Date(meal.closesAt).getTime() > now;
+    }
+  }
   if (!state.pendingMealKeys.size && days.serverConfirmed === true) {
     savePersonalCalendarSnapshot(scope, days, { serverConfirmed: true });
   }

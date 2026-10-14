@@ -333,7 +333,7 @@ test('essential meal reads start while current center settings are still pending
 });
 
 test('date/timezone changes discard a speculative calendar; obsolete requests cannot publish or persist', async () => {
-  for (const change of ['timezone', 'period', 'identity', 'write']) {
+  for (const change of ['timezone', 'period', 'language', 'identity', 'write']) {
     let persisted = 0, reloads = 0;
     let activeScope = { ...scope };
     let user = { uid: scope.uid };
@@ -342,6 +342,7 @@ test('date/timezone changes discard a speculative calendar; obsolete requests ca
       participantWeek: [], participantMonth: [], pendingMealKeys: new Set(), centerContactSettings: { timezone: 'Europe/Rome' } };
     const context = vm.createContext({ state, participantCalendarRevision: 0,
       currentPersonalCalendarScope: () => activeScope, getActiveCenterId: () => scope.centerId, getCurrentUser: () => user,
+      getLocale: () => change === 'language' ? 'en' : 'it',
       savePersonalCalendarSnapshot: () => { persisted++; },
       loadCurrentParticipantWeek: async (options) => {
         if (!options.calendarRead) reloads++;
@@ -349,7 +350,7 @@ test('date/timezone changes discard a speculative calendar; obsolete requests ca
         if (options.isCurrentRequest()) state.participantWeek = Object.assign([...days], { serverConfirmed: true });
       }
     });
-    const preparedCalendar = { scope: { ...scope }, timezone: 'Europe/Rome', revision: 0,
+    const preparedCalendar = { scope: { ...scope }, timezone: 'Europe/Rome', locale: 'it', revision: 0,
       result: pending.promise.then((value) => ({ value })) };
     if (change === 'timezone') state.centerContactSettings.timezone = 'Europe/London';
     if (change === 'period') activeScope = { ...scope, start: '2026-10-19' };

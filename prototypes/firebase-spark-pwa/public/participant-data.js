@@ -325,9 +325,11 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     return null;
   }
   try {
-    await ensurePersonalSession(participantId, token);
+    const sessionUser = await ensurePersonalSession(participantId, token);
     // Optional preparation cannot invalidate an authenticated identity.
-    if (onSessionReady) void Promise.resolve().then(onSessionReady).catch(() => undefined);
+    if (onSessionReady) void Promise.resolve().then(() => onSessionReady({
+      participantId, uid: sessionUser.uid
+    })).catch(() => undefined);
     const participant = await loadPublicParticipantById(participantId);
     if (!participant) {
       throw new Error('Sigla non attiva');
@@ -1454,12 +1456,18 @@ function clearCurrentSession() {
 }
 
 
+const calendarLabelFormatters = new Map();
+
 function formatLongDate(date, locale = 'it') {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short'
-  }).format(date);
+  let formatter = calendarLabelFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, {
+      weekday: 'short', day: '2-digit', month: 'short'
+    });
+    if (calendarLabelFormatters.size >= 8) calendarLabelFormatters.delete(calendarLabelFormatters.keys().next().value);
+    calendarLabelFormatters.set(locale, formatter);
+  }
+  return formatter.format(date);
 }
 
 function buildDateRange(startDate, days) {

@@ -70,7 +70,7 @@ async function participantModule(uid) {
   return loadBrowserModule('participant-data.js', { ...firestore, ...dates, ...diets, ...reservation,
     db: database(uid), crypto: webcrypto, navigator: { onLine: true }, getActiveCenterId: () => center,
     getCurrentUser: () => ({ uid, isAnonymous: uid !== 'owner' }), isResidentTechnicalEmail: () => false
-  }, ['saveParticipantMeal', 'saveParticipantDay', 'saveParticipantMonthSelection', 'listSummaryParticipants']);
+  }, ['saveParticipantMeal', 'saveParticipantDay', 'saveParticipantMonthSelection', 'listSummaryParticipants', 'loadParticipantWeek']);
 }
 
 test('PUBLIC e PERSONAL vedono solo contatti consentiti mentre il gestore conserva la directory', async () => {
@@ -212,4 +212,52 @@ test('il recupero dei conflitti mantiene atomico il giorno e non supera le scade
   await assertFails(second.saveParticipantDay(participant,
     ['breakfast', 'lunch', 'dinner'].map((type) => initialMeal(dateId, type)), 'PRESENT'));
   assert.equal((await firestore.getDocs(firestore.collection(database(), path('reservationOverrides')))).size, 1);
+});
+
+test('riapertura: profilo e settimana in parallelo conservano selezioni, salvataggi e revoche', async () => {
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    const batch = firestore.writeBatch(db);
+    for (const [sortOrder, mealTypeId] of ['breakfast', 'lunch', 'dinner'].entries()) {
+      batch.set(firestore.doc(db, path('mealTypes/' + mealTypeId)), { status: 'ACTIVE', sortOrder, label: mealTypeId });
+      for (let offset = 0; offset < 7; offset++) {
+        const day = new Date(date);
+        day.setDate(day.getDate() + offset);
+        const mealDate = dates.formatDateId(day);
+        batch.set(firestore.doc(db, path('mealWindows/' + mealDate + '_' + mealTypeId)), {
+          mealDate, mealTypeId, status: 'OPEN', closesAt: future()
+        });
+      }
+    }
+    await batch.commit();
+  });
+  const module = await participantModule('resident_one');
+  await module.saveParticipantMeal(participant, initialMeal(dateId, 'breakfast'), 'PRESENT');
+  await module.saveParticipantMeal(participant, initialMeal(), 'ABSENT');
+  const db = database('resident_one');
+  const [profile, settings, week] = await Promise.all([
+    firestore.getDocFromServer(firestore.doc(db, path('publicParticipants/' + person))),
+    firestore.getDocFromServer(firestore.doc(db, path())),
+    module.loadParticipantWeek(person, date, 7, { requireServer: true })
+  ]);
+  assert.equal(profile.data().status, 'ACTIVE');
+  assert.equal(settings.data().status, 'ACTIVE');
+  assert.equal(week.serverConfirmed, true);
+  assert.equal(week.flatMap(day => day.meals).length, 21);
+  assert.equal(week[0].meals[0].effect, 'PRESENT');
+  assert.equal(week[0].meals[1].effect, 'ABSENT');
+  assert.equal(week[0].meals[1].isOpen, true);
+  await module.saveParticipantMeal(participant, week[0].meals[1], 'PRESENT');
+  const reloaded = await module.loadParticipantWeek(person, date, 7, { requireServer: true });
+  assert.equal(reloaded[0].meals[1].effect, 'PRESENT');
+  await environment.withSecurityRulesDisabled(async context => {
+    // Personal access is session-first: logout/revocation removes the token
+    // AND its access session, as forgetResidentDevice does in the application.
+    const batch = firestore.writeBatch(context.firestore());
+    batch.delete(firestore.doc(context.firestore(), path('linkTokens/personal_test')));
+    batch.delete(firestore.doc(context.firestore(), path('accessSessions/resident_one')));
+    await batch.commit();
+  });
+  await assertFails(module.loadParticipantWeek(person, date, 7, { requireServer: true, forceStaticRefresh: true }));
+  await assertFails(module.saveParticipantMeal(participant, reloaded[0].meals[1], 'ABSENT'));
 });

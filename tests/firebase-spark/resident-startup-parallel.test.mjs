@@ -20,7 +20,7 @@ function harness() {
     loadStoredResidentToken: () => ({ tokenId: 'token', expiresAt: '2050-01-01' }),
     waitForAuthReady: () => auth.promise, getStrongAuthenticatedUser: () => null,
     getAuthorizedAdministratorUser: async () => null,
-    ensurePersonalSession: () => { events.push('session'); return session.promise; },
+    ensurePersonalSession: () => { events.push('session'); return session.promise.then(() => ({ uid: 'restored-uid' })); },
     loadPublicParticipantById: () => { events.push('profile'); return profile.promise; },
     normalizeResidentSignature: value => value,
     rememberResidentIdentity: () => events.push('remember'),
@@ -34,7 +34,11 @@ function harness() {
 
 test('settings preparation waits for Auth and session, then overlaps the profile read', async () => {
   const h = harness();
-  const pending = h.restore({ onSessionReady: () => h.events.push('settings') });
+  const pending = h.restore({ onSessionReady: (identity) => {
+    assert.equal(identity.participantId, 'person');
+    assert.equal(identity.uid, 'restored-uid');
+    h.events.push('settings');
+  } });
   await turn();
   assert.deepEqual(h.events, []);
   h.auth.resolve(); await turn();
