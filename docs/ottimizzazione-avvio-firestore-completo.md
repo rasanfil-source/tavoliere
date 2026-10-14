@@ -66,3 +66,9 @@ Il deploy ha aggiornato soltanto Firebase Hosting. Tutti i **96 file** pubblicat
 Il primo tentativo di invio a GitHub non era stato eseguito a causa del limite del sistema automatico di approvazione. Alla ripresa autorizzata il push, il deploy e le verifiche sono riusciti.
 
 Per acquisire l'aggiornamento della PWA, chiudere tutte le sue finestre e riaprirla. Non è necessario cancellare i dati del sito o ripetere l'accesso. La prima apertura può ancora dover scaricare i nuovi moduli.
+
+### Correzione della presentazione iniziale
+
+Il **14 ottobre 2026 alle 22:01 CEST** è stata pubblicata su Firebase Hosting la correzione [e589193](https://github.com/rasanfil-source/tavoliere/commit/e589193), presente sul ramo `codex/interface-style-cool`. Identificativo della build: `deed8c50b7dbe33a`.
+
+Il confronto SHA-256 dopo il deploy è riuscito per tutti i **96 file** del manifest corrente, incluso il manifest stesso. Hosting conserva inoltre i precedenti bundle con hash, per le pagine già aperte. La rigenerazione durante il deploy non ha cambiato i file rispetto al commit. Regole, indici, dati e configurazione Firebase Auth non sono stati modificati.
