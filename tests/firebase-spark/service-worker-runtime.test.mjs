@@ -7,7 +7,7 @@ const source = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/
 const origin = 'https://tavola-comune.web.app';
 const sdk = 'https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js';
 
-function worker({ offline = false, storageFailure = false } = {}) {
+function worker({ offline = false, storageFailure = false, navigationPreload } = {}) {
   const handlers = {};
   const entries = new Map();
   const requests = [];
@@ -24,6 +24,7 @@ function worker({ offline = false, storageFailure = false } = {}) {
   vm.runInNewContext(source, {
     URL,
     self: {
+      registration: { navigationPreload },
       location: { origin },
       clients: { claim: async () => { claimed = true; } },
       addEventListener: (name, handler) => { handlers[name] = handler; }
@@ -72,6 +73,19 @@ test('prima attivazione prepara i tre SDK per la riapertura', async () => {
   await sw.fetch(sdk);
   assert.equal(sw.requests.length, 3);
   assert.deepEqual(sw.deleted, ['tavola-comune-app-v448']);
+});
+
+test('activation enables supported navigation preload and tolerates enable failures', async () => {
+  for (const fail of [false, true]) {
+    let enables = 0;
+    const sw = worker({ navigationPreload: { enable: async () => {
+      enables++;
+      if (fail) throw Error('unsupported');
+    } } });
+    await sw.activate();
+    assert.equal(enables, 1);
+    assert.equal(sw.claimed, true);
+  }
 });
 
 test('rete assente e cache piena non impediscono l attivazione', async () => {

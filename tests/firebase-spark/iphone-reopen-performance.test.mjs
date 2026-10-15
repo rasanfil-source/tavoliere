@@ -95,7 +95,7 @@ test('month reuse is scoped to the confirmed timezone, language and Auth identit
   assert.equal(reads, 4);
 });
 
-function navigation({ cached = 'saved shell', storageError, writeError } = {}) {
+function navigation({ cached = 'saved shell', storageError, writeError, preloadResponse } = {}) {
   const net = deferred(), background = [];
   let expire, cancelled = 0, fetches = 0;
   const entries = new Map(cached ? [['/index.html', new Response(cached)]] : []);
@@ -110,7 +110,7 @@ function navigation({ cached = 'saved shell', storageError, writeError } = {}) {
   });
   vm.runInContext(extract(read('sw.js'), 'networkFirst'), context);
   const result = context.networkFirst({ url: 'https://example.test/?token=never-cache' }, '/index.html',
-    { waitUntil: (promise) => background.push(promise) });
+    { preloadResponse, waitUntil: (promise) => background.push(promise) });
   return { net, result, entries, background, timeout: () => expire(), get cancelled() { return cancelled; }, get fetches() { return fetches; } };
 }
 
@@ -124,6 +124,46 @@ test('HTML timeout serves saved shell while original request updates canonical c
   assert.equal(await run.entries.get('/index.html').text(), 'fresh shell');
   assert.equal(run.entries.size, 1);
   assert.equal(run.fetches, 1);
+});
+
+test('navigation consumes preload without a second fetch and caches only the canonical HTML', async () => {
+  const run = navigation({ preloadResponse: Promise.resolve(new Response('preloaded')) });
+  assert.equal(await (await run.result).text(), 'preloaded');
+  await Promise.all(run.background);
+  assert.equal(await run.entries.get('/index.html').text(), 'preloaded');
+  assert.equal(run.entries.size, 1);
+  assert.equal(run.fetches, 0);
+});
+
+test('a slow preload survives the cache timeout, also when no saved shell exists', async () => {
+  for (const cached of ['saved shell', null]) {
+    const preload = deferred();
+    const run = navigation({ cached, preloadResponse: preload.promise });
+    run.timeout();
+    if (cached) assert.equal(await (await run.result).text(), cached);
+    await turn();
+    assert.equal(run.fetches, 0);
+    preload.resolve(new Response('late preload'));
+    if (!cached) assert.equal(await (await run.result).text(), 'late preload');
+    await Promise.all(run.background);
+    assert.equal(await run.entries.get('/index.html').text(), 'late preload');
+    assert.equal(run.fetches, 0);
+  }
+});
+
+test('absent or rejected preload falls back once; HTTP errors can use the saved shell', async () => {
+  for (const preloadResponse of [Promise.resolve(undefined), Promise.reject(Error('preload failed'))]) {
+    const run = navigation({ preloadResponse });
+    run.net.resolve(new Response('fallback'));
+    assert.equal(await (await run.result).text(), 'fallback');
+    await Promise.all(run.background);
+    assert.equal(run.fetches, 1);
+  }
+  const run = navigation({ preloadResponse: Promise.resolve(new Response('error', { status: 503 })) });
+  assert.equal(await (await run.result).text(), 'saved shell');
+  await Promise.all(run.background);
+  assert.equal(run.fetches, 0);
+  assert.equal(await run.entries.get('/index.html').text(), 'saved shell');
 });
 
 test('HTML handles HTTP failures, absent cache, failed cache open/write and offline rejection', async () => {
@@ -186,7 +226,7 @@ test('meals become usable while roles, presentation and accessory continuation r
   meals.resolve();
   assert.equal(await refresh, true);
   assert.equal(splashHidden, true);
-  assert.deepEqual(calls, ['session', 'critical-settings', 'meals', 'render', 'extras']);
+  assert.deepEqual(calls, ['session', 'critical-settings', 'meals', 'render', 'calendar-ready', 'extras']);
 });
 
 test('a refresh during a pending selection does not start reads that can replace optimistic state', async () => {

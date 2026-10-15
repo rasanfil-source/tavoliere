@@ -68,7 +68,7 @@ import {
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20261014b';
 import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
-import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
+import { markStartupStage, measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 import {
   savePersonalCalendarSnapshot,
   clearPersonalCalendarSnapshots
@@ -94,6 +94,7 @@ import {
   shouldShowSummaryContactHint
 } from './summary-contact-hint.mjs?v=20261014b';
 
+markStartupStage('app-evaluated');
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
 
@@ -1586,6 +1587,7 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
+  markStartupStage('startup-gate-released');
   const appShell = document.querySelector('[data-app-shell]');
   if (appShell) {
     appShell.inert = false;
@@ -4219,6 +4221,7 @@ async function refreshParticipant(source, options = {}) {
     renderMode();
     renderParticipantMeals();
     if (personalRoute) {
+      markStartupStage('calendar-ready');
       // This continuation is deliberately outside the calendar/login promise.
       void refreshParticipantExtras(source, request);
     }

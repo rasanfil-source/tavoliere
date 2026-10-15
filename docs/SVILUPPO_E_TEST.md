@@ -69,6 +69,26 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run predeploy:gate"
 
 ## Criteri minimi di accettazione
 
+### Misure locali dell'avvio
+
+Aggiungere `diagnostics=startup` alla query della pagina (con `&` se contiene già altri parametri).
+Console e User Timing mostrano misure `tat:*`, senza inviare o salvare telemetria:
+
+- `auth-start` e `auth-ready`: inizio Auth e prima notifica del ripristino, anche senza utente;
+- `app-evaluated`: inizio esecuzione di app.js dopo i suoi import statici;
+- `calendar-ready`: primo calendario personale renderizzato dopo le verifiche previste;
+- `startup-gate-released`: prima rimozione del blocco iniziale, anche per login o timeout.
+
+Questi punti sono misurati dall'inizio della navigazione e registrati una sola volta per documento.
+`calendar-ready` indica che il DOM è pronto, non il momento del paint. Non confondere il timeout
+dello splash con un calendario caricato. Le misure già presenti (`auth-restore`, `calendar-settings`,
+`domain:*`) indicano invece la durata della singola operazione e possono ripetersi durante i refresh.
+Per HTML e service worker usare anche la voce Navigation Timing negli strumenti del browser.
+Confrontare separatamente prima visita, riapertura con cache, token da rinnovare e ripresa della PWA.
+Il navigation preload è facoltativo secondo il browser; il fallback HTML dopo 1.200 ms rimane attivo.
+
+### Verifiche funzionali
+
 Per autenticazione e autorizzazione verificare:
 
 1. residente con sigla e password comune;

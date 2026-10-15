@@ -75,17 +75,23 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((names) => Promise.all(names
-        .filter((name) => (
-          name.startsWith(CACHE_PREFIX)
-          || name.startsWith('tavola-comune-spark-gate-')
-        ) && name !== CACHE_NAME)
-        .map((name) => caches.delete(name))))
-      .then(() => self.clients.claim())
-      // The first page loads these modules before the worker takes control.
-      // Warm their cache after claiming clients, without delaying app startup.
-      .then(() => Promise.allSettled(FIREBASE_SDK.map((url) => sdkCacheFirst(url))))
+    Promise.all([
+      // Optional browser optimization; unsupported/failed preload must not
+      // prevent this worker from activating or serving the offline shell.
+      Promise.resolve().then(() => self.registration?.navigationPreload?.enable())
+        .catch(() => undefined),
+      caches.keys()
+        .then((names) => Promise.all(names
+          .filter((name) => (
+            name.startsWith(CACHE_PREFIX)
+            || name.startsWith('tavola-comune-spark-gate-')
+          ) && name !== CACHE_NAME)
+          .map((name) => caches.delete(name))))
+        .then(() => self.clients.claim())
+        // The first page loads these modules before the worker takes control.
+        // Warm their cache after claiming clients, without delaying app startup.
+        .then(() => Promise.allSettled(FIREBASE_SDK.map((url) => sdkCacheFirst(url))))
+    ])
   );
 });
 
@@ -224,7 +230,11 @@ async function networkFirst(request, fallbackPath, event) {
   const cachePromise = caches.open(CACHE_NAME).catch(() => null);
   const cachedPromise = cachePromise.then((cache) =>
     cache?.match(fallbackPath || '/index.html').catch(() => undefined));
-  const network = fetch(request, { cache: 'no-cache' });
+  // A pending preload is the navigation request, including after the cache
+  // timeout. Only fall back to fetch when preload is absent or has failed.
+  const network = Promise.resolve(event?.preloadResponse)
+    .catch(() => undefined)
+    .then((response) => response || fetch(request, { cache: 'no-cache' }));
   const update = network.then(async (response) => {
     if (!response?.ok) return;
     const copy = response.clone();

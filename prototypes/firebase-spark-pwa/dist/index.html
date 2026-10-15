@@ -15,7 +15,23 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-    <link rel="dns-prefetch" href="https://securetoken.googleapis.com">
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <script data-resident-modulepreload>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        // Missing/unknown view defaults to the personal calendar, as in resolveMode.
+        if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
+            || params.has('invite') || params.has('adminInvite')) return;
+        // The build substitutes the additional static graph with hashed URLs.
+        var residentModulePreloads = ["/assets/chunk-DEFXUQHB.js","/assets/chunk-FQXBWN6D.js","/assets/chunk-QGYDLUMD.js"];
+        residentModulePreloads.forEach(function (path) {
+          var link = document.createElement('link');
+          link.rel = 'modulepreload';
+          link.href = path;
+          document.head.appendChild(link);
+        });
+      }());
+    </script>
     <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260824b">
     <link rel="preload" as="image" href="/icons/splash-512-transparent.png?v=20260824a" fetchpriority="high">
     <script>
@@ -57,7 +73,7 @@
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/assets/styles-H7OCO4TS.css">
     <link rel="stylesheet" href="/assets/summary-matrix-refinements-L5GRFJGG.css">
-    <script type="module" src="/assets/app-3DTZIIHX.js"></script>
+    <script type="module" src="/assets/app-P66K4VGC.js"></script>
       <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
     <link rel="modulepreload" href="/assets/chunk-B22VMQVQ.js">
     <link rel="modulepreload" href="/assets/chunk-DIDIBDG3.js">
@@ -67,8 +83,8 @@
     <link rel="modulepreload" href="/assets/chunk-L6C6KYTH.js">
     <link rel="modulepreload" href="/assets/chunk-LYSTTI3X.js">
     <link rel="modulepreload" href="/assets/chunk-O2XFH626.js">
-    <link rel="modulepreload" href="/assets/chunk-QCDX6PIT.js">
-    <link rel="modulepreload" href="/assets/chunk-YNXXTSU2.js">
+    <link rel="modulepreload" href="/assets/chunk-U5OEBYM7.js">
+    <link rel="modulepreload" href="/assets/chunk-W23DW7SJ.js">
     <link rel="modulepreload" href="/assets/chunk-Z6VL4FUK.js">
   </head>
   <body>

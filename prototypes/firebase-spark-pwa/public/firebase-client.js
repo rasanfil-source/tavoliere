@@ -26,7 +26,7 @@ import {
   setDoc
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { firestoreSettingsForBrowser } from './core/firebase-runtime-policy.mjs?v=20261014b';
-import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
+import { markStartupStage, measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 
 export const firebaseConfig = {
   apiKey: 'AIzaSyCpU6mbE1vUtFfhnQUULkjuvzPGhIv3ZTY',
@@ -48,6 +48,7 @@ export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 // Keep the same persistent localStorage used by existing sessions. Configuring
 // it at creation avoids an IndexedDB probe/migration and the preemptive Google
 // iframe that getAuth() starts on mobile. Popup support is passed at use time.
+markStartupStage('auth-start');
 export const auth = app ? initializeAuth(app, { persistence: browserLocalPersistence }) : null;
 const firestoreSettings = firestoreSettingsForBrowser(globalThis.navigator);
 export const db = app ? initializeFirestore(app, firestoreSettings) : null;
@@ -56,6 +57,7 @@ const initialAuthReadyPromise = auth
   ? new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
+      markStartupStage('auth-ready');
       resolve(user);
     });
   })

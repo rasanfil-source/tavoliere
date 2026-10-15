@@ -15,10 +15,26 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-    <link rel="dns-prefetch" href="https://securetoken.googleapis.com">
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
+    <script data-resident-modulepreload>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        // Missing/unknown view defaults to the personal calendar, as in resolveMode.
+        if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
+            || params.has('invite') || params.has('adminInvite')) return;
+        // The build substitutes the additional static graph with hashed URLs.
+        var residentModulePreloads = ['/participant-data.js?v=20261014b'];
+        residentModulePreloads.forEach(function (path) {
+          var link = document.createElement('link');
+          link.rel = 'modulepreload';
+          link.href = path;
+          document.head.appendChild(link);
+        });
+      }());
+    </script>
     <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260824b">
     <link rel="preload" as="image" href="/icons/splash-512-transparent.png?v=20260824a" fetchpriority="high">
     <script>

@@ -105,7 +105,9 @@ test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo co
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
   assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);
-  assert.doesNotMatch(index, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
+  for (const [, script] of index.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
+    assert.doesNotMatch(script, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
+  }
   assert.match(app, /function ensureSummaryStyles\(\)/);
   assert.match(app, /if \(isOperationalTarget\) await ensureSummaryStyles\(\)/);
   assert.match(app, /if \(nextMode === 'summary'\) await ensureSummaryStyles\(\)/);

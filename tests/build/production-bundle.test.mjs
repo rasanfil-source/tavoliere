@@ -11,6 +11,27 @@ const manifest = await verifyBuild(buildRoot);
 const source = await readFile(resolve(buildRoot, 'sw.js'), 'utf8');
 const origin = 'https://app.example.test';
 
+test('HTML preloads only the additional resident graph on personal routes', async () => {
+  const html = await readFile(resolve(buildRoot, 'index.html'), 'utf8');
+  const script = html.match(/<script data-resident-modulepreload>([^]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  for (const [search, expected] of [
+    ['', true], ['?access=friendly&c=test', true], ['?view=participant', true], ['?view=week', true],
+    ['?view=unknown', true], ['?view=admin', false], ['?view=kitchen', false], ['?view=summary', false],
+    ['?invite=example', false], ['?adminInvite=example', false]
+  ]) {
+    const links = [];
+    vm.runInNewContext(script, { URLSearchParams, window: { location: { search } }, document: {
+      createElement: () => ({}), head: { appendChild: link => links.push(link) }
+    } });
+    assert.deepEqual(links.map(link => link.href), expected ? manifest.residentPreloads : [], search);
+    assert.ok(links.every(link => link.rel === 'modulepreload'));
+  }
+  for (const path of manifest.residentPreloads) {
+    assert.ok(!manifest.outputs[path].inputs.some(input => /daily-operations|admin-center|kitchen-data/.test(input)));
+  }
+});
+
 function worker() {
   const handlers = {}, entries = new Map(), requests = [], installs = [];
   let offline = false;

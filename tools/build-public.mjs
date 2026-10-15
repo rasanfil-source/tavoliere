@@ -83,10 +83,14 @@ const entry = entryFor('app.js');
 const styles = [entryFor('styles.css'), entryFor('summary-matrix-refinements.css')];
 const initial = staticGraph([entry]);
 const resident = staticGraph([entry, entryFor('participant-data.js')]);
-if (!entry || styles.some(path => !path)) throw new Error('Missing build entry');
+const residentPreloads = resident.filter(path => !initial.includes(path));
+if (!entry || !entryFor('participant-data.js') || styles.some(path => !path)) throw new Error('Missing build entry');
 
 let html = await readFile(resolve(sourceRoot, 'index.html'), 'utf8');
 html = html.replace(/^.*rel="modulepreload"[^\n]*\n/gm, '');
+const preloadPlaceholder = /var residentModulePreloads = \[[^\]]*\];/;
+if (!preloadPlaceholder.test(html)) throw new Error('Missing resident preload placeholder');
+html = html.replace(preloadPlaceholder, `var residentModulePreloads = ${JSON.stringify(residentPreloads)};`);
 html = html.replace(/src="\/app\.js\?v=[^"]+"/, `src="${entry}"`);
 for (const name of ['styles.css', 'summary-matrix-refinements.css']) {
   html = html.replace(new RegExp(`href="/${name.replaceAll('.', '\\.')}\\?v=[^"]+"`), `href="${entryFor(name)}"`);
@@ -118,7 +122,7 @@ const sources = Object.fromEntries(await Promise.all(sourcePaths.map(async path 
   relative(root, path).replaceAll('\\', '/'), digest(await readFile(path))
 ])));
 const manifest = { schema: 1, release, firebaseVersion, firestore: 'full', entry, styles,
-  initial, resident, outputs, files: hashes, sources };
+  initial, resident, residentPreloads, outputs, files: hashes, sources };
 await writeFile(resolve(outputRoot, 'build-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 const bytes = paths => paths.reduce((total, path) => total + outputs[path].bytes, 0);
 console.log(`Build web: ${Object.keys(outputs).length} bundle; avvio ${initial.length} file JS / ${bytes(initial)} byte; residente ${resident.length} file JS / ${bytes(resident)} byte (Firebase incluso).`);

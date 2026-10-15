@@ -44,6 +44,11 @@ export async function verifyBuild(buildRoot = resolve(process.env.TAT_BUILD_OUTP
   for (const path of manifest.initial.filter(path => path !== manifest.entry)) {
     assert.ok(html.includes(`rel="modulepreload" href="${path}"`), `Missing preload: ${path}`);
   }
+  const residentPreloads = manifest.resident.filter(path => !manifest.initial.includes(path));
+  assert.ok(residentPreloads.length > 0, 'Missing resident preload graph');
+  assert.deepEqual(manifest.residentPreloads, residentPreloads);
+  const generatedPreloads = JSON.parse(html.match(/var residentModulePreloads = (\[[^\]]*\]);/)?.[1] || 'null');
+  assert.deepEqual(generatedPreloads, residentPreloads, 'Stale resident preload URLs');
   console.log(`Build verificata: ${Object.keys(manifest.files).length} file, sorgenti coerenti, Firestore completo, moduli amministrativi separati.`);
   return manifest;
 }
