@@ -4409,16 +4409,6 @@ body[data-resident-login-visible="true"] .account-footer {
   line-height: 1;
 }
 
-.week-meal-caption {
-  display: none;
-  max-width: 100%;
-  overflow: hidden;
-  font-size: 0.7rem;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .meal-state-present {
   border-color: var(--confirmed);
   background: var(--confirmed);
@@ -5513,8 +5503,7 @@ body[data-resident-login-visible="true"] .account-footer {
     gap: 8px;
   }
 
-  .week-heading-label,
-  .week-meal-caption {
+  .week-heading-label {
     display: block;
   }
 

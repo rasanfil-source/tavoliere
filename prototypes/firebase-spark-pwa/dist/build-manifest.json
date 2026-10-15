@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "release": "f09e0818af22b1c3",
+  "release": "b6b1ae2d5ae482d8",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
-  "entry": "/assets/app-53MSEDKM.js",
+  "entry": "/assets/app-3DTZIIHX.js",
   "styles": [
-    "/assets/styles-F3SVRONR.css",
+    "/assets/styles-H7OCO4TS.css",
     "/assets/summary-matrix-refinements-L5GRFJGG.css"
   ],
   "initial": [
-    "/assets/app-53MSEDKM.js",
+    "/assets/app-3DTZIIHX.js",
     "/assets/chunk-7ZENLLVJ.js",
     "/assets/chunk-B22VMQVQ.js",
     "/assets/chunk-DIDIBDG3.js",
@@ -24,7 +24,7 @@
     "/assets/chunk-Z6VL4FUK.js"
   ],
   "resident": [
-    "/assets/app-53MSEDKM.js",
+    "/assets/app-3DTZIIHX.js",
     "/assets/chunk-7ZENLLVJ.js",
     "/assets/chunk-B22VMQVQ.js",
     "/assets/chunk-DEFXUQHB.js",
@@ -412,8 +412,8 @@
         }
       ]
     },
-    "/assets/app-53MSEDKM.js": {
-      "bytes": 248115,
+    "/assets/app-3DTZIIHX.js": {
+      "bytes": 247952,
       "source": "app.js",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/refresh-schedule.js",
@@ -806,8 +806,8 @@
       "inputs": [],
       "imports": []
     },
-    "/assets/styles-F3SVRONR.css": {
-      "bytes": 108211,
+    "/assets/styles-H7OCO4TS.css": {
+      "bytes": 108057,
       "source": "styles.css",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/styles.css"
@@ -827,8 +827,8 @@
     "/access-links.js": "bad74c136006c2079e6bc80318169ae6622f242126fec834523195cd92941659",
     "/admin-center.js": "edff86e782027656a0b24a6f69d0c3c5297d7012c168b37b730e4564a6c88399",
     "/admin-participant-data.js": "7f0b3635a1f5902983da5a85a41b7d1e667c8d4811baa9be906566fa1c3936de",
-    "/app.js": "188fdc229c637caece211919a6a63c6e7b5ca9548ba34a575116f43a98fcf81b",
-    "/assets/app-53MSEDKM.js": "df00ea3fa97cecb33b210e61ef673bd5135783e859747d34190ae2ac5cf277df",
+    "/app.js": "28ff7f877008afe6d742b3ce63a1ef1ea18feef0f73be41fc55489baf2c8910d",
+    "/assets/app-3DTZIIHX.js": "7dd1a6f9774276505e826af1e1799dd1a52037071d2d7369fa49fefcb33dd05b",
     "/assets/chunk-364CXZVW.js": "5fffc9e043577fe57fdbd618b716a7ba6c3d2db7e771e6fb0863d2bb5d86da1a",
     "/assets/chunk-7ZENLLVJ.js": "577dc7acbf02547c5b3382b4eb6f0c11a659bf60d64762598b967b239a286d0a",
     "/assets/chunk-APO7HJHP.js": "552a7e5b5acbed8552bae88babab8a8e7baa91824dc39c98badbd3bbcb0e973f",
@@ -858,7 +858,7 @@
     "/assets/chunk-UA6NMIGE.js": "8bf503170e0ee03c29d1f96a6a709c239591677e4b15047cfbb540402a20f94b",
     "/assets/chunk-YNXXTSU2.js": "1796d3841dada5d26da65dda37d06eb4019f2b38242cc735e00f0204f1dfc730",
     "/assets/chunk-Z6VL4FUK.js": "025a5b418271108afddba27c9ac77b42d54f33f4821b4025c94ab1a0eba90046",
-    "/assets/styles-F3SVRONR.css": "0fcd050d16b4154a4b407789a336e4cbe7e0cfcdc1ba754b43b48b9c30156c15",
+    "/assets/styles-H7OCO4TS.css": "83c2410db568be81a8adad381db784b7d810d40b2087276a4f786a3a0ab139c8",
     "/assets/summary-matrix-refinements-L5GRFJGG.css": "cf4ea64376cc116993d79955f67e3a91718b6e98a0c0a5bf46e1479aa888b854",
     "/audit-log.js": "16b5d28f7d0df77e0dd5f261504a3e40f6321eb5e2d9a6b1b0428f44e152cf1c",
     "/bootstrap-demo.js": "52f46200149b29f841e647ab57e3eaf78cd9fbaf01af44494568c6b837d6d766",
@@ -902,7 +902,7 @@
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "1748eb8b3ecc0d98c71c8c51b04bc7a74417288c89d8648dcb0956ba403ae558",
+    "/index.html": "d739fe8b50f28d164376dae79d02e30bfb0daaf0c939bec72521b03372f10065",
     "/kitchen-data.js": "2b3a7675152846dc1f28e0796062c6d617e7225e97988bf89f74cbc284781676",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
     "/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
@@ -913,18 +913,18 @@
     "/reservation-state.mjs": "76e500d451a2c7aa7b35bf3821e7ed302c9af540f6f1eab5486c513f362cf75c",
     "/role-policy.mjs": "3e1fa257bbaf4a021b237d6e6f41ea62d66075dd55cfbc6b39dd3fd14a095813",
     "/schedule-utils.mjs": "ca1bd255602a37c19ae891439ff8fc4d81637301baec3c5359bb7cf63e3c9dae",
-    "/styles.css": "0fcd050d16b4154a4b407789a336e4cbe7e0cfcdc1ba754b43b48b9c30156c15",
+    "/styles.css": "83c2410db568be81a8adad381db784b7d810d40b2087276a4f786a3a0ab139c8",
     "/summary-contact-hint.mjs": "c8d9e1d48ae5277610754c3ebfffe625edba30d0eb3d3c85f8c5b7519717e2ab",
     "/summary-matrix-model.js": "f5725642bb724a5cbf715a3bae48350464d1d44077812f9847c43c381f728fd8",
     "/summary-matrix-refinements.css": "cf4ea64376cc116993d79955f67e3a91718b6e98a0c0a5bf46e1479aa888b854",
     "/summary-matrix-view.js": "d9b4710a83aa4eb636eb2d301e5a996d10da544924529d7bd825f1a371f64b6c",
-    "/sw.js": "3cf754773cf32424476dab8a7e9f9d0a8735525e6a31aaea368e672affd55478"
+    "/sw.js": "770c014ef4975b1ad4089c0043c7d40bc24c169a6c85b99878676015b764679c"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "f4b9380a4e79ee7eafbb58a8cd8745ac151c2660807d3ba804a2a2805403c16c",
     "prototypes/firebase-spark-pwa/public/admin-center.js": "d2f0914bbc9847888e8c57f76f095895fe1bce685cfb9e07eb67946c10456f78",
     "prototypes/firebase-spark-pwa/public/admin-participant-data.js": "e19f7445e8445e11ff52bbd0ccbe278c69081956f7e63b9b56bc9c5525ccb89c",
-    "prototypes/firebase-spark-pwa/public/app.js": "b40c9bcbb3bc627088adfbffed909879be1336887364e8ce31a72c002d97c12e",
+    "prototypes/firebase-spark-pwa/public/app.js": "b84126da25376aa176e4c22b43170b3f68f6a1d4d1c2c8c9565e0595e05cf697",
     "prototypes/firebase-spark-pwa/public/audit-log.js": "babc96ae5c4af5b81a71eedbe98d63aa923e1dc4f7849ade0511b8a8995db55d",
     "prototypes/firebase-spark-pwa/public/bootstrap-demo.js": "a17b152db0b57d62af2e52210fd43b126e9b1d12b4cd7e590f63c6d31eeef562",
     "prototypes/firebase-spark-pwa/public/calendar-configuration.js": "3fd50e86e37c981c87a78e6382b973f32fc9d929ab2b2e2e6a3ad68603e48c31",
@@ -978,7 +978,7 @@
     "prototypes/firebase-spark-pwa/public/reservation-state.mjs": "5ab9bbf27f0165853aae6e72b7b410070eb6351096a36706244b25d4317a6fd1",
     "prototypes/firebase-spark-pwa/public/role-policy.mjs": "69f512002c63e8b6d3babf9892e851928e13d6e425b3173476de2e728dc2339e",
     "prototypes/firebase-spark-pwa/public/schedule-utils.mjs": "459e55c44ab7efa44f489b53900fdcea581a8413c602d6d536798ac5f74f072e",
-    "prototypes/firebase-spark-pwa/public/styles.css": "b6e2d931a259538aa94697a438380f77681a59f84ccac4204fa57f9ba9d3e89a",
+    "prototypes/firebase-spark-pwa/public/styles.css": "e2e7592847a92ff621a3372380f90daca566d2c7388deb2f1a50d9fd8c99ea6f",
     "prototypes/firebase-spark-pwa/public/summary-contact-hint.mjs": "7ced78dd49f412af720d84f1d03f445d8f32188c33df5915b20a6e8710305cf1",
     "prototypes/firebase-spark-pwa/public/summary-matrix-model.js": "05820448d28515397d3febc8a85f1a4afbf7d17d53932e813f6b5a8e17f77c69",
     "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "8e9c19ca4de6b3692c3145a4c63b527c7659649816eebcaa07e0b061e5e788db",

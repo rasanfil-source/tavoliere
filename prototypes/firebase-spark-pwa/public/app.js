@@ -9533,11 +9533,9 @@ function renderMealCell(dateId, meal) {
   const ariaLabel = meal.isOpen ? `${mealLabel}: ${stateLabel}` : `${mealLabel}: ${stateLabel}. ${cutoffLabel}`;
   const shortLabel = mealLabel.slice(0, 1) || '•';
   const mark = meal.effect === 'PRESENT' ? '✓' : shortLabel;
-  const caption = meal.isOpen ? stateLabel : cutoffLabel;
   return `
     <button type="button" class="${classes}" data-meal-date="${escapeHtml(dateId)}" data-meal-id="${escapeHtml(meal.mealTypeId)}" data-effect="${meal.effect === 'PRESENT' ? 'ABSENT' : 'PRESENT'}" aria-pressed="${pressed}" aria-label="${escapeHtml(ariaLabel)}" title="${escapeHtml(meal.isOpen ? stateLabel : cutoffLabel)}"${disabled}>
       <span class="week-meal-mark" aria-hidden="true">${mark}</span>
-      <span class="week-meal-caption" aria-hidden="true">${escapeHtml(caption)}</span>
     </button>
   `;
 }
@@ -9548,7 +9546,6 @@ function syncWeekMealButton(button, meal) {
   const mealLabel = getLocalizedMealLabel(meal.mealTypeId, meal.label);
   const stateLabel = getMealStateLabel(isPresent);
   const cutoffLabel = formatCutoffLabel(meal);
-  const caption = meal.isOpen ? stateLabel : cutoffLabel;
   const shortLabel = mealLabel.slice(0, 1) || '•';
   const ariaLabel = meal.isOpen
     ? `${mealLabel}: ${stateLabel}`
@@ -9564,9 +9561,7 @@ function syncWeekMealButton(button, meal) {
   button.title = meal.isOpen ? stateLabel : cutoffLabel;
   button.disabled = !meal.isOpen || pending;
   const mark = button.querySelector('.week-meal-mark');
-  const label = button.querySelector('.week-meal-caption');
   if (mark) mark.textContent = isPresent ? '✓' : shortLabel;
-  if (label) label.textContent = caption;
 }
 
 function syncMonthMealButton(button, meal) {
