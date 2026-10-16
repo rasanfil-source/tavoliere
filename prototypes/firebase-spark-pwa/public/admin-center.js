@@ -499,11 +499,9 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
     throw new Error('Amministratore non valido');
   }
   const membershipRef = doc(db, 'centers', centerId, 'admins', normalizedUid);
-  const targetProfileRef = doc(db, ADMIN_PROFILE_COLLECTION, normalizedUid);
-  const [membershipSnapshot, centerSnapshot, targetProfileSnapshot] = await Promise.all([
+  const [membershipSnapshot, centerSnapshot] = await Promise.all([
     getDoc(membershipRef),
-    getDoc(doc(db, 'centers', centerId)),
-    getDoc(targetProfileRef)
+    getDoc(doc(db, 'centers', centerId))
   ]);
   const membership = membershipSnapshot.exists() ? membershipSnapshot.data() : {};
   const center = centerSnapshot.exists() ? centerSnapshot.data() : {};
@@ -525,15 +523,9 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
     revokedAt: now,
     updatedAt: now
   }, { merge: true });
-  if (targetProfileSnapshot.data()?.centerId === centerId) {
-    batch.set(targetProfileRef, {
-      status: 'REVOKED',
-      role: 'ADMIN',
-      massPermission: false,
-      dailyOperationsPermission: false,
-      updatedAt: now
-    }, { merge: true });
-  }
+  // The membership is authoritative. The private, potentially multi-center
+  // navigation profile is filtered through memberships when loading access;
+  // a center owner cannot read it and must not revoke access to other centers.
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.REVOKE_ADMIN,
     targetType: 'ADMIN',

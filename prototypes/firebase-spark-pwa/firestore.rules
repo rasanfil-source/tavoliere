@@ -850,7 +850,8 @@ service cloud.firestore {
     }
 
     match /centerInvitations/{invitationId} {
-      allow read: if isBootstrapOwner()
+      allow list: if isBootstrapOwner();
+      allow get: if isBootstrapOwner()
         || hasVerifiedAdministratorIdentity()
           && resource.data.status == 'ACTIVE'
           && request.time < resource.data.expiresAt;

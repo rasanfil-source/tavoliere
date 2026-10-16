@@ -139,7 +139,7 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.match(html, /Se ti piace, salva questa scelta di colori/);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
   assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'inchiostro'/);
-  assert.match(html, /<html lang="it" data-theme="inchiostro">/);
+  assert.match(html, /<html lang="it" data-theme="inchiostro" data-interface-style="cool"/);
   assert.match(app, /themePalette: 'inchiostro'/);
   assert.match(app, /summaryResidentLabel: 'name'/);
   assert.match(centerSettings, /normalizeResidentLabel\(data\.summaryResidentLabel, 'name'\)/);
@@ -163,9 +163,9 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban-plus', 'future'\]\)/);
   assert.match(centerSettings, /value === 'urban' \? 'urban-plus' : value/);
-  assert.match(styleSelect, /value="urban-plus"[^>]*selected/);
-  assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
-  assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
+  assert.match(styleSelect, /value="cool"[^>]*selected/);
+  assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'cool'/);
+  assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'cool'/);
   assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
@@ -700,6 +700,7 @@ test('il nuovo responsabile sincronizza la propria email e può ripulire un vecc
   assert.match(app, /account\.adminUid !== currentUid/);
   assert.match(app, /admin\.accounts\.previousOwner/);
   assert.match(adminCenter, /const staleFormerOwner = membership\.role === 'OWNER'/);
-  assert.match(adminCenter, /targetProfileSnapshot\.data\(\)\?\.centerId === centerId/);
+  const revoke = adminCenter.match(/export async function revokeCenterAdministrator\([\s\S]*?\n}\n/)?.[0] || '';
+  assert.doesNotMatch(revoke, /ADMIN_PROFILE_COLLECTION|targetProfile/);
   assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
 });

@@ -114,23 +114,23 @@ function navigation({ cached = 'saved shell', storageError, writeError, preloadR
   return { net, result, entries, background, timeout: () => expire(), get cancelled() { return cancelled; }, get fetches() { return fetches; } };
 }
 
-test('HTML timeout serves saved shell while original request updates canonical cache in background', async () => {
+test('HTML timeout serves installed shell and a late response cannot replace its release', async () => {
   const run = navigation();
   run.timeout();
   assert.equal(await (await run.result).text(), 'saved shell');
   assert.equal(run.cancelled, 1);
   run.net.resolve(new Response('fresh shell'));
   await Promise.all(run.background);
-  assert.equal(await run.entries.get('/index.html').text(), 'fresh shell');
+  assert.equal(await run.entries.get('/index.html').text(), 'saved shell');
   assert.equal(run.entries.size, 1);
   assert.equal(run.fetches, 1);
 });
 
-test('navigation consumes preload without a second fetch and caches only the canonical HTML', async () => {
+test('navigation consumes preload without a second fetch or replacing the installed HTML', async () => {
   const run = navigation({ preloadResponse: Promise.resolve(new Response('preloaded')) });
   assert.equal(await (await run.result).text(), 'preloaded');
   await Promise.all(run.background);
-  assert.equal(await run.entries.get('/index.html').text(), 'preloaded');
+  assert.equal(await run.entries.get('/index.html').text(), 'saved shell');
   assert.equal(run.entries.size, 1);
   assert.equal(run.fetches, 0);
 });
@@ -146,7 +146,7 @@ test('a slow preload survives the cache timeout, also when no saved shell exists
     preload.resolve(new Response('late preload'));
     if (!cached) assert.equal(await (await run.result).text(), 'late preload');
     await Promise.all(run.background);
-    assert.equal(await run.entries.get('/index.html').text(), 'late preload');
+    assert.equal(await run.entries.get('/index.html')?.text(), cached || undefined);
     assert.equal(run.fetches, 0);
   }
 });

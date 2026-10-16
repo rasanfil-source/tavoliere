@@ -77,6 +77,7 @@ let summaryParticipantsCache = null;
 let summaryRulesCache = null;
 const mealWindowsCache = new Map();
 const participantRulesCache = new Map();
+let participantRulesRevision = 0;
 const staticQueryLoads = new Map();
 
 function shareStaticQuery(key, loader) {
@@ -325,12 +326,28 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     return null;
   }
   try {
+    const initialUser = getCurrentUser();
+    // Only speculate with an existing anonymous identity and an unexpired
+    // device token. Settle errors immediately while the session is checked.
+    const profileRead = initialUser?.isAnonymous && new Date(token.expiresAt) > new Date()
+      ? loadPublicParticipantById(participantId).then(
+        (value) => ({ value }), (error) => ({ error })
+      )
+      : null;
     const sessionUser = await ensurePersonalSession(participantId, token);
     // Optional preparation cannot invalidate an authenticated identity.
     if (onSessionReady) void Promise.resolve().then(() => onSessionReady({
       participantId, uid: sessionUser.uid
     })).catch(() => undefined);
-    const participant = await loadPublicParticipantById(participantId);
+    const profileResult = profileRead && initialUser.uid === sessionUser.uid
+      ? await profileRead : null;
+    // A missing session can deny the speculative read. Retry only after its
+    // creation; never reuse a profile fetched under a replaced Auth identity.
+    if (profileResult?.error && !['permission-denied', 'firestore/permission-denied'].includes(profileResult.error.code)) {
+      throw profileResult.error;
+    }
+    const participant = profileResult && !profileResult.error
+      ? profileResult.value : await loadPublicParticipantById(participantId);
     if (!participant) {
       throw new Error('Sigla non attiva');
     }
@@ -1143,20 +1160,24 @@ async function getMealTypes(forceRefresh = false, requireServer = false) {
 
 async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false, requireServer = false) {
   const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid || '';
   const cacheKey = `${startDateId}_${endDateId}`;
   const cached = mealWindowsCache.get(cacheKey);
   if (!forceRefresh && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
     return cached.value;
   }
-  const snapshot = await (requireServer ? getDocsFromServer : getDocs)(query(
-    collection(db, 'centers', centerId, 'mealWindows'),
-    where('mealDate', '>=', startDateId),
-    where('mealDate', '<=', endDateId)
-  ));
-  const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
-  calendarValues(snapshot, value, requireServer);
-  mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
-  return value;
+  const key = JSON.stringify(['mealWindows', centerId, uid, startDateId, endDateId, requireServer, forceRefresh]);
+  return shareStaticQuery(key, async () => {
+    const snapshot = await (requireServer ? getDocsFromServer : getDocs)(query(
+      collection(db, 'centers', centerId, 'mealWindows'),
+      where('mealDate', '>=', startDateId),
+      where('mealDate', '<=', endDateId)
+    ));
+    const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
+    calendarValues(snapshot, value, requireServer);
+    mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
+    return value;
+  });
 }
 
 async function getOwnOverrides(participantId, startDateId, endDateId, requireServer = false) {
@@ -1321,6 +1342,7 @@ async function getRules(options = {}) {
 async function getParticipantRules(participantId, forceRefresh = false, requireServer = false) {
   const centerId = getActiveCenterId();
   const uid = getCurrentUser()?.uid;
+  const revision = participantRulesRevision;
   const cached = participantRulesCache.get(participantId);
   if (!forceRefresh && cached?.uid === uid
       && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
@@ -1329,24 +1351,28 @@ async function getParticipantRules(participantId, forceRefresh = false, requireS
   // La regola personale ha un identificativo deterministico. La lettura
   // diretta evita che il primo calendario dipenda dalla valutazione di una
   // query protetta (le regole Firestore non funzionano come filtri).
-  const snapshot = await (requireServer ? getDocFromServer : getDoc)(doc(
-    db,
-    'centers',
-    centerId,
-    'reservationRules',
-    `rule_${participantId}`
-  ));
-  const value = snapshot.exists()
-    ? [{ ruleId: snapshot.id, ...snapshot.data() }]
-    : [];
-  calendarValues(snapshot, value, requireServer);
-  participantRulesCache.set(participantId, {
-    centerId,
-    uid,
-    loadedAt: Date.now(),
-    value
+  const key = JSON.stringify(['participantRules', centerId, uid, participantId, requireServer, forceRefresh, revision]);
+  return shareStaticQuery(key, async () => {
+    const snapshot = await (requireServer ? getDocFromServer : getDoc)(doc(
+      db,
+      'centers',
+      centerId,
+      'reservationRules',
+      `rule_${participantId}`
+    ));
+    const value = snapshot.exists()
+      ? [{ ruleId: snapshot.id, ...snapshot.data() }]
+      : [];
+    calendarValues(snapshot, value, requireServer);
+    // A completed admin write must not reuse or recache an earlier read.
+    if (revision === participantRulesRevision) participantRulesCache.set(participantId, {
+      centerId,
+      uid,
+      loadedAt: Date.now(),
+      value
+    });
+    return value;
   });
-  return value;
 }
 
 async function getOverrides(mealDate) {
@@ -1506,6 +1532,7 @@ function getPublicTokenId() {
 
 // Administrative writes invalidate the same live resident caches.
 export function invalidateParticipantDataCaches(participantId) {
+  participantRulesRevision++;
   participantRulesCache.delete(participantId);
   publicParticipantsCache = null;
   summaryParticipantsCache = null;

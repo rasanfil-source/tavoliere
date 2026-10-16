@@ -103,9 +103,10 @@ await writeFile(resolve(outputRoot, 'index.html'), html);
 // administration, backups, kitchen or summary features for a resident.
 const staticShell = ['/', '/index.html', '/manifest.webmanifest', '/manifest-kitchen.webmanifest',
   '/icons/splash-512-transparent.png?v=20260824a', '/icons/whatsapp.svg'];
-const release = digest(html + JSON.stringify(outputs)).slice(0, 16);
 let worker = await readFile(resolve(sourceRoot, 'sw.js'), 'utf8');
+const release = digest(html + JSON.stringify(outputs) + worker).slice(0, 16);
 worker = worker.replace(/const CACHE_NAME = [^;]+;/, `const CACHE_NAME = CACHE_PREFIX + 'bundle-${release}';`);
+worker = worker.replace(/const SHELL_ENTRY = [^;]+;/, `const SHELL_ENTRY = ${JSON.stringify(entry)};`);
 worker = worker.replace(/const FIREBASE_SDK = \[[^]*?;/, 'const FIREBASE_SDK = [];');
 worker = worker.replace(/const APP_SHELL = \[[^]*?\n\];/,
   `const APP_SHELL = ${JSON.stringify([...staticShell, ...styles, ...resident])};`);

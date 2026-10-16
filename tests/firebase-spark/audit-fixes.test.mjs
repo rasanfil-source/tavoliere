@@ -49,8 +49,8 @@ test('a rejected notification permission is caught and restores the disabled pre
   const target = { value: 'enabled', disabled: false };
   const stored = [], statuses = [];
   let cleared = 0;
-  const module = functions(['handleMealReminderPreferenceChange'], {
-    elements: { mealReminderStatus: field() }, t: key => key, mealRemindersAreSupported: () => true,
+  const module = functions(['handleMealReminderPreferenceChange', 'setContextualTranslation'], {
+    elements: { mealReminderStatus: { ...field(), dataset: {} } }, t: key => key, mealRemindersAreSupported: () => true,
     Notification: { permission: 'default', requestPermission: async () => { throw new DOMException('test', 'NotAllowedError'); } },
     storeMealReminderPreference: enabled => stored.push(enabled), clearMealReminderTimers: () => cleared++,
     syncMealReminderControl: key => { statuses.push(key); target.value = 'disabled'; }

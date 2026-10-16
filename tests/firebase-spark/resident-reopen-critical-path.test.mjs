@@ -10,7 +10,7 @@ const deferred = () => {
 };
 
 for (const mode of ['week', 'participant']) {
-  test(`${mode}: Auth/session gate reads; profile overlaps meals; publication waits for all essential data`, async () => {
+  test(`${mode}: Auth gates profile/session; session gates meals; publication waits for all essential data`, async () => {
     const gates = Object.fromEntries(['auth', 'session', 'profile', 'settings', 'overrides', 'extras']
       .map(key => [key, deferred()]));
     const h = residentReopenHarness({ mode, read: async (name, value) => {
@@ -21,7 +21,7 @@ for (const mode of ['week', 'participant']) {
     await turn();
     assert.deepEqual(h.names(), ['auth']);
     gates.auth.resolve(); await turn();
-    assert.deepEqual(h.names(), ['auth', 'session']);
+    assert.deepEqual(h.names(), ['auth', 'profile', 'session']);
     gates.session.resolve(); await turn();
     for (const name of ['profile', 'settings', 'mealTypes', 'mealWindows', 'overrides', 'rule']) {
       assert.ok(h.names().includes(name), name);

@@ -72,6 +72,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     prefetchNextParticipantMonth: () => record('prefetch-month'),
     savePersonalCalendarSnapshot: () => record('snapshot'),
     renderParticipantMeals: () => record('usable'), hideStartupSplash: () => record('hide'),
+    markStartupStage() {},
     refreshParticipantExtras: async () => { record('extras'); await read('extras'); },
     refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => '', setParticipantStatus() {},
     isCenterAccessRevokedError: error => error.code === 'permission-denied',

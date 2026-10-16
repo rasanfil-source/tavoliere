@@ -23,6 +23,25 @@ const REQUIRED_COLLECTIONS = Object.freeze([
   'reservationRules'
 ]);
 
+// Only configuration can leave the center in a backup. An allowlist also
+// excludes future authentication fields without relying on their names.
+const EXPORTABLE_CENTER_FIELDS = Object.freeze([
+  'name', 'timezone', 'locale', 'status', 'reservationCutoffs',
+  'calendarCoveredFrom', 'calendarCoveredThrough',
+  'participantContactSharingEnabled', 'kitchenDietLegend',
+  'participantDataUpdatedAt', 'avatarVersion', 'createdAt', 'updatedAt',
+  // Older centers may still keep presentation settings on the center itself.
+  'appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled',
+  'themePalette', 'interfaceStyle', 'defaultView', 'summaryLayout',
+  'kitchenLayout', 'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language'
+]);
+
+export function sanitizeCenterBackupDocument(data = {}) {
+  return Object.fromEntries(EXPORTABLE_CENTER_FIELDS
+    .filter((key) => Object.hasOwn(data, key))
+    .map((key) => [key, data[key]]));
+}
+
 export function inspectCenterBackup(backup, { expectedCenterId = '' } = {}) {
   const errors = [];
   const warnings = [];

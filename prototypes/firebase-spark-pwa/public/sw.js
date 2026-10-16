@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v455';
+const CACHE_NAME = CACHE_PREFIX + 'v456';
+const SHELL_ENTRY = '/app.js?v=20261014b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Only public, immutable SDK files: never Auth API responses or session data.
 const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
@@ -66,12 +67,26 @@ const LAZY_MODULES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL.map((path) =>
-        /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261014b` : path)))
-  );
+  event.waitUntil(precacheInstalledShell());
 });
+
+async function precacheInstalledShell() {
+  // Fetch only the canonical URL: navigation URLs may contain credentials.
+  const response = await fetch('/index.html', { cache: 'no-cache' });
+  if (!response.ok) throw new Error('Offline shell unavailable');
+  const html = await response.clone().text();
+  const expected = new URL(SHELL_ENTRY, self.location.origin).href;
+  const entries = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)];
+  if (!entries.some(([, path]) => new URL(path, self.location.origin).href === expected)) {
+    throw new Error('Offline shell belongs to another release');
+  }
+  const cache = await caches.open(CACHE_NAME);
+  const resources = APP_SHELL.filter((path) => path !== '/' && path !== '/index.html')
+    .map((path) => /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261014b` : path);
+  await cache.addAll(resources);
+  // Publish HTML only after all of its installed resources are available.
+  await cache.put('/index.html', response);
+}
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -100,9 +115,10 @@ self.addEventListener('message', (event) => {
   const purge = caches.keys().then((names) => Promise.all(names
     .filter((name) => name.startsWith(CACHE_PREFIX))
     .map((name) => caches.delete(name))));
-  event.waitUntil(purge);
+  const ready = purge.then(() => precacheInstalledShell().then(() => true, () => false));
+  event.waitUntil(ready);
   if (event.ports?.[0]) {
-    purge.then(() => event.ports[0].postMessage({ ok: true }));
+    ready.then((offlineReady) => event.ports[0].postMessage({ ok: true, offlineReady }));
   }
 });
 
@@ -235,14 +251,11 @@ async function networkFirst(request, fallbackPath, event) {
   const network = Promise.resolve(event?.preloadResponse)
     .catch(() => undefined)
     .then((response) => response || fetch(request, { cache: 'no-cache' }));
-  const update = network.then(async (response) => {
-    if (!response?.ok) return;
-    const copy = response.clone();
-    const cache = await cachePromise;
-    // Never persist a navigation URL: it can contain an access token.
-    await cache?.put(fallbackPath || '/index.html', copy);
-  }).catch(() => undefined);
-  event?.waitUntil(update);
+  // Keep the HTML installed atomically with APP_SHELL as the offline fallback.
+  // A navigation can return a newer release before its modules are available;
+  // replacing this HTML alone would strand the still-complete installed shell.
+  // The next worker installation publishes the next complete offline release.
+  // Navigation URLs (which can contain access tokens) are never persisted.
   let timer;
   try {
     const result = await Promise.race([

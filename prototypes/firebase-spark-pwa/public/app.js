@@ -3,6 +3,7 @@ import {
   t,
   setLocale,
   getLocale,
+  resolveLocale,
   formatDate,
   formatTime,
   applyTranslations,
@@ -379,7 +380,7 @@ const mealReminderInFlight = new Set();
 
 function applyInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'urban-plus';
+  const style = INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
   document.documentElement.dataset.interfaceVariant = style;
   document.documentElement.dataset.interfaceStyle = style === 'urban-plus' ? 'urban' : style;
   document.documentElement.dataset.interfaceFamily = style === 'original' ? 'original' : 'cool';
@@ -452,7 +453,7 @@ function openResidentEntryGate() {
 }
 
 const PERSONAL_APPEARANCE_DEFAULTS = Object.freeze({
-  themePalette: 'inchiostro', interfaceStyle: 'urban-plus',
+  themePalette: 'inchiostro', interfaceStyle: 'cool',
   defaultView: DEFAULT_OPENING_VIEW, summaryLayout: 'classic',
   kitchenLayout: 'classic', summaryResidentLabel: 'name',
   monthControlsSide: 'right', weekStartsOn: 'monday', language: 'it'
@@ -695,6 +696,7 @@ const state = {
   adminActiveSection: '',
   lastSuccessfulRefreshAt: null,
   weekOperationalHealth: null,
+  weekSickDraft: null,
   weekOperationalNote: null,
   weekOperationalDateId: '',
   weekDailyOperations: [],
@@ -711,7 +713,7 @@ const state = {
     participantContactSharingEnabled: true,
     kitchenDietLegend: [],
     themePalette: 'inchiostro',
-    interfaceStyle: 'urban-plus',
+    interfaceStyle: 'cool',
     defaultView: DEFAULT_OPENING_VIEW,
     summaryLayout: 'classic',
     kitchenLayout: 'classic',
@@ -751,6 +753,7 @@ function invalidateViewRequests() {
   state.kitchenRequestVersion += 1;
   state.weekMassReady = false;
   state.weekExtrasReady = false;
+  state.weekSickDraft = null;
 }
 
 function beginParticipantRequest() {
@@ -1418,14 +1421,18 @@ function handleKitchenPanelClick(event) {
 }
 
 async function applyCenterDefaultLanguage(centerSettings) {
-  if (centerSettings?.language && centerSettings.language !== getLocale()) {
-    await setLocale(centerSettings.language, { persist: false });
+  const locale = resolveLocale(centerSettings?.language);
+  if (locale !== getLocale()) {
+    await setLocale(locale, { persist: false });
     renderAllViews();
   }
 }
 
 function renderAllViews() {
   renderMode();
+  if (['participant', 'week', 'summary'].includes(state.mode)) {
+    renderParticipantMeals();
+  }
   if (state.mode === 'kitchen') {
     renderMeals();
   }
@@ -2249,7 +2256,7 @@ function hasPendingAdminAdaptationChanges() {
       && state.pendingThemePalette !== (state.centerContactSettings.themePalette || 'inchiostro')
   ) || Boolean(
     state.pendingInterfaceStyle
-      && state.pendingInterfaceStyle !== (state.centerContactSettings.interfaceStyle || 'urban-plus')
+      && state.pendingInterfaceStyle !== (state.centerContactSettings.interfaceStyle || 'cool')
   );
 }
 
@@ -2886,6 +2893,7 @@ function clearAdminAuthorizationState() {
   state.adminCanManageDailyOperations = false;
   state.adminCenters = [];
   state.weekOperationalHealth = null;
+  state.weekSickDraft = null;
   state.weekOperationalNote = null;
   state.weekOperationalDateId = '';
   state.residentAdministratorAuthorized = false;
@@ -3380,6 +3388,7 @@ function syncMealReminderControl(statusKey = '') {
         ? 'mealReminder.status.enabled'
         : 'mealReminder.status.disabled');
   elements.mealReminderStatus.textContent = t(key);
+  elements.mealReminderStatus.dataset.i18n = key;
 }
 
 async function handleMealReminderPreferenceChange(event) {
@@ -3398,7 +3407,7 @@ async function handleMealReminderPreferenceChange(event) {
 
   event.target.disabled = true;
   if (elements.mealReminderStatus) {
-    elements.mealReminderStatus.textContent = t('mealReminder.status.requesting');
+    setContextualTranslation(elements.mealReminderStatus, 'mealReminder.status.requesting');
   }
   try {
     const permission = Notification.permission === 'granted'
@@ -5095,7 +5104,8 @@ function renderFilteredAuditEvents() {
   const events = (state.adminAuditEvents || []).filter((event) => {
     const date = event.createdAt?.toDate?.();
     const eventDate = date instanceof Date ? formatDateId(date) : '';
-    const actor = String(event.actorName || event.actorEmail || event.actorUid || '').toLocaleLowerCase(getLocale());
+    const actor = [resolveAuditActorLabel(event), event.actorLabel, event.actorName, event.actorEmail, event.actorUid]
+      .filter(Boolean).join(' ').toLocaleLowerCase(getLocale());
     return (!dateFilter || eventDate === dateFilter) && (!userFilter || actor.includes(userFilter));
   });
   renderAuditEvents(events);
@@ -5763,7 +5773,7 @@ function syncAdminAdaptationsForm() {
   }
   syncAdaptationsContextCopy();
   const currentPalette = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
-  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'urban-plus';
+  const currentInterfaceStyle = state.pendingInterfaceStyle || state.centerContactSettings.interfaceStyle || 'cool';
   document.documentElement.dataset.theme = currentPalette;
   applyInterfaceStyle(currentInterfaceStyle);
   if (elements.adminThemeSelect) elements.adminThemeSelect.value = currentPalette;
@@ -5803,7 +5813,7 @@ function syncAdminAdaptationsForm() {
   }
   updateThemeSelectControl(currentPalette);
   if (elements.adminLanguageSelect) {
-    elements.adminLanguageSelect.value = state.centerContactSettings.language || 'it';
+    elements.adminLanguageSelect.value = getLocale();
   }
   syncMealReminderControl();
   if (elements.residentAdminUnlock) {
@@ -5858,7 +5868,7 @@ function handleThemeSelectChange(event) {
 function handleInterfaceStyleSelectChange(event) {
   const selectedStyle = INTERFACE_STYLE_VALUES.has(event.target.value)
     ? event.target.value
-    : 'urban-plus';
+    : 'cool';
   state.pendingInterfaceStyle = selectedStyle;
   applyInterfaceStyle(selectedStyle);
   if (elements.adminThemeStatus) {
@@ -5875,7 +5885,7 @@ async function handleAdminAdaptationsSave() {
     const paletteToSave = state.pendingThemePalette || state.centerContactSettings.themePalette || 'inchiostro';
     const interfaceStyleToSave = state.pendingInterfaceStyle
       || state.centerContactSettings.interfaceStyle
-      || 'urban-plus';
+      || 'cool';
     const languageToSave = elements.adminLanguageSelect?.value || state.centerContactSettings.language || 'it';
     const preferences = {
       themePalette: paletteToSave,
@@ -5893,11 +5903,10 @@ async function handleAdminAdaptationsSave() {
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
-    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
+    applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
     await setLocale(languageToSave);
-    applyTranslations(document);
-    renderMode();
+    renderAllViews();
     await clearApplicationCache();
     if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('status.success.saved');
   } catch (error) {
@@ -5912,18 +5921,18 @@ function handleAdminAdaptationsCancel() {
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'inchiostro';
-  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'urban-plus');
+  applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
 
 function handleAdminAdaptationsReset() {
   state.pendingThemePalette = 'inchiostro';
-  state.pendingInterfaceStyle = 'urban-plus';
+  state.pendingInterfaceStyle = 'cool';
   document.documentElement.dataset.theme = 'inchiostro';
-  applyInterfaceStyle('urban-plus');
+  applyInterfaceStyle('cool');
   updateThemeSelectControl('inchiostro');
-  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'urban-plus';
+  if (elements.adminInterfaceStyleSelect) elements.adminInterfaceStyleSelect.value = 'cool';
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.theme.previewDefault');
 }
 
@@ -6079,7 +6088,7 @@ function renderMode() {
   document.documentElement.dataset.theme = activePalette;
   const activeInterfaceStyle = state.pendingInterfaceStyle
     || state.centerContactSettings.interfaceStyle
-    || 'urban-plus';
+    || 'cool';
   applyInterfaceStyle(activeInterfaceStyle);
   const isParticipant = state.mode === 'participant';
   const isWeek = state.mode === 'week';
@@ -6959,12 +6968,13 @@ function renderParticipantMeals() {
     && openMassDays.every((day) => massByDate.get(day.date)?.massScheduled === true);
   const massBulkScheduled = !allOpenMassesScheduled;
   const massBulkLabel = massBulkScheduled
-    ? 'Segna Messa sì per i giorni modificabili'
-    : 'Segna Messa no per i giorni modificabili';
+    ? t('calendar.mass.select')
+    : t('calendar.mass.clear');
   const weekControlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const weekRenderKey = JSON.stringify({
+    language: getLocale(),
     participantId: state.selectedParticipant?.participantId || '',
-    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'cool',
     weekStart: formatDateId(state.weekStartDate),
     today: formatDateId(getCenterToday()),
     controlsSide: weekControlsOnLeft ? 'left' : 'right',
@@ -6982,13 +6992,13 @@ function renderParticipantMeals() {
   }
 
   const weekScopeButtonMarkup = `
-    <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${weekEffect === 'PRESENT' ? 'Prenota tutta la settimana' : 'Svuota tutta la settimana'}" title="${weekEffect === 'PRESENT' ? 'Prenota settimana' : 'Svuota settimana'}"${weekHasOpenMeals ? '' : ' disabled'}>
+    <button type="button" class="week-scope-button${weekEffect === 'ABSENT' ? ' week-scope-button-complete' : ''}" data-week-effect="${weekEffect}" aria-pressed="${weekEffect === 'ABSENT'}" aria-label="${escapeHtml(getCalendarSelectionLabel('week', weekEffect))}" title="${escapeHtml(getCalendarSelectionLabel('week', weekEffect))}"${weekHasOpenMeals ? '' : ' disabled'}>
       <span class="week-heading-icon" aria-hidden="true">${getInterfaceIcon('calendar', '▦')}</span>
       <span class="week-heading-label">${escapeHtml(t('week.view.short'))}</span>
     </button>
   `;
   elements.participantMeals.innerHTML = `
-    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''} week-controls-${weekControlsOnLeft ? 'left' : 'right'}" aria-label="Prenotazioni della settimana">
+    <div class="week-matrix${showMassColumn ? ' week-matrix-with-mass' : ''} week-controls-${weekControlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(t('week.view.title'))}">
       <div class="week-matrix-header">
         ${weekControlsOnLeft ? weekScopeButtonMarkup : ''}
         ${showMassColumn ? `
@@ -7001,9 +7011,7 @@ function renderParticipantMeals() {
           const columnMeals = weekMeals.filter((item) => item.mealTypeId === meal.mealTypeId);
           const mealEffect = getBulkSelectionEffect(columnMeals);
           const mealHasOpenMeals = columnMeals.some((item) => item.isOpen);
-          const mealAction = mealEffect === 'PRESENT'
-            ? `Prenota ${meal.label.toLowerCase()} per tutta la settimana`
-            : `Svuota ${meal.label.toLowerCase()} per tutta la settimana`;
+          const mealAction = getCalendarSelectionLabel('week-meal', mealEffect, meal.mealTypeId);
           return `
             <button type="button" class="week-meal-heading${mealEffect === 'ABSENT' ? ' week-meal-heading-complete' : ''}" data-week-meal-type="${meal.mealTypeId}" data-week-meal-effect="${mealEffect}" data-week-meal-label="${escapeHtml(meal.label)}" aria-pressed="${mealEffect === 'ABSENT'}" aria-label="${escapeHtml(mealAction)}" title="${escapeHtml(mealAction)}"${mealHasOpenMeals ? '' : ' disabled'}>
               <span class="week-heading-icon" aria-hidden="true">${getMealIcon(meal.mealTypeId)}</span>
@@ -7021,9 +7029,9 @@ function renderParticipantMeals() {
           && (day.date < formatDateId(getCenterToday()) || !dayHasOpenMeals)
           ? ' week-matrix-row-subdued'
           : '';
-        const dayAction = dayEffect === 'PRESENT' ? 'Prenota tutta la giornata' : 'Svuota tutta la giornata';
+        const dayAction = getCalendarSelectionLabel('day', dayEffect);
         const dayButtonMarkup = `
-          <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${day.label}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
+          <button type="button" class="week-day-button${dayEffect === 'ABSENT' ? ' week-day-button-complete' : ''}" data-day-date="${day.date}" data-day-effect="${dayEffect}" aria-pressed="${dayEffect === 'ABSENT'}" aria-label="${escapeHtml(`${formatCalendarDate(parseDateId(day.date))}. ${dayAction}`)}" title="${escapeHtml(dayAction)}"${dayHasOpenMeals ? '' : ' disabled'}>
             <strong>${escapeHtml(formatWeekDayCode(day.date))}</strong>
             ${day.isToday ? `<span>${escapeHtml(t('time.today'))}</span>` : ''}
           </button>
@@ -7169,9 +7177,9 @@ function renderWeekMassButton(day, operation) {
   const label = t(massScheduled ? 'summary.yes' : 'summary.no');
   const windowState = getMassWindowState(day);
   const cutoffLabel = formatCutoffLabel(windowState);
-  const stateLabel = windowState.isOpen ? `Messa: ${label}` : `Messa: ${label}. ${cutoffLabel}`;
+  const stateLabel = windowState.isOpen ? `${t('summary.mass')}: ${label}` : `${t('summary.mass')}: ${label}. ${cutoffLabel}`;
   return `
-    <button type="button" class="week-mass-button ${massScheduled ? 'week-mass-button-yes' : 'week-mass-button-no'}${windowState.isOpen ? '' : ' week-mass-button-locked'}" data-week-mass-date="${escapeHtml(day.date)}" data-week-mass-scheduled="${massScheduled}" aria-pressed="${massScheduled}" aria-label="${escapeHtml(`${day.label}. ${stateLabel}`)}" title="${escapeHtml(windowState.isOpen ? `Messa: ${label}` : cutoffLabel)}"${windowState.isOpen ? '' : ' disabled'}>
+    <button type="button" class="week-mass-button ${massScheduled ? 'week-mass-button-yes' : 'week-mass-button-no'}${windowState.isOpen ? '' : ' week-mass-button-locked'}" data-week-mass-date="${escapeHtml(day.date)}" data-week-mass-scheduled="${massScheduled}" aria-pressed="${massScheduled}" aria-label="${escapeHtml(`${formatCalendarDate(parseDateId(day.date))}. ${stateLabel}`)}" title="${escapeHtml(windowState.isOpen ? `${t('summary.mass')}: ${label}` : cutoffLabel)}"${windowState.isOpen ? '' : ' disabled'}>
       <strong>${label}</strong>
     </button>
   `;
@@ -7238,6 +7246,12 @@ function getLocalizedMealLabel(mealTypeId, fallback = '') {
 
 function getMealStateLabel(isPresent) {
   return t(isPresent ? 'meal.status.booked' : 'meal.status.notBooked');
+}
+
+function getCalendarSelectionLabel(scope, effect, mealTypeId = '') {
+  return t(`calendar.selection.${scope}.${effect === 'PRESENT' ? 'select' : 'clear'}`, {
+    meal: mealTypeId ? getLocalizedMealLabel(mealTypeId) : ''
+  });
 }
 
 function renderTodayOverview() {
@@ -7417,7 +7431,7 @@ function renderCalendarControls() {
   const currentWeekId = formatDateId(currentWeekStart);
   const selectedWeekId = formatDateId(state.weekStartDate);
   elements.calendarStatus.textContent = selectedWeekId === currentWeekId
-    ? 'Settimana corrente'
+    ? t('calendar.status.currentWeek')
     : formatCalendarWeekLabel(state.weekStartDate);
 
   const currentMonth = startOfMonth(centerToday);
@@ -7455,8 +7469,8 @@ function renderMonthGrid() {
   const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
   const monthRenderKey = JSON.stringify({
     participantId: state.selectedParticipant?.participantId || '',
-    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'original',
-    language: document.documentElement.lang || 'it',
+    interfaceStyle: document.documentElement.dataset.interfaceStyle || 'cool',
+    language: getLocale(),
     month: formatMonthId(state.monthDate),
     monthControlsSide: controlsOnLeft ? 'left' : 'right',
     today: formatDateId(getCenterToday()),
@@ -7492,7 +7506,7 @@ function renderMonthGrid() {
     .some((meal) => meal.isOpen);
   const monthControlMarkup = `
     <span class="month-weekday-month-control">
-      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${monthEffect === 'PRESENT' ? 'Prenota tutto il mese' : 'Svuota tutto il mese'}" title="${monthEffect === 'PRESENT' ? 'Prenota mese' : 'Svuota mese'}"${monthHasOpenMeals ? '' : ' disabled'}>
+      <button type="button" class="month-toggle-button${monthEffect === 'ABSENT' ? ' month-toggle-button-selected' : ''}" data-month-scope="month" data-month-effect="${monthEffect}" aria-pressed="${monthEffect === 'ABSENT'}" aria-label="${escapeHtml(getCalendarSelectionLabel('month', monthEffect))}" title="${escapeHtml(getCalendarSelectionLabel('month', monthEffect))}"${monthHasOpenMeals ? '' : ' disabled'}>
         <span class="month-toggle-glyph" aria-hidden="true">M</span>
       </button>
     </span>`;
@@ -7509,7 +7523,7 @@ function renderMonthGrid() {
         return `
           <div class="month-week-cluster">
             ${index === 0 ? `
-              <div class="month-weekday-row month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="Giorni della settimana">
+              <div class="month-weekday-row month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(t('calendar.weekdays'))}">
                 ${controlsOnLeft ? monthControlMarkup : ''}
                 ${weekdayLabels.map((label) => `<span class="month-weekday-cell">${label}</span>`).join('')}
                 ${controlsOnLeft ? '' : monthControlMarkup}
@@ -7517,16 +7531,16 @@ function renderMonthGrid() {
             ` : ''}
             <div class="month-week-row month-controls-${controlsOnLeft ? 'left' : 'right'}">
               <div class="month-week-mobile-header">
-                ${controlsOnLeft ? renderMonthScopeButtons('Settimana', weekStart, null) : ''}
+                ${controlsOnLeft ? renderMonthScopeButtons(t('week.view.short'), weekStart, null) : ''}
                 ${week.map(renderMonthDayNumber).join('')}
-                ${controlsOnLeft ? '' : renderMonthScopeButtons('Settimana', weekStart, null)}
+                ${controlsOnLeft ? '' : renderMonthScopeButtons(t('week.view.short'), weekStart, null)}
               </div>
-              ${controlsOnLeft ? `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+              ${controlsOnLeft ? `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="${escapeHtml(t(weekComplete ? 'calendar.weekActionsComplete' : 'calendar.weekActions'))}">
                 <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
-                ${renderMonthScopeButtons('Settimana', weekStart, null)}
-                ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
-                ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
-                ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
+                ${renderMonthScopeButtons(t('week.view.short'), weekStart, null)}
+                ${renderMonthScopeButtons(t('meal.type.breakfast'), weekStart, 'breakfast')}
+                ${renderMonthScopeButtons(t('meal.type.lunch'), weekStart, 'lunch')}
+                ${renderMonthScopeButtons(t('meal.type.dinner'), weekStart, 'dinner')}
               </aside>` : ''}
               ${week.map((day) => {
                 const classes = [
@@ -7543,12 +7557,12 @@ function renderMonthGrid() {
                   </article>
                 `;
               }).join('')}
-              ${controlsOnLeft ? '' : `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="Azioni settimana${weekComplete ? ', completata' : ''}">
+              ${controlsOnLeft ? '' : `<aside class="month-week-action-row${weekComplete ? ' month-week-complete' : ''}" data-week-start="${weekStart}" aria-label="${escapeHtml(t(weekComplete ? 'calendar.weekActionsComplete' : 'calendar.weekActions'))}">
                 <strong>${weekStart.slice(8)}-${weekEnd.slice(8)}</strong>
-                ${renderMonthScopeButtons('Settimana', weekStart, null)}
-                ${renderMonthScopeButtons('Colazione', weekStart, 'breakfast')}
-                ${renderMonthScopeButtons('Pranzo', weekStart, 'lunch')}
-                ${renderMonthScopeButtons('Cena', weekStart, 'dinner')}
+                ${renderMonthScopeButtons(t('week.view.short'), weekStart, null)}
+                ${renderMonthScopeButtons(t('meal.type.breakfast'), weekStart, 'breakfast')}
+                ${renderMonthScopeButtons(t('meal.type.lunch'), weekStart, 'lunch')}
+                ${renderMonthScopeButtons(t('meal.type.dinner'), weekStart, 'dinner')}
               </aside>`}
             </div>
           </div>
@@ -7568,7 +7582,7 @@ function renderMonthDayNumber(day, extraClass = '') {
     .filter(Boolean)
     .join(' ');
   return `
-    <button type="button" class="${className}" data-month-day="${day.date}" aria-label="Apri ${day.date}${day.isToday ? ', oggi' : ''}"${day.isToday ? ' aria-current="date"' : ''}>
+    <button type="button" class="${className}" data-month-day="${day.date}" aria-label="${escapeHtml(t('calendar.openDay', { date: formatCalendarDate(parseDateId(day.date)) }))}${day.isToday ? ', ' + escapeHtml(t('time.today')) : ''}"${day.isToday ? ' aria-current="date"' : ''}>
       <span class="month-day-number-value">${day.dayNumber}</span>
     </button>
   `;
@@ -7598,12 +7612,12 @@ function renderMonthScopeButtons(label, weekStart, mealTypeId) {
     : getInterfaceIcon('calendar', '▦');
   const effect = getMonthScopeEffect(weekStart, mealTypeId);
   const editableMeals = getMonthScopeMeals(weekStart, mealTypeId);
-  const action = effect === 'PRESENT' ? 'prenota' : 'libera';
+  const action = getCalendarSelectionLabel(scope, effect, mealTypeId);
   const selectedClass = effect === 'ABSENT' ? ' month-scope-toggle-selected' : '';
   return `
     <span class="month-scope-group">
-      <span class="month-scope-label"><span aria-hidden="true">${icon}</span><span>${label}</span></span>
-      <button type="button" class="month-scope-button month-scope-toggle${selectedClass}" data-month-scope="${scope}" data-week-start="${weekStart}" data-meal-type="${mealTypeId || ''}" data-month-effect="${effect}" aria-pressed="${effect === 'ABSENT'}" aria-label="${label}: ${action}" title="${label}: ${action}"${editableMeals.length > 0 ? '' : ' disabled'}><span class="month-scope-glyph" aria-hidden="true">${icon}</span></button>
+      <span class="month-scope-label"><span aria-hidden="true">${icon}</span><span>${escapeHtml(label)}</span></span>
+      <button type="button" class="month-scope-button month-scope-toggle${selectedClass}" data-month-scope="${scope}" data-week-start="${weekStart}" data-meal-type="${mealTypeId || ''}" data-month-effect="${effect}" aria-pressed="${effect === 'ABSENT'}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}"${editableMeals.length > 0 ? '' : ' disabled'}><span class="month-scope-glyph" aria-hidden="true">${icon}</span></button>
     </span>
   `;
 }
@@ -8266,6 +8280,7 @@ function prepareWeekOperationalDate(dates) {
   const preferredId = dateIds.includes(state.weekOperationalDateId)
     ? state.weekOperationalDateId
     : dateIds.includes(todayId) ? todayId : dateIds[0];
+  if (state.weekOperationalDateId !== preferredId) state.weekSickDraft = null;
   state.weekOperationalDateId = preferredId;
   elements.weekOperationsDay.innerHTML = dates.map((date) => (
     `<option value="${formatDateId(date)}">${escapeHtml(formatCalendarWeekLabel(date))}</option>`
@@ -8282,6 +8297,7 @@ async function refreshWeekOperations(forceRefresh = false) {
   const requestVersion = ++state.weekOperationsRequestVersion;
   const dateId = elements.weekOperationsDay.value || state.weekOperationalDateId;
   if (!dateId) return;
+  if (state.weekOperationalDateId !== dateId) state.weekSickDraft = null;
   state.weekOperationalDateId = dateId;
   elements.weekOperationsStatus.textContent = t('week.operations.status.updating');
   try {
@@ -8309,21 +8325,22 @@ function renderWeekOperations() {
   if (!allowed) return;
 
   const activeParticipants = state.adminParticipants.filter((participant) => participant.status === 'ACTIVE');
-  const selectedSickIds = new Set((state.weekOperationalHealth?.sickPeople || []).map((person) => person.participantId));
+  const sickPeople = getWeekSickDraft()?.people || state.weekOperationalHealth?.sickPeople || [];
+  const selectedSickIds = new Set(sickPeople.map((person) => person.participantId));
   const availableParticipants = activeParticipants.filter((participant) => !selectedSickIds.has(participant.participantId));
   const selectedParticipants = activeParticipants.filter((participant) => selectedSickIds.has(participant.participantId));
   elements.weekHealthList.innerHTML = activeParticipants.length > 0 ? `
     <div class="week-health-picker">
-      <select data-week-sick-select aria-label="${escapeHtml(t('week.operations.person'))}"${availableParticipants.length ? '' : ' disabled'}>
+      <select data-week-sick-select aria-label="${escapeHtml(t('week.operations.person'))}"${availableParticipants.length && !elements.weekHealthSave.disabled ? '' : ' disabled'}>
         ${availableParticipants.map((participant) => `<option value="${escapeHtml(participant.participantId)}">${escapeHtml(participant.displayName)}${participant.groupId === 'group_ospiti' ? ' · ospite' : ''}</option>`).join('')}
       </select>
-      <button type="button" class="secondary-action" data-week-sick-add${availableParticipants.length ? '' : ' disabled'}>${escapeHtml(t('common.actions.add'))}</button>
+      <button type="button" class="secondary-action" data-week-sick-add${availableParticipants.length && !elements.weekHealthSave.disabled ? '' : ' disabled'}>${escapeHtml(t('common.actions.add'))}</button>
     </div>
     <div class="week-health-selected">
       ${selectedParticipants.map((participant) => `
         <div class="week-health-selected-row" data-week-sick-selected="${escapeHtml(participant.participantId)}">
           <span>${escapeHtml(participant.displayName)}${participant.groupId === 'group_ospiti' ? ' · ospite' : ''}</span>
-          <button type="button" class="tertiary-action" data-week-sick-remove="${escapeHtml(participant.participantId)}">${escapeHtml(t('common.actions.delete'))}</button>
+          <button type="button" class="tertiary-action" data-week-sick-remove="${escapeHtml(participant.participantId)}"${elements.weekHealthSave.disabled ? ' disabled' : ''}>${escapeHtml(t('common.actions.delete'))}</button>
         </div>
       `).join('')}
     </div>
@@ -8361,7 +8378,7 @@ function renderFutureMonth() {
     .filter((week) => week.some((day) => day.inCurrentMonth));
   const weekdayLabels = getCalendarWeekdayLabels();
   const controlsOnLeft = (state.centerContactSettings.monthControlsSide || 'right') === 'left';
-  const monthScopeButton = renderFutureMonthScopeButton('Mese', null, null, { scope: 'month' });
+  const monthScopeButton = renderFutureMonthScopeButton(t('month.view.short'), null, null, { scope: 'month' });
   const focusSnapshot = captureFocusWithin(elements.monthGrid);
   elements.monthGrid.innerHTML = `
     <div class="month-future month-controls-${controlsOnLeft ? 'left' : 'right'}" aria-label="${escapeHtml(formatMonthLabel(state.monthDate))}">
@@ -8370,7 +8387,7 @@ function renderFutureMonth() {
       </div>
       ${weeks.map((week) => {
         const weekStart = week[0].date;
-        const weekScopeButton = renderFutureMonthScopeButton('Settimana', weekStart, null);
+        const weekScopeButton = renderFutureMonthScopeButton(t('week.view.short'), weekStart, null);
         return `
         <section class="month-future-week" data-week-start="${escapeHtml(weekStart)}">
           <div class="month-future-row month-future-dates">
@@ -8400,10 +8417,7 @@ function renderFutureMonthScopeButton(label, weekStart, mealTypeId, { scope = ''
   const hasPendingMeals = editableMeals.some((meal) => (
     state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId))
   ));
-  const action = effect === 'PRESENT' ? 'Prenota' : 'Libera';
-  const actionLabel = isMonth
-    ? `${action} tutto il mese`
-    : `${action} ${label.toLowerCase()} per la settimana`;
+  const actionLabel = getCalendarSelectionLabel(resolvedScope, effect, mealTypeId);
   const icon = isMonth
     ? 'M'
     : mealTypeId
@@ -8688,13 +8702,22 @@ function renderWeekKitchenNotes() {
     : t('week.operations.note.empty');
 }
 
+function getWeekSickDraft() {
+  const draft = state.weekSickDraft;
+  return draft?.centerId === getActiveCenterId()
+    && draft.dateId === state.weekOperationalDateId
+    && draft.dateId === state.weekOperationalHealth?.dateId
+    ? draft : null;
+}
+
 function handleWeekHealthListClick(event) {
+  if (elements.weekHealthSave.disabled || !captureWeekOperationContext().isCurrent()) return;
   const addButton = event.target.closest('[data-week-sick-add]');
   const removeButton = event.target.closest('[data-week-sick-remove]');
   if (!addButton && !removeButton) return;
-  const currentPeople = Array.isArray(state.weekOperationalHealth?.sickPeople)
-    ? [...state.weekOperationalHealth.sickPeople]
-    : [];
+  const draft = getWeekSickDraft();
+  const savedPeople = state.weekOperationalHealth?.sickPeople || [];
+  const currentPeople = [...(draft?.people || savedPeople)];
   if (addButton) {
     const participantId = elements.weekHealthList.querySelector('[data-week-sick-select]')?.value;
     const participant = state.adminParticipants.find((item) => item.participantId === participantId);
@@ -8709,7 +8732,13 @@ function handleWeekHealthListClick(event) {
     const participantId = removeButton.dataset.weekSickRemove;
     currentPeople.splice(0, currentPeople.length, ...currentPeople.filter((person) => person.participantId !== participantId));
   }
-  state.weekOperationalHealth = { ...(state.weekOperationalHealth || {}), sickPeople: currentPeople };
+  state.weekSickDraft = {
+    centerId: getActiveCenterId(),
+    dateId: state.weekOperationalDateId,
+    // This baseline must survive refreshes and saves of other daily fields.
+    previousPeople: draft?.previousPeople || savedPeople.map((person) => ({ ...person })),
+    people: currentPeople
+  };
   renderWeekOperations();
 }
 
@@ -8734,12 +8763,13 @@ function renderWeekDietAssignments() {
 
 async function handleWeekHealthSave() {
   const context = captureWeekOperationContext();
-  if (!context.isCurrent()) return;
+  if (!context.isCurrent() || elements.weekHealthSave.disabled) return;
+  const draft = getWeekSickDraft();
   const selectedIds = new Set(Array.from(
     elements.weekHealthList.querySelectorAll('[data-week-sick-selected]'),
     (row) => row.dataset.weekSickSelected
   ));
-  const sickPeople = state.adminParticipants
+  const sickPeople = draft?.people || state.adminParticipants
     .filter((participant) => selectedIds.has(participant.participantId))
     .map((participant) => ({
       participantId: participant.participantId,
@@ -8747,20 +8777,27 @@ async function handleWeekHealthSave() {
       groupId: participant.groupId
     }));
   elements.weekHealthSave.disabled = true;
+  elements.weekHealthList.querySelectorAll('[data-week-sick-add], [data-week-sick-remove], [data-week-sick-select]')
+    .forEach((control) => { control.disabled = true; });
   elements.weekHealthStatus.textContent = t('week.operations.health.saving');
   try {
     const health = await saveSickPeople(parseDateId(context.dateId), sickPeople, {
-      previousPeople: state.weekOperationalHealth?.sickPeople || []
+      previousPeople: draft?.previousPeople || state.weekOperationalHealth?.sickPeople || []
     });
     if (!context.isCurrent()) return;
     state.weekOperationalHealth = health;
-    renderWeekOperations();
-    elements.weekHealthStatus.textContent = sickPeople.length > 0 ? t('week.operations.health.saved') : t('week.operations.health.empty');
+    if (state.weekSickDraft === draft) state.weekSickDraft = null;
+    elements.weekHealthStatus.textContent = health.sickPeople?.length > 0 ? t('week.operations.health.saved') : t('week.operations.health.empty');
   } catch (error) {
     if (!context.isCurrent()) return;
     elements.weekHealthStatus.textContent = friendlyErrorMessage(error, 'Elenco non salvato');
   } finally {
     elements.weekHealthSave.disabled = false;
+    if (context.isCurrent()) {
+      const status = elements.weekHealthStatus.textContent;
+      renderWeekOperations();
+      elements.weekHealthStatus.textContent = status;
+    }
   }
 }
 
@@ -9620,8 +9657,8 @@ function syncWeekSelectionControls() {
     ));
     const nextScheduled = !allScheduled;
     const actionLabel = nextScheduled
-      ? 'Segna Messa sì per i giorni modificabili'
-      : 'Segna Messa no per i giorni modificabili';
+      ? t('calendar.mass.select')
+      : t('calendar.mass.clear');
     const busy = massBulkButton.getAttribute('aria-busy') === 'true';
     massBulkButton.classList.toggle('week-mass-heading-complete', allScheduled);
     massBulkButton.dataset.weekMassScheduled = String(nextScheduled);
@@ -9673,8 +9710,8 @@ function syncWeekMassButton(button, day, massScheduled) {
   button.classList.toggle('week-mass-button-locked', !windowState.isOpen);
   button.dataset.weekMassScheduled = String(massScheduled);
   button.setAttribute('aria-pressed', String(massScheduled));
-  button.setAttribute('aria-label', `${day.label}. Messa: ${label}${windowState.isOpen ? '' : `. ${cutoffLabel}`}`);
-  button.title = windowState.isOpen ? `Messa: ${label}` : cutoffLabel;
+  button.setAttribute('aria-label', `${formatCalendarDate(parseDateId(day.date))}. ${t('summary.mass')}: ${label}${windowState.isOpen ? '' : `. ${cutoffLabel}`}`);
+  button.title = windowState.isOpen ? `${t('summary.mass')}: ${label}` : cutoffLabel;
   button.disabled = busy || !windowState.isOpen;
   const value = button.querySelector('strong');
   if (value) value.textContent = label;
@@ -9704,7 +9741,7 @@ function syncMonthSelectionControls() {
   elements.monthGrid.querySelectorAll('.month-week-action-row[data-week-start]').forEach((panel) => {
     const complete = getMonthScopeEffect(panel.dataset.weekStart, null) === 'ABSENT';
     panel.classList.toggle('month-week-complete', complete);
-    panel.setAttribute('aria-label', `Azioni settimana${complete ? ', completata' : ''}`);
+    panel.setAttribute('aria-label', t(complete ? 'calendar.weekActionsComplete' : 'calendar.weekActions'));
   });
 }
 
@@ -9830,8 +9867,7 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
 
 function formatWeekDayCode(dateId) {
   const date = parseDateId(dateId);
-  const symbols = ['D', 'L', 'M', 'X', 'G', 'V', 'S'];
-  return `${symbols[date.getDay()]} ${date.getDate()}`;
+  return `${getCalendarWeekdayLabel(date.getDay())} ${date.getDate()}`;
 }
 
 function formatCutoffLabel(meal) {
@@ -9865,9 +9901,15 @@ function formatWeekRangeFrom(startDate) {
 }
 
 function getCalendarWeekdayLabels() {
-  return state.centerContactSettings.weekStartsOn === 'sunday'
-    ? ['D', 'L', 'M', 'X', 'G', 'V', 'S']
-    : ['L', 'M', 'X', 'G', 'V', 'S', 'D'];
+  const firstDay = state.centerContactSettings.weekStartsOn === 'sunday' ? 0 : 1;
+  return Array.from({ length: 7 }, (_, index) => getCalendarWeekdayLabel((firstDay + index) % 7));
+}
+
+function getCalendarWeekdayLabel(day) {
+  // Preserve the familiar compact Italian codes; other languages use their
+  // localized short names, so weekdays with the same initial remain distinct.
+  if (getLocale() === 'it') return ['D', 'L', 'M', 'X', 'G', 'V', 'S'][day];
+  return formatDateTime(new Date(2026, 0, 4 + day), { weekday: 'short' });
 }
 
 function startOfWeek(date, weekStartsOn = state.centerContactSettings.weekStartsOn) {

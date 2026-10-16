@@ -91,7 +91,7 @@ test('service worker handles only navigation, app resources, and Firebase SDK re
 
 test('service worker keeps navigation network-first with an offline cache fallback', () => {
   assert.match(serviceWorker, /const response = await fetch\(request\)/);
-  assert.match(serviceWorker, /cache\?\.put\(fallbackPath \|\| '\/index\.html', copy\)/);
+  assert.match(serviceWorker, /await cache\.addAll\(resources\);[\s\S]*await cache\.put\('\/index\.html', response\)/);
   assert.match(serviceWorker, /cache\?\.match\(fallbackPath \|\| '\/index\.html'\)/);
   assert.match(serviceWorker, /networkFirst\(event\.request, '\/index\.html', event\)/);
 });
@@ -113,7 +113,7 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /manifest\.webmanifest\?v=20260824b/);
   assert.match(index, /launcher-192\.png\?v=20260821a/);
   assert.match(app, /center-settings\.js\?v=20261014b/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v455'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v456'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);

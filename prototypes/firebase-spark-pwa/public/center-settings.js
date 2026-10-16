@@ -521,7 +521,7 @@ function normalizeAppDisplaySubtitle(value) {
 
 function normalizeInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'urban-plus';
+  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'cool';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {

@@ -12,16 +12,17 @@ const deferred = () => {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 };
-function harness() {
+function harness({ profileLoader, initialUser = { uid: 'restored-uid', isAnonymous: true }, sessionUid = 'restored-uid' } = {}) {
   const auth = deferred(), session = deferred(), profile = deferred();
   const events = [];
   const context = vm.createContext({
     loadStoredResidentSignature: () => 'AA', loadStoredResidentParticipantId: () => 'person',
     loadStoredResidentToken: () => ({ tokenId: 'token', expiresAt: '2050-01-01' }),
     waitForAuthReady: () => auth.promise, getStrongAuthenticatedUser: () => null,
+    getCurrentUser: () => initialUser,
     getAuthorizedAdministratorUser: async () => null,
-    ensurePersonalSession: () => { events.push('session'); return session.promise.then(() => ({ uid: 'restored-uid' })); },
-    loadPublicParticipantById: () => { events.push('profile'); return profile.promise; },
+    ensurePersonalSession: () => { events.push('session'); return session.promise.then(() => ({ uid: sessionUid })); },
+    loadPublicParticipantById: () => { events.push('profile'); return profileLoader ? profileLoader() : profile.promise; },
     normalizeResidentSignature: value => value,
     rememberResidentIdentity: () => events.push('remember'),
     isRecoverableSessionError: error => error.code === 'unavailable',
@@ -32,7 +33,7 @@ function harness() {
   return { auth, session, profile, events, restore: context.restoreFriendlyResidentSession };
 }
 
-test('settings preparation waits for Auth and session, then overlaps the profile read', async () => {
+test('profile overlaps session after Auth; settings and identity publication still wait for session', async () => {
   const h = harness();
   const pending = h.restore({ onSessionReady: (identity) => {
     assert.equal(identity.participantId, 'person');
@@ -42,7 +43,7 @@ test('settings preparation waits for Auth and session, then overlaps the profile
   await turn();
   assert.deepEqual(h.events, []);
   h.auth.resolve(); await turn();
-  assert.deepEqual(h.events, ['session']);
+  assert.deepEqual(h.events, ['profile', 'session']);
   h.session.resolve(); await turn();
   assert.ok(h.events.includes('settings'));
   assert.ok(h.events.includes('profile'));
@@ -59,7 +60,65 @@ test('failed session does not start protected preparation or clear persistent id
   h.auth.resolve(); await turn();
   h.session.reject(Object.assign(new Error('network'), { code: 'unavailable' }));
   await rejected;
+  assert.deepEqual(h.events, ['profile', 'session']);
+});
+
+test('completed profile cannot publish identity before the session is checked', async () => {
+  const h = harness();
+  const pending = h.restore();
+  h.auth.resolve(); h.profile.resolve({ participantId: 'person', signature: 'AA' });
+  await turn();
+  assert.ok(!h.events.includes('remember'));
+  h.session.resolve();
+  assert.equal((await pending).participant.participantId, 'person');
+});
+
+for (const code of ['permission-denied', 'firestore/permission-denied']) {
+  test(`speculative ${code} retries only after session recovery`, async () => {
+    let reads = 0;
+    const h = harness({ profileLoader: async () => {
+      if (++reads === 1) throw Object.assign(new Error('missing session'), { code });
+      return { participantId: 'person', signature: 'AA' };
+    } });
+    const pending = h.restore(); h.auth.resolve(); await turn();
+    assert.equal(reads, 1);
+    h.session.resolve();
+    assert.equal((await pending).participant.participantId, 'person');
+    assert.equal(reads, 2);
+    assert.ok(!h.events.includes('signout'));
+  });
+}
+
+test('a replaced Auth identity discards the old profile, even if it was valid', async () => {
+  let reads = 0;
+  const h = harness({ sessionUid: 'new-uid', profileLoader: async () => {
+    reads++;
+    return reads === 1 ? { participantId: 'person', signature: 'AA' } : null;
+  } });
+  const pending = h.restore(); h.auth.resolve(); await turn(); h.session.resolve();
+  assert.equal(await pending, null);
+  assert.equal(reads, 2);
+  assert.ok(h.events.includes('signout'));
+  assert.ok(!h.events.includes('remember'));
+});
+
+test('without an existing anonymous identity the profile waits for session creation', async () => {
+  const h = harness({ initialUser: null });
+  const pending = h.restore(); h.auth.resolve(); await turn();
   assert.deepEqual(h.events, ['session']);
+  h.session.resolve(); h.profile.resolve({ participantId: 'person', signature: 'AA' });
+  assert.equal((await pending).participant.participantId, 'person');
+});
+
+test('network failure of speculative profile preserves credentials and does not retry', async () => {
+  const h = harness();
+  const pending = h.restore();
+  const rejected = assert.rejects(pending, error => error.preserveResidentIdentity === true);
+  h.auth.resolve(); await turn();
+  h.profile.reject(Object.assign(new Error('offline'), { code: 'unavailable' }));
+  await turn(); h.session.resolve(); await rejected;
+  assert.equal(h.events.filter(event => event === 'profile').length, 1);
+  assert.ok(!h.events.includes('clear'));
 });
 
 test('optional preload failure cannot sign out the resident', async () => {

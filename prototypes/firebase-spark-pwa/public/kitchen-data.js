@@ -73,6 +73,7 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
       count: counts.total,
       diets: formatDietCounts(counts.diets),
       dietParticipants: counts.participants,
+      participantDiets: counts.participantDiets,
       status: window ? window.status : 'MISSING',
       closesAt: window ? window.closesAt : null
     };
@@ -304,11 +305,16 @@ function countEffectiveReservations(rulesByParticipant, overrides, mealTypeId, m
     ...rulesByParticipant.keys(),
     ...relevantOverrides.map((override) => override.participantId)
   ]);
-  const counts = { total: 0, diets: new Map(), participants: [] };
+  const counts = { total: 0, diets: new Map(), participants: [], participantDiets: [] };
 
   participantIds.forEach((participantId) => {
     const override = overrideByParticipant.get(participantId);
     const participantRules = rulesByParticipant.get(participantId) || [];
+    const rule = findApplicableRule(participantRules, participantId, mealTypeId, mealDate);
+    const dietTags = resolveEffectiveDietTags(rule, override);
+    // Ammalati senza prenotazione: conservare la dieta del pasto corrente
+    // senza aggiungerli ai commensali e senza caricare dati anagrafici.
+    counts.participantDiets.push({ participantId, dietTags });
     const effect = resolveEffectiveEffect({
       participantId,
       mealTypeId,
@@ -320,8 +326,6 @@ function countEffectiveReservations(rulesByParticipant, overrides, mealTypeId, m
       return;
     }
 
-    const rule = findApplicableRule(participantRules, participantId, mealTypeId, mealDate);
-    const dietTags = resolveEffectiveDietTags(rule, override);
     counts.total += 1;
     counts.participants.push({ participantId, dietTags });
     addDietCounts(counts.diets, dietTags);

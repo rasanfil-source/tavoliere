@@ -21,10 +21,7 @@ function buildMatrixScreens(days, participants, operationDays, includeNames) {
   const operationByDate = new Map(
     normalizedOperations.map((day) => [day.dateId, day]),
   );
-  const participantDirectory = buildParticipantDirectory(
-    normalizedDays,
-    participants,
-  );
+  const participantDirectory = buildParticipantDirectory(participants);
   const mealOrder = getMealOrder(normalizedDays);
   const breakfastIndex = mealOrder.findIndex(
     (meal) => meal.mealTypeId === BREAKFAST_MEAL_TYPE_ID,
@@ -95,7 +92,7 @@ function getMealOrder(days) {
     : [];
 }
 
-function buildParticipantDirectory(days, participants) {
+function buildParticipantDirectory(participants) {
   const directory = new Map();
   const remember = (participant) => {
     if (participant?.participantId) {
@@ -107,16 +104,6 @@ function buildParticipantDirectory(days, participants) {
   };
 
   (Array.isArray(participants) ? participants : []).forEach(remember);
-  days.forEach((day) =>
-    day.meals?.forEach((meal) => {
-      (Array.isArray(meal.present) ? meal.present : []).forEach(remember);
-      (Array.isArray(meal.absent) ? meal.absent : []).forEach(remember);
-      (Array.isArray(meal.dietParticipants)
-        ? meal.dietParticipants
-        : []
-      ).forEach(remember);
-    }),
-  );
   return directory;
 }
 
@@ -162,7 +149,11 @@ function buildColumn(
     operationDay,
     meal.mealTypeId,
     participantDirectory,
-    present,
+    [
+      ...(Array.isArray(meal.participantDiets) ? meal.participantDiets : []),
+      ...(Array.isArray(meal.absent) ? meal.absent : []),
+      ...present,
+    ],
   );
   const configuredTotal = Math.max(0, Math.floor(Number(meal.count) || 0));
   const diningTotal = Array.isArray(meal.present)
@@ -282,6 +273,8 @@ function findSickMeal(
   }
 
   const assignments = getDietAssignments(operationDay);
+  // Le righe dei pasti possono contenere diete occasionali: usare soltanto
+  // il pasto della data corrente, mai una directory ricavata da altri giorni.
   const mealDirectory = new Map(
     (Array.isArray(mealParticipants) ? mealParticipants : []).map(
       (participant) => [participant.participantId, participant],

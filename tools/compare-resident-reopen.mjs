@@ -14,6 +14,11 @@ const previous = file => execFileSync('git', ['show', `${ref}:${path}${file}`], 
 const before = { app: previous('app.js'), participant: previous('participant-data.js') };
 const trials = 7;
 const ioDelayMs = 60;
+// Optional second argument models a profile read slower than other reads.
+const profileDelayMs = process.argv[3] === undefined ? ioDelayMs : Number(process.argv[3]);
+if (!Number.isFinite(profileDelayMs) || profileDelayMs < 0 || profileDelayMs > 10000) {
+  throw new Error('Profile delay must be between 0 and 10000 milliseconds');
+}
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const samples = { before: [], after: [] };
 const readCounts = {};
@@ -21,7 +26,10 @@ for (let trial = 0; trial < trials; trial++) {
   // Alternate order to reduce bias from JIT/host load. No timing threshold is a test.
   for (const label of trial % 2 ? ['after', 'before'] : ['before', 'after']) {
     const h = residentReopenHarness({ sources: label === 'before' ? before : reopenSources,
-      read: async (name, value) => { if (name !== 'extras') await delay(ioDelayMs); return value; } });
+      read: async (name, value) => {
+        if (name !== 'extras') await delay(name === 'profile' ? profileDelayMs : ioDelayMs);
+        return value;
+      } });
     await h.run();
     const usable = h.events.find(event => event.name === 'usable');
     assert.ok(usable, 'calendar reached publication');
@@ -57,7 +65,7 @@ const residentSize = manifest => ({ files: manifest.resident.length,
 console.log(JSON.stringify({
   baseline: ref, node: process.version, platform: process.platform,
   kind: 'Synthetic I/O in Node; DOM, WebKit, Auth network and Firestore transport are not measured',
-  trials, ioDelayMs,
+  trials, ioDelayMs, profileDelayMs,
   publicationMs: { before: samples.before.map(n => +n.toFixed(2)), after: samples.after.map(n => +n.toFixed(2)),
     medianBefore: +median(samples.before).toFixed(2), medianAfter: +median(samples.after).toFixed(2) },
   logicalReads: readCounts,

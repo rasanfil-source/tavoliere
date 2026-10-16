@@ -379,7 +379,7 @@ test('il comando mensile compatto sostituisce la barra doppia', () => {
   assert.match(app, /data-month-scope="month"/);
   assert.match(app, /function getMonthSelectionEffect/);
   assert.match(app, /month-day-number-today/);
-  assert.match(app, /day\.isToday \? ', oggi' : ''/);
+  assert.match(app, /day\.isToday \? ', ' \+ escapeHtml\(t\('time\.today'\)\) : ''/);
   assert.doesNotMatch(app, /month-today-badge|>OGGI</);
   assert.match(app, /aria-current="date"/);
   assert.match(styles, /--today-ink: #24698f/);
@@ -424,8 +424,8 @@ test('la vista mese su mobile e tablet porta la griglia in primo piano senza sca
 test('la vista futura mantiene selezioni singole e azioni collettive', () => {
   assert.match(app, /function renderFutureMonth\(\)/);
   assert.match(app, /function renderFutureMonthScopeButton\(label, weekStart, mealTypeId/);
-  assert.match(app, /renderFutureMonthScopeButton\('Mese', null, null, \{ scope: 'month' \}\)/);
-  assert.match(app, /renderFutureMonthScopeButton\('Settimana', weekStart, null\)/);
+  assert.match(app, /renderFutureMonthScopeButton\(t\('month\.view\.short'\), null, null, \{ scope: 'month' \}\)/);
+  assert.match(app, /renderFutureMonthScopeButton\(t\('week\.view\.short'\), weekStart, null\)/);
   assert.match(app, /renderFutureMonthScopeButton\(getLocalizedMealLabel\(mealTypeId\), weekStart, mealTypeId\)/);
   assert.match(app, /data-month-scope="\$\{resolvedScope\}"/);
   assert.match(app, /data-month-effect="\$\{effect\}"/);
@@ -596,7 +596,7 @@ test('le transizioni auth non possono smontare una sessione residente in corso',
 });
 
 test('Originale rigenera subito la matrice e non riusa le icone della vista precedente', () => {
-  assert.match(app, /interfaceStyle: document\.documentElement\.dataset\.interfaceStyle \|\| 'original'/);
+  assert.match(app, /interfaceStyle: document\.documentElement\.dataset\.interfaceStyle \|\| 'cool'/);
   assert.match(app, /if \(state\.residentReady \|\| \(state\.mode === 'week' && canUseWeekWithoutParticipant\(\)\)\) \{[\s\S]*renderParticipantMeals\(\)/);
 });
 

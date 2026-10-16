@@ -10,7 +10,7 @@ import { validateParticipantProfile } from './domain/participant-profile.mjs?v=2
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
 import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20261014b';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
-import { CENTER_BACKUP_SCHEMA_VERSION, RESTORABLE_CENTER_COLLECTIONS } from './domain/center-backup.mjs?v=20261014b';
+import { CENTER_BACKUP_SCHEMA_VERSION, RESTORABLE_CENTER_COLLECTIONS, sanitizeCenterBackupDocument } from './domain/center-backup.mjs?v=20261014b';
 import { invalidateCenterContactSettingsCache, loadCenterContactSettings } from './center-settings.js?v=20261014b';
 import { invalidateParticipantDataCaches, commitWithRetry, createRequestId } from './participant-data.js?v=20261014b';
 
@@ -365,7 +365,7 @@ export async function exportCenterData() {
       await readCollectionInPages(collectionName)
     ]))
   ]);
-  const center = centerSnapshot.exists() ? centerSnapshot.data() : {};
+  const center = sanitizeCenterBackupDocument(centerSnapshot.exists() ? centerSnapshot.data() : {});
   const documents = Object.fromEntries(collectionEntries);
   const totalDocuments = collectionEntries.reduce((sum, [, rows]) => sum + rows.length, 0);
 

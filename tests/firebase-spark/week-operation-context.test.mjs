@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const source = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url), 'utf8');
-const names = ['captureWeekOperationContext', 'handleWeekInvitedSave', 'handleWeekHealthSave',
+const names = ['captureWeekOperationContext', 'getWeekSickDraft', 'handleWeekInvitedSave', 'handleWeekHealthSave',
   'handleWeekDietSave', 'handleWeekDietListClick', 'handleWeekKitchenNoteSave', 'handleWeekKitchenNoteListClick'];
 const functions = names.map(name => source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`))[0]).join('\n');
 
@@ -29,7 +29,7 @@ function setup() {
   return { state, elements, handlers, event, resolve, reject, calls, renders: () => renders };
 }
 
-for (const name of names.slice(1)) {
+for (const name of names.slice(2)) {
   for (const failure of [false, true]) {
     test(`${name}: a late ${failure ? 'error' : 'result'} leaves the newly selected day intact`, async () => {
       const h = setup();

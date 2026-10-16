@@ -145,7 +145,9 @@ export async function saveCenterConfiguration({
   );
   const canResume = activeJob && jobMatchesTarget(activeJob, target);
 
-  if (!scheduleChanged && !canResume) {
+  // A different ACTIVE job may already have written some windows, even when
+  // the requested settings equal the center's still-unmodified settings.
+  if (!scheduleChanged && !activeJob) {
     await saveCenterWithoutCalendarRewrite(centerRef, centerId, user.uid, target, administratorSave);
     await administratorSave?.complete();
     reportProgress(onProgress, { completedDays: 0, totalDays: 0, status: 'COMPLETED' });
@@ -153,12 +155,19 @@ export async function saveCenterConfiguration({
   }
 
   const operationId = canResume ? activeJob.operationId : createOperationId();
+  const todayDateId = formatDateId(getDateInTimeZone(target.timezone));
   const startDateId = canResume
     ? activeJob.startDate
-    : formatDateId(getDateInTimeZone(target.timezone));
-  const targetThrough = DATE_ID_PATTERN.test(center.calendarCoveredThrough || '')
+    : activeJob && DATE_ID_PATTERN.test(activeJob.startDate || '') && activeJob.startDate < todayDateId
+      ? activeJob.startDate
+      : todayDateId;
+  const coveredThrough = DATE_ID_PATTERN.test(center.calendarCoveredThrough || '')
     ? center.calendarCoveredThrough
     : addDaysToDateId(startDateId, -1);
+  const targetThrough = activeJob && DATE_ID_PATTERN.test(activeJob.targetThrough || '')
+      && activeJob.targetThrough > coveredThrough
+    ? activeJob.targetThrough
+    : coveredThrough;
   const initialThrough = canResume
     ? activeJob.through
     : addDaysToDateId(startDateId, -1);
@@ -484,5 +493,5 @@ function normalizeResidentLabel(value, fallback = 'name') {
 
 function normalizeInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  return ALLOWED_INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'urban-plus';
+  return ALLOWED_INTERFACE_STYLE_VALUES.has(migratedValue) ? migratedValue : 'cool';
 }
