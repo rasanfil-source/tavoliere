@@ -145,8 +145,7 @@ export async function saveCenterConfiguration({
   );
   const canResume = activeJob && jobMatchesTarget(activeJob, target);
 
-  // A different ACTIVE job may already have written some windows, even when
-  // the requested settings equal the center's still-unmodified settings.
+  // Un'attività ACTIVE può avere già scritto alcune finestre, anche quando le impostazioni richieste coincidono con quelle del centro.
   if (!scheduleChanged && !activeJob) {
     await saveCenterWithoutCalendarRewrite(centerRef, centerId, user.uid, target, administratorSave);
     await administratorSave?.complete();

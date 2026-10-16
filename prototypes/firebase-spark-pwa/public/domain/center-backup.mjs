@@ -23,14 +23,13 @@ const REQUIRED_COLLECTIONS = Object.freeze([
   'reservationRules'
 ]);
 
-// Only configuration can leave the center in a backup. An allowlist also
-// excludes future authentication fields without relying on their names.
+// La copia del centro esporta solo la configurazione consentita. L'elenco esplicito esclude anche eventuali nuovi campi di autenticazione.
 const EXPORTABLE_CENTER_FIELDS = Object.freeze([
   'name', 'timezone', 'locale', 'status', 'reservationCutoffs',
   'calendarCoveredFrom', 'calendarCoveredThrough',
   'participantContactSharingEnabled', 'kitchenDietLegend',
   'participantDataUpdatedAt', 'avatarVersion', 'createdAt', 'updatedAt',
-  // Older centers may still keep presentation settings on the center itself.
+  // Le impostazioni di presentazione possono risiedere anche nel documento centro.
   'appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled',
   'themePalette', 'interfaceStyle', 'defaultView', 'summaryLayout',
   'kitchenLayout', 'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language'

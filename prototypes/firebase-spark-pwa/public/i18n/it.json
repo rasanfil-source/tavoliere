@@ -60,7 +60,7 @@
   "admin.activity.eventCount": "Attività visualizzate: {count}",
   "admin.activity.filtersLabel": "Filtri del registro attività",
   "admin.activity.loading": "Carico le attività…",
-  "admin.activity.loadMore": "Carica versioni precedenti",
+  "admin.activity.loadMore": "Carica attività precedenti",
   "admin.activity.noEvents": "Nessuna attività recente",
   "admin.activity.title": "Manutenzione",
   "admin.activity.todayAt": "Oggi, {time}",
@@ -730,5 +730,6 @@
   "mealReminder.notification.title": "È ora di prenotare",
   "mealReminder.notification.body": "Mancano 10 minuti: ricordati di segnarti per {meal}.",
   "mealReminder.notification.disable": "Disattiva",
-  "mealReminder.status.failed": "Promemoria non attivati. Riprova con l’app aperta e verifica le autorizzazioni alle notifiche."
+  "mealReminder.status.failed": "Promemoria non attivati. Riprova con l’app aperta e verifica le autorizzazioni alle notifiche.",
+  "language.ca": "Catalano"
 }

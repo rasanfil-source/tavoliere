@@ -172,7 +172,7 @@ Un account amministrativo può appartenere a più centri e scegliere quello atti
 
 ## Problemi comuni
 
-- **Versione vecchia:** chiudere completamente app e schede del sito, quindi riaprire. L’aggiornamento diventa attivo alla successiva apertura senza riavvio forzato.
+- **Aggiornamento dell’app:** chiudere completamente app e schede del sito, quindi riaprire. L’aggiornamento diventa attivo alla successiva apertura senza riavvio forzato.
 - **Vista iniziale errata:** salvare Aspetto; una riapertura usa la preferenza, un refresh conserva la vista corrente.
 - **Sessione non ripristinata:** controllare che il browser non cancelli i dati del sito.
 - **Cucina o Riepilogo senza dati:** usare il collegamento completo e aggiornato del centro.
@@ -180,3 +180,7 @@ Un account amministrativo può appartenere a più centri e scegliere quello atti
 - **Promemoria assenti:** controllare preferenza e permesso notifiche.
 - **Pasto non modificabile:** l’orario limite è trascorso.
 - **Connessione assente:** gli ultimi dati possono restare consultabili, ma le modifiche attendono la rete.
+
+## Lingua dell’interfaccia
+
+In **Aspetto → Lingua dell’app** puoi scegliere italiano, inglese, francese, spagnolo, tedesco o catalano. La preferenza personale resta sul dispositivo; l’amministratore può impostare la lingua proposta dal centro. Anche date, giorni e messaggi seguono la lingua scelta.

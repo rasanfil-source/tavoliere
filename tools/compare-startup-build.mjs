@@ -1,5 +1,4 @@
-// Read-only size comparison with an existing Git revision. This measures the
-// JavaScript graph, not elapsed time on an iPhone and not resident data.
+// Confronto in sola lettura delle dimensioni del grafo JavaScript con un riferimento Git. Non misura i tempi su iPhone né utilizza dati residenti.
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';

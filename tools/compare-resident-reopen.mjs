@@ -1,5 +1,4 @@
-// Local, synthetic comparison of actual orchestration source against a Git ref.
-// No production access, browser instrumentation or resident diagnostics.
+// Confronto locale con dati sintetici tra il sorgente di orchestrazione e un riferimento Git. Nessun accesso ai dati di produzione.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -14,7 +13,7 @@ const previous = file => execFileSync('git', ['show', `${ref}:${path}${file}`], 
 const before = { app: previous('app.js'), participant: previous('participant-data.js') };
 const trials = 7;
 const ioDelayMs = 60;
-// Optional second argument models a profile read slower than other reads.
+// Il secondo argomento facoltativo simula una lettura del profilo più lenta delle altre letture.
 const profileDelayMs = process.argv[3] === undefined ? ioDelayMs : Number(process.argv[3]);
 if (!Number.isFinite(profileDelayMs) || profileDelayMs < 0 || profileDelayMs > 10000) {
   throw new Error('Profile delay must be between 0 and 10000 milliseconds');
@@ -23,7 +22,7 @@ const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.len
 const samples = { before: [], after: [] };
 const readCounts = {};
 for (let trial = 0; trial < trials; trial++) {
-  // Alternate order to reduce bias from JIT/host load. No timing threshold is a test.
+  // Alterna l'ordine delle prove per limitare l'effetto di compilazione e carico del sistema. Le durate non costituiscono soglie di test.
   for (const label of trial % 2 ? ['after', 'before'] : ['before', 'after']) {
     const h = residentReopenHarness({ sources: label === 'before' ? before : reopenSources,
       read: async (name, value) => {

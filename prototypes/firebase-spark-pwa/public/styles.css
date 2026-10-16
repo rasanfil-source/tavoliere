@@ -1394,9 +1394,7 @@ body[data-center-activation="true"] .admin-shell-body {
   word-break: break-all;
 }
 
-/* L'input nativo resta accessibile da tastiera, ma la sua UI non viene
-   mostrata accanto al pulsante personalizzato: era la causa del controllo
-   apparentemente duplicato. */
+/* L'input nativo resta accessibile da tastiera; la rappresentazione visiva è affidata al pulsante personalizzato. */
 .visually-hidden {
   position: absolute !important;
   width: 1px !important;
@@ -1721,8 +1719,7 @@ html[data-theme="terracotta"] {
   --warn: #96630f;
   --danger: #9a4935;
   --info: #3f6e78;
-  /* Intestazioni di calendario calde e materiche: il blu-grigio
-     appartiene alla palette Smeraldo e stonava sulle superfici terracotta. */
+  /* Le intestazioni del calendario adottano i colori della palette Terracotta. */
   --calendar-heading-bg: #f3e3d7;
   --calendar-heading-border: #d8ad98;
   --calendar-heading-ink: #8e492f;
@@ -5754,8 +5751,7 @@ html:not([data-interface-style="future"]) .month-day-number-today .month-day-num
   box-shadow: none;
 }
 
-/* Originale: il bordo esterno del giorno corrente resta assente, mentre il
-   numero mantiene il contrasto pieno usato in precedenza. */
+/* Nell'aspetto Originale il giorno corrente usa il numero a contrasto pieno, senza bordo esterno. */
 html[data-interface-style="original"] .month-day-number-today .month-day-number-value {
   background: var(--today-ink);
   color: #fff;

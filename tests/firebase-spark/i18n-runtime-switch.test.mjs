@@ -11,7 +11,7 @@ import {
 } from '../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?v=20261014b';
 import { toUserMessage, classifyApplicationError } from '../../prototypes/firebase-spark-pwa/public/core/user-error.mjs';
 
-// Setup mock DOM environment for node test
+// Prepara un DOM simulato per i test Node.
 class MockElement {
   constructor(tagName = 'div') {
     this.tagName = tagName.toUpperCase();
@@ -111,6 +111,20 @@ test('i18n runtime: cambio lingua aggiorna cataloghi, stringhe t() e formattazio
   assert.equal(t('meal.type.lunch'), 'Mittagessen');
   assert.equal(t('meal.type.dinner'), 'Abendessen');
   assert.equal(t('dialog.transferOwnership.title'), 'Verantwortung übertragen');
+
+  // Passa al catalano e verifica plurali, variabili e lingua del documento.
+  await setLocale('ca');
+  assert.equal(getLocale(), 'ca');
+  assert.equal(t('common.actions.save'), 'Desa');
+  assert.equal(t('meal.type.breakfast'), 'Esmorzar');
+  assert.equal(t('meal.type.lunch'), 'Dinar');
+  assert.equal(t('meal.type.dinner'), 'Sopar');
+  assert.equal(t('week.view.title'), 'Setmana');
+  assert.equal(t('participant.meal.selectedCount', { count: 1 }), '1 àpat seleccionat');
+  assert.equal(t('participant.meal.selectedCount', { count: 2 }), '2 àpats seleccionats');
+  assert.equal(t('summary.callPerson', { name: 'Joan' }), 'Truca a Joan');
+  assert.equal(document.documentElement.lang, 'ca');
+  assert.match(formatDate(new Date(2026, 9, 17), { month: 'long' }), /octubre/);
 });
 
 test('i18n runtime: interpolazione placeholder e opzioni dinamiche', async () => {

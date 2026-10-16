@@ -110,8 +110,7 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
   ]);
   const profileData = profileSnapshot.exists() ? profileSnapshot.data() : {};
   if (existingAccess.active) {
-    // The profile is a navigation aid, not an authorization source. Repair it
-    // only when necessary and outside the critical path of a valid membership.
+    // Il profilo facilita la navigazione; la membership determina i permessi. Il riallineamento del profilo avviene fuori dal percorso critico dell'accesso.
     if (adminProfileNeedsRepair(profileData, user, requestedCenterId, existingAccess.role)) {
       void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
     }
@@ -461,7 +460,7 @@ export async function revokeAdministratorInvitation(invitationId, user = getCurr
   const invitationRef = doc(db, ADMIN_INVITATION_COLLECTION, normalizeInvitationId(invitationId));
   const invitationSnapshot = await getDoc(invitationRef);
   const invitation = invitationSnapshot.exists() ? invitationSnapshot.data() : {};
-  // Restano solo inviti di ruolo ADMIN: solo il responsabile li gestisce.
+  // Gli inviti assegnano il ruolo ADMIN e sono gestiti dal responsabile.
   const canRevoke = access.active && access.role === 'OWNER';
   if (!canRevoke || invitation.centerId !== centerId || invitation.status !== 'ACTIVE') {
     throw new Error('Questo invito non può essere revocato');
@@ -523,9 +522,7 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
     revokedAt: now,
     updatedAt: now
   }, { merge: true });
-  // The membership is authoritative. The private, potentially multi-center
-  // navigation profile is filtered through memberships when loading access;
-  // a center owner cannot read it and must not revoke access to other centers.
+  // La membership determina l'accesso. Il profilo privato di navigazione viene filtrato per membership e può includere altri centri: il responsabile del centro non può leggerlo né revocarne gli altri accessi.
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.REVOKE_ADMIN,
     targetType: 'ADMIN',
@@ -680,12 +677,7 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     transferredAt: now,
     updatedAt: now
   }, { merge: true });
-  // adminProfiles e' soltanto un indice di navigazione e non attribuisce
-  // permessi. Non va incluso nel batch critico: sui documenti completi di
-  // produzione le regole delle sette scritture superavano il limite di
-  // valutazione e annullavano l'intero passaggio. La membership del centro e'
-  // la fonte autorevole; il nuovo responsabile riallinea automaticamente il
-  // proprio profilo al primo caricamento tramite saveAdminProfile().
+  // adminProfiles è un indice di navigazione senza permessi. Rimane fuori dal batch critico per rispettare il limite di valutazione delle regole. La membership determina l'accesso; saveAdminProfile() riallinea il profilo del responsabile al caricamento.
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.TRANSFER_OWNERSHIP,
     targetType: 'ADMIN',

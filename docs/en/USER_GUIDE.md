@@ -127,7 +127,7 @@ Authentication is not acceptance, and acceptance is not yet transfer.
 
 An administrative account may belong to several centres and select the active one. A separate platform role may create or disable centres while preserving data; normal administrators cannot use it.
 
-- **Old version:** close every app window and site tab, then reopen. Updates activate on the next opening without a forced page reload.
+- **App update:** close every app window and site tab, then reopen. Updates activate on the next opening without a forced page reload.
 - **Wrong opening view:** save Appearance; reopening uses the preference, refresh keeps the current view.
 - **Session not restored:** ensure the browser does not delete site data.
 - **No Kitchen/Summary data:** use the complete current centre link.
@@ -135,3 +135,7 @@ An administrative account may belong to several centres and select the active on
 - **No reminders:** check both preference and notification permission.
 - **Meal locked:** its cut-off has passed.
 - **Offline:** cached information may remain visible, but changes wait for connectivity.
+
+## Interface language
+
+In **Appearance → App language**, choose Italian, English, French, Spanish, German or Catalan. Personal preferences stay on the device; the administrator can choose the centre default. Dates, weekdays and messages follow the selected language.

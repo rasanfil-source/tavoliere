@@ -188,3 +188,7 @@ El administrador debe revocar la sesión personal desde la gestión de personas 
 - [Arquitectura, autenticación y seguridad](ARQUITECTURA_Y_SEGURIDAD.md)
 - [Desarrollo y pruebas](DESARROLLO_Y_PRUEBAS.md)
 - [Operaciones, publicación y recuperación](OPERACIONES.md)
+
+## Idioma de la interfaz
+
+En **Aspecto → Idioma de la aplicación** se puede elegir italiano, inglés, francés, español, alemán o catalán. La preferencia personal se guarda en el dispositivo; el administrador puede elegir el idioma predeterminado del centro. Las fechas, los días y los mensajes siguen el idioma elegido.

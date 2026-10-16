@@ -60,7 +60,7 @@
   "admin.activity.eventCount": "Angezeigte Aktivitäten: {count}",
   "admin.activity.filtersLabel": "Filter des Aktivitätsprotokolls",
   "admin.activity.loading": "Aktivitäten werden geladen…",
-  "admin.activity.loadMore": "Frühere Einträge laden",
+  "admin.activity.loadMore": "Frühere Aktivitäten laden",
   "admin.activity.noEvents": "Keine recente Aktivitat",
   "admin.activity.title": "Wartung",
   "admin.activity.todayAt": "Heute, {time}",
@@ -730,5 +730,6 @@
   "mealReminder.notification.title": "Zeit zum Buchen",
   "mealReminder.notification.body": "Noch 10 Minuten: Denken Sie an die Buchung für {meal}.",
   "mealReminder.notification.disable": "Ausschalten",
-  "mealReminder.status.failed": "Erinnerungen konnten nicht aktiviert werden. Versuche es bei geöffneter App erneut und prüfe die Benachrichtigungsberechtigungen."
+  "mealReminder.status.failed": "Erinnerungen konnten nicht aktiviert werden. Versuche es bei geöffneter App erneut und prüfe die Benachrichtigungsberechtigungen.",
+  "language.ca": "Katalanisch"
 }

@@ -83,7 +83,7 @@ async function loadDeletionModule() {
 }
 
 test('the actual vice deletion cleans more than one batch and preserves unrelated people and credentials', async () => {
-  // Exceed the application's 400-write cleanup chunk to cover both commits.
+  // Supera il blocco di pulizia di 400 scritture per verificare entrambi i salvataggi.
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
     const batch = firestore.writeBatch(db);

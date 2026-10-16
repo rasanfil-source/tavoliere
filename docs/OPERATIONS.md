@@ -89,7 +89,7 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run test:backup-restore-emulator -- <p
 
 Un ripristino reale modifica dati e richiede autorizzazione esplicita, backup preventivo, identificazione esatta del centro e verifica successiva. Non alterare dati di produzione per diagnosticare un problema di interfaccia.
 
-## Ritorno a una versione precedente
+## Ripristino della distribuzione
 
 1. Individuare il commit stabile.
 2. Creare un revert tracciabile senza cancellare la cronologia.
@@ -97,4 +97,4 @@ Un ripristino reale modifica dati e richiede autorizzazione esplicita, backup pr
 4. Pubblicare Hosting e, se necessario, regole compatibili.
 5. Verificare la release.
 
-Firebase Hosting conserva la cronologia delle release; il commit Git resta la fonte riproducibile.
+Firebase Hosting e il commit Git consentono un ripristino riproducibile della distribuzione.

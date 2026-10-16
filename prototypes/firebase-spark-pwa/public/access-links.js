@@ -59,7 +59,7 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
     const currentKitchenRef = currentLinks.kitchenTokenId
       ? tokenRef(centerId, currentLinks.kitchenTokenId)
       : null;
-    // Firestore transactions require every read before the first write.
+    // Le transazioni Firestore richiedono tutte le letture prima della prima scrittura.
     const currentPublicSnapshot = currentPublicRef
       ? await transaction.get(currentPublicRef)
       : null;

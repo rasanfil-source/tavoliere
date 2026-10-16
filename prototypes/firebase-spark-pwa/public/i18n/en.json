@@ -60,7 +60,7 @@
   "admin.activity.eventCount": "Activities shown: {count}",
   "admin.activity.filtersLabel": "Activity log filters",
   "admin.activity.loading": "Loading activity…",
-  "admin.activity.loadMore": "Load earlier entries",
+  "admin.activity.loadMore": "Load earlier activities",
   "admin.activity.noEvents": "No recent activity",
   "admin.activity.title": "Maintenance",
   "admin.activity.todayAt": "Today, {time}",
@@ -730,5 +730,6 @@
   "mealReminder.notification.title": "Time to book",
   "mealReminder.notification.body": "10 minutes left: remember to book {meal}.",
   "mealReminder.notification.disable": "Turn off",
-  "mealReminder.status.failed": "Reminders could not be enabled. Try again with the app open and check notification permissions."
+  "mealReminder.status.failed": "Reminders could not be enabled. Try again with the app open and check notification permissions.",
+  "language.ca": "Catalan"
 }

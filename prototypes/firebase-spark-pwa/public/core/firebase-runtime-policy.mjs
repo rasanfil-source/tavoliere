@@ -1,5 +1,4 @@
-// WebKit can hold Firestore streaming responses until the next 30s ping.
-// https://github.com/firebase/firebase-js-sdk/issues/9789
+// La politica di trasporto considera il buffering delle risposte Firestore in WebKit, che può durare fino al successivo segnale di mantenimento della connessione.
 export function firestoreSettingsForBrowser(browser = {}) {
   const ua = String(browser.userAgent || '');
   const isIOS = /iPad|iPhone|iPod/i.test(ua)

@@ -113,3 +113,10 @@ Difese principali: email verificata per accesso password, persistenza Auth inizi
 ## Limiti accettati
 
 Spark esclude funzioni server personalizzate. Ricalcolo calendario, backup e passaggio dell’incarico sono quindi operazioni client protette da regole, transazioni, batch, revisioni e ripresa dopo interruzione.
+
+## Approfondimenti tecnici
+
+- [Avvio, sessioni e lingue](AVVIO_E_SESSIONI.md)
+- [Coerenza dei dati](COERENZA_DATI.md)
+- [Build e cache](BUILD_E_CACHE.md)
+- [Perimetro dell’accesso cucina](PERIMETRO_ACCESSO_CUCINA.md)

@@ -241,9 +241,7 @@ export async function signInFriendlyResident(signature, commonPassword) {
   const storedParticipantId = loadStoredResidentParticipantId();
   const storedSignature = loadStoredResidentSignature();
   const storedToken = loadStoredResidentToken();
-  // A restored Google session may belong to another centre. The common
-  // password is the explicit resident credential, so let it establish the
-  // resident session instead of rejecting the form before verification.
+  // La sessione Google può appartenere a un altro centro. La password comune autorizza esplicitamente l'accesso residente dopo la verifica.
   const keepStrongAdministratorSession = Boolean(strongAuthenticatedUser && authorizedAdministrator);
   try {
     let participant;
@@ -295,8 +293,7 @@ export async function signInFriendlyResident(signature, commonPassword) {
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };
   } catch (error) {
-    // A failed credential check or temporary network error must not sign out
-    // an existing resident session. Only clean up a newly replaced identity.
+    // Un controllo credenziali fallito o un errore temporaneo di rete conserva la sessione residente esistente. La pulizia riguarda solo un'identità appena sostituita.
     if (getCurrentUser()?.uid !== existingUser?.uid) {
       clearCurrentSession();
     }
@@ -322,27 +319,25 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     return null;
   }
   if (strongAuthenticatedUser && !authorizedAdministrator) {
-    // Show the resident form so the user can provide the common password.
+    // Mostra il modulo residente per richiedere la password comune.
     return null;
   }
   try {
     const initialUser = getCurrentUser();
-    // Only speculate with an existing anonymous identity and an unexpired
-    // device token. Settle errors immediately while the session is checked.
+    // La lettura anticipata richiede un'identità anonima esistente e un token dispositivo valido. Gli errori vengono gestiti durante la verifica della sessione.
     const profileRead = initialUser?.isAnonymous && new Date(token.expiresAt) > new Date()
       ? loadPublicParticipantById(participantId).then(
         (value) => ({ value }), (error) => ({ error })
       )
       : null;
     const sessionUser = await ensurePersonalSession(participantId, token);
-    // Optional preparation cannot invalidate an authenticated identity.
+    // La preparazione facoltativa non invalida un'identità autenticata.
     if (onSessionReady) void Promise.resolve().then(() => onSessionReady({
       participantId, uid: sessionUser.uid
     })).catch(() => undefined);
     const profileResult = profileRead && initialUser.uid === sessionUser.uid
       ? await profileRead : null;
-    // A missing session can deny the speculative read. Retry only after its
-    // creation; never reuse a profile fetched under a replaced Auth identity.
+    // Una lettura negata per sessione assente viene ripetuta dopo la creazione della sessione; un cambio di identità invalida il profilo già letto.
     if (profileResult?.error && !['permission-denied', 'firestore/permission-denied'].includes(profileResult.error.code)) {
       throw profileResult.error;
     }
@@ -360,8 +355,7 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     });
     return { participant, participants: [participant] };
   } catch (error) {
-    // An online permission error can also occur during token/session recovery.
-    // Keep device credentials for a subsequent retry; rules still deny access.
+    // Durante il recupero di token e sessione le letture possono essere negate. Le credenziali del dispositivo restano disponibili per riprovare; le regole continuano a proteggere i dati.
     if (isRecoverableSessionError(error)) {
       error.preserveResidentIdentity = true;
       throw error;
@@ -497,13 +491,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   } catch (error) {
     if (!knownSettings?.adminSharedPasswordSet) throw error;
   }
-  // La lettura di publicParticipants è protetta: prima si valida la password
-  // sull'account tecnico amministratori, poi si legge la persona usando quella
-  // stessa sessione tecnica. In precedenza la lettura avveniva anonimamente e
-  // faceva ricadere il flusso sulla password comune.
-  // Le impostazioni passate dalla schermata possono provenire dalla cache
-  // dell'accesso precedente. Per questa operazione rara rileggiamo sempre il
-  // documento autorevole, mantenendo il valore noto solo come fallback offline.
+  // La lettura protetta di publicParticipants usa la stessa sessione tecnica con cui viene verificata la password amministratori. Le impostazioni vengono rilette dalla fonte autorevole; il valore in cache serve soltanto in assenza di rete.
   const settings = await loadCenterContactSettings({ forceRefresh: true })
     .catch((error) => {
       if (knownSettings?.adminSharedPasswordSet) return knownSettings;
@@ -591,11 +579,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
     passwordVersion,
     technicalEmail: technicalEmail || settings.adminTechnicalEmail
   });
-  // La lettura effettuata con l'account tecnico può essere rifiutata quando
-  // l'identità tecnica del centro è in fase di rotazione. A questo punto,
-  // invece, la vice-sessione anonima è già stata creata e attesa: rileggere i
-  // link con l'identità definitiva elimina la finestra in cui il pannello del
-  // vice resta con i pulsanti Copia/Apri/Condividi disabilitati.
+  // Dopo la creazione della vice-sessione, i collegamenti vengono letti con l'identità definitiva, anche quando l'account tecnico del centro è in rotazione.
   const authorizedLinksSnapshot = await getDoc(doc(
     db,
     'centers',
@@ -1364,7 +1348,7 @@ async function getParticipantRules(participantId, forceRefresh = false, requireS
       ? [{ ruleId: snapshot.id, ...snapshot.data() }]
       : [];
     calendarValues(snapshot, value, requireServer);
-    // A completed admin write must not reuse or recache an earlier read.
+    // Una scrittura amministrativa completata invalida le letture precedenti e la relativa cache.
     if (revision === participantRulesRevision) participantRulesCache.set(participantId, {
       centerId,
       uid,
@@ -1530,7 +1514,7 @@ function getPublicTokenId() {
   }
 }
 
-// Administrative writes invalidate the same live resident caches.
+// Le scritture amministrative invalidano anche le cache residenti in uso.
 export function invalidateParticipantDataCaches(participantId) {
   participantRulesRevision++;
   participantRulesCache.delete(participantId);

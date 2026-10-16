@@ -10,9 +10,9 @@
  * - Aggiornamento dinamico DOM con data-i18n
  */
 
-export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
+export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20261014b';
+const CATALOG_RELEASE = '20261017-ca';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -24,6 +24,103 @@ export const KEY_ALIASES = Object.freeze({
 });
 
 export const CORE_FALLBACKS = Object.freeze({
+  ca: Object.freeze({
+    "admin.access.title": "Administrador",
+    "admin.activity.title": "Manteniment",
+    "admin.adaptations.appDisplayName.help": "Nom que es mostra a la primera línia de la pantalla inicial.",
+    "admin.adaptations.appDisplayName.label": "Nom de presentació",
+    "admin.adaptations.appDisplaySubtitle.help": "Frase que es mostra sota el nom a la pantalla inicial.",
+    "admin.adaptations.appDisplaySubtitle.label": "Segona línia",
+    "admin.adaptations.title": "Aspecte",
+    "resident.preferences.defaultViewAria": "Vista inicial en aquest dispositiu",
+    "resident.preferences.defaultViewHelp": "La vista inicial predeterminada en aquest dispositiu.",
+    "resident.preferences.description": "Personalitza l’aplicació en aquest dispositiu.",
+    "resident.preferences.intro": "Aquestes preferències es desen en aquest dispositiu.",
+    "resident.preferences.layoutsHelp": "Tria l’aspecte de cada funció per separat.",
+    "resident.preferences.save": "Desa les preferències",
+    "resident.preferences.title": "Preferències en aquest dispositiu",
+    "admin.administrator.help": "El nom, la sigla i el correu electrònic són obligatoris.",
+    "admin.administrator.signature.help": "Codi personal per accedir com a resident.",
+    "admin.centerSettings.save": "Desa la configuració",
+    "admin.commonPassword.help": "Deixa-ho buit per mantenir la contrasenya actual. ",
+    "admin.sharedPassword.newLabel": "Contrasenya dels administradors adjunts",
+    "admin.sharedPassword.configurationHelp": "Dona als adjunts accés a les funcions operatives autoritzades; no dona accés al control complet.",
+    "admin.configuration.identity.title": "Identitat del centre",
+    "admin.configuration.password.label": "Contrasenya dels residents",
+    "admin.configuration.schedule.title": "Horaris de les reserves",
+    "admin.configuration.title": "Configuració",
+    "admin.overview.links": "Enllaços operatius",
+    "admin.overview.title": "Visió general",
+    "admin.people.title": "Persones",
+    "app.action.book": "Reserva",
+    "app.header.controlPanel": "Tauler de control",
+    "app.header.bookings": "Reserves",
+    "app.header.pasti": "Àpats",
+    "app.header.verifyingAuth": "S’està verificant l’autorització…",
+    "app.title.compact": "Reserva",
+    "auth.signingOut": "S’està tancant la sessió…",
+    "auth.resident.calendarUnavailable": "No es poden obrir les reserves. Torna-ho a provar d’aquí a un moment.",
+    "auth.resident.title": "Accés dels residents",
+    "common.action.exit": "Surt",
+    "common.actions.cancel": "Cancel·la",
+    "common.actions.close": "Tanca",
+    "common.actions.confirm": "Confirma",
+    "common.actions.copy": "Copia",
+    "common.actions.delete": "Elimina",
+    "common.actions.exit": "Surt",
+    "common.actions.refresh": "Actualitza",
+    "common.actions.save": "Desa",
+    "common.actions.share": "Comparteix",
+    "diet.legend.codeLabel": "Número de dieta",
+    "diet.legend.help": "Tria una etiqueta o escriu-ne una de nova d’una o dues paraules. Només es mostrarà a la cuina.",
+    "diet.legend.labelLabel": "Etiqueta de cuina",
+    "diet.legend.labelPlaceholder": "Etiqueta de cuina",
+    "diet.legend.validation": "Utilitza una o dues paraules, amb un màxim de 32 caràcters.",
+    "kitchen.dietLegend.title": "Recordatori de dietes",
+    "errors.conflict": "Les dades han canviat. Actualitza-les i repeteix el canvi.",
+    "errors.generic": "S’ha produït un error inesperat. Torna-ho a provar.",
+    "errors.offline": "La xarxa no està disponible. Les dades ja carregades continuen visibles.",
+    "errors.permission": "El teu rol no permet aquesta operació.",
+    "errors.timeout": "La resposta està trigant massa. Comprova la connexió i torna-ho a provar.",
+    "kitchen.notes.none": "No hi ha notes per a aquesta data",
+    "kitchen.notes": "Notes per a la cuina",
+    "kitchen.notes.title": "Notes per a la cuina",
+    "admin.sharedPassword.label": "Contrasenya dels administradors adjunts",
+    "summary.breakfastNotPlanned": "No previst",
+    "summary.breakfastPlanned": "Previst",
+    "summary.breakfastTomorrow": "Esmorzar (de demà)",
+    "summary.callPerson": "Truca a {name}",
+    "summary.contactPerson": "Contacta amb {name}",
+    "summary.contactHint": "Toca un comensal per contactar-hi",
+    "summary.cover.one": "cobert",
+    "summary.cover.other": "coberts",
+    "summary.dayAfterTomorrow": "Demà passat",
+    "summary.diningMeals": "Àpats al menjador",
+    "summary.followingDay": "Dia següent",
+    "summary.guests": "Convidats",
+    "summary.includedDiets": "Dietes incloses",
+    "summary.item": "Concepte",
+    "summary.mass": "Missa",
+    "summary.messagePerson": "Escriu a {name} per WhatsApp",
+    "summary.names": "Comensals",
+    "summary.no": "No",
+    "summary.noDiet": "Sense dieta",
+    "summary.noMeal": "No hi ha cap àpat disponible.",
+    "summary.noName": "Sense nom",
+    "summary.notSet": "No establert",
+    "summary.screensLabel": "Resum en dues pantalles",
+    "summary.sickDiets": "Dietes dels malalts",
+    "summary.sickMeals": "Àpats per als malalts",
+    "summary.swipeHint": "Llisca horitzontalment per passar d’avui a demà.",
+    "summary.today": "Avui",
+    "summary.tomorrow": "Demà",
+    "summary.tray.one": "safata",
+    "summary.tray.other": "safates",
+    "summary.view.loading": "S’està carregant el resum…",
+    "summary.view.noData": "No hi ha dades disponibles",
+    "summary.view.title": "Resum",
+    "summary.yes": "Sí"
+}),
   it: Object.freeze({
     'app.title.compact': 'Prenotarsi',
     'app.header.controlPanel': 'Pannello di controllo',
@@ -362,7 +459,7 @@ export function saveStoredLocale(locale) {
   try {
     localStorage.setItem('tavolaComune.locale', locale);
   } catch {
-    // Storage non disponibile (es. iframe restrittivo, privacy mode)
+    // Persistenza non disponibile, ad esempio in un iframe con restrizioni o in navigazione privata.
   }
 }
 
@@ -429,9 +526,7 @@ async function loadCatalog(locale) {
 }
 
 async function loadCatalogUncached(locale) {
-  // For a non-Italian locale, start the compact fallback and the selected
-  // catalog together. The previous waterfall delayed Auth on every cold
-  // language switch even though the two files are independent.
+  // Il catalogo italiano di riserva e quello della lingua selezionata si caricano in parallelo perché sono indipendenti.
   const fallbackPromise = locale !== DEFAULT_LOCALE && !catalogs.has(DEFAULT_LOCALE)
     ? loadCatalog(DEFAULT_LOCALE)
     : Promise.resolve();
@@ -442,7 +537,7 @@ async function loadCatalogUncached(locale) {
   }
 
   try {
-    // A bundle lives in /assets; catalogs retain their stable public path.
+    // Il modulo compilato risiede in /assets; i cataloghi mantengono il proprio percorso pubblico stabile.
     const catalogUrl = typeof window !== 'undefined'
       ? new URL(`/i18n/${locale}.json`, window.location.href)
       : new URL(`./${locale}.json`, import.meta.url);
@@ -577,6 +672,12 @@ export function t(key, variables = {}, options = {}) {
   const alias = KEY_ALIASES[key] || key;
   const catalog = catalogs.get(currentLocale) || getFallbackCatalog(currentLocale);
   const defaultCatalog = catalogs.get(DEFAULT_LOCALE) || getFallbackCatalog(DEFAULT_LOCALE);
+  // Le forme plurali possono esistere senza una chiave base nel catalogo.
+  if (variables.count !== undefined) {
+    const pluralKey = `${alias}.${getPluralRule(currentLocale, variables.count)}`;
+    const pluralMessage = catalog[pluralKey] ?? defaultCatalog[pluralKey];
+    if (pluralMessage !== undefined) return interpolate(pluralMessage, variables);
+  }
   
   let message = catalog[key] ?? catalog[alias];
   

@@ -41,7 +41,7 @@ docs/               documentazione mantenuta
 
 Non modificare direttamente `dist`: eseguire la build dopo avere cambiato `public`.
 
-La build genera moduli JavaScript e CSS con hash in `dist/assets` e un `build-manifest.json`. Include Firebase completo, mantiene Auth persistente e carica su richiesta le funzioni amministrative. Non eliminare i vecchi file in `dist/assets` durante un rilascio: possono servire alle pagine già aperte. Il service worker viene compilato con l'elenco dei moduli necessari ai residenti. `tools/verify-build.mjs` controlla hash, sorgenti, riferimenti e separazione dei moduli; il gate esegue anche `tests/build`.
+La build genera moduli JavaScript e CSS con hash in `dist/assets` e un `build-manifest.json`. Include Firebase completo, mantiene Auth persistente e carica su richiesta le funzioni amministrative. Conservare i moduli immutabili in `dist/assets`: le pagine aperte possono richiederli durante un aggiornamento. Il service worker viene compilato con l'elenco dei moduli necessari ai residenti. `tools/verify-build.mjs` controlla hash, sorgenti, riferimenti e separazione dei moduli; il gate esegue anche `tests/build`.
 
 Per provare il pacchetto di produzione, impostare `TAT_SERVE_ROOT=prototypes/firebase-spark-pwa/dist` prima di avviare `tools/dev-server.mjs`. `TAT_BUILD_OUTPUT` consente soltanto l'output ordinario oppure directory temporanee sotto `.tools/build-tests`, per evitare cancellazioni di altre cartelle.
 

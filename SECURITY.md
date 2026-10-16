@@ -9,7 +9,7 @@ Non pubblicare dettagli sensibili in una issue aperta. Scrivere a [rasanfil@gmai
 - componente interessato;
 - procedura minima per riprodurre il problema;
 - impatto possibile;
-- eventuale proposta di correzione.
+- eventuale proposta di protezione.
 
 Non inviare password, token attivi o dati personali. Se un segreto è già stato esposto, revocarlo prima di inviare la segnalazione.
 

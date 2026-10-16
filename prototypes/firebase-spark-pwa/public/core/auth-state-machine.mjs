@@ -1,9 +1,4 @@
-// Single source of truth for the authentication/session lifecycle.
-//
-// Firebase and the friendly resident session are deliberately represented as
-// two independent identities.  A Firebase event can therefore never promote a
-// resident, and leaving the control panel cannot accidentally revoke a
-// resident session while navigating back to bookings.
+// Fonte unica del ciclo di autenticazione. L'identità Firebase e la sessione residente sono indipendenti: gli eventi Firebase non promuovono il residente e la navigazione conserva il corretto perimetro di accesso.
 
 export const AUTH_STATES = Object.freeze({
   SIGNED_OUT: 'signed-out',
@@ -41,10 +36,7 @@ function withTransition(state, patch) {
   });
 }
 
-/**
- * Apply one lifecycle event. Unknown/stale events are no-ops, which makes
- * late Firebase callbacks harmless after logout or a newer login.
- */
+/* Applica un evento del ciclo di sessione. Gli eventi sconosciuti o superati non producono effetti; le risposte tardive restano subordinate all'autenticazione corrente. */
 export function reduceAuthState(input, event = {}) {
   const state = input?.state ? input : createInitialAuthState(input);
   const type = event.type;
@@ -118,7 +110,7 @@ export function reduceAuthState(input, event = {}) {
     });
   }
   if (type === 'FIREBASE_AUTH_CHANGED') {
-    // A Firebase event without a strong identity is never an admin session.
+    // Un evento Firebase privo di identità forte non costituisce una sessione amministrativa.
     if (!event.strong || !event.uid) {
       return state.adminAuthorized && state.state === AUTH_STATES.ADMIN_READY
         ? withTransition(state, {

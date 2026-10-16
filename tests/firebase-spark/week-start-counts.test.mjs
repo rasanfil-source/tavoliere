@@ -18,7 +18,7 @@ function bind(source, names, deps) {
   return new Function(...Object.keys(deps), names.map(name => extract(source, name)).join('\n') + `\nreturn {${names.join(',')}};`)(...Object.values(deps));
 }
 
-// Execute the actual date-selection expressions from both refresh paths.
+// Esegue le espressioni effettive di selezione delle date nei due percorsi di aggiornamento.
 const dateExpressions = ['summary', 'kitchen'].map(view => {
   const match = app.match(new RegExp(`const ${view}Dates = ([^;]+);`));
   assert.ok(match, view);
@@ -28,13 +28,13 @@ const meals = ['breakfast', 'lunch', 'dinner'].map(mealTypeId => ({ mealTypeId, 
 const people = Array.from({ length: 5 }, (_, i) => ({ participantId: `p${i}`, displayName: `Person ${i}`, dietTags: i === 1 ? ['3'] : ['STANDARD'] }));
 
 for (const now of [
-  '2026-10-10T10:00:00Z', // Saturday -> Sunday
-  '2026-10-11T10:00:00Z', // Sunday -> Monday
-  '2026-10-12T10:00:00Z', // Monday -> Tuesday
-  '2026-01-31T23:30:00Z', // Centre already on Sunday, February 1
-  '2026-12-31T23:30:00Z', // Centre already in the new year
-  '2026-03-28T23:30:00Z', // DST begins
-  '2026-10-24T22:30:00Z'  // DST ends
+  '2026-10-10T10:00:00Z', // Sabato → domenica
+  '2026-10-11T10:00:00Z', // Domenica → lunedì
+  '2026-10-12T10:00:00Z', // Lunedì → martedì
+  '2026-01-31T23:30:00Z', // Nel centro è già domenica 1 febbraio.
+  '2026-12-31T23:30:00Z', // Nel centro è già iniziato il nuovo anno.
+  '2026-03-28T23:30:00Z', // Inizio dell'ora legale
+  '2026-10-24T22:30:00Z'  // Fine dell'ora legale
 ]) {
   test(`personal week start does not change today/tomorrow dining counts: ${now}`, async () => {
     const results = [];

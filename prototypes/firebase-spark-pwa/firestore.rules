@@ -313,9 +313,7 @@ service cloud.firestore {
         && exists(nextOwnerMembershipPath)
         && get(nextOwnerMembershipPath).data.status == 'ACTIVE'
         && get(nextOwnerMembershipPath).data.role == 'ADMIN'
-        // L'invito USED e' la fonte autorevole dell'accettazione. I vecchi
-        // documenti membership possono non contenere i due marcatori duplicati
-        // invitationConsumedBy/invitationAcceptedAt senza essere meno validi.
+        // L'invito USED è la fonte autorevole dell'accettazione; i marcatori invitationConsumedBy e invitationAcceptedAt della membership sono facoltativi.
         && acceptedInvitationId is string
         && acceptedInvitationId.matches('^[a-f0-9]{64}$')
         && exists(acceptedInvitationPath)
@@ -625,11 +623,7 @@ service cloud.firestore {
         );
     }
 
-    // Session-first: token e persona vengono verificati quando la sessione
-    // personale viene creata. Le letture operative successive si fidano del
-    // documento accessSessions, evitando di rivalutare l'intera catena per
-    // ogni singola cella del calendario. Disattivazione ed eliminazione della
-    // persona revocano esplicitamente le sue sessioni.
+    // Token e persona vengono verificati alla creazione della sessione. Le letture operative usano accessSessions per limitare le valutazioni per cella. Disattivazione ed eliminazione revocano le sessioni della persona.
     function personalSessionIsUsable(centerId) {
       let sessionPath = /databases/$(database)/documents/centers/$(centerId)/accessSessions/$(request.auth.uid);
       let session = get(sessionPath).data;

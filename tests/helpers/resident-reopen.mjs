@@ -13,8 +13,7 @@ const extract = (source, name) => {
   return match[0];
 };
 
-// Execute real restoration/orchestration/publication functions with controlled
-// I/O. This is neither a browser benchmark nor an emulation of Safari transport.
+// Esegue le funzioni effettive di ripristino, orchestrazione e pubblicazione con letture e scritture controllate. Le misure non rappresentano prestazioni del browser o trasporto Safari.
 export function residentReopenHarness({ sources = reopenSources, read = async (_, value) => value,
   mode = 'week', profile = { participantId: 'person', signature: 'AA' }, overrides = {} } = {}) {
   const events = [];

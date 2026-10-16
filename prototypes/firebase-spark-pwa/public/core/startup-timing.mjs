@@ -1,9 +1,7 @@
-// Opt-in, local-only timings. Labels must be fixed stage names, never identity
-// values, credentials, URLs or Firestore payloads. Nothing is sent or stored.
+// Misure locali attivabili esplicitamente. Le etichette identificano fasi fisse, senza identità, credenziali, URL o dati Firestore. Nulla viene inviato o salvato.
 const startupStages = new Set();
 
-// One milestone per document, measured from navigation start, not from the
-// start of a late async caller. This is DOM readiness, not a paint measurement.
+// Una misura per documento a partire dalla navigazione. Indica la disponibilità del DOM, non il completamento del disegno sullo schermo.
 export function markStartupStage(stage) {
   if (typeof window === 'undefined'
       || new URLSearchParams(window.location.search).get('diagnostics') !== 'startup'
@@ -13,7 +11,7 @@ export function markStartupStage(stage) {
     performance.measure(`tat:${stage}`, { start: 0, end });
     startupStages.add(stage);
     console.info('[tat-startup]', stage, Math.round(end), 'ms from navigation');
-  } catch { /* Diagnostics must never interrupt startup. */ }
+  } catch { /* La diagnostica non deve interrompere l'avvio. */ }
 }
 
 export async function measureStartupStep(stage, operation) {

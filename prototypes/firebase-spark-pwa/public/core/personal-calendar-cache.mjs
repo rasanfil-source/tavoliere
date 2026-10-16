@@ -1,5 +1,4 @@
-// A bounded display cache, never an authentication or authorization source.
-// Callers must supply the UID from resolved Firebase Auth, not a remembered UID.
+// Cache limitata alla visualizzazione. L'UID deve provenire da Firebase Auth risolto; la cache non attribuisce identità né permessi.
 const PREFIX = 'tavolaComune.personalCalendar.v1:';
 const TTL_MS = 72 * 60 * 60 * 1000;
 const MAX_ENTRIES = 4;
@@ -64,7 +63,7 @@ export function clearPersonalCalendarSnapshots({ centerId, uid, participantId } 
       if ((!centerId || scope[0] === centerId) && (!uid || scope[1] === uid)
           && (!participantId || scope[2] === participantId)) target.removeItem(key);
     }
-  } catch { /* Storage is optional; Firebase credentials are never touched. */ }
+  } catch { /* La persistenza è facoltativa; le credenziali Firebase restano inalterate. */ }
 }
 
 export function loadPersonalCalendarSnapshot(scope, { storage, now = Date.now() } = {}) {

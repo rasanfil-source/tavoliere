@@ -1,4 +1,4 @@
-// Read-only reopening checks. No live Firebase session is used.
+// Verifiche di riapertura in sola lettura senza sessioni Firebase di produzione.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

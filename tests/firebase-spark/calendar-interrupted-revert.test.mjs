@@ -68,7 +68,7 @@ async function createCalendar() {
           throw new Error('simulated connection loss while committing windows');
         }
       }
-      // Keep writes atomic, including the checkpoint stored with each chunk.
+      // Le scritture e il punto di ripresa di ogni blocco restano atomici.
       for (const [ref, value] of pending) documents.set(ref, structuredClone(value));
       committedWindowWrites.push(...windowWrites.map(([ref]) => ref));
     }
@@ -142,7 +142,7 @@ test('reverting on a later day also restores windows already rewritten before to
   const calendar = await createCalendar();
   await interruptAfterFirstChunk(calendar);
   calendar.control.today = schedule.addDaysToDateId(firstDay, 2);
-  // Even if coverage metadata changed, the unfinished job still owns its range.
+  // L'attività incompleta mantiene il proprio intervallo anche quando cambiano i metadati di copertura.
   calendar.documents.get(centerPath).calendarCoveredThrough = schedule.addDaysToDateId(firstDay, 200);
 
   await calendar.save(calendar.input);

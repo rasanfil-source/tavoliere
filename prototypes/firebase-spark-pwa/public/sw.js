@@ -2,7 +2,7 @@ const CACHE_PREFIX = 'tavola-comune-app-';
 const CACHE_NAME = CACHE_PREFIX + 'v456';
 const SHELL_ENTRY = '/app.js?v=20261014b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
-// Only public, immutable SDK files: never Auth API responses or session data.
+// Solo file SDK pubblici e immutabili: sono escluse risposte Auth e dati di sessione.
 const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
   .map((file) => `https://www.gstatic.com/firebasejs/12.17.0/${file}`);
 const APP_SHELL = [
@@ -71,7 +71,7 @@ self.addEventListener('install', (event) => {
 });
 
 async function precacheInstalledShell() {
-  // Fetch only the canonical URL: navigation URLs may contain credentials.
+  // Scarica soltanto l'URL canonico: gli indirizzi di navigazione possono contenere credenziali.
   const response = await fetch('/index.html', { cache: 'no-cache' });
   if (!response.ok) throw new Error('Offline shell unavailable');
   const html = await response.clone().text();
@@ -84,15 +84,14 @@ async function precacheInstalledShell() {
   const resources = APP_SHELL.filter((path) => path !== '/' && path !== '/index.html')
     .map((path) => /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261014b` : path);
   await cache.addAll(resources);
-  // Publish HTML only after all of its installed resources are available.
+  // L'HTML viene pubblicato in cache quando tutte le risorse necessarie sono disponibili.
   await cache.put('/index.html', response);
 }
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     Promise.all([
-      // Optional browser optimization; unsupported/failed preload must not
-      // prevent this worker from activating or serving the offline shell.
+      // Il precaricamento è facoltativo: la sua assenza non impedisce l'attivazione del worker o la disponibilità della pagina senza rete.
       Promise.resolve().then(() => self.registration?.navigationPreload?.enable())
         .catch(() => undefined),
       caches.keys()
@@ -103,8 +102,7 @@ self.addEventListener('activate', (event) => {
           ) && name !== CACHE_NAME)
           .map((name) => caches.delete(name))))
         .then(() => self.clients.claim())
-        // The first page loads these modules before the worker takes control.
-        // Warm their cache after claiming clients, without delaying app startup.
+        // La prima pagina carica questi moduli prima del controllo del worker. La cache viene popolata dopo l'acquisizione delle pagine, senza ritardare l'avvio.
         .then(() => Promise.allSettled(FIREBASE_SDK.map((url) => sdkCacheFirst(url))))
     ])
   );
@@ -186,7 +184,7 @@ async function centerManifest(url) {
     ? '/?view=kitchen' : '/?access=friendly', self.location.origin);
   start.searchParams.set('c', url.searchParams.get('c'));
   manifest.start_url = start.pathname + start.search;
-  // Identità stabile per centro e vista, indipendente dalla versione degli asset.
+  // Identità stabile per centro e vista, indipendente dagli identificatori delle risorse.
   manifest.id = manifest.start_url;
   return new Response(JSON.stringify(manifest), {
     headers: { 'Content-Type': 'application/manifest+json; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -207,7 +205,7 @@ async function sdkCacheFirst(request) {
   if (cached) return cached;
   const response = await fetch(request);
   if (response?.ok && cache) {
-    // Storage limits must not prevent a successfully downloaded SDK from loading.
+    // I limiti di archiviazione non impediscono l'uso dell'SDK già scaricato.
     await cache.put(request, response.clone()).catch(() => undefined);
   }
   return response;
@@ -231,7 +229,7 @@ async function versionedCacheFirst(request, fallbackPath) {
     return response;
   } catch (error) {
     const fallback = await cache?.match(fallbackPath).catch(() => undefined);
-    // Never combine a new HTML/module graph with a different cached release.
+    // HTML e moduli della cache devono appartenere allo stesso insieme coerente di risorse.
     if (fallback?.url && new URL(fallback.url).searchParams.get('v')
         === new URL(request.url || request, self.location.origin).searchParams.get('v')) {
       return fallback;
@@ -241,21 +239,15 @@ async function versionedCacheFirst(request, fallbackPath) {
 }
 
 async function networkFirst(request, fallbackPath, event) {
-  // Start the network and cache lookup together. Cache Storage can be
-  // unavailable on iOS; that must never turn a successful fetch into an error.
+  // Rete e cache vengono consultate in parallelo; l'indisponibilità di Cache Storage non invalida una risposta di rete riuscita.
   const cachePromise = caches.open(CACHE_NAME).catch(() => null);
   const cachedPromise = cachePromise.then((cache) =>
     cache?.match(fallbackPath || '/index.html').catch(() => undefined));
-  // A pending preload is the navigation request, including after the cache
-  // timeout. Only fall back to fetch when preload is absent or has failed.
+  // Il precaricamento pendente rappresenta già la richiesta di navigazione. fetch viene usato solo se il precaricamento è assente o fallisce.
   const network = Promise.resolve(event?.preloadResponse)
     .catch(() => undefined)
     .then((response) => response || fetch(request, { cache: 'no-cache' }));
-  // Keep the HTML installed atomically with APP_SHELL as the offline fallback.
-  // A navigation can return a newer release before its modules are available;
-  // replacing this HTML alone would strand the still-complete installed shell.
-  // The next worker installation publishes the next complete offline release.
-  // Navigation URLs (which can contain access tokens) are never persisted.
+  // HTML e APP_SHELL vengono installati atomicamente per l'uso senza rete. La navigazione non sostituisce singolarmente l'HTML in cache e gli URL con token non vengono salvati.
   let timer;
   try {
     const result = await Promise.race([
@@ -267,7 +259,7 @@ async function networkFirst(request, fallbackPath, event) {
     if (result.response?.ok) return result.response;
     const cached = await cachedPromise;
     if (cached) return cached;
-    // With no saved shell, keep the original request (no duplicate fetch).
+    // In assenza di una pagina salvata viene conservata la richiesta originale, senza duplicare il download.
     if (result.response) return result.response;
     if (result.error) throw result.error;
     return await network;

@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const LOCALES = ['it', 'en', 'fr', 'es', 'de'];
+const LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 const DEFAULT_LOCALE = 'it';
 const index = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/index.html', import.meta.url),
@@ -22,7 +22,7 @@ function extractPlaceholders(text) {
   return matches.map((m) => m.slice(1, -1)).sort();
 }
 
-test('tutti i 5 cataloghi di lingua sono validi e contengono metadati corretti', () => {
+test('tutti i 6 cataloghi di lingua sono validi e contengono metadati corretti', () => {
   for (const locale of LOCALES) {
     const catalog = loadCatalog(locale);
     assert.equal(typeof catalog, 'object');

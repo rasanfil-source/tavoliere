@@ -170,7 +170,7 @@ for (const rewrite of [false, true]) {
       administratorName: 'Responsabile', administratorSignature: 'OW', adminEmail: 'owner@example.test',
       participantContactSharingEnabled: true };
     const prepared = await participant.saveAdminParticipant('', { displayName: 'Responsabile', signature: 'OW', active: true }, { prepareOnly: true });
-    // A denied write after the participant writes must roll back the whole final transaction.
+    // Una scrittura negata deve annullare l'intera transazione, comprese le scritture dei partecipanti.
     await assert.rejects(configuration.saveCenterConfiguration({ ...input,
       administratorSave: { ...prepared, write: async transaction => {
         await prepared.write(transaction);

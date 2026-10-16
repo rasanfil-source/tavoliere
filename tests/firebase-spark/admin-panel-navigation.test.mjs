@@ -17,7 +17,7 @@ const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter,
 ]);
 
 test('il nome Oggi a tavola non incorpora mai il punto esclamativo', async () => {
-  for (const language of ['it', 'en', 'fr', 'es', 'de']) {
+  for (const language of ['it', 'en', 'fr', 'es', 'de', 'ca']) {
     const catalog = await readFile(new URL(`i18n/${language}.json`, projectRoot), 'utf8');
     assert.doesNotMatch(catalog, /Oggi a tavola\s*!/);
   }
@@ -680,7 +680,6 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(transfer, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
   assert.match(transfer, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(transfer, /batch\.set\([^\n]*ProfileRef/);
-  assert.match(transfer, /Non va incluso nel batch critico/);
   assert.doesNotMatch(transfer, /batch\.delete\(currentMembershipRef\)/);
   assert.doesNotMatch(transfer, /publicParticipants[\s\S]*batch\.delete/);
   assert.match(app, /friendlyErrorMessage\(error, 'Trasferimento non riuscito'\)[\s\S]*showActionDialog/);

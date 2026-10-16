@@ -45,9 +45,7 @@ export const isFirebaseConfigured = missingConfigValues.length === 0;
 export const missingFirebaseConfigValues = missingConfigValues;
 
 export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
-// Keep the same persistent localStorage used by existing sessions. Configuring
-// it at creation avoids an IndexedDB probe/migration and the preemptive Google
-// iframe that getAuth() starts on mobile. Popup support is passed at use time.
+// Auth usa localStorage fin dalla creazione, senza interrogare IndexedDB né caricare anticipatamente la finestra Google. Il supporto ai popup viene fornito al momento dell'uso.
 markStartupStage('auth-start');
 export const auth = app ? initializeAuth(app, { persistence: browserLocalPersistence }) : null;
 const firestoreSettings = firestoreSettingsForBrowser(globalThis.navigator);
@@ -64,8 +62,7 @@ const initialAuthReadyPromise = auth
   : Promise.resolve(null);
 
 const googleProvider = new GoogleAuthProvider();
-// Firebase selects in-memory persistence only when localStorage is unavailable.
-// Never reset persistence or the current user on visibility/page lifecycle events.
+// Firebase usa la memoria soltanto se localStorage non è disponibile. Gli eventi di visibilità non modificano persistenza o utente corrente.
 const authPersistenceReady = initialAuthReadyPromise;
 
 let authMutationDepth = 0;

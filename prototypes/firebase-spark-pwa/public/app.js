@@ -122,7 +122,7 @@ const KITCHEN_DIET_LABEL_PRESET_KEYS = [
   'diet.legend.preset.plain'
 ];
 const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
-// Literal imports let the production build split each optional feature.
+// Gli import con percorsi letterali consentono alla build di separare le funzionalità facoltative.
 const domainModuleLoaders = {
   accessLinks: () => import('./access-links.js?v=20261014b'),
   admin: () => import('./admin-center.js?v=20261014b'),
@@ -664,10 +664,7 @@ const state = {
   monthDate: startOfMonth(new Date()),
   adminRole: '',
   adminAuthUid: '',
-  // True only while the backend reports that this account must initialize a
-  // center.  Do not infer activation from a stale invite token kept in local
-  // storage: residents/vice-admins can legitimately have such a token left
-  // over from an earlier flow.
+  // È vero soltanto quando il backend richiede l'inizializzazione del centro. Un token di invito conservato localmente non determina lo stato di attivazione.
   adminNeedsInitialization: false,
   adminAuthorizationPending: false,
   adminRequestId: 0,
@@ -1474,14 +1471,10 @@ async function bootstrapApp() {
   initializeOperationalLinks();
   initializeResidentAccess();
 
-  // Firebase Auth must start independently from translations and Firestore.
-  // In particular, a persisted Gmail session must not wait for one or two
-  // language catalogs before its observer can reconcile the admin panel.
+  // Firebase Auth si avvia indipendentemente da traduzioni e Firestore, così l'osservatore può riconciliare subito la sessione amministrativa persistente.
   if (hasAdminInterface) initializeAuthPanel();
 
-  // La vista Cucina deve creare prima la propria sessione: un caricamento
-  // anticipato delle impostazioni protette può essere negato e condiviso con
-  // il refresh successivo, facendo fallire proprio la prima apertura.
+  // La vista Cucina crea la propria sessione prima di leggere le impostazioni protette.
   const settingsPromise = ['kitchen', 'participant', 'week'].includes(state.mode)
     ? Promise.resolve(null)
     : loadCenterContactSettings().catch(() => null);
@@ -1491,9 +1484,7 @@ async function bootstrapApp() {
     centerLocale: state.centerContactSettings.language || null
   });
 
-  // The static Italian HTML and CORE_FALLBACKS are sufficient for the first
-  // route paint. Complete catalogs are reconciled immediately afterwards,
-  // but they no longer hold Firebase Auth or the basic resident entry gate.
+  // L'HTML italiano e CORE_FALLBACKS consentono il primo disegno. I cataloghi completi si caricano indipendentemente da Firebase Auth e dall'accesso residente.
   renderMode();
   const isDirectMealRoute = ['participant', 'week'].includes(state.mode);
   const isPlainResidentLogin = state.friendlyAccess
@@ -1517,8 +1508,7 @@ async function bootstrapApp() {
     hideStartupSplash();
   }
 
-  // Stale-while-revalidate: visual preferences may come from the center cache,
-  // while roles and permissions remain exclusively authoritative in Firebase.
+  // Le preferenze visive possono provenire dalla cache del centro durante la verifica; Firebase rimane la fonte autorevole per ruoli e permessi.
   void settingsPromise.then(async (centerSettings) => {
     if (!centerSettings) return;
     state.centerContactSettings = applyResidentPreferences(centerSettings);
@@ -1805,10 +1795,7 @@ async function handleInAppNavigation(event) {
     return;
   }
 
-  // Participant-first pages deliberately remove the large admin DOM at
-  // startup. In that case keep the link's native navigation so the browser
-  // loads the complete control panel automatically; intercepting it would
-  // only change the URL while leaving an empty page.
+  // Le pagine residenti escludono il DOM amministrativo all'avvio. La navigazione nativa del collegamento carica quindi il pannello completo.
   if (isControlPanelTarget && !hasAdminInterface) {
     return;
   }
@@ -1858,16 +1845,12 @@ async function handleInAppNavigation(event) {
   }
   renderMode();
   if (isControlPanelTarget) {
-    // The normal refresh path intentionally skips admin mode. Hydrate the
-    // panel explicitly when reached through an in-app link, otherwise mobile
-    // and tablet users only see it after a browser refresh.
+    // Il pannello amministrativo ha un caricamento esplicito anche quando viene raggiunto da un collegamento interno.
     void hydrateAdminNavigation().catch(showAuthError);
     return;
   }
   if (state.residentReady || (state.mode === 'week' && canUseWeekWithoutParticipant())) {
-    // Rebuild immediately from the in-memory model. Original and the modern
-    // styles use different icons/markup, so waiting for the network refresh
-    // leaves the previous visual language visible for several moments.
+    // Il disegno usa subito il modello in memoria, perché ogni aspetto ha icone e struttura proprie e non richiede di attendere la rete.
     renderParticipantMeals();
   }
   refreshNow('navigazione');
@@ -1875,8 +1858,7 @@ async function handleInAppNavigation(event) {
 
 async function hydrateAdminNavigation() {
   if (state.mode !== 'admin') return;
-  // residentSettingsMode is an explicit UI boundary, not a loading hint.
-  // Honour it before looking at a possibly persistent Firebase session.
+  // residentSettingsMode definisce il perimetro dell'interfaccia e viene valutato prima della sessione Firebase persistente.
   if (state.residentSettingsMode) {
     if (state.residentReady) {
       renderResidentSettingsPanel();
@@ -1899,10 +1881,7 @@ async function hydrateAdminNavigation() {
     return;
   }
 
-  // A resident technical session can replace Firebase Auth while the previous
-  // strong admin role is still held in memory. Reconcile it exactly as the
-  // initial auth watcher does; this also mounts either resident settings or
-  // the administrator sign-in panel without requiring a page refresh.
+  // La sessione tecnica residente richiede la riconciliazione dei ruoli in memoria, come nell'osservatore iniziale. Il risultato determina le preferenze residenti oppure il modulo amministrativo.
   await reconcileAdminAccessWithoutStrongUser();
 }
 
@@ -2400,10 +2379,7 @@ function initializeAuthPanel() {
       residentRestorePending: state.residentRestorePending,
       strongAuthUser: Boolean(strongAuthUser)
     })) {
-      // Al refresh del pannello una sessione residente/vice persistente parte
-      // con residentRestorePending=true. L'evento Auth anonimo iniziale non
-      // deve smontarla, ma deve avviarne subito il ripristino: attendere il
-      // timeout di sicurezza rendeva il pannello inutilizzabile per 8 secondi.
+      // Con residentRestorePending=true, l'evento Auth anonimo avvia subito il ripristino della sessione residente o vice, mantenendo il pannello montato.
       if (state.mode === 'admin'
           && state.residentRestorePending
           && !state.residentAuthTransition
@@ -2479,9 +2455,7 @@ function reconcileAdminAccessWithoutStrongUser() {
       renderMode();
       return;
     }
-    // Prima ricostruiamo la sessione residente/vice. Azzerare subito lo stato
-    // amministrativo mostrava per errore Google/email e poteva invalidare la
-    // vice-sessione già valida, lasciando il pannello fermo su "verifica".
+    // La sessione residente o vice viene ricostruita prima di aggiornare lo stato amministrativo e scegliere il modulo di accesso.
     beginAdminAuthorizationCheck();
     await restoreResidentSettingsPanel();
     renderMode();
@@ -2522,10 +2496,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
       ));
     } catch (error) {
       authorizationFailed = true;
-      // A membership/settings read may fail independently of Firebase Auth. Do
-      // not leave the shell permanently in "Accesso in verifica". If the role
-      // was already established, keep the panel mounted with the data currently
-      // available and surface the recoverable error in its status row.
+      // Le letture di membership e impostazioni sono indipendenti da Firebase Auth. Un ruolo già verificato mantiene il pannello e i dati disponibili; gli errori recuperabili compaiono nella riga di stato.
       if (hydrationVersion === state.adminHydrationVersion
           && state.mode === 'admin'
           && state.adminRole
@@ -2618,8 +2589,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
 
   const activeCenterId = access.centerId || getActiveCenterId();
   if (access.active && access.role === 'ADMIN' && access.roleInvitationId) {
-    // Recover the waiting state even after a reload or when acceptance was
-    // completed in another tab of the same browser.
+    // Lo stato di attesa si ricostruisce anche dopo una ricarica o un'accettazione completata in un'altra scheda.
     storePendingAdminSuccession(activeCenterId, user.uid);
   }
   const successionWasPending = hasPendingAdminSuccession(activeCenterId, user.uid);
@@ -2693,8 +2663,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   if (isPlatformOwner) {
     elements.bootstrapButton.hidden = true;
   }
-  // Keep the complete panel atomic: participants, roles and operational links
-  // must be ready before any actionable control becomes visible.
+  // Il pannello appare come un insieme coerente: partecipanti, ruoli e collegamenti sono pronti prima dei comandi operativi.
   elements.adminPanel.hidden = true;
   if (elements.adminInviteAcceptPanel) {
     elements.adminInviteAcceptPanel.hidden = !invitationPending
@@ -2874,9 +2843,7 @@ function setSignedOutState() {
 }
 
 function clearAdminAuthorizationState() {
-  // Invalidate any admin hydration that started before logout. A late
-  // response must not be able to restore privileges on the new resident
-  // session.
+  // L'uscita invalida i caricamenti amministrativi pendenti: le risposte tardive non possono assegnare privilegi alla sessione residente.
   state.adminHydrationVersion += 1;
   adminLoadedResources.clear();
   adminResourceLoads.clear();
@@ -3033,10 +3000,7 @@ async function handleAuthButton() {
 
   try {
     const credential = await signInWithGoogle();
-    // The Auth observer is intentionally debounced for mutation stability.
-    // Hydrate from the credential as a second, idempotent path so the first
-    // Gmail access cannot remain on the empty shell if the observer event is
-    // coalesced by the browser.
+    // L'osservatore Auth raggruppa gli eventi per stabilizzare le modifiche. Il caricamento dalle credenziali offre un secondo percorso idempotente per completare l'accesso.
     if (credential?.user && state.mode === 'admin') {
       await hydrateAdminNavigation();
     }
@@ -3763,9 +3727,7 @@ async function handleCenterInitialization() {
 async function refreshNow(source) {
   const refreshKey = buildRefreshContextKey();
   if (state.refreshInFlight) {
-    // Timer/focus/online bursts for the same visible period do not require a
-    // second complete set of reads. A manual refresh or a changed route/date
-    // remains authoritative and is queued once.
+    // Gli eventi ravvicinati di timer, visibilità e rete condividono le letture del periodo corrente. Un aggiornamento manuale o un cambio di vista o data viene accodato una sola volta.
     if (source === 'manuale' || refreshKey !== state.activeRefreshKey) {
       state.pendingRefreshSource = source === 'manuale'
         ? 'manuale'
@@ -3837,9 +3799,7 @@ async function performRefresh(source) {
       error.refreshStage = 'sessione';
       throw error;
     });
-    // Le impostazioni del centro sono protette dalla sessione Cucina. Avviare
-    // le due letture in parallelo rendeva casuale il primo accesso su un
-    // dispositivo nuovo.
+    // Le impostazioni del centro sono protette dalla sessione Cucina e vengono lette dopo la sua creazione.
     const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
     }).catch((error) => {
@@ -3966,7 +3926,7 @@ function preparePersonalCalendarRead(forceStaticRefresh, participantId) {
   const read = state.mode === 'week'
     ? loadParticipantWeek(scope.participantId, state.weekStartDate, 7, options)
     : loadParticipantMonthData(scope.participantId, startOfMonth(state.monthDate), options);
-  // Settle errors now, even if a settings/date change makes this read obsolete.
+  // Gli errori vengono gestiti anche se un cambio di impostazioni o date rende la lettura superata.
   const result = read.then((value) => ({ value }), (error) => ({ error }));
   return { scope, timezone, locale, revision, result };
 }
@@ -3975,8 +3935,7 @@ function renderCalendarPlaceholder() {
   if (!['week', 'participant'].includes(state.mode)) return;
   const target = state.mode === 'week' ? elements.participantMeals : elements.monthGrid;
   delete target.dataset.renderKey;
-  // Keep the startup presentation until the real calendar is ready. If the
-  // safety timeout expires, show a status instead of a second, reduced grid.
+  // La presentazione iniziale rimane fino alla disponibilità del calendario. Alla scadenza dell'attesa viene mostrato uno stato informativo.
   target.innerHTML = `<p class="empty-state" role="status">${escapeHtml(t('common.status.loading'))}</p>`;
   elements.weekOperations.hidden = true;
   if (state.mode === 'week') renderWeekControls();
@@ -3989,7 +3948,7 @@ async function refreshParticipantExtras(source, request) {
   const isCurrent = () => isCurrentParticipantRequest(request)
     && getCurrentUser()?.uid === uid && state.selectedParticipant?.participantId === participantId
     && !state.residentAuthTransition;
-  // Yield the current JS task; this is not a guarantee about paint or sockets.
+  // Cede il controllo del ciclo JavaScript senza presumere il completamento del disegno o della rete.
   await new Promise((resolve) => window.setTimeout(resolve, 0));
   if (!isCurrent()) return;
   const forceRefresh = source === 'manuale';
@@ -3998,8 +3957,7 @@ async function refreshParticipantExtras(source, request) {
   };
   const presentation = loadCenterContactSettings({ forceRefresh }).then(async (settings) => {
     if (!isCurrent()) return;
-    // A presentation cache must not replace the settings that just confirmed
-    // the editable calendar. These fields are refreshed on the critical path.
+    // La cache di presentazione non sostituisce le impostazioni verificate che determinano il calendario modificabile.
     const { timezone, reservationCutoffs, adminPasswordVersion } = state.centerContactSettings;
     state.centerContactSettings = applyResidentPreferences({
       ...settings, timezone, reservationCutoffs, adminPasswordVersion
@@ -4043,8 +4001,7 @@ async function refreshParticipantExtras(source, request) {
 
 async function refreshParticipant(source, options = {}) {
   const retryPermission = !String(source || '').endsWith(':auth-retry');
-  // A completed write schedules the refresh. Reading while an optimistic
-  // selection is still pending could replace it with the previous value.
+  // L'aggiornamento viene programmato al completamento della scrittura per mantenere visibile la selezione ottimistica ancora in attesa.
   if (state.residentAuthTransition || state.pendingMealKeys?.size) return;
   let request = beginParticipantRequest();
   const scope = currentPersonalCalendarScope();
@@ -4090,15 +4047,12 @@ async function refreshParticipant(source, options = {}) {
             if (source === 'manuale' || !isCurrentParticipantRequest(request) || state.residentAuthTransition
                 || uid !== getCurrentUser()?.uid || !['participant', 'week'].includes(state.mode)) return;
             request.authUid = uid;
-            // Session-derived identity may start protected reads, but cannot
-            // publish a calendar: profile/signature and current settings must
-            // still pass below. Reuse the same reads after profile validation.
+            // L'identità ricavata dalla sessione consente letture anticipate protette. La pubblicazione del calendario richiede anche la verifica di profilo, sigla e impostazioni correnti.
             void loadCenterCalendarSettings({ forceRefresh: source === 'manuale' }).catch(() => undefined);
             preparedCalendar = preparePersonalCalendarRead(false, participantId);
           }
         });
-      // A login/logout may have superseded this refresh while session restore
-      // was awaiting Firebase. A stale request must never remount the login.
+      // Un cambio di autenticazione durante il ripristino invalida la richiesta: una risposta superata non può ricreare il modulo di accesso.
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (restored) {
         request.authUid = getCurrentUser()?.uid;
@@ -4109,9 +4063,7 @@ async function refreshParticipant(source, options = {}) {
         if (restored.strongAdministrator === true) {
           state.residentEntryKind = 'strong-admin';
         }
-        // La vista predefinita si applica soltanto a un nuovo ingresso. Un
-        // refresh di un URL esplicito view=participant o view=week deve
-        // ricostruire esattamente la schermata che l'utente stava usando.
+        // La vista preferita si applica all'accesso e all'avvio della PWA installata. Ricarica e cronologia conservano la vista indicata dall'URL.
         const useOpeningPreference = options.loginHandshake
           || source === 'avvio' && isInstalledPersonalAppLaunch();
         if (useOpeningPreference && applyResidentEntryView()) {
@@ -4126,9 +4078,7 @@ async function refreshParticipant(source, options = {}) {
       }
       renderResidentAccess(false);
       renderMode();
-      // Identifying the resident can switch from guest to personal week
-      // preferences. renderMode aligns the dates synchronously; this request
-      // still owns the route and must load that newly selected period.
+      // L'identificazione applica le preferenze personali e renderMode allinea le date. La richiesta attiva segue il periodo così selezionato.
       if (request.weekStartDate !== state.weekStartDate.getTime()
           || request.monthDate !== state.monthDate.getTime()) {
         request = { ...beginParticipantRequest(), authUid: getCurrentUser()?.uid };
@@ -4148,11 +4098,9 @@ async function refreshParticipant(source, options = {}) {
     });
     await sessionPromise;
     if (!isCurrentParticipantRequest(request)) return;
-    // Personal meals need only dates/cutoffs from the center document.
-    // Avatar, presentation and privileged data must not hold their first paint.
+    // Il calendario personale richiede date e orari limite. Icona, presentazione e dati privilegiati si caricano separatamente.
     const personalRoute = ['participant', 'week'].includes(state.mode);
-    // The saved timezone lets both independent reads start together. Never
-    // publish this calendar until current settings confirm its date context.
+    // Il fuso orario salvato consente letture parallele; le impostazioni correnti devono confermare le date prima della pubblicazione.
     if (personalRoute && !preparedCalendar) preparedCalendar = preparePersonalCalendarRead(source === 'manuale');
     const centerSettings = await (personalRoute ? loadCenterCalendarSettings : loadCenterContactSettings)({
       forceRefresh: source === 'manuale'
@@ -4167,10 +4115,7 @@ async function refreshParticipant(source, options = {}) {
       await refreshResidentAdministratorAuthorization(() => isCurrentParticipantRequest(request));
       await refreshStrongAdministratorOperationalAuthorization(() => isCurrentParticipantRequest(request));
     }
-    // The request snapshot is created before the centre timezone is known.
-    // On the first resident load, anchoring the calendar can therefore change
-    // the active month/week and make that snapshot stale.  Renew it here so
-    // the data loaded for the current period is also rendered immediately.
+    // L'allineamento al fuso orario del centro può cambiare il periodo attivo. La richiesta viene associata alle date effettive prima di pubblicarne i dati.
     if (anchorCalendarToCenterToday()) {
       request = beginParticipantRequest();
     }
@@ -4240,11 +4185,10 @@ async function refreshParticipant(source, options = {}) {
     renderParticipantMeals();
     if (personalRoute) {
       markStartupStage('calendar-ready');
-      // This continuation is deliberately outside the calendar/login promise.
+      // Questa continuazione è indipendente dalla promessa di caricamento del calendario e di accesso.
       void refreshParticipantExtras(source, request);
     }
-    // The visible calendar is ready. Optional notification reads must not
-    // keep the startup overlay or the login handshake waiting on the network.
+    // Il calendario pronto può apparire mentre le letture facoltative dei promemoria proseguono separatamente.
     hideStartupSplash();
     void refreshMealRemindersAfterCalendar(() => isCurrentParticipantRequest(request));
     state.lastSuccessfulRefreshAt = new Date();
@@ -4310,10 +4254,7 @@ async function refreshParticipant(source, options = {}) {
     }
   } finally {
     hideStartupSplash();
-    // A delayed preference/translation render can align the week while an
-    // initial read is pending. Discard its old dates, but do not leave the
-    // current route on "Loading" without a replacement request. Navigation,
-    // logout and a newer refresh retain ownership and must never be retried here.
+    // Un allineamento tardivo delle date richiede un nuovo caricamento del periodo. Il recupero riguarda soltanto la richiesta ancora attiva; navigazione e autenticazione mantengono la precedenza.
     if (!state.residentAuthTransition
         && ['week', 'participant'].includes(state.mode)
         && request.version === state.participantRequestVersion
@@ -4404,8 +4345,7 @@ async function handleResidentLogin(event) {
         elements.residentPasswordInput.value
       );
     } catch (error) {
-      // Try shared administrator credentials only when the common password
-      // was rejected. Network errors must never trigger extra login attempts.
+      // La password condivisa amministrativa viene verificata soltanto dopo il rifiuto della password comune. Gli errori di rete non avviano altri tentativi di accesso.
       if (!canFallbackFromResidentLogin(error)) throw error;
       result = await signInFriendlyViceAdministrator(
         elements.residentSignatureInput.value,
@@ -4451,8 +4391,7 @@ async function handleResidentLogin(event) {
     transitionAuthLifecycle('RESIDENT_READY', { entry: 'common', route: state.mode });
     state.residentEntryKind = 'common';
     applyResidentEntryView();
-    // Handshake session-first: il calendario resta smontato finché le letture
-    // necessarie al periodo corrente non sono state autorizzate davvero.
+    // La sessione viene verificata prima di mostrare il calendario: le letture del periodo corrente devono essere autorizzate.
     renderResidentAccess(true);
     renderMode();
     const authorized = await refreshParticipant('avvio', { loginHandshake: true });
@@ -4546,9 +4485,7 @@ async function handleForgetDevice() {
   }
   try {
     await forgetResidentDevice();
-    // The Auth watcher is deliberately muted while logout is in progress.
-    // Clear strong-role capabilities synchronously so the next anonymous
-    // resident session cannot inherit administrator-only reads.
+    // Durante l'uscita l'osservatore Auth è sospeso. I privilegi forti vengono rimossi subito, prima dell'eventuale sessione anonima residente.
     clearAdminAuthorizationState();
   } catch (error) {
     state.residentAuthTransition = '';
@@ -4562,9 +4499,7 @@ async function handleForgetDevice() {
   invalidateViewRequests();
   if (!state.adminRole) state.adminParticipants = [];
   if (leavingAdminPanel) {
-    // Logout from the control panel must return to a real resident entry
-    // route. Keeping view=admin leaves the resident form hidden and produces
-    // the apparently empty panel that previously required a manual refresh.
+    // L'uscita dal pannello conduce al percorso di accesso residente, che mostra il modulo con sigla e password.
     const residentUrl = new URL(window.location.href);
     residentUrl.searchParams.set('view', 'participant');
     residentUrl.searchParams.set('access', 'friendly');
@@ -4573,11 +4508,7 @@ async function handleForgetDevice() {
     window.location.assign(residentUrl.pathname + residentUrl.search);
     return;
   }
-  // Leaving a resident view must also reset the operational route. Keeping
-  // view=week (or view=summary) while the resident identity is cleared lets
-  // the first refresh mount the old screen before its session check rejects
-  // it again, producing the apparent login loop. Start the next sign-in from
-  // the single, stable resident entry route instead.
+  // L'uscita dalle viste residenti azzera anche il percorso operativo e prepara un unico punto di accesso per la sessione successiva.
   const residentUrl = new URL(window.location.href);
   residentUrl.searchParams.set('view', 'participant');
   residentUrl.searchParams.set('access', 'friendly');
@@ -5840,9 +5771,7 @@ function syncAdminAdaptationsForm() {
   }
   syncMealReminderControl();
   if (elements.residentAdminUnlock) {
-    // L'accesso del vice avviene ora direttamente dal modulo iniziale con
-    // sigla + password amministratori. Non mostriamo al residente ordinario
-    // funzioni bloccate o un secondo passaggio di autenticazione.
+    // Il vice accede dal modulo iniziale con sigla e password amministratori. Il residente ordinario vede soltanto le funzioni del proprio perimetro.
     elements.residentAdminUnlock.hidden = true;
   }
   if (elements.adminPasswordRotationWarning) {
@@ -6118,9 +6047,7 @@ function renderMode() {
   const isSummary = state.mode === 'summary';
   const isKitchen = state.mode === 'kitchen';
   const isAdminView = state.mode === 'admin';
-  // A stale center-invitation token must not turn an ordinary admin/vice
-  // panel into the old "Attivazione centro" screen.  Activation is a real
-  // backend state, reported by loadAdminCenterAccess.
+  // L'attivazione del centro è uno stato del backend restituito da loadAdminCenterAccess; i token locali non determinano il contenuto del pannello.
   const isCenterActivation = isAdminView
     && state.adminNeedsInitialization === true
     && !state.adminRole
@@ -6131,9 +6058,7 @@ function renderMode() {
     && !state.residentReady
     && !state.residentRestorePending
     && !(isWeek && canUseWeekWithoutParticipant());
-  // The compact verb belongs to the dense Cool/Urban mobile header only.
-  // Keep the full product title on tablets and desktop where there is room
-  // for the established application identity.
+  // La testata compatta mobile usa un verbo breve. Su tablet e desktop lo spazio disponibile ospita il titolo completo dell'applicazione.
   const useCompactMobileTitle = activeInterfaceStyle !== 'original'
     && window.matchMedia?.('(max-width: 620px)').matches;
   const mealTitle = useCompactMobileTitle
@@ -6260,10 +6185,7 @@ function renderMode() {
     renderKitchenHeading();
   }
 
-  // Changing the interface style does not reload the week data.  Reconcile the
-  // operational section here as well, otherwise a previous render made while
-  // resident authorisation was still pending can leave Agenda Centro hidden
-  // when returning to the Original style.
+  // Il cambio di aspetto riutilizza i dati settimanali e riconcilia la sezione operativa con l'autorizzazione corrente.
   if (isWeek && !needsResidentLogin && canManageDailyOperations()) {
     renderWeekOperations();
   }
@@ -6403,8 +6325,7 @@ function getSummaryTitle() {
 }
 
 async function clearApplicationCache() {
-  // Purge only the PWA Cache Storage. Firebase Auth persistence, local
-  // preferences, tokens and IndexedDB are deliberately left untouched.
+  // La pulizia riguarda soltanto Cache Storage della PWA; persistenza Firebase Auth, preferenze, token e IndexedDB restano disponibili.
   try {
     const cacheNames = await window.caches?.keys?.() || [];
     await Promise.all(cacheNames
@@ -6420,8 +6341,7 @@ async function clearApplicationCache() {
       });
     }
   } catch {
-    // Cache cleanup is an optimization; a settings save must remain valid if
-    // a browser does not expose Cache Storage or MessageChannel.
+    // La pulizia della cache è facoltativa: il salvataggio resta valido anche senza Cache Storage o MessageChannel.
   }
 }
 
@@ -6940,9 +6860,7 @@ function renderParticipantMeals() {
     } else {
       elements.todayOverview.innerHTML = '';
     }
-    // During friendly login/restore there is intentionally no selected
-    // participant yet. Do not expose the administrative empty-list message:
-    // it looks like a failed login and can survive a stale render.
+    // Durante l'accesso e il ripristino il partecipante può essere ancora assente. La schermata residente attende l'identificazione senza mostrare messaggi amministrativi.
     elements.participantMeals.innerHTML = (state.friendlyAccess && !state.residentReady)
       || state.residentAuthTransition
       || state.residentRestorePending
@@ -7144,9 +7062,7 @@ function hasStrongAdministratorIdentity() {
 }
 
 function shouldOpenResidentSettingsPanel() {
-  // A strong Firebase session can remain on a shared device after an
-  // administrator has used it. It must not turn the control panel opened by
-  // an ordinary resident into the complete administrative panel.
+  // Su un dispositivo condiviso una sessione Firebase forte persistente non attribuisce al residente ordinario il pannello amministrativo completo.
   if (!state.residentReady) return false;
   if (state.residentEntryKind === 'common') return true;
   if (state.residentEntryKind === 'strong-admin') return false;
@@ -7154,11 +7070,7 @@ function shouldOpenResidentSettingsPanel() {
 }
 
 function ensureAuthorizedAdminRoute() {
-  // Firebase Auth persists the administrator identity, while the URL persists
-  // the surface that must be rebuilt after a refresh.  Keep those two states
-  // aligned only after the backend has confirmed an administrative role: a
-  // resident route must never acquire privileges merely from a stale Firebase
-  // session, but a visible full panel must always reload as view=admin.
+  // Firebase Auth conserva l'identità, mentre l'URL identifica la schermata. L'allineamento amministrativo richiede la conferma del ruolo dal backend; il pannello completo usa view=admin.
   if (state.mode !== 'admin' || !state.adminRole || state.residentSettingsMode) return;
   const url = new URL(window.location.href);
   let changed = false;
@@ -7497,10 +7409,7 @@ function renderMonthGrid() {
     month: formatMonthId(state.monthDate),
     monthControlsSide: controlsOnLeft ? 'left' : 'right',
     today: formatDateId(getCenterToday()),
-    // The first paint can legitimately happen before the reservation payload
-    // arrives. Include only the meal structure (not mutable effects) so that
-    // empty date cells are rebuilt once their controls become available,
-    // while ordinary reservation changes still use the lightweight DOM sync.
+    // La firma del disegno include la struttura dei pasti, così le celle si ricostruiscono quando i controlli diventano disponibili. Le modifiche alle prenotazioni usano la sincronizzazione leggera del DOM.
     days: monthCells.map((day) => [
       day.date,
       (day.meals || []).map((meal) => meal.mealTypeId)
@@ -8256,7 +8165,7 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   }
 
   const decision = await showActionDialog({
-    title: t('dialog.deletePerson.title'), // title: 'Elimina definitivamente la persona'
+    title: t('dialog.deletePerson.title'), // Eliminazione definitiva della persona.
     message: t('dialog.deletePerson.message', { name: participant.displayName }),
     confirmLabel: t('admin.people.delete'),
     destructive: true
@@ -8530,9 +8439,7 @@ function renderResidentSettingsPanel() {
   elements.authActions.hidden = true;
   elements.authStatus.textContent = state.selectedParticipant?.displayName
     || t('role.resident');
-  // The restricted panel is still part of the resident journey. Always keep
-  // its return route visible, even if a stale owner/admin state survives on a
-  // shared device until the next authorisation reconciliation.
+  // Il pannello ristretto appartiene al percorso residente e ne mantiene visibile il ritorno anche durante la riconciliazione dell'autorizzazione.
   elements.topbarContextNav.hidden = false;
   elements.mealsReturnEntry.hidden = false;
   elements.adminPanel.hidden = false;
@@ -8578,17 +8485,14 @@ function clearStrongAdministratorOperationalAuthorization() {
 }
 
 async function refreshStrongAdministratorOperationalAuthorization(isCurrent = () => true) {
-  // An ordinary resident session must never inherit the Firebase account that
-  // may still be persisted on a shared device. Only the resident identity
-  // explicitly restored from an authorised strong administrator can use it.
+  // Una sessione residente ordinaria non eredita l'account Firebase del dispositivo condiviso. L'identità forte è utilizzabile solo dopo il ripristino amministrativo autorizzato.
   if (state.residentEntryKind !== 'strong-admin' || !hasStrongAdministratorIdentity()) {
     return false;
   }
 
   const user = getCurrentUser();
   const membership = await loadCurrentAdminMembership(user);
-  // A logout, a resident login or another auth transition may have completed
-  // while Firestore was loading the membership. Ignore that obsolete result.
+  // Le transizioni di autenticazione invalidano le letture pendenti della membership: i risultati superati vengono ignorati.
   if (!isCurrent() || state.residentEntryKind !== 'strong-admin'
       || getCurrentUser()?.uid !== user?.uid
       || !hasStrongAdministratorIdentity()) {
@@ -8766,7 +8670,7 @@ function handleWeekHealthListClick(event) {
   state.weekSickDraft = {
     centerId: getActiveCenterId(),
     dateId: state.weekOperationalDateId,
-    // This baseline must survive refreshes and saves of other daily fields.
+    // Il valore di riferimento rimane disponibile durante aggiornamenti e salvataggi degli altri campi giornalieri.
     previousPeople: draft?.previousPeople || savedPeople.map((person) => ({ ...person })),
     people: currentPeople
   };
@@ -9543,8 +9447,7 @@ async function loadCurrentParticipantCalendar(options = {}) {
   }
   state.personalCalendarScope = scope;
   const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
-  // A prefetched/cached calendar may have waited for profile or settings.
-  // Recheck time at publication; a meal closed by the server stays closed.
+  // Le scadenze vengono rivalutate alla pubblicazione del calendario anticipato o in cache. Un pasto chiuso dal server rimane chiuso.
   const now = Date.now();
   for (const day of days) {
     for (const meal of day.meals) {
@@ -9937,8 +9840,7 @@ function getCalendarWeekdayLabels() {
 }
 
 function getCalendarWeekdayLabel(day) {
-  // Preserve the familiar compact Italian codes; other languages use their
-  // localized short names, so weekdays with the same initial remain distinct.
+  // L'italiano usa sigle compatte; le altre lingue usano nomi brevi localizzati per distinguere anche giorni con la stessa iniziale.
   if (getLocale() === 'it') return ['D', 'L', 'M', 'X', 'G', 'V', 'S'][day];
   return formatDateTime(new Date(2026, 0, 4 + day), { weekday: 'short' });
 }

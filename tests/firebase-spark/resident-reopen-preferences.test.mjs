@@ -9,7 +9,7 @@ test('restoring personal week preferences completes the first calendar without a
     renderMode() {
       if (!changed && h.state.residentReady) {
         changed = true;
-        // renderMode switches from the guest week to the identified person's preference.
+        // renderMode passa dalle preferenze ospite a quelle della persona identificata.
         h.state.weekStartDate = new Date(2026, 9, 11, 12);
       }
     }

@@ -40,8 +40,7 @@ let centerContactSettingsRevision = 0;
 let calendarSettingsLoad = null;
 let calendarSettingsCache = null;
 
-// Only the center document is needed to interpret calendar dates/cutoffs.
-// Presentation, participant metadata and the avatar are loaded after meals.
+// Date e orari limite richiedono soltanto il documento centro. Presentazione, dati del partecipante e icona si caricano dopo i pasti.
 export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) {
   const centerId = getActiveCenterId();
   const revision = centerContactSettingsRevision;
@@ -165,8 +164,7 @@ export function cacheDefaultView(value) {
 export function invalidateCenterContactSettingsCache() {
   centerContactSettingsRevision += 1;
   centerContactSettingsCache = null;
-  // Do not let a read started before a save remain the shared promise for a
-  // later caller. Its completion is guarded by the revision below.
+  // Il salvataggio invalida la promessa di lettura condivisa; la revisione controlla anche il completamento delle richieste pendenti.
   centerContactSettingsLoad = null;
   calendarSettingsLoad = null;
   calendarSettingsCache = null;
@@ -400,7 +398,7 @@ export async function removeCenterAvatar() {
   return { avatarVersion: '', avatarDataUrl: '' };
 }
 
-const SUPPORTED_CENTER_LOCALES = new Set(['it', 'en', 'fr', 'es', 'de']);
+const SUPPORTED_CENTER_LOCALES = new Set(['it', 'en', 'fr', 'es', 'de', 'ca']);
 
 function normalizeCenterLanguage(value) {
   return typeof value === 'string' && SUPPORTED_CENTER_LOCALES.has(value) ? value : 'it';
@@ -422,9 +420,7 @@ function refreshCenterContactSettings() {
     getDoc(doc(db, 'centers', centerId, 'participantMetadata', 'current')).catch(() => null)
   ])
     .then(async ([snapshot, presentationSnapshot, participantMetadataSnapshot]) => {
-      // A save may have invalidated this request while Firestore was still
-      // resolving. Re-read authoritative settings instead of publishing the
-      // stale snapshot into memory or localStorage.
+      // Se un salvataggio invalida la richiesta, le impostazioni vengono rilette dalla fonte autorevole prima di aggiornare memoria e localStorage.
       if (requestRevision !== centerContactSettingsRevision || centerId !== getActiveCenterId()) {
         if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
         return refreshCenterContactSettings();

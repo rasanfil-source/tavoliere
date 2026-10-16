@@ -17,7 +17,7 @@ export function getDateInTimeZone(timezone = 'Europe/Rome', now = new Date()) {
     if (centerDateFormatters.size >= 8) centerDateFormatters.delete(centerDateFormatters.keys().next().value);
     centerDateFormatters.set(timezone, formatter);
   }
-  // Cache the formatter, never the current day: resume/midnight must stay live.
+  // Memorizza il formattatore, non il giorno corrente, per rispettare ripresa dell'app e mezzanotte.
   const parts = formatter.formatToParts(now);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return new Date(Number(values.year), Number(values.month) - 1, Number(values.day), 12);

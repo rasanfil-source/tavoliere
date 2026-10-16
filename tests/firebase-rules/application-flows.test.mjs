@@ -251,8 +251,7 @@ test('riapertura: profilo e settimana in parallelo conservano selezioni, salvata
   const reloaded = await module.loadParticipantWeek(person, date, 7, { requireServer: true });
   assert.equal(reloaded[0].meals[1].effect, 'PRESENT');
   await environment.withSecurityRulesDisabled(async context => {
-    // Personal access is session-first: logout/revocation removes the token
-    // AND its access session, as forgetResidentDevice does in the application.
+    // L'accesso personale richiede una sessione: uscita e revoca eliminano sia il token sia la sessione, come forgetResidentDevice nell'applicazione.
     const batch = firestore.writeBatch(context.firestore());
     batch.delete(firestore.doc(context.firestore(), path('linkTokens/personal_test')));
     batch.delete(firestore.doc(context.firestore(), path('accessSessions/resident_one')));

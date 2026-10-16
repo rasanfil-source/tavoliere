@@ -52,7 +52,7 @@ function loadStoredCenterId() {
     const stored = window.localStorage.getItem(CENTER_STORAGE_KEY) || '';
     if (CENTER_ID_PATTERN.test(stored)) return stored;
   } catch {}
-  // iOS copies cookies when installing a Home Screen app, but not localStorage.
+  // Nell'installazione dalla schermata Home, iOS copia i cookie ma non localStorage.
   try {
     return document.cookie.split(';').map((item) => item.trim())
       .find((item) => item.startsWith(CENTER_STORAGE_KEY + '='))?.slice(CENTER_STORAGE_KEY.length + 1) || '';

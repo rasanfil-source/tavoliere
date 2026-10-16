@@ -1,6 +1,6 @@
 # PWA Firebase
 
-Questa cartella contiene l’applicazione distribuibile di **Tutti a tavola**.
+Questa cartella contiene l’applicazione distribuibile di **Oggi a tavola**.
 
 - `public/`: sorgenti della PWA;
 - `dist/`: pacchetto generato dal build;

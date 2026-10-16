@@ -22,10 +22,10 @@
     <script data-resident-modulepreload>
       (function () {
         var params = new URLSearchParams(window.location.search);
-        // Missing/unknown view defaults to the personal calendar, as in resolveMode.
+        // Una vista assente o sconosciuta apre il calendario personale, come in resolveMode.
         if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
             || params.has('invite') || params.has('adminInvite')) return;
-        // The build substitutes the additional static graph with hashed URLs.
+        // La build sostituisce il grafo aggiuntivo con URL identificati dall'impronta del contenuto.
         var residentModulePreloads = ['/participant-data.js?v=20261014b'];
         residentModulePreloads.forEach(function (path) {
           var link = document.createElement('link');
@@ -48,8 +48,8 @@
             try { center = document.cookie.split(';').map(function (item) { return item.trim(); })
               .find(function (item) { return item.indexOf('tavolaComune.centerId=') === 0; })?.slice('tavolaComune.centerId='.length) || ''; } catch (_) {}
           }
-          // Without service-worker interception, the static manifest defaults to
-          // this document URL. Keep the center in that URL before installation.
+          // Senza il service worker, il manifest statico usa l'URL del documento.
+          // Il centro viene quindi conservato nell'indirizzo prima dell'installazione.
           if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center) && !current.get('c')) {
             current.set('c', center);
             window.history.replaceState(window.history.state, '', window.location.pathname + '?' + current + window.location.hash);
@@ -821,6 +821,7 @@
                       <option value="fr" data-i18n="language.fr">Francese</option>
                       <option value="es" data-i18n="language.es">Spagnolo</option>
                       <option value="de" data-i18n="language.de">Tedesco</option>
+                      <option value="ca" data-i18n="language.ca">Catalano</option>
                     </select>
                     <small class="field-help" data-i18n="admin.adaptations.language.help">La lingua scelta viene usata per l'interfaccia di questo dispositivo.</small>
                   </label>

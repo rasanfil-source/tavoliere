@@ -23,11 +23,11 @@ test('a saved language survives center refreshes and a new application session',
   const { applyCenterDefaultLanguage } = bind(['applyCenterDefaultLanguage'], {
     resolveLocale, getLocale, setLocale, renderAllViews() {}
   });
-  for (const locale of ['en', 'fr', 'es', 'de']) {
+  for (const locale of ['en', 'fr', 'es', 'de', 'ca']) {
     await setLocale(locale);
     await applyCenterDefaultLanguage({ language: 'it' });
     assert.equal(getLocale(), locale);
-    // A fresh module instance models reopening the app with the same storage.
+    // Una nuova istanza del modulo rappresenta la riapertura dell'app con la stessa memoria locale.
     const reopened = await import(`../../prototypes/firebase-spark-pwa/public/i18n/i18n.mjs?reopen=${locale}`);
     await reopened.setLocale(reopened.resolveLocale('it'), { persist: false });
     assert.equal(reopened.getLocale(), locale);
@@ -62,7 +62,7 @@ test('the appearance form keeps the active language when its saved settings are 
     document: { documentElement: { dataset: {} } },
     syncAdaptationsContextCopy() {}, applyInterfaceStyle() {}, updateThemeSelectControl() {}, syncMealReminderControl() {}
   });
-  for (const locale of ['en', 'fr', 'es', 'de']) {
+  for (const locale of ['en', 'fr', 'es', 'de', 'ca']) {
     await setLocale(locale, { persist: false });
     syncAdminAdaptationsForm();
     assert.equal(elements.adminLanguageSelect.value, locale);
@@ -83,7 +83,7 @@ test('reminder status participates in subsequent DOM language updates', async ()
   syncMealReminderControl();
   const italian = status.textContent;
   const root = { querySelectorAll: selector => selector === '[data-i18n]' ? [status] : [] };
-  for (const locale of ['en', 'fr', 'es', 'de']) {
+  for (const locale of ['en', 'fr', 'es', 'de', 'ca']) {
     await setLocale(locale, { persist: false });
     applyTranslations(root);
     assert.equal(status.textContent, t('mealReminder.status.enabled'));
@@ -102,7 +102,7 @@ test('week and month labels use every locale and respect both week start prefere
     getMonthScopeEffect: () => 'PRESENT', getMonthSelectionEffect: () => 'PRESENT',
     getMonthScopeMeals: () => []
   });
-  for (const locale of ['it', 'en', 'fr', 'es', 'de']) {
+  for (const locale of ['it', 'en', 'fr', 'es', 'de', 'ca']) {
     await setLocale(locale, { persist: false });
     for (const start of ['monday', 'sunday']) {
       state.centerContactSettings.weekStartsOn = start;

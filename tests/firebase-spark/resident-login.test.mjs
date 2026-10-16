@@ -635,7 +635,6 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.doesNotMatch(ownershipTransfer, /batch\.set\([^\n]*ProfileRef/);
   assert.doesNotMatch(ownershipTransfer, /successorProfileSnapshot|successorProfileRef/);
   assert.match(ownershipTransfer, /successorInvitation\.acceptedEmail[\s\S]*successor\.email/);
-  assert.match(ownershipTransfer, /La membership del centro e'\s*\/\/ la fonte autorevole/);
 });
 
 test('il salvataggio settimanale non provoca una seconda lettura completa', () => {
@@ -984,7 +983,7 @@ test('il pannello amministratore distingue sospensione ed eliminazione definitiv
   assert.match(app, /data-admin-person-delete/);
   assert.match(index, /data-admin-delete-participant[^>]*hidden>Elimina persona/);
   assert.match(app, /handleAdminDeleteParticipant/);
-  assert.match(app, /title: 'Elimina definitivamente la persona'[\s\S]*destructive: true/);
+  assert.match(app, /title: t\('dialog.deletePerson.title'\)[\s\S]*destructive: true/);
   const deleteHandler = app.match(/async function deleteParticipantFromAdminPanel[\s\S]*?\n}/)?.[0] || '';
   assert.doesNotMatch(deleteHandler, /requiredText/);
   assert.match(app, /pendingAdminParticipantStatusIds: new Set\(\)/);

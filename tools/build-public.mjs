@@ -7,14 +7,13 @@ const root = resolve('.');
 const sourceRoot = resolve('prototypes/firebase-spark-pwa/public');
 const defaultOutputRoot = resolve('prototypes/firebase-spark-pwa/dist');
 const outputRoot = resolve(process.env.TAT_BUILD_OUTPUT || defaultOutputRoot);
-// Never let a mistyped output override remove sources or a parent directory.
+// La destinazione della build non può coincidere con i sorgenti o una loro cartella superiore.
 if (outputRoot !== defaultOutputRoot && !outputRoot.startsWith(resolve('.tools/build-tests') + sep)) {
   throw new Error('TAT_BUILD_OUTPUT must be dist or a temporary directory under .tools/build-tests');
 }
 
 await mkdir(outputRoot, { recursive: true });
-// Keep immutable chunks from previous releases: an already open tab may
-// request an optional feature after the new release has been deployed.
+// Conserva i moduli immutabili per le schede aperte, che possono richiedere funzionalità facoltative durante un aggiornamento dell'applicazione.
 for (const entry of await readdir(outputRoot, { withFileTypes: true })) {
   if (entry.name === 'assets') continue;
   const target = resolve(outputRoot, entry.name);
@@ -54,15 +53,13 @@ const result = await build({
   plugins: [{
     name: 'browser-module-identities',
     setup(bundler) {
-      // Development keeps the existing CDN imports. Production embeds the
-      // identical SDK version, including FULL Firestore and its memory cache.
+      // Lo sviluppo usa import dal CDN; la produzione incorpora lo stesso SDK con Firestore completo e cache in memoria.
       bundler.onResolve({ filter: /^https:\/\/www\.gstatic\.com\/firebasejs\// }, async (args) => {
         const match = args.path.match(/\/firebasejs\/([^/]+)\/firebase-(app|auth|firestore)\.js$/);
         if (!match || match[1] !== firebaseVersion) throw new Error(`Firebase version mismatch: ${args.path}`);
         return bundler.resolve(`firebase/${match[2]}`, { kind: args.kind, resolveDir: root });
       });
-      // Query versions identify the same local source, not duplicate SDK/Auth
-      // instances. All production edges are instead content-hashed URLs.
+      // I parametri degli import identificano lo stesso sorgente locale. La build usa URL con impronta del contenuto e un'unica istanza SDK/Auth.
       bundler.onResolve({ filter: /^\.{1,2}\/.*\?v=/ }, (args) => ({
         path: resolve(args.resolveDir, args.path.split('?')[0])
       }));
@@ -99,8 +96,7 @@ html = html.replace('</head>', initial.filter(path => path !== entry)
   .map(path => `    <link rel="modulepreload" href="${path}">`).join('\n') + '\n  </head>');
 await writeFile(resolve(outputRoot, 'index.html'), html);
 
-// Generate the worker shell from the real module graph, without precaching
-// administration, backups, kitchen or summary features for a resident.
+// La cache iniziale deriva dal grafo effettivo dei moduli e non precarica le funzioni facoltative amministrative, cucina, riepilogo o copie di sicurezza.
 const staticShell = ['/', '/index.html', '/manifest.webmanifest', '/manifest-kitchen.webmanifest',
   '/icons/splash-512-transparent.png?v=20260824a', '/icons/whatsapp.svg'];
 let worker = await readFile(resolve(sourceRoot, 'sw.js'), 'utf8');

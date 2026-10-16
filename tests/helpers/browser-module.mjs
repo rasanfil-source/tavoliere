@@ -2,9 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 const publicRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
 
-// Load the actual browser module with explicit dependencies. Its Firebase CDN
-// imports cannot be loaded by Node; integration tests supply the real SDK and
-// an emulator-backed database, while each load gets its own module caches.
+// Carica il modulo effettivo con dipendenze esplicite. Node non importa l'SDK dal CDN; i test di integrazione forniscono SDK e database emulato. Ogni caricamento ha cache indipendenti.
 export async function loadBrowserModule(file, dependencies, exportedNames) {
   const original = await readFile(new URL(file, publicRoot), 'utf8');
   const source = original

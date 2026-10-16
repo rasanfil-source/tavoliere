@@ -109,7 +109,7 @@ El italiano está incluido en la carga inicial. Inglés y español se cargan baj
 
 ## PWA, caché y actualización
 
-El service worker aplica una estrategia de carcasa versionada. Una nueva versión se instala en segundo plano y espera a que se cierren todas las ventanas y pestañas de la versión anterior. En la apertura siguiente toma el control. No se usa una recarga forzada durante una operación, para evitar regresiones de estado y pantallas intermedias.
+El service worker instala de forma atómica la página y sus recursos. La activación espera al cierre de las ventanas y pestañas controladas; la apertura siguiente utiliza el conjunto completo. Las operaciones del usuario continúan sin recargas forzadas.
 
 El manifiesto incluye iconos `any` y `maskable`; Android puede así aplicar su máscara sin inventar bordes irregulares.
 

@@ -60,7 +60,7 @@
   "admin.activity.eventCount": "Activités affichées : {count}",
   "admin.activity.filtersLabel": "Filtres du journal d'activité",
   "admin.activity.loading": "Chargement de l'activité…",
-  "admin.activity.loadMore": "Charger les entrées précédentes",
+  "admin.activity.loadMore": "Charger les activités précédentes",
   "admin.activity.noEvents": "Aucune activite recente",
   "admin.activity.title": "Maintenance",
   "admin.activity.todayAt": "Aujourd'hui, {time}",
@@ -730,5 +730,6 @@
   "mealReminder.notification.title": "Il est temps de réserver",
   "mealReminder.notification.body": "Il reste 10 minutes : pensez à vous inscrire pour {meal}.",
   "mealReminder.notification.disable": "Désactiver",
-  "mealReminder.status.failed": "Impossible d’activer les rappels. Réessayez avec l’application ouverte et vérifiez les autorisations de notification."
+  "mealReminder.status.failed": "Impossible d’activer les rappels. Réessayez avec l’application ouverte et vérifiez les autorisations de notification.",
+  "language.ca": "Catalan"
 }
