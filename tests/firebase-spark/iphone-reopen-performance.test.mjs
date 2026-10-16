@@ -206,7 +206,7 @@ test('meals become usable while roles, presentation and accessory continuation r
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
   const context = vm.createContext({ state, console,
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
-    preparePersonalCalendarRead: () => null,
+    preparePersonalCalendarRead: () => null, getActiveCenterId: () => 'center',
     getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => calls.push('session'),
     loadCenterCalendarSettings: async () => { calls.push('critical-settings'); return {}; },
@@ -346,7 +346,7 @@ test('essential meal reads start while current center settings are still pending
   const state = { mode: 'week', friendlyAccess: true, residentReady: true,
     participantWeek: [], participantMonth: [], selectedParticipant: { participantId: 'person' },
     centerContactSettings: { timezone: 'Europe/Rome' }, weekStartDate: new Date(2026, 9, 12) };
-  const context = vm.createContext({ state, console, participantCalendarRevision: 0,
+  const context = vm.createContext({ state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     getCurrentUser: () => ({ uid: scope.uid }), getLocale: () => 'it', renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => {},

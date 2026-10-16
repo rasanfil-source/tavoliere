@@ -16,7 +16,7 @@ const extract = (source, name) => {
 // Execute real restoration/orchestration/publication functions with controlled
 // I/O. This is neither a browser benchmark nor an emulation of Safari transport.
 export function residentReopenHarness({ sources = reopenSources, read = async (_, value) => value,
-  mode = 'week', profile = { participantId: 'person', signature: 'AA' } } = {}) {
+  mode = 'week', profile = { participantId: 'person', signature: 'AA' }, overrides = {} } = {}) {
   const events = [];
   const start = performance.now();
   const record = (name) => events.push({ name, ms: performance.now() - start });
@@ -67,6 +67,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     renderResidentAccess() {}, renderMode() {}, renderCalendarPlaceholder() {},
     loadCenterCalendarSettings: () => settingsReady ||= io('settings', { timezone: 'Europe/Rome' }),
     applyResidentPreferences: value => value, anchorCalendarToCenterToday: () => false,
+    isInstalledPersonalAppLaunch: () => false,
     loadParticipantWeek,
     loadParticipantMonthData: (id, date, options) => loadParticipantWeek(id, date, 31, options),
     prefetchNextParticipantMonth: () => record('prefetch-month'),
@@ -77,7 +78,8 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => '', setParticipantStatus() {},
     isCenterAccessRevokedError: error => error.code === 'permission-denied',
     isConnectionAvailable: () => false, isRecoverableSessionError: error => error.code === 'unavailable',
-    shouldPreserveResidentViewAfterRefreshError: () => true, friendlyErrorMessage: () => '', t: key => key
+    shouldPreserveResidentViewAfterRefreshError: () => true, friendlyErrorMessage: () => '', t: key => key,
+    ...overrides
   };
   const code = [extract(sources.participant, 'restoreFriendlyResidentSession'),
     ...['beginParticipantRequest', 'isCurrentParticipantRequest', 'currentPersonalCalendarScope',

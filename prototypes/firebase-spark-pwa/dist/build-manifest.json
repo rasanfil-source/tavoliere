@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "release": "7c554a66c6eeeaee",
+  "release": "442349aa44db9e34",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
-  "entry": "/assets/app-T4GFERE7.js",
+  "entry": "/assets/app-ZRADLR4U.js",
   "styles": [
     "/assets/styles-H7OCO4TS.css",
     "/assets/summary-matrix-refinements-L5GRFJGG.css"
   ],
   "initial": [
-    "/assets/app-T4GFERE7.js",
+    "/assets/app-ZRADLR4U.js",
     "/assets/chunk-6VU4LDKD.js",
     "/assets/chunk-7QBE52D3.js",
     "/assets/chunk-7ZENLLVJ.js",
@@ -24,7 +24,7 @@
     "/assets/chunk-Z6VL4FUK.js"
   ],
   "resident": [
-    "/assets/app-T4GFERE7.js",
+    "/assets/app-ZRADLR4U.js",
     "/assets/chunk-6VU4LDKD.js",
     "/assets/chunk-7QBE52D3.js",
     "/assets/chunk-7ZENLLVJ.js",
@@ -417,8 +417,8 @@
         }
       ]
     },
-    "/assets/app-T4GFERE7.js": {
-      "bytes": 248894,
+    "/assets/app-ZRADLR4U.js": {
+      "bytes": 249612,
       "source": "app.js",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/refresh-schedule.js",
@@ -832,8 +832,8 @@
     "/access-links.js": "bad74c136006c2079e6bc80318169ae6622f242126fec834523195cd92941659",
     "/admin-center.js": "83d57b6ae6b069386a31d663abdd0286655e12aab169b9a1d6b38c5dfa19ba2e",
     "/admin-participant-data.js": "8a2070c474e7ca6104449b40015b2f221dedb46ec6c23da3b45c86ca8b821b3a",
-    "/app.js": "4e02baf713b354a29f0e792a69f8d9b0e23c1d6d7f6e3a630abe9a2f69463eae",
-    "/assets/app-T4GFERE7.js": "d41f9c0a8fab9125d5181761afee12be49f8bd95063cf132ff3ffd502408b935",
+    "/app.js": "b7f312516b78ad1b560a0ca6d0efd8c416484e852d714770b80f703e0b829c27",
+    "/assets/app-ZRADLR4U.js": "f3e708b42fcb402cde7664587dd68163f46af4283f39bd92adfc754537c1e8dc",
     "/assets/chunk-6TJY6AH7.js": "d56b95b49cade74c12699ceb139bca728ebbfab0ce1e14f8475d8b0ee22d7f17",
     "/assets/chunk-6VU4LDKD.js": "44bb571ae54c5f665e8becccfd51387b403f9d0b13b7970a8203db51f97ac1c8",
     "/assets/chunk-7QBE52D3.js": "1a7152d1eeb55e3ae6214dcf73aa94ab671acc8531c459558b791ca82ce76dd9",
@@ -907,7 +907,7 @@
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "101e5c8344d596ca7d3c73b180e1ae4d9a10117ef11acb42bfb2c0c27fe85bca",
+    "/index.html": "564b357ef6045f7ff58173c9a21d5ae792c33ef7fa5816a6e508164a5405fb75",
     "/kitchen-data.js": "dbf829e783cf0ead202d01c8e9591757fe2712791d2162b2b72b8c0030f9f20b",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
     "/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
@@ -923,13 +923,13 @@
     "/summary-matrix-model.js": "93d4947eee67bcdd6db79a3ff100a6cc8b58c854c07ba6256bc4e74b1d4c03b9",
     "/summary-matrix-refinements.css": "cf4ea64376cc116993d79955f67e3a91718b6e98a0c0a5bf46e1479aa888b854",
     "/summary-matrix-view.js": "d9b4710a83aa4eb636eb2d301e5a996d10da544924529d7bd825f1a371f64b6c",
-    "/sw.js": "63baaeda66c8c84b65eb4ff1427b5427954a4888eb982e47962f290d6d3e69df"
+    "/sw.js": "0b08520b5614798439fc352033a351c538fa92771f97ba3b890369a7444d9536"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "f4b9380a4e79ee7eafbb58a8cd8745ac151c2660807d3ba804a2a2805403c16c",
     "prototypes/firebase-spark-pwa/public/admin-center.js": "b2a78314576a2b970ed81f9701c01b55e193f30ff48d00b74fe699040b1aecbc",
     "prototypes/firebase-spark-pwa/public/admin-participant-data.js": "3f038ff24f839c11b6e031f63ac3ee0a84aeaa4194d7728651dab0d03660cf6c",
-    "prototypes/firebase-spark-pwa/public/app.js": "89debc47b66365409dac521eff3b2f8977ed0cf35999b943f2f6633bc3e201ec",
+    "prototypes/firebase-spark-pwa/public/app.js": "789867c09656186bda60efd96a73ada7d8def93b37c74b41554d2bc02cc8deeb",
     "prototypes/firebase-spark-pwa/public/audit-log.js": "babc96ae5c4af5b81a71eedbe98d63aa923e1dc4f7849ade0511b8a8995db55d",
     "prototypes/firebase-spark-pwa/public/bootstrap-demo.js": "a17b152db0b57d62af2e52210fd43b126e9b1d12b4cd7e590f63c6d31eeef562",
     "prototypes/firebase-spark-pwa/public/calendar-configuration.js": "ca3ad3d73f57ec6a45ea59d6a9a8a76a12c44f73c13693fc298b1e15988f834a",

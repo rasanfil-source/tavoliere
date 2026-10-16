@@ -4112,7 +4112,9 @@ async function refreshParticipant(source, options = {}) {
         // La vista predefinita si applica soltanto a un nuovo ingresso. Un
         // refresh di un URL esplicito view=participant o view=week deve
         // ricostruire esattamente la schermata che l'utente stava usando.
-        if (options.loginHandshake && applyResidentEntryView()) {
+        const useOpeningPreference = options.loginHandshake
+          || source === 'avvio' && isInstalledPersonalAppLaunch();
+        if (useOpeningPreference && applyResidentEntryView()) {
           request = beginParticipantRequest();
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
@@ -4124,6 +4126,13 @@ async function refreshParticipant(source, options = {}) {
       }
       renderResidentAccess(false);
       renderMode();
+      // Identifying the resident can switch from guest to personal week
+      // preferences. renderMode aligns the dates synchronously; this request
+      // still owns the route and must load that newly selected period.
+      if (request.weekStartDate !== state.weekStartDate.getTime()
+          || request.monthDate !== state.monthDate.getTime()) {
+        request = { ...beginParticipantRequest(), authUid: getCurrentUser()?.uid };
+      }
     }
     if (!isCurrentParticipantRequest(request)) return;
     request.authUid = getCurrentUser()?.uid;
@@ -4301,6 +4310,20 @@ async function refreshParticipant(source, options = {}) {
     }
   } finally {
     hideStartupSplash();
+    // A delayed preference/translation render can align the week while an
+    // initial read is pending. Discard its old dates, but do not leave the
+    // current route on "Loading" without a replacement request. Navigation,
+    // logout and a newer refresh retain ownership and must never be retried here.
+    if (!state.residentAuthTransition
+        && ['week', 'participant'].includes(state.mode)
+        && request.version === state.participantRequestVersion
+        && request.centerId === getActiveCenterId()
+        && request.mode === state.mode
+        && (request.authUid === undefined || request.authUid === getCurrentUser()?.uid)
+        && (request.weekStartDate !== state.weekStartDate.getTime()
+          || request.monthDate !== state.monthDate.getTime())) {
+      scheduleBackgroundRefresh('contesto-calendario');
+    }
   }
   return true;
 }
@@ -7687,6 +7710,14 @@ function isLegacyParticipantAppLaunch(params) {
 
 function resolveEntryView() {
   return applyResidentPreferences(state.centerContactSettings).defaultView;
+}
+
+function isInstalledPersonalAppLaunch() {
+  const installed = window.matchMedia?.('(display-mode: standalone)').matches
+    || window.matchMedia?.('(display-mode: window-controls-overlay)').matches
+    || window.navigator?.standalone === true;
+  const navigation = window.performance?.getEntriesByType?.('navigation')?.[0];
+  return Boolean(installed && (!navigation || navigation.type === 'navigate'));
 }
 
 function applyResidentEntryView() {
