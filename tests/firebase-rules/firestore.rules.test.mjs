@@ -72,7 +72,7 @@ test('registered admin can update center but cannot bypass administrator invitat
   }));
 });
 
-test('solo amministratore salva una legenda cucina valida e breve', async () => {
+test('solo amministratore salva una legenda cucina fino a 999 voci', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const managerDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
   await assertSucceeds(ownerDb.doc(centerPath()).set({
@@ -82,8 +82,14 @@ test('solo amministratore salva una legenda cucina valida e breve', async () => 
     ],
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true }));
+  await assertSucceeds(ownerDb.doc(centerPath()).set({
+    kitchenDietLegend: Array.from({ length: 999 }, (_, index) => ({
+      code: String(index + 1), label: `Dieta ${index + 1}`
+    })),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }));
   await assertFails(ownerDb.doc(centerPath()).set({
-    kitchenDietLegend: Array.from({ length: 13 }, (_, index) => ({
+    kitchenDietLegend: Array.from({ length: 1000 }, (_, index) => ({
       code: String(index + 1),
       label: `Dieta ${index + 1}`
     })),
@@ -1781,15 +1787,26 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
     });
   });
 
-  const cleanup = viceDb.batch();
-  cleanup.delete(viceDb.doc(`${centerPath()}/accessSessions/${targetUid}`));
-  cleanup.delete(viceDb.doc(`${centerPath()}/viceSessions/${targetUid}`));
-  cleanup.delete(viceDb.doc(`${centerPath()}/linkTokens/personal_${targetId}`));
-  cleanup.delete(viceDb.doc(overridePath(targetId, OPEN_WINDOW_ID)));
-  cleanup.delete(viceDb.doc(rulePath(targetId)));
-  cleanup.delete(viceDb.doc(publicParticipantPath(targetId)));
-  cleanup.delete(viceDb.doc(privateParticipantPath(targetId)));
-  await assertSucceeds(cleanup.commit());
+  // Come nel percorso applicativo, la lettura transazionale protegge la
+  // revisione dell'anagrafica durante la cancellazione dei documenti collegati.
+  await assertSucceeds(viceDb.runTransaction(async cleanup => {
+    await cleanup.get(viceDb.doc(privateParticipantPath(targetId)));
+    cleanup.delete(viceDb.doc(`${centerPath()}/accessSessions/${targetUid}`));
+    cleanup.delete(viceDb.doc(`${centerPath()}/viceSessions/${targetUid}`));
+    cleanup.delete(viceDb.doc(`${centerPath()}/linkTokens/personal_${targetId}`));
+    cleanup.delete(viceDb.doc(overridePath(targetId, OPEN_WINDOW_ID)));
+    cleanup.delete(viceDb.doc(rulePath(targetId)));
+    cleanup.delete(viceDb.doc(publicParticipantPath(targetId)));
+    cleanup.delete(viceDb.doc(privateParticipantPath(targetId)));
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    for (const path of [privateParticipantPath(targetId), publicParticipantPath(targetId),
+      rulePath(targetId), overridePath(targetId, OPEN_WINDOW_ID),
+      `${centerPath()}/accessSessions/${targetUid}`, `${centerPath()}/viceSessions/${targetUid}`,
+      `${centerPath()}/linkTokens/personal_${targetId}`]) {
+      if ((await context.firestore().doc(path).get()).exists) throw new Error(`Documento non eliminato: ${path}`);
+    }
+  });
 });
 
 test('l amministratore eredita assegnazione liturgica e sospensione persone', async () => {

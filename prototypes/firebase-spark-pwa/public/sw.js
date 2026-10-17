@@ -63,7 +63,8 @@ const LAZY_MODULES = [
   '/i18n/en.json',
   '/i18n/fr.json',
   '/i18n/es.json',
-  '/i18n/de.json'
+  '/i18n/de.json',
+  '/i18n/ca.json'
 ];
 
 self.addEventListener('install', (event) => {

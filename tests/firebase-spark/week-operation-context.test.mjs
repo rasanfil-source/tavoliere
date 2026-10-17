@@ -20,6 +20,7 @@ function setup() {
   const save = (...args) => { calls.push(args); return pending; };
   let renders = 0;
   const deps = { state, elements, getActiveCenterId: () => 'center_test', t: x => x,
+    blockOfflineAction: () => false,
     parseDateId: x => x, formatDateId: x => x, addCalendarDays: x => x, readDietCode: () => '1',
     renderWeekOperations: () => renders++, renderWeekKitchenNotes: () => renders++,
     friendlyErrorMessage: () => 'error', saveInvitedMeals: save, saveSickPeople: save,

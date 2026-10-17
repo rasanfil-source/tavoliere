@@ -196,7 +196,7 @@ service cloud.firestore {
     function kitchenDietLegendIsValid(data) {
       let entries = data.get('kitchenDietLegend', []);
       return entries is list
-        && entries.size() <= 12;
+        && entries.size() <= 999;
     }
 
     function clockTimeIsValid(value) {

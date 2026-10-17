@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import * as firestore from 'firebase/firestore';
 import { loadBrowserModule } from '../helpers/browser-module.mjs';
+import * as revision from '../../prototypes/firebase-spark-pwa/public/core/revision.mjs';
 
 const centerId = 'center_vice_deletion';
 const viceUid = 'vice_operator';
@@ -66,7 +67,7 @@ test.beforeEach(async () => {
   });
 });
 
-async function loadDeletionModule() {
+async function loadDeletionModule(overrides = {}) {
   const db = env.authenticatedContext(viceUid, {
     firebase: { sign_in_provider: 'anonymous' }
   }).firestore();
@@ -76,14 +77,14 @@ async function loadDeletionModule() {
     getActiveCenterId: () => centerId, getCenterScopedStorageKey: key => key
   }, ['appendAuditEvent', 'AUDIT_ACTIONS']);
   return loadBrowserModule('admin-participant-data.js', {
-    ...firestore, ...audit, db, getCurrentUser, getActiveCenterId: () => centerId,
+    ...firestore, ...audit, ...revision, db, getCurrentUser, getActiveCenterId: () => centerId,
     commitWithRetry: operation => operation(),
-    invalidateParticipantDataCaches: () => {}, invalidateCenterContactSettingsCache: () => {}
+    invalidateParticipantDataCaches: () => {}, invalidateCenterContactSettingsCache: () => {},
+    ...overrides
   }, ['deleteAdminParticipant']);
 }
 
-test('the actual vice deletion cleans more than one batch and preserves unrelated people and credentials', async () => {
-  // Supera il blocco di pulizia di 400 scritture per verificare entrambi i salvataggi.
+test('the actual vice deletion atomically cleans over 400 documents and preserves unrelated people', async () => {
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
     const batch = firestore.writeBatch(db);
@@ -125,6 +126,58 @@ test('the actual vice deletion cleans more than one batch and preserves unrelate
     assert.equal(audit.docs[0].data().action, 'DELETE_PARTICIPANT');
     assert.equal(audit.docs[0].data().targetId, participantId);
     assert.equal((await firestore.getDoc(firestore.doc(db, path('participantMetadata/current')))).exists(), true);
+  });
+});
+
+test('a failed final transaction preserves reservations and allows deletion to be retried', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    await firestore.setDoc(firestore.doc(context.firestore(), path('reservationOverrides/keep')), {
+      centerId, participantId, source: 'PERSONAL'
+    });
+  });
+  let calls = 0;
+  const module = await loadDeletionModule({
+    runTransaction: (db, callback) => firestore.runTransaction(db, async transaction => {
+      const result = await callback(transaction);
+      if (++calls === 2) throw new Error('synthetic commit failure');
+      return result;
+    })
+  });
+  await assert.rejects(module.deleteAdminParticipant(participantId), /synthetic commit failure/);
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('reservationOverrides/keep')))).exists(), true);
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('participants/' + participantId)))).data().status, 'DISABLED');
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('accessSessions/session_' + participantId)))).exists(), true);
+  });
+  const retry = await loadDeletionModule();
+  await retry.deleteAdminParticipant(participantId);
+});
+
+test('a stale revision cannot disable or delete a participant', async () => {
+  const module = await loadDeletionModule();
+  await assert.rejects(module.deleteAdminParticipant(participantId, 9), error => error.code === 'aborted');
+  await env.withSecurityRulesDisabled(async context => {
+    const snapshot = await firestore.getDoc(firestore.doc(context.firestore(), path('participants/' + participantId)));
+    assert.equal(snapshot.data().status, 'ACTIVE');
+  });
+});
+
+test('oversized deletion stops without removing any related document', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    const batch = firestore.writeBatch(db);
+    for (let index = 0; index < 491; index++) {
+      batch.set(firestore.doc(db, path('reservationOverrides/large_' + index)), { centerId, participantId });
+    }
+    await batch.commit();
+  });
+  const module = await loadDeletionModule();
+  await assert.rejects(module.deleteAdminParticipant(participantId), /Nessuna prenotazione/);
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    assert.equal((await firestore.getDocs(firestore.collection(db, path('reservationOverrides')))).size, 491);
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('participants/' + participantId)))).exists(), true);
   });
 });
 

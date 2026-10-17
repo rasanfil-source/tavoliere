@@ -128,16 +128,17 @@ export async function saveSickPeople(date, sickPeople, options = {}) {
   const dateId = formatDateId(date);
   const centerId = getActiveCenterId();
   const normalizedPeople = normalizeSickPeople(sickPeople);
-  const previous = normalizeSickPeople(options.previousPeople
-    ?? readCenterCache(dailyHealthCache, dateId, centerId)?.value.sickPeople);
+  const previousPeople = options.previousPeople
+    ?? readCenterCache(dailyHealthCache, dateId, centerId)?.value.sickPeople;
   const selectedIds = new Set(normalizedPeople.map((person) => person.participantId));
-  const previousIds = new Set(previous.map((person) => person.participantId));
-  const removedIds = new Set([...previousIds].filter((id) => !selectedIds.has(id)));
-  const additions = normalizedPeople.filter((person) => !previousIds.has(person.participantId));
   const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
   const value = await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(reference);
     const current = snapshot.exists() ? snapshot.data() : {};
+    const previous = normalizeSickPeople(previousPeople ?? current.sickPeople);
+    const previousIds = new Set(previous.map((person) => person.participantId));
+    const removedIds = new Set([...previousIds].filter((id) => !selectedIds.has(id)));
+    const additions = normalizedPeople.filter((person) => !previousIds.has(person.participantId));
     const people = new Map(normalizeSickPeople(current.sickPeople)
       .filter((person) => !removedIds.has(person.participantId))
       .map((person) => [person.participantId, person]));

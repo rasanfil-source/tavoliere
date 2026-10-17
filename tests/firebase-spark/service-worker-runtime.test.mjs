@@ -65,6 +65,13 @@ test('SDK versionato scaricato una volta e riutilizzato senza richieste di rete'
   assert.equal(sw.requests.length, 2);
 });
 
+test('Catalan catalog is served from the service worker cache offline', async () => {
+  const sw = worker({ offline: true });
+  sw.entries.set(origin + '/i18n/ca.json?v=20261017-ca', new Response('{"hello":"Hola"}'));
+  const response = await sw.fetch(origin + '/i18n/ca.json?v=20261017-ca');
+  assert.equal(await response.text(), '{"hello":"Hola"}');
+});
+
 test('prima attivazione prepara i tre SDK per la riapertura', async () => {
   const sw = worker();
   await sw.activate();

@@ -675,7 +675,11 @@ export function t(key, variables = {}, options = {}) {
   // Le forme plurali possono esistere senza una chiave base nel catalogo.
   if (variables.count !== undefined) {
     const pluralKey = `${alias}.${getPluralRule(currentLocale, variables.count)}`;
-    const pluralMessage = catalog[pluralKey] ?? defaultCatalog[pluralKey];
+    const otherKey = `${alias}.other`;
+    const pluralMessage = catalog[pluralKey] ?? catalog[otherKey]
+      ?? CORE_FALLBACKS[currentLocale]?.[pluralKey] ?? CORE_FALLBACKS[currentLocale]?.[otherKey]
+      ?? defaultCatalog[pluralKey] ?? defaultCatalog[otherKey]
+      ?? CORE_FALLBACKS[DEFAULT_LOCALE]?.[pluralKey] ?? CORE_FALLBACKS[DEFAULT_LOCALE]?.[otherKey];
     if (pluralMessage !== undefined) return interpolate(pluralMessage, variables);
   }
   
@@ -772,7 +776,13 @@ export function applyTranslations(root = document) {
           if (label) {
             label.textContent = translated;
           } else {
-            element.textContent = translated;
+            label = element.ownerDocument.createElement('span');
+            label.className = 'btn-label';
+            for (const child of [...element.childNodes]) {
+              if (child.nodeType === 3) child.remove();
+            }
+            label.textContent = translated;
+            element.appendChild(label);
           }
         } else {
           element.textContent = translated;

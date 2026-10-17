@@ -218,7 +218,7 @@ export async function setAdminParticipantActiveStatus(participantId, active, exp
   return { participantId: normalizedId, status, revision };
 }
 
-export async function deleteAdminParticipant(participantId) {
+export async function deleteAdminParticipant(participantId, expectedRevision) {
   const normalizedId = String(participantId || '').trim();
   if (!normalizedId) {
     throw new Error('Seleziona una persona da eliminare');
@@ -238,15 +238,22 @@ export async function deleteAdminParticipant(participantId) {
     throw new Error('La persona non esiste più');
   }
 
-  const disableBatch = writeBatch(db);
-  disableBatch.update(participantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  if (publicParticipantSnapshot.exists()) {
-    disableBatch.update(publicParticipantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  }
-  if (ruleSnapshot.exists()) {
-    disableBatch.update(ruleSnapshot.ref, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  }
-  await commitWithRetry(() => disableBatch.commit());
+  let deletionRevision;
+  await runTransaction(db, async (disableBatch) => {
+    const current = await disableBatch.get(participantRef);
+    if (!current.exists()) throw new Error('La persona non esiste più');
+    const revision = assertCurrentRevision(current.data().revision,
+      expectedRevision ?? participantSnapshot.data().revision);
+    deletionRevision = nextRevision(revision);
+    disableBatch.update(participantRef, { status: 'DISABLED', revision: deletionRevision, updatedAt: serverTimestamp() });
+    if (publicParticipantSnapshot.exists()) {
+      disableBatch.update(publicParticipantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
+    }
+    if (ruleSnapshot.exists()) {
+      disableBatch.update(ruleSnapshot.ref, { status: 'DISABLED', updatedAt: serverTimestamp() });
+    }
+  });
+  invalidateParticipantDataCaches(normalizedId);
 
   // Le credenziali e le prenotazioni collegate diventano leggibili al vice solo
   // dopo questo passaggio: le regole verificano che la persona sia DISABLED.
@@ -259,7 +266,7 @@ export async function deleteAdminParticipant(participantId) {
     ))
   ]);
   const ruleRefs = ruleSnapshot.exists() ? [ruleSnapshot.ref] : [];
-  const personalTokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
+  const personalTokenRefs = [...new Set(sessionSnapshot.docs.filter((item) => item.data().scope === 'PERSONAL').map((item) => (
     String(item.data().tokenId || '').trim()
   )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
   const relatedRefs = [
@@ -268,36 +275,41 @@ export async function deleteAdminParticipant(participantId) {
     ...viceSessionSnapshot.docs.map((item) => item.ref),
     ...personalTokenRefs
   ];
-  for (let index = 0; index < relatedRefs.length; index += ADMIN_DELETE_BATCH_SIZE) {
-    const batch = writeBatch(db);
-    relatedRefs.slice(index, index + ADMIN_DELETE_BATCH_SIZE).forEach((ref) => batch.delete(ref));
-    await commitWithRetry(() => batch.commit());
+  // Nessuna cancellazione parziale: anagrafica e dati collegati hanno un solo commit.
+  // Conserviamo margine per metadati, regola, proiezione pubblica e audit.
+  if (relatedRefs.length > 490) {
+    throw new Error('La persona è stata sospesa, ma non eliminata: troppi dati collegati per una cancellazione unica. Nessuna prenotazione è stata cancellata.');
   }
 
-  const finalBatch = writeBatch(db);
-  ruleRefs.forEach((ref) => finalBatch.delete(ref));
-  finalBatch.delete(participantRef);
-  if (publicParticipantSnapshot.exists()) {
-    finalBatch.delete(publicParticipantRef);
-  }
-  finalBatch.set(
-    doc(db, 'centers', centerId, 'participantMetadata', 'current'),
-    { centerId, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-  if (participantSnapshot.data().viceAdminRole === true) {
-    finalBatch.set(doc(db, 'centers', centerId), {
-      adminPasswordRotationRequired: true,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  }
-  appendAuditEvent(finalBatch, {
-    action: AUDIT_ACTIONS.DELETE_PARTICIPANT,
-    targetType: 'PARTICIPANT',
-    targetId: normalizedId,
-    summary: `Persona eliminata: ${String(participantSnapshot.data().displayName || normalizedId)}`
+  await runTransaction(db, async (finalBatch) => {
+    const current = await finalBatch.get(participantRef);
+    if (!current.exists()) throw new Error('La persona non esiste più');
+    assertCurrentRevision(current.data().revision, deletionRevision);
+    if (current.data().status !== 'DISABLED') throw new Error('La persona è stata riattivata. Aggiorna l’elenco prima di eliminarla.');
+    relatedRefs.forEach((ref) => finalBatch.delete(ref));
+    ruleRefs.forEach((ref) => finalBatch.delete(ref));
+    finalBatch.delete(participantRef);
+    if (publicParticipantSnapshot.exists()) {
+      finalBatch.delete(publicParticipantRef);
+    }
+    finalBatch.set(
+      doc(db, 'centers', centerId, 'participantMetadata', 'current'),
+      { centerId, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    if (participantSnapshot.data().viceAdminRole === true) {
+      finalBatch.set(doc(db, 'centers', centerId), {
+        adminPasswordRotationRequired: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+    appendAuditEvent(finalBatch, {
+      action: AUDIT_ACTIONS.DELETE_PARTICIPANT,
+      targetType: 'PARTICIPANT',
+      targetId: normalizedId,
+      summary: `Persona eliminata: ${String(participantSnapshot.data().displayName || normalizedId)}`
+    });
   });
-  await commitWithRetry(() => finalBatch.commit());
 
   invalidateParticipantDataCaches(normalizedId);
   invalidateCenterContactSettingsCache();

@@ -349,7 +349,7 @@ test('l amministratore puo eliminare una persona e i dati operativi collegati', 
   assert.match(participantData, /\['reservationOverrides', 'accessSessions', 'viceSessions'\]/);
   assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
-  assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
+  assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.filter/);
   assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
   assert.match(participantData, /const \[overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = await Promise\.all/);
   assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);

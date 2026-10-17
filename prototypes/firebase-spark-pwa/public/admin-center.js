@@ -71,6 +71,10 @@ export async function linkCurrentAdministratorParticipant(participantId, user = 
   });
   if (profileSnapshot.exists()) {
     batch.update(profileRef, {
+      centerId,
+      centerIds: arrayUnion(centerId),
+      status: 'ACTIVE',
+      role: access.role,
       participantId: normalizedParticipantId,
       updatedAt: serverTimestamp()
     });

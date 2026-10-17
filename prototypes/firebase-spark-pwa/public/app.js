@@ -1611,8 +1611,15 @@ function handleOfflineNetworkAction(event) {
   }
   event.preventDefault();
   event.stopImmediatePropagation();
+  blockOfflineAction();
+}
+
+function blockOfflineAction(statusElement) {
+  if (isConnectionAvailable()) return false;
   elements.offlineBanner.hidden = false;
   elements.offlineBanner.textContent = t('network.offline.guardedAction');
+  if (statusElement) statusElement.textContent = t('network.offline.guardedAction');
+  return true;
 }
 
 function scheduleBackgroundRefresh(source) {
@@ -4424,9 +4431,12 @@ function togglePasswordVisibility(input, toggle) {
   if (!input || !toggle) return;
   const visible = input.type === 'text';
   input.type = visible ? 'password' : 'text';
-  toggle.textContent = visible ? 'Mostra' : 'Nascondi';
+  const labelKey = visible ? 'auth.resident.password.show' : 'auth.resident.password.hide';
+  toggle.textContent = t(labelKey);
+  toggle.setAttribute('data-i18n', labelKey);
   toggle.setAttribute('aria-pressed', String(!visible));
-  toggle.setAttribute('aria-label', visible ? 'Mostra password' : 'Nascondi password');
+  toggle.setAttribute('aria-label', t(labelKey));
+  toggle.setAttribute('data-i18n-aria-label', labelKey);
 }
 
 async function handleForgetDevice() {
@@ -8196,13 +8206,18 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   syncAdminContactForm();
   elements.adminStatus.textContent = t('admin.people.deleting');
   try {
-    await deleteAdminParticipant(participant.participantId);
+    await deleteAdminParticipant(participant.participantId, participant.revision);
     elements.adminStatus.textContent = t('admin.people.deleted', { name: participant.displayName });
   } catch (error) {
     state.adminParticipants = previousAdminParticipants;
     state.participants = previousParticipants;
     state.adminParticipantId = previousSelectedParticipantId;
     state.adminPersonDirty = previousPersonDirty;
+    try {
+      await refreshAdminParticipants({ forceRefresh: true });
+    } catch (refreshError) {
+      console.warn('Aggiornamento elenco dopo eliminazione non completato', refreshError);
+    }
     renderAdminPeopleList();
     syncAdminContactForm();
     elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');
@@ -8589,6 +8604,7 @@ function captureWeekOperationContext() {
 }
 
 async function handleWeekInvitedSave() {
+  if (blockOfflineAction(elements.weekInvitedStatus)) return;
   const context = captureWeekOperationContext();
   if (!context.isCurrent()) return;
   const invitedMeals = {};
@@ -8875,6 +8891,10 @@ function downloadCenterBackup(backup, prefix) {
 function handleAdminRestoreSelection(event) {
   const file = event.target.files?.[0];
   if (!file || !hasCurrentCapability(CAPABILITIES.RESTORE_CENTER_DATA)) return;
+  if (blockOfflineAction(elements.adminBackupStatus)) {
+    event.target.value = '';
+    return;
+  }
   return operationGuard.run(
     'admin:configuration-restore',
     () => performAdminConfigurationRestore(file)
@@ -8884,6 +8904,7 @@ function handleAdminRestoreSelection(event) {
 }
 
 async function performAdminConfigurationRestore(file) {
+  if (blockOfflineAction(elements.adminBackupStatus)) return;
   const maximumBytes = 20 * 1024 * 1024;
   elements.adminRestoreButton.disabled = true;
   elements.adminRestoreButton.setAttribute('aria-busy', 'true');
@@ -8924,10 +8945,12 @@ async function performAdminConfigurationRestore(file) {
       return;
     }
 
+    if (blockOfflineAction(elements.adminBackupStatus)) return;
     elements.adminRestoreLabel.textContent = t('admin.backup.restoring');
     elements.adminBackupStatus.textContent = t('admin.backup.safetyCopy');
     const safetyBackup = await exportCenterData();
     downloadCenterBackup(safetyBackup, 'tavola-comune-prima-del-ripristino');
+    if (blockOfflineAction(elements.adminBackupStatus)) return;
     elements.adminBackupStatus.textContent = t('admin.backup.restoring');
     await restoreCenterConfiguration(backup);
     await refreshAdminParticipants();
