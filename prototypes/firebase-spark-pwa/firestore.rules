@@ -726,6 +726,14 @@ service cloud.firestore {
         && overrideId == request.resource.data.participantId + '_' + request.resource.data.mealWindowId;
     }
 
+    function overrideSnapshotMatchesParticipant(centerId) {
+      let participant = get(/databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(request.resource.data.participantId)).data;
+      return (!request.resource.data.keys().hasAny(['groupId'])
+          || request.resource.data.groupId == participant.get('groupId', ''))
+        && (!request.resource.data.keys().hasAny(['dietTags'])
+          || request.resource.data.dietTags == participant.get('dietTags', ['STANDARD']));
+    }
+
     function overrideValuesAreValid(centerId) {
       return request.resource.data.effect in ['PRESENT', 'ABSENT']
         && (!request.resource.data.keys().hasAny(['actorUid'])
@@ -1710,6 +1718,7 @@ service cloud.firestore {
 
         allow create: if overrideKeysAreValid()
           && overrideIdentityIsValid(centerId, overrideId)
+          && overrideSnapshotMatchesParticipant(centerId)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time
           && overrideValuesAreValid(centerId);

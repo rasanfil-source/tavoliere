@@ -3,6 +3,8 @@ export function createStateStore(initialState = {}) {
   let state = Object.freeze({ ...initialState });
   const listeners = new Set();
   const requestRevisions = new Map();
+  const pendingNotifications = [];
+  let notifying = false;
 
   function getState() {
     return state;
@@ -18,7 +20,18 @@ export function createStateStore(initialState = {}) {
 
     state = Object.freeze({ ...state, ...patch });
     revision += 1;
-    listeners.forEach((listener) => listener(state, revision));
+    pendingNotifications.push({ state, revision });
+    if (!notifying) {
+      notifying = true;
+      try {
+        while (pendingNotifications.length > 0) {
+          const notification = pendingNotifications.shift();
+          [...listeners].forEach((listener) => listener(notification.state, notification.revision));
+        }
+      } finally {
+        notifying = false;
+      }
+    }
     return state;
   }
 

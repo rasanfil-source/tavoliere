@@ -2557,7 +2557,7 @@ function beginAdminAuthorizationCheck() {
   });
 }
 
-function finishAdminAuthorizationCheck() {
+function finishAdminAuthorizationCheck({ recoverable = false } = {}) {
   state.adminAuthorizationPending = false;
   if (state.adminRole && state.adminAuthUid) {
     transitionAuthLifecycle('ADMIN_AUTH_SUCCESS', {
@@ -2566,7 +2566,10 @@ function finishAdminAuthorizationCheck() {
       requestId: state.adminRequestId
     });
   } else {
-    transitionAuthLifecycle('ADMIN_AUTH_FAILURE', { requestId: state.adminRequestId });
+    transitionAuthLifecycle('ADMIN_AUTH_FAILURE', {
+      requestId: state.adminRequestId,
+      recoverable
+    });
   }
   elements.adminShell.removeAttribute('aria-busy');
   hideStartupSplash();
@@ -2593,7 +2596,6 @@ function reconcileAdminAccessWithoutStrongUser() {
     renderMode();
     finishAdminAuthorizationCheck();
   })().catch((error) => {
-    finishAdminAuthorizationCheck();
     showAuthError(error);
   }).finally(() => {
     if (state.adminAccessReconcilePromise === request) {
@@ -3760,7 +3762,7 @@ function showAuthError(error) {
   showAuthenticatedAdministratorControls();
   elements.authStatus.textContent = friendlyErrorMessage(error, 'Accesso non riuscito');
   if (keepAuthorizedPanel) renderMode();
-  finishAdminAuthorizationCheck();
+  finishAdminAuthorizationCheck({ recoverable: isRecoverableSessionError(error) });
 }
 
 function setBootstrapProgress(active, detail = 'Estensione calendario prenotazioni...') {

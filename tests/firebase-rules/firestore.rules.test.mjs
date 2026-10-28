@@ -80,6 +80,43 @@ test('prenotazioni per altri: vice autorizzato, autore verificato e revoca', asy
   await assertFails(reference.update({ effect: 'PRESENT', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
 });
 
+test('le nuove prenotazioni personali non possono falsificare gruppo o dieta; gli snapshot esistenti restano storici', async () => {
+  const db = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  const reference = db.doc(overridePath(MARIO_ID, OPEN_WINDOW_ID));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await adminDb.doc(publicParticipantPath(MARIO_ID)).set({
+      groupId: 'group_residenti', dietTags: ['STANDARD']
+    }, { merge: true });
+    await adminDb.doc(privateParticipantPath(MARIO_ID)).set({
+      groupId: 'group_residenti', dietTags: ['STANDARD']
+    }, { merge: true });
+  });
+
+  const data = buildOverrideData(MARIO_ID, OPEN_WINDOW_ID, 'PRESENT', 'PERSONAL');
+  await assertFails(reference.set({ ...data, dietTags: ['NO_PORK'] }));
+  await assertFails(reference.set({ ...data, groupId: 'group_intruso' }));
+  await assertSucceeds(reference.set(data));
+
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({
+      dietTags: ['NO_PORK']
+    }, { merge: true });
+    await context.firestore().doc(privateParticipantPath(MARIO_ID)).set({
+      dietTags: ['NO_PORK']
+    }, { merge: true });
+  });
+  await assertSucceeds(reference.update({
+    effect: 'ABSENT',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  let saved;
+  await testEnv.withSecurityRulesDisabled(async context => {
+    saved = await context.firestore().doc(overridePath(MARIO_ID, OPEN_WINDOW_ID)).get();
+  });
+  assert.deepEqual(saved.data().dietTags, ['STANDARD']);
+});
+
 test('anonymous users cannot read center data', async () => {
   const db = testEnv.unauthenticatedContext().firestore();
 

@@ -308,6 +308,13 @@ test('participant overrides are queried by participant and date range', () => {
   );
 });
 
+test('new reservation snapshots match the current participant profile without rewriting history', () => {
+  const overrideRules = rules.match(/match \/reservationOverrides\/\{overrideId\}[\s\S]*?match \/reservationOverrideHistory/)?.[0] || '';
+  assert.match(rules, /function overrideSnapshotMatchesParticipant\(centerId\)[\s\S]*publicParticipants[\s\S]*dietTags/);
+  assert.match(overrideRules, /allow create: if[\s\S]*overrideSnapshotMatchesParticipant\(centerId\)/);
+  assert.doesNotMatch(overrideRules.match(/allow update:[\s\S]*?allow delete:/)?.[0] || '', /overrideSnapshotMatchesParticipant/);
+});
+
 test('static participant calendar data uses a short cache with manual bypass', () => {
   assert.match(participantData, /STATIC_QUERY_CACHE_MS\s*=\s*10 \* 60 \* 1000/);
   assert.match(participantData, /getMealWindowsInRange\(startDateId, endDateId, options\.forceStaticRefresh, options\.requireServer\)/);

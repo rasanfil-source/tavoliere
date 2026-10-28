@@ -92,9 +92,14 @@ export function zonedLocalDateTimeToDate(dateId, timeValue, timeZone) {
 
   const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
   let candidate = targetAsUtc;
+  let closestForwardCandidate = null;
+  let closestForwardDelta = Infinity;
+  const visitedCandidates = new Set();
   const formatter = getZonedDateTimeFormatter(timeZone);
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (visitedCandidates.has(candidate)) break;
+    visitedCandidates.add(candidate);
     const parts = Object.fromEntries(
       formatter.formatToParts(new Date(candidate)).map((part) => [part.type, part.value])
     );
@@ -107,10 +112,16 @@ export function zonedLocalDateTimeToDate(dateId, timeValue, timeZone) {
       Number(parts.second)
     );
     const correction = targetAsUtc - representedAsUtc;
+    if (correction < 0 && -correction < closestForwardDelta) {
+      closestForwardCandidate = candidate;
+      closestForwardDelta = -correction;
+    }
+    if (correction === 0) return new Date(candidate);
     candidate += correction;
-    if (correction === 0) break;
   }
 
+  // Un orario nella lacuna primaverile non esiste: usa il primo orario locale successivo.
+  if (closestForwardCandidate !== null) return new Date(closestForwardCandidate);
   return new Date(candidate);
 }
 

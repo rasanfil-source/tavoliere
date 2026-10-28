@@ -93,7 +93,7 @@ test('il primo ingresso nel pannello pubblica soltanto uno stato Auth definitivo
 
   assert.doesNotMatch(adminRefresh, /hideStartupSplash\(/);
   assert.match(signedOut, /applyAdminCapabilityVisibility\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
-  assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\{ recoverable: isRecoverableSessionError\(error\) \}\);/);
   assert.match(authHydration, /if \(!authorizationFailed && state\.adminAuthorizationPending\)[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(app, /elements\.adminPanel\.hidden = !isAdmin \|\| state\.platformOwner;\s*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
 });

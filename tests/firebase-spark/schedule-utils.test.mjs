@@ -7,7 +7,8 @@ import {
   buildMealWindowRecords,
   daysBetweenDateIds,
   getMealCutoffDate,
-  normalizeReservationCutoffs
+  normalizeReservationCutoffs,
+  zonedLocalDateTimeToDate
 } from '../../prototypes/firebase-spark-pwa/public/schedule-utils.mjs';
 
 test('gli orari limite hanno default validi e rifiutano valori ambigui', () => {
@@ -28,6 +29,17 @@ test('le scadenze rispettano il fuso orario e l ora legale di Roma', () => {
   assert.equal(getMealCutoffDate('2026-08-07', 'lunch', {}, 'Europe/Rome').toISOString(), '2026-08-07T07:30:00.000Z');
   assert.equal(getMealCutoffDate('2026-01-07', 'lunch', {}, 'Europe/Rome').toISOString(), '2026-01-07T08:30:00.000Z');
   assert.equal(getMealCutoffDate('2026-08-07', 'breakfast', {}, 'Europe/Rome').toISOString(), '2026-08-06T13:00:00.000Z');
+});
+
+test('un orario inesistente nel salto primaverile avanza alla prima ora locale valida', () => {
+  assert.equal(
+    zonedLocalDateTimeToDate('2026-03-29', '02:30', 'Europe/Rome').toISOString(),
+    '2026-03-29T01:30:00.000Z'
+  );
+  assert.equal(
+    zonedLocalDateTimeToDate('2026-10-25', '02:30', 'Europe/Rome').toISOString(),
+    '2026-10-25T01:30:00.000Z'
+  );
 });
 
 test('la generazione produce una finestra per ogni giorno e pasto', () => {
