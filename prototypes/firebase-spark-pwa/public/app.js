@@ -352,10 +352,14 @@ function clearAdminInvitationDecision(invitationId) {
 }
 
 function loadStoredResidentSignature() {
-  const value = window.localStorage.getItem(
-    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY)
-  );
-  return String(value || '').trim().replace(/\s+/g, '').toUpperCase();
+  try {
+    const value = window.localStorage.getItem(
+      getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY)
+    );
+    return String(value || '').trim().replace(/\s+/g, '').toUpperCase();
+  } catch {
+    return '';
+  }
 }
 
 function addCalendarDays(date, amount) {
@@ -4742,7 +4746,7 @@ function adminResourcesForSection(section) {
 }
 
 function loadSharedAdminResource(name, loader, { forceRefresh = false } = {}) {
-  if (adminResourceLoads.has(name)) return adminResourceLoads.get(name);
+  if (!forceRefresh && adminResourceLoads.has(name)) return adminResourceLoads.get(name);
   let request;
   request = Promise.resolve().then(loader).finally(() => {
     if (adminResourceLoads.get(name) === request) adminResourceLoads.delete(name);
@@ -4778,7 +4782,8 @@ async function refreshAdminParticipants(options = {}) {
       shouldLoad('settings')
         ? loadSharedAdminResource(
           'settings',
-          () => loadCenterContactSettings({ forceRefresh: shouldForceResource('settings') })
+          () => loadCenterContactSettings({ forceRefresh: shouldForceResource('settings') }),
+          { forceRefresh: shouldForceResource('settings') }
         )
         : Promise.resolve(state.centerContactSettings),
       shouldLoad('coverage')

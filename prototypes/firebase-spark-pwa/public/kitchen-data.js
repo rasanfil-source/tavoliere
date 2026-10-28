@@ -57,7 +57,7 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
   const [mealTypes, windows, overrides, rules] = await Promise.all([
     getActiveMealTypes(forceStaticRefresh),
     getMealWindows(mealDate, forceStaticRefresh),
-    getOverrides(mealDate),
+    getOverrides(mealDate, forceStaticRefresh),
     getRules(forceStaticRefresh, options.staticVersion)
   ]);
   const windowByMeal = new Map(windows.map((item) => [item.mealTypeId, item]));
@@ -254,11 +254,11 @@ async function getMealWindows(mealDate, forceRefresh = false) {
   return value;
 }
 
-async function getOverrides(mealDate) {
+async function getOverrides(mealDate, forceRefresh = false) {
   const centerId = getActiveCenterId();
   const cacheKey = `${centerId}:${mealDate}`;
   const cached = overridesCache.get(cacheKey);
-  if (cached && Date.now() - cached.loadedAt < OVERRIDE_CACHE_MS) {
+  if (!forceRefresh && cached && Date.now() - cached.loadedAt < OVERRIDE_CACHE_MS) {
     return cached.value;
   }
   const snapshot = await getDocs(query(

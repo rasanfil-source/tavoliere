@@ -104,36 +104,77 @@ export function findParticipantBySignature(participants, value) {
 }
 
 export function loadStoredResidentSignature() {
-  return normalizeResidentSignature(window.localStorage.getItem(
-    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY)
-  ));
+  return normalizeResidentSignature(readStoredResidentValue(RESIDENT_SIGNATURE_STORAGE_KEY));
 }
 
 function loadStoredResidentParticipantId() {
-  return String(window.localStorage.getItem(
-    getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY)
-  ) || '').trim();
+  return readStoredResidentValue(RESIDENT_PARTICIPANT_STORAGE_KEY);
 }
 
 function loadStoredResidentToken() {
   return {
-    tokenId: String(window.localStorage.getItem(
-      getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY)
-    ) || '').trim(),
-    expiresAt: String(window.localStorage.getItem(
-      getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY)
-    ) || '').trim()
+    tokenId: readStoredResidentValue(RESIDENT_TOKEN_STORAGE_KEY),
+    expiresAt: readStoredResidentValue(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY)
   };
 }
 
+function readStoredResidentValue(storageKey) {
+  try {
+    return String(window.localStorage.getItem(getCenterScopedStorageKey(storageKey)) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredResidentValues(entries) {
+  const scopedEntries = entries.map(([key, value]) => [
+    getCenterScopedStorageKey(key),
+    String(value)
+  ]);
+  try {
+    for (const [key, value] of scopedEntries) window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    // Evita di lasciare una combinazione parziale di identità e token.
+    for (const [key] of scopedEntries) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // Lo storage può essere completamente indisponibile nel browser.
+      }
+    }
+    return false;
+  }
+}
+
+function removeStoredResidentValues(keys) {
+  for (const key of keys) {
+    try {
+      window.localStorage.removeItem(getCenterScopedStorageKey(key));
+    } catch {
+      // La cancellazione locale è facoltativa; la sessione in memoria viene comunque chiusa.
+    }
+  }
+}
+
 function rememberResidentIdentity(participant, signature, token) {
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY), signature);
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY), participant.participantId);
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY), token.tokenId);
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY),
-    token.expiresAt.toISOString()
-  );
+  try {
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY), signature);
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY), participant.participantId);
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY), token.tokenId);
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY),
+      token.expiresAt.toISOString()
+    );
+  } catch {
+    // Non lascia una combinazione parziale di identità e token se lo storage non è disponibile.
+    removeStoredResidentValues([
+      RESIDENT_SIGNATURE_STORAGE_KEY,
+      RESIDENT_PARTICIPANT_STORAGE_KEY,
+      RESIDENT_TOKEN_STORAGE_KEY,
+      RESIDENT_TOKEN_EXPIRES_STORAGE_KEY
+    ]);
+  }
 }
 
 async function loadPublicParticipantById(participantId, sourceDb = db) {
@@ -406,14 +447,10 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
     return null;
   }
   const normalizedSignature = normalizeResidentSignature(participant.signature);
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY),
-    normalizedSignature
-  );
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY),
-    participant.participantId
-  );
+  writeStoredResidentValues([
+    [RESIDENT_SIGNATURE_STORAGE_KEY, normalizedSignature],
+    [RESIDENT_PARTICIPANT_STORAGE_KEY, participant.participantId]
+  ]);
   return { participant, participants: [participant], strongAdministrator: true };
 }
 
@@ -426,10 +463,12 @@ export async function forgetResidentDevice() {
 
 function clearStoredResidentIdentity() {
   clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY));
+  removeStoredResidentValues([
+    RESIDENT_SIGNATURE_STORAGE_KEY,
+    RESIDENT_PARTICIPANT_STORAGE_KEY,
+    RESIDENT_TOKEN_STORAGE_KEY,
+    RESIDENT_TOKEN_EXPIRES_STORAGE_KEY
+  ]);
 }
 
 async function revokeStoredPersonalAccess() {
