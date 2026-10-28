@@ -51,7 +51,7 @@ async function createCalendar() {
     serverTimestamp: () => new Date('2030-01-02T12:00:00Z'),
     runTransaction: async (_, action) => {
       const pending = [];
-      await action({
+      const result = await action({
         get: async ref => snapshot(ref),
         set: (ref, data, options) => pending.push([
           ref, options?.merge ? { ...documents.get(ref), ...data } : data
@@ -71,6 +71,7 @@ async function createCalendar() {
       // Le scritture e il punto di ripresa di ogni blocco restano atomici.
       for (const [ref, value] of pending) documents.set(ref, structuredClone(value));
       committedWindowWrites.push(...windowWrites.map(([ref]) => ref));
+      return result;
     }
   }, ['saveCenterConfiguration']);
   const input = {
@@ -89,6 +90,32 @@ async function createCalendar() {
     input, changedInput, save: saveCenterConfiguration
   };
 }
+
+test('missing meal window is recreated while existing windows retain their status', async () => {
+  const calendar = await createCalendar();
+  calendar.control.failWindowBatch = -1;
+  const paths = [...calendar.documents.keys()].filter(key => key.includes('/mealWindows/'));
+  calendar.documents.delete(paths[0]);
+  calendar.documents.get(paths[1]).status = 'CLOSED';
+  await calendar.save(calendar.changedInput);
+  assert.ok(calendar.documents.has(paths[0]));
+  assert.ok(calendar.documents.get(paths[0]).mealDate);
+  assert.equal(Object.hasOwn(calendar.documents.get(paths[0]), 'mealWindowId'), false);
+  assert.equal(calendar.documents.get(paths[1]).status, 'CLOSED');
+});
+
+test('configuration saves preserve shared presentation when appearance fields are omitted', async () => {
+  const calendar = await createCalendar();
+  const appearance = { themePalette: 'mare', interfaceStyle: 'future', defaultView: 'month',
+    summaryLayout: 'international', kitchenLayout: 'international', monthControlsSide: 'left',
+    summaryResidentLabel: 'signature', language: 'fr' };
+  Object.assign(calendar.documents.get(centerPath), appearance);
+  await calendar.save(calendar.input);
+  for (const [key, value] of Object.entries(appearance)) {
+    assert.equal(calendar.documents.get(centerPath)[key], value, key);
+    assert.equal(calendar.documents.get(`${centerPath}/presentationSettings/current`)[key], value, key);
+  }
+});
 
 async function interruptAfterFirstChunk(calendar) {
   await assert.rejects(calendar.save(calendar.changedInput), /simulated connection loss/);
@@ -164,7 +191,7 @@ test('retrying the same target resumes after the last committed chunk and comple
   assert.equal(completed.status, 'COMPLETED');
   assert.equal(completed.through, calendar.base.calendarCoveredThrough);
   assert.deepEqual(calendar.documents.get(centerPath).reservationCutoffs, calendar.changedInput.reservationCutoffs);
-  assert.deepEqual(calendar.progress[0], { completedDays, totalDays: calendarDays, status: 'ACTIVE' });
+  assert.deepEqual(calendar.progress.find(event => event.status === 'ACTIVE'), { completedDays, totalDays: calendarDays, status: 'ACTIVE' });
   assert.equal(calendar.committedWindowWrites.length, (calendarDays - completedDays) * mealTypes.length);
   assert.ok(calendar.committedWindowWrites.every(path => path.split('/').at(-1).slice(0, 10) > interrupted.through));
   for (const record of schedule.buildMealWindowRecords({

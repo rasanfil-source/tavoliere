@@ -60,7 +60,7 @@ test('snapshot cache is bounded, expires and tolerates corrupt/unavailable stora
 test('week and month loading show a status without a reduced grid or cached selections', () => {
   for (const mode of ['week', 'participant']) {
     const target = { dataset: { renderKey: 'old-grid' }, innerHTML: '' };
-    const context = vm.createContext({ state: { mode },
+    const context = vm.createContext({ state: { mode }, calendarLoadContextKey: () => mode,
       elements: { participantMeals: target, monthGrid: target, weekOperations: {} },
       escapeHtml: (value) => value, t: (key) => key, renderWeekControls() {}, renderCalendarControls() {}
     });
@@ -204,7 +204,7 @@ test('meals become usable while roles, presentation and accessory continuation r
   let splashHidden = false;
   const state = { mode: 'week', friendlyAccess: true, residentReady: true, residentAuthTransition: '',
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
-  const context = vm.createContext({ state, console,
+  const context = vm.createContext({ state, console, participantCalendarRevision: 0,
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     preparePersonalCalendarRead: () => null, getActiveCenterId: () => 'center',
     getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {},

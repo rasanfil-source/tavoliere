@@ -2271,6 +2271,89 @@ html[data-interface-style="urban"] .week-matrix-row-today > button {
   50% { transform: translateX(-18px); opacity: .82; }
 }
 
+.summary-mass-control-state.mass-status-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+.summary-mass-control-state.mass-status-with-blessing {
+  border-radius: 12px;
+  padding: 6px 8px;
+}
+.summary-mass-control-blessing-wide {
+  width: 94px;
+  min-width: 94px;
+  aspect-ratio: auto;
+  grid-template-rows: auto auto;
+  overflow: visible;
+}
+.summary-mass-control-blessing-wide .summary-mass-control-state {
+  padding: 5px 4px;
+}
+.summary-mass-control-blessing-narrow {
+  width: 68px;
+  min-width: 68px;
+}
+.summary-mass-control-state.mass-status-wide-blessing {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.summary-mass-control-state.mass-status-narrow {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+.summary-mass-control-state.mass-status-narrow > .blessing-plus-side {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  transform: translateY(-50%);
+}
+.blessing-inline-mark {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 3px;
+  row-gap: 3px;
+  align-items: center;
+  justify-items: center;
+}
+.blessing-inline-mark > .blessing-plus {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.blessing-inline-mark > .blessing-indicator-compact {
+  grid-column: 2;
+  grid-row: 1;
+}
+.blessing-inline-mark > .blessing-time {
+  grid-column: 2;
+  grid-row: 2;
+}
+.blessing-indicator-compact {
+  gap: 3px;
+}
+.blessing-time {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+.blessing-plus-side { display: inline; font-size: .9rem; font-weight: 700; line-height: 1; }
+.summary-mass-metadata .mass-status-stack { min-width: 46px; }
+
 @keyframes meal-snap-backward {
   50% { transform: translateX(18px); opacity: .82; }
 }

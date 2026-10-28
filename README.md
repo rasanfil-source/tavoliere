@@ -18,6 +18,8 @@
 
 L’app è progettata per più centri, ma ogni dato e ogni sessione restano associati al proprio centro.
 
+La Cucina si consulta direttamente dal link ricevuto, anche se inoltrato, senza login o conferme. Semplicità, rapidità e persistenza dell'accesso sono [caratteristiche centrali del prodotto](docs/SCELTE_ACCESSO_E_SEMPLICITA.md).
+
 ## L’app in immagini
 
 ### Prenotazioni

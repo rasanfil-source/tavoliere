@@ -483,7 +483,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   }
   const centerId = getActiveCenterId();
   // Su un dispositivo nuovo non esiste ancora alcun permesso per leggere la
-  // versione della password amministratori. Il token del link residenti crea
+  // identificativo di rotazione della password amministratori. Il token del link residenti crea
   // prima una sessione PUBLIC; l'autenticazione tecnica resta su Auth
   // secondaria e non sostituisce questa identità.
   try {
@@ -958,9 +958,9 @@ export async function loadParticipantWeek(participantId, startDate = new Date(),
   return loadParticipantPeriod(participantId, startDate, days, options);
 }
 
-export async function saveParticipantMeal(participant, meal, effect) {
+export async function saveParticipantMeal(participant, meal, effect, options = {}) {
   assertOnline();
-  await commitReservationMeals(participant, [meal], effect);
+  await commitReservationMeals(participant, [meal], effect, options);
   markMealSaved(meal, effect);
 }
 
@@ -1031,12 +1031,15 @@ async function saveReservationGroup(participant, meals, effect) {
   }
 }
 
-async function commitReservationMeals(participant, meals, effect) {
+async function commitReservationMeals(participant, meals, effect, options = {}) {
   const centerId = getActiveCenterId();
+  const actorUid = options.bookingFor ? getCurrentUser()?.uid : null;
+  const writeContext = actorUid ? { centerId, actorUid } : { centerId };
+  if (options.bookingFor && !actorUid) throw new Error('Autenticazione richiesta');
   try {
     await commitWithRetry(() => {
       const batch = writeBatch(db);
-      meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect, { centerId }));
+      meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect, writeContext));
       return batch.commit();
     });
   } catch (error) {
@@ -1056,7 +1059,7 @@ async function commitReservationMeals(participant, meals, effect) {
       }
       snapshots.forEach((snapshot, index) => queueReservationWrite(
         transaction, participant, meals[index], effect,
-        { centerId, exists: snapshot.exists() }
+        { ...writeContext, exists: snapshot.exists() }
       ));
     });
   }
@@ -1064,6 +1067,7 @@ async function commitReservationMeals(participant, meals, effect) {
 
 function queueReservationWrite(batch, participant, meal, effect, {
   centerId = getActiveCenterId(),
+  actorUid = null,
   exists = Boolean(meal.createdAt)
 } = {}) {
   const overrideRef = doc(
@@ -1076,7 +1080,8 @@ function queueReservationWrite(batch, participant, meal, effect, {
   const update = {
     effect,
     requestId: createRequestId(),
-    source: getReservationWriteSource(),
+    source: actorUid ? 'DELEGATED' : getReservationWriteSource(),
+    actorUid: actorUid || getCurrentUser()?.uid || '',
     updatedAt: serverTimestamp()
   };
 

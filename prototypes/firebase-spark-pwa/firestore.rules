@@ -406,6 +406,10 @@ service cloud.firestore {
         || hasAuthorizedResidentAdministratorSession(centerId);
     }
 
+    function canWriteDailyOperation(centerId, changesMass) {
+      return (!changesMass && canManageDailyOperations(centerId)) || canManageMass(centerId);
+    }
+
     function residentMayAdminister(centerId, participantId) {
       let participantPath = /databases/$(database)/documents/centers/$(centerId)/publicParticipants/$(participantId);
       return participantId is string
@@ -557,13 +561,14 @@ service cloud.firestore {
 
     function viceMayCleanDisabledParticipant(centerId, participantId) {
       let participantPath = /databases/$(database)/documents/centers/$(centerId)/participants/$(participantId);
+      let participant = get(participantPath);
       return canUseViceAdministratorTools(centerId)
         && participantId is string
-        && participantId != sessionParticipantId(centerId)
+        && participantId != get(/databases/$(database)/documents/centers/$(centerId)/viceSessions/$(request.auth.uid)).data.participantId
         && exists(participantPath)
-        && get(participantPath).data.status == 'DISABLED'
-        && get(participantPath).data.get('viceAdminRole', false) == false
-        && get(participantPath).data.get('signature', '')
+        && participant.data.status == 'DISABLED'
+        && participant.data.get('viceAdminRole', false) == false
+        && participant.data.get('signature', '')
           != get(/databases/$(database)/documents/centers/$(centerId)).data.get('administratorSignature', '');
     }
 
@@ -699,6 +704,7 @@ service cloud.firestore {
 
     function overrideKeysAreValid() {
       return request.resource.data.keys().hasOnly([
+        'actorUid',
         'centerId',
         'participantId',
         'groupId',
@@ -722,7 +728,9 @@ service cloud.firestore {
 
     function overrideValuesAreValid(centerId) {
       return request.resource.data.effect in ['PRESENT', 'ABSENT']
-        && request.resource.data.source in ['PUBLIC', 'PERSONAL', 'ADMIN']
+        && (!request.resource.data.keys().hasAny(['actorUid'])
+          || request.resource.data.actorUid == request.auth.uid)
+        && request.resource.data.source in ['PUBLIC', 'PERSONAL', 'ADMIN', 'DELEGATED']
         && participantIsActive(centerId, request.resource.data.participantId)
         && reservationRuleAllowsOverride(
           centerId,
@@ -732,6 +740,10 @@ service cloud.firestore {
         )
         && mealWindowIsOpen(centerId, request.resource.data.mealWindowId)
         && (
+          request.resource.data.source == 'DELEGATED'
+            && canManageDailyOperations(centerId)
+            && request.resource.data.actorUid == request.auth.uid
+          ||
           request.resource.data.source in ['ADMIN', 'PUBLIC']
             && isAdmin(centerId)
           || request.resource.data.source == 'PERSONAL'
@@ -987,6 +999,8 @@ service cloud.firestore {
         && administratorProfileIsValid(request.resource.data)
         && centerTimezoneIsValid(request.resource.data.timezone);
       allow update: if canManageCenterConfiguration(centerId)
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['commonPassword'])
+            || !request.resource.data.keys().hasAny(['commonPassword']))
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'ownerUid', 'status', 'createdAt', 'invitationId',
             'administratorProfileRequired', 'administratorPasswordRequired'
@@ -1008,6 +1022,7 @@ service cloud.firestore {
         || isCoordinatedOwnershipTransfer(centerId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'ownerUid', 'administratorName', 'administratorSignature', 'adminEmail',
+            'administratorParticipantId',
             'administratorProfileComplete', 'administratorPasswordRequired', 'updatedAt'
           ])
           && administratorProfileIsValid(request.resource.data)
@@ -1017,6 +1032,18 @@ service cloud.firestore {
       allow delete: if false;
 
       match /admins/{adminUid} {
+        allow read: if resource.data.role == 'MANAGER'
+          && viceMayCleanDisabledParticipant(centerId, resource.data.participantId);
+        allow update: if resource.data.role == 'MANAGER'
+          && request.resource.data.status == 'REVOKED'
+          && request.resource.data.massPermission == false
+          && request.resource.data.dailyOperationsPermission == false
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'massPermission', 'dailyOperationsPermission', 'updatedAt'
+          ])
+          && (managerMayCleanDisabledParticipant(centerId, resource.data.participantId)
+            || viceMayCleanDisabledParticipant(centerId, resource.data.participantId));
         allow read: if signedIn() && request.auth.uid == adminUid && isAdmin(centerId)
           || canManageAdministrativeRoles(centerId)
           || isAdmin(centerId)
@@ -1111,6 +1138,24 @@ service cloud.firestore {
 
       match /auditEvents/{eventId} {
         allow read: if canManageAdministrativeRoles(centerId);
+        allow create: if hasVerifiedAdministratorIdentity()
+          && request.resource.data.keys().hasOnly([
+            'centerId', 'actorUid', 'actorParticipantId', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
+          ])
+          && request.resource.data.get('actorParticipantId', '') == get(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.get('participantId', '')
+          && request.resource.data.centerId == centerId
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.action == 'REJECT_ADMIN_INVITATION'
+          && request.resource.data.targetType == 'ADMIN_INVITATION'
+          && request.resource.data.targetId is string
+          && eventId == 'rejected_' + request.resource.data.targetId
+          && request.resource.data.summary == 'Invito amministratore rifiutato'
+          && request.resource.data.createdAt == request.time
+          && get(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.status == 'ACTIVE'
+          && getAfter(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.centerId == centerId
+          && getAfter(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.status == 'REJECTED'
+          && getAfter(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.rejectedBy == request.auth.uid
+          && getAfter(/databases/$(database)/documents/adminInvitations/$(request.resource.data.targetId)).data.rejectedAt == request.time;
         allow create: if isAdmin(centerId)
           && request.resource.data.keys().hasAll([
             'centerId', 'actorUid', 'action', 'targetType', 'targetId', 'summary', 'createdAt'
@@ -1224,6 +1269,13 @@ service cloud.firestore {
               && request.resource.data.updatedAt == request.time
             || settingsId == 'calendarReconfiguration'
               && calendarReconfigurationIsValid(centerId)
+            || settingsId == 'sharedCredentials'
+              && request.resource.data.keys().hasOnly(['centerId', 'commonPassword', 'pending', 'updatedAt'])
+              && request.resource.data.centerId == centerId
+              && request.resource.data.commonPassword is string
+              && request.resource.data.commonPassword.size() <= 32
+              && (request.resource.data.pending == null || request.resource.data.pending is map)
+              && request.resource.data.updatedAt == request.time
           );
         allow delete: if false;
       }
@@ -1257,6 +1309,19 @@ service cloud.firestore {
       }
 
       match /participantMetadata/{metadataId} {
+        allow update: if metadataId == 'administratorProtection'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && (canUseViceAdministratorTools(centerId) || isAdmin(centerId));
+        allow read: if metadataId == 'administratorProtection'
+          && (isAdmin(centerId) || canUseViceAdministratorTools(centerId));
+        allow create, update: if metadataId == 'administratorProtection'
+          && signedIn()
+          && (canManageAdministrativeRoles(centerId)
+            || getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.role in ['OWNER', 'ADMIN']
+              && getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(request.auth.uid)).data.status == 'ACTIVE')
+          && request.resource.data.keys().hasOnly(['ready', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time;
         allow read: if metadataId == 'current'
           && (
             isAdmin(centerId)
@@ -1271,6 +1336,23 @@ service cloud.firestore {
           && request.resource.data.centerId == centerId
           && request.resource.data.updatedAt == request.time;
         allow delete: if false;
+      }
+
+      match /administratorDeletionProtection/{adminUid} {
+        allow read: if isAdmin(centerId) || canUseViceAdministratorTools(centerId);
+        allow create, update: if signedIn()
+          && (request.auth.uid == adminUid || canManageAdministrativeRoles(centerId)
+            || request.resource.data.role == 'MANAGER' && request.resource.data.status == 'REVOKED'
+              && (managerMayCleanDisabledParticipant(centerId, request.resource.data.participantId)
+                || viceMayCleanDisabledParticipant(centerId, request.resource.data.participantId)))
+          && request.resource.data.keys().hasAll(['participantId', 'role', 'status', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['participantId', 'role', 'status', 'updatedAt'])
+          && request.resource.data.participantId == getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(adminUid)).data.get('participantId', '')
+          && request.resource.data.role == getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(adminUid)).data.role
+          && request.resource.data.status == getAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(adminUid)).data.status
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if canManageAdministrativeRoles(centerId)
+          && !existsAfter(/databases/$(database)/documents/centers/$(centerId)/admins/$(adminUid));
       }
 
       match /participants/{participantId} {
@@ -1489,6 +1571,8 @@ service cloud.firestore {
       match /kitchenNotes/{mealDate} {
         allow read: if isAdmin(centerId)
           || hasSessionScope(centerId, 'KITCHEN')
+          || hasSessionScope(centerId, 'PUBLIC')
+          || hasSessionScope(centerId, 'PERSONAL')
           || canManageDailyOperations(centerId);
         allow create, update: if canManageDailyOperations(centerId)
           && request.resource.data.keys().hasAll(['centerId', 'mealDate', 'text', 'updatedAt'])
@@ -1508,14 +1592,23 @@ service cloud.firestore {
           || hasSessionScope(centerId, 'KITCHEN')
           || hasSessionScope(centerId, 'PUBLIC')
           || hasSessionScope(centerId, 'PERSONAL');
-        allow create, update: if canManageMass(centerId)
-          && massWindowIsOpen(centerId, dateId)
-          && request.resource.data.keys().hasAll(['centerId', 'dateId', 'massScheduled', 'updatedAt'])
-          && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'massScheduled', 'updatedAt'])
-          && request.resource.data.centerId == centerId
-          && request.resource.data.dateId == dateId
-          && request.resource.data.massScheduled is bool
-          && request.resource.data.updatedAt == request.time;
+        function validOperation() {
+          return request.resource.data.keys().hasAll(['centerId', 'dateId', 'massScheduled', 'updatedAt'])
+            && request.resource.data.keys().hasOnly(['centerId', 'dateId', 'massScheduled', 'blessingTime', 'updatedAt'])
+            && request.resource.data.centerId == centerId
+            && request.resource.data.dateId == dateId
+            && request.resource.data.massScheduled is bool
+            && request.resource.data.get('blessingTime', '') is string
+            && (request.resource.data.get('blessingTime', '') == ''
+              || request.resource.data.blessingTime.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
+            && request.resource.data.updatedAt == request.time;
+        }
+        allow create: if massWindowIsOpen(centerId, dateId)
+          && validOperation()
+          && canWriteDailyOperation(centerId, request.resource.data.massScheduled);
+        allow update: if massWindowIsOpen(centerId, dateId)
+          && validOperation()
+          && canWriteDailyOperation(centerId, request.resource.data.diff(resource.data).affectedKeys().hasAny(['massScheduled']));
         allow delete: if canManageMass(centerId) && massWindowIsOpen(centerId, dateId);
       }
 
@@ -1625,7 +1718,7 @@ service cloud.firestore {
           && overrideIdentityIsValid(centerId, overrideId)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['effect', 'requestId', 'source', 'updatedAt'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['effect', 'requestId', 'source', 'updatedAt', 'actorUid'])
           && overrideValuesAreValid(centerId);
 
         allow delete: if isAdmin(centerId);

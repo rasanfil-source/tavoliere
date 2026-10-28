@@ -6,6 +6,8 @@
 
 ## Obiettivi e componenti
 
+Le [caratteristiche di accesso](SCELTE_ACCESSO_E_SEMPLICITA.md) comprendono consultazione Cucina per chi possiede il link, accesso ordinario con sigla e password condivisa, sessioni persistenti e apertura rapida. Le autorizzazioni delle funzioni operative sono definite separatamente da regole Firestore.
+
 Oggi a tavola è una PWA statica compatibile con Firebase Spark: nessuna Cloud Function e nessun server personalizzato. La logica gira nel browser, ma l’autorizzazione definitiva è sempre imposta dalle regole Firestore.
 
 | Componente | Responsabilità |
@@ -58,6 +60,8 @@ La fonte canonica è `role-policy.mjs`.
 
 `MANAGE_MASS` viene aggiunta soltanto quando la Persona ha il ruolo liturgico. OWNER, ADMIN e MANAGER non la ereditano automaticamente. I controlli frontend migliorano l’interfaccia ma non sostituiscono le regole.
 
+Le benedizioni sono gestibili da chi può gestire le operazioni quotidiane oppure la Messa. `dailyOperations.blessingTime` contiene `HH:mm` oppure una stringa vuota. La scrittura della benedizione conserva `massScheduled`; le regole impediscono agli amministratori privi di incarico liturgico di modificarlo. Il limite `massWindowIsOpen` rimane applicato anche alla benedizione. Al salvataggio il client rifiuta date e orari passati nel fuso del centro e legge nella transazione la finestra della cena: una scadenza produce un messaggio specifico, distinto da un autentico rifiuto dei permessi. Il liturgista non amministratore vede solo Benedizioni nell’Agenda. Le sezioni leggono i propri dati all’apertura, senza letture aggiuntive all’avvio ordinario; Cucina e Riepilogo ricevono l’orario nella lettura giornaliera già esistente.
+
 ## Sessioni, token e identità tecniche
 
 In `accessSessions` convivono:
@@ -68,7 +72,7 @@ In `accessSessions` convivono:
 
 Il token non contiene la password. Link e token includono il centro e sono credenziali: non vanno inseriti in documentazione, log o messaggi pubblici.
 
-La verifica delle password condivise usa una seconda istanza Firebase Auth con identità tecniche del tipo `residenti+{centro}@tavola-comune.local` e `amministratori+{centro}[_v{versione}]@tavola-comune.local`. La rotazione della password amministratori incrementa la versione e invalida le precedenti sessioni vice, senza toccare l’account Firebase forte dell’amministratore.
+La verifica delle password condivise usa una seconda istanza Firebase Auth con identità tecniche del tipo `residenti+{centro}@tavola-comune.local` e `amministratori+{centro}[_r{rotazione}]@tavola-comune.local`. Le sessioni vice usano la credenziale tecnica associata alla rotazione attiva; il rinnovo della credenziale aggiorna l'identità tecnica senza sostituire l'account Firebase dell'amministratore.
 
 ## Modello Firestore
 
@@ -77,7 +81,7 @@ Il modello è centrato su `centers/{centerId}`:
 - `groups`, `mealTypes`, `mealWindows`;
 - `participants` privati e `publicParticipants` operativi;
 - `reservationRules` e `reservationOverrides`;
-- `dailyOperations` (Messa) e `dailyHealth` (ammalati, diete occasionali, invitati);
+- `dailyOperations` (Messa e benedizione eucaristica) e `dailyHealth` (ammalati, diete occasionali, invitati);
 - `kitchenNotes`, un documento per data;
 - `admins`, `adminInvitations`, `centerInvitations`;
 - `accessSessions`, `viceSessions`, `linkTokens`;
@@ -100,7 +104,7 @@ Palette e stile sono applicati tramite attributi su `<html>`. Le preferenze loca
 
 ## PWA, cache e promemoria
 
-Il service worker usa rete-primaria per HTML, cache-first per risorse versionate e stale-while-revalidate per le altre risorse dell’app. Non memorizza autonomamente dati Firestore. Un aggiornamento viene installato in attesa e diventa attivo alla successiva chiusura/riapertura, senza `skipWaiting` né ricaricamento forzato della pagina.
+Il service worker usa rete-primaria per HTML, cache-first per risorse con impronta del contenuto e stale-while-revalidate per le altre risorse dell’app. Non memorizza autonomamente dati Firestore. Un aggiornamento viene installato in attesa e diventa attivo alla successiva chiusura/riapertura, senza `skipWaiting` né ricaricamento forzato della pagina.
 
 I promemoria sono calcolati sul dispositivo per pranzo e cena non prenotati a dieci minuti dalla scadenza. Preferenza e storico restano in `localStorage`; nessun server invia notifiche push.
 

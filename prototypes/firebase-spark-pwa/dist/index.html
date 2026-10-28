@@ -23,7 +23,7 @@
         if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
             || params.has('invite') || params.has('adminInvite')) return;
         // La build sostituisce il grafo aggiuntivo con URL identificati dall'impronta del contenuto.
-        var residentModulePreloads = ["/assets/chunk-DEFXUQHB.js","/assets/chunk-QNOUXE4E.js","/assets/chunk-STYSKFVG.js"];
+        var residentModulePreloads = ["/assets/chunk-7LL6PE4F.js","/assets/chunk-DEFXUQHB.js","/assets/chunk-IFVGNGH2.js"];
         residentModulePreloads.forEach(function (path) {
           var link = document.createElement('link');
           link.rel = 'modulepreload';
@@ -71,21 +71,22 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/assets/styles-H7OCO4TS.css">
-    <link rel="stylesheet" href="/assets/summary-matrix-refinements-L5GRFJGG.css">
-    <script type="module" src="/assets/app-R4EPUAF6.js"></script>
-      <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
-    <link rel="modulepreload" href="/assets/chunk-DGUTLQW5.js">
+    <link rel="stylesheet" href="/assets/styles-UJPYK7AS.css">
+    <link rel="stylesheet" href="/assets/summary-matrix-refinements-FITSPIOY.css">
+    <script type="module" src="/assets/app-KKDVD25V.js"></script>
+      <link rel="modulepreload" href="/assets/chunk-4TVERJVR.js">
+    <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
     <link rel="modulepreload" href="/assets/chunk-DIDIBDG3.js">
     <link rel="modulepreload" href="/assets/chunk-DY5TL6RT.js">
     <link rel="modulepreload" href="/assets/chunk-DZJEM4PC.js">
+    <link rel="modulepreload" href="/assets/chunk-F6ALTPJ4.js">
     <link rel="modulepreload" href="/assets/chunk-IMMYBHEU.js">
     <link rel="modulepreload" href="/assets/chunk-JUUUUMHC.js">
     <link rel="modulepreload" href="/assets/chunk-LYSTTI3X.js">
     <link rel="modulepreload" href="/assets/chunk-O2XFH626.js">
-    <link rel="modulepreload" href="/assets/chunk-U5OEBYM7.js">
-    <link rel="modulepreload" href="/assets/chunk-VHDUONKF.js">
-    <link rel="modulepreload" href="/assets/chunk-Z6VL4FUK.js">
+    <link rel="modulepreload" href="/assets/chunk-ODQCGOXC.js">
+    <link rel="modulepreload" href="/assets/chunk-RU3THKNR.js">
+    <link rel="modulepreload" href="/assets/chunk-WWP63LHW.js">
   </head>
   <body>
     <div class="startup-gate" data-startup-gate aria-hidden="true">
@@ -248,13 +249,47 @@
             <span data-week-operations-status aria-live="polite">-</span>
           </summary>
           <div class="agenda-center-content">
+            <details class="week-operation-section agenda-booking" data-week-booking-section>
+              <summary data-i18n="bookingFor.title">Prenoto per altri</summary>
+              <label class="field-label"><span data-i18n="bookingFor.person">Residente o ospite</span>
+                <select data-booking-person aria-label="Persona per cui prenotare" data-i18n-aria-label="bookingFor.personAria"></select>
+              </label>
+              <button type="button" class="save-button" data-booking-open data-i18n="bookingFor.open">Apri prenotazioni della persona selezionata</button>
+            </details>
           <div class="agenda-center-toolbar">
+            <div class="agenda-day-control">
             <label class="field-label week-operations-day">
-              <span data-i18n="week.operations.day">Giorno</span>
+              <span data-i18n="week.operations.referenceDay">Data di riferimento</span>
               <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
             </label>
+            <span class="agenda-date-control">
+            <button type="button" class="secondary-action agenda-date-more" data-week-operations-date-toggle
+              aria-label="Scegli un’altra data" data-i18n-aria-label="week.operations.chooseDate" aria-controls="agenda-date-picker">
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                <path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"></path>
+              </svg>
+            </button>
+            <input type="date" data-week-operations-date id="agenda-date-picker" class="agenda-date-native"
+              tabindex="-1" aria-hidden="true">
+            </span>
+            </div>
           </div>
           <div class="week-operations-grid">
+            <details class="week-operation-section" data-week-blessing-section>
+              <summary data-i18n="blessing.title">Benedizione eucaristica</summary>
+              <p class="operation-status" data-week-blessing-date></p>
+              <p class="operation-status" data-week-blessing-status aria-live="polite"></p>
+              <label class="blessing-toggle">
+                <input type="checkbox" data-week-blessing-enabled>
+                <span data-i18n="blessing.planned">Benedizione prevista</span>
+              </label>
+              <label class="field-label">
+                <span data-i18n="blessing.time">Ora</span>
+                <input type="time" data-week-blessing-time disabled>
+              </label>
+              <button type="button" class="save-button" data-week-blessing-save data-i18n="common.actions.save" disabled>Salva</button>
+            </details>
             <details class="week-operation-section" data-week-invited-section>
               <summary>
                 <span class="week-operation-heading">
@@ -268,18 +303,25 @@
                 </span>
               </summary>
               <p class="operation-status" data-week-invited-status aria-live="polite">-</p>
+              <label class="field-label">
+                <span data-i18n="week.operations.day">Giorno</span>
+                <select data-week-invited-day>
+                  <option value="0">Oggi</option>
+                  <option value="1">Domani</option>
+                </select>
+              </label>
               <div class="week-invited-meals">
                 <label class="field-label">
-                  <span data-i18n="meal.type.breakfast">Colazione</span>
-                  <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="breakfast">
-                </label>
-                <label class="field-label">
-                  <span data-i18n="meal.type.lunch">Pranzo</span>
+                  <span data-week-invited-label="lunch"></span>
                   <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="lunch">
                 </label>
                 <label class="field-label">
-                  <span data-i18n="meal.type.dinner">Cena</span>
+                  <span data-week-invited-label="dinner"></span>
                   <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="dinner">
+                </label>
+                <label class="field-label">
+                  <span data-week-invited-label="breakfast"></span>
+                  <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="breakfast">
                 </label>
               </div>
               <button type="button" class="save-button" data-week-invited-save data-i18n="common.actions.save">Salva</button>
@@ -292,8 +334,9 @@
               <button type="button" class="save-button" data-week-health-save data-i18n="common.actions.save">Salva ammalati</button>
             </details>
 
-            <details class="week-operation-section">
+            <details class="week-operation-section" data-week-notes-section>
               <summary data-i18n="week.operations.notes">Note</summary>
+              <p class="operation-status" data-week-kitchen-note-date aria-live="polite" hidden></p>
               <p class="operation-status" data-week-kitchen-note-status aria-live="polite">-</p>
               <label class="field-label">
                 <span data-i18n="week.operations.specialNotes">Indicazioni speciali</span>
@@ -303,7 +346,7 @@
               <div class="week-kitchen-note-list" data-week-kitchen-note-list></div>
             </details>
 
-            <details class="week-operation-section">
+            <details class="week-operation-section" data-week-diet-section>
               <summary data-i18n="week.operations.diet">Dieta occasionale</summary>
               <p class="operation-status" data-week-diet-status aria-live="polite">-</p>
               <label class="field-label">
@@ -322,8 +365,8 @@
               <label class="field-label">
                 <span data-i18n="week.operations.duration">Durata</span>
                 <select data-week-diet-duration>
-                  <option value="1" data-i18n="week.operations.duration.todayOnly">Solo questo giorno</option>
-                  <option value="2" data-i18n="week.operations.duration.todayAndNext">Questo giorno e il successivo</option>
+                  <option value="1">Solo questo giorno</option>
+                  <option value="2">Questo giorno e il successivo</option>
                 </select>
               </label>
               <button type="button" class="save-button" data-week-diet-save data-i18n="common.actions.save">Aggiorna dieta</button>
@@ -433,6 +476,8 @@
                 <button type="button" class="primary-action" data-admin-email-signin data-i18n="auth.email.signIn">Accedi con email</button>
                 <button type="button" class="primary-action" data-admin-email-create hidden data-i18n="auth.email.continue">Continua</button>
                 <button type="button" class="tertiary-action" data-admin-password-reset hidden data-i18n="auth.email.forgotPassword">Password dimenticata?</button>
+                <button type="button" class="tertiary-action" data-admin-existing-account hidden data-i18n="auth.email.existingAccount">Ho già un account</button>
+                <button type="button" class="tertiary-action" data-admin-cancel-invitation hidden data-i18n="auth.email.cancelInvitation">Abbandona questo invito</button>
               </div>
               <p data-admin-email-status aria-live="polite" data-i18n="auth.email.noGoogleNeeded">Puoi accedere anche senza un account Google.</p>
            </div>
@@ -771,7 +816,7 @@
                         </select>
                       </label>
                       <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select" data-admin-kitchen-layout-picker>
-                        <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
+                        <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina · condivisa nel centro</span>
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Originale</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
@@ -1160,7 +1205,7 @@
             <tbody data-admin-audit-list></tbody>
           </table>
         </div>
-        <button type="button" class="secondary-action admin-audit-more" data-admin-audit-more data-i18n="admin.activity.loadMore" hidden>Carica versioni precedenti</button>
+        <button type="button" class="secondary-action admin-audit-more" data-admin-audit-more data-i18n="admin.activity.loadMore" hidden>Carica attività precedenti</button>
       </div>
     </dialog>
 
@@ -1197,5 +1242,6 @@
       }());
     </script>
 
-  </body>
+  <dialog class="booking-for-dialog" data-booking-dialog aria-label="Prenotazioni per un’altra persona" data-i18n-aria-label="bookingFor.dialogAria"></dialog>
+</body>
 </html>

@@ -45,6 +45,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     return days;
   };
   const dependencies = {
+    calendarLoadContextKey: () => `${state.mode}:${user.uid}`,
     state, console: { error: (...args) => record(`error:${args[1] || ''}`) },
     participantCalendarRevision: 0, getCurrentUser: () => user, getActiveCenterId: () => 'center',
     getLocale: () => 'it', formatDateId, addCalendarDays,
@@ -84,8 +85,8 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     ...['beginParticipantRequest', 'isCurrentParticipantRequest', 'currentPersonalCalendarScope',
       'preparePersonalCalendarRead', 'loadCurrentParticipantWeek', 'loadCurrentParticipantCalendar',
       'refreshParticipant'].map(name => extract(sources.app, name))].join('\n');
-  const { refreshParticipant } = new Function(...Object.keys(dependencies),
-    code + '\nreturn { refreshParticipant };')(...Object.values(dependencies));
+  const { refreshParticipant, invalidateCalendar } = new Function(...Object.keys(dependencies),
+    code + '\nreturn { refreshParticipant, invalidateCalendar: () => { participantCalendarRevision++; } };')(...Object.values(dependencies));
   return { state, user, events, run: () => refreshParticipant('avvio'),
-    names: () => events.map(event => event.name) };
+    invalidateCalendar, names: () => events.map(event => event.name) };
 }

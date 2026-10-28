@@ -30,6 +30,7 @@ test.beforeEach(async () => {
     batch.set(firestore.doc(db, path()), {
       status: 'ACTIVE', administratorSignature: 'ADMIN', adminPasswordVersion: 1
     });
+    batch.set(firestore.doc(db, path('participantMetadata/administratorProtection')), { ready: true });
     for (const id of [participantId, 'vice_person', 'administrator', 'other_person']) {
       const data = {
         status: 'ACTIVE', displayName: id,
@@ -84,7 +85,73 @@ async function loadDeletionModule(overrides = {}) {
   }, ['deleteAdminParticipant']);
 }
 
-test('the actual vice deletion atomically cleans over 400 documents and preserves unrelated people', async () => {
+test('vice deletion revokes a legacy manager membership and its index without touching administrators', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    await firestore.setDoc(firestore.doc(db, path('admins/legacy')), {
+      participantId, role: 'MANAGER', status: 'ACTIVE', massPermission: true
+    });
+    await firestore.setDoc(firestore.doc(db, path('administratorDeletionProtection/legacy')), {
+      participantId, role: 'MANAGER', status: 'ACTIVE'
+    });
+  });
+  const module = await loadDeletionModule();
+  await module.deleteAdminParticipant(participantId);
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    const account = (await firestore.getDoc(firestore.doc(db, path('admins/legacy')))).data();
+    assert.equal(account.status, 'REVOKED');
+    assert.equal(account.massPermission, false);
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('administratorDeletionProtection/legacy')))).data().status, 'REVOKED');
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('participants/' + participantId)))).exists(), false);
+  });
+});
+
+test('vice cannot delete a person linked to an active administrator and no data is suspended', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    await firestore.setDoc(firestore.doc(db, path('admins/account')), {
+      participantId, role: 'ADMIN', status: 'ACTIVE', email: 'private@example.test'
+    });
+    await firestore.setDoc(firestore.doc(db, path('administratorDeletionProtection/account')), {
+      participantId, role: 'ADMIN', status: 'ACTIVE'
+    });
+  });
+  const module = await loadDeletionModule();
+  await assert.rejects(module.deleteAdminParticipant(participantId), error => error.deletionProtection === 'admin');
+  await env.withSecurityRulesDisabled(async context => {
+    assert.equal((await firestore.getDoc(firestore.doc(context.firestore(), path('participants/' + participantId)))).data().status, 'ACTIVE');
+    assert.equal((await firestore.getDoc(firestore.doc(context.firestore(), path('reservationRules/rule_' + participantId)))).data().status, 'ACTIVE');
+  });
+  const db = env.authenticatedContext(viceUid, { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+  const protection = await firestore.getDoc(firestore.doc(db, path('administratorDeletionProtection/account')));
+  assert.equal(protection.data().email, undefined);
+  await assert.rejects(firestore.getDoc(firestore.doc(db, path('admins/account'))), error => error.code === 'permission-denied');
+  await assert.rejects(firestore.setDoc(protection.ref, { participantId: '', role: 'ADMIN', status: 'REVOKED', updatedAt: firestore.serverTimestamp() }), error => error.code === 'permission-denied');
+});
+
+test('owner person is blocked before suspension even before index initialization', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    await firestore.updateDoc(firestore.doc(context.firestore(), path()), { administratorParticipantId: participantId });
+    await firestore.deleteDoc(firestore.doc(context.firestore(), path('participantMetadata/administratorProtection')));
+  });
+  const module = await loadDeletionModule();
+  await assert.rejects(module.deleteAdminParticipant(participantId), error => error.deletionProtection === 'owner');
+});
+
+test('revoked administrator no longer prevents ordinary person deletion', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    await firestore.setDoc(firestore.doc(context.firestore(), path('administratorDeletionProtection/account')), {
+      participantId, role: 'ADMIN', status: 'REVOKED'
+    });
+  });
+  await (await loadDeletionModule()).deleteAdminParticipant(participantId);
+  await env.withSecurityRulesDisabled(async context => {
+    assert.equal((await firestore.getDoc(firestore.doc(context.firestore(), path('participants/' + participantId)))).exists(), false);
+  });
+});
+
+test('the actual vice deletion cleans over 400 documents and preserves unrelated people', async () => {
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
     const batch = firestore.writeBatch(db);
@@ -122,9 +189,9 @@ test('the actual vice deletion atomically cleans over 400 documents and preserve
       assert.equal((await firestore.getDoc(firestore.doc(db, path(suffix)))).data().status || 'ACTIVE', 'ACTIVE', suffix);
     }
     const audit = await firestore.getDocs(firestore.collection(db, path('viceAuditEvents')));
-    assert.equal(audit.size, 1);
-    assert.equal(audit.docs[0].data().action, 'DELETE_PARTICIPANT');
-    assert.equal(audit.docs[0].data().targetId, participantId);
+    assert.equal(audit.size, 2);
+    assert.deepEqual(audit.docs.map(item => item.data().action).sort(), ['DELETE_PARTICIPANT', 'UPSERT_PARTICIPANT']);
+    assert.ok(audit.docs.every(item => item.data().targetId === participantId));
     assert.equal((await firestore.getDoc(firestore.doc(db, path('participantMetadata/current')))).exists(), true);
   });
 });
@@ -163,7 +230,7 @@ test('a stale revision cannot disable or delete a participant', async () => {
   });
 });
 
-test('oversized deletion stops without removing any related document', async () => {
+test('oversized deletion cleans related documents in guarded chunks', async () => {
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
     const batch = firestore.writeBatch(db);
@@ -173,18 +240,65 @@ test('oversized deletion stops without removing any related document', async () 
     await batch.commit();
   });
   const module = await loadDeletionModule();
-  await assert.rejects(module.deleteAdminParticipant(participantId), /Nessuna prenotazione/);
+  await module.deleteAdminParticipant(participantId);
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
-    assert.equal((await firestore.getDocs(firestore.collection(db, path('reservationOverrides')))).size, 491);
-    assert.equal((await firestore.getDoc(firestore.doc(db, path('participants/' + participantId)))).exists(), true);
+    assert.equal((await firestore.getDocs(firestore.collection(db, path('reservationOverrides')))).size, 0);
+    const person = await firestore.getDoc(firestore.doc(db, path('participants/' + participantId)));
+    assert.equal(person.exists(), false);
+    assert.equal((await firestore.getDoc(firestore.doc(db, path('participantMetadata/current')))).exists(), true);
+    const audit = await firestore.getDocs(firestore.collection(db, path('viceAuditEvents')));
+    assert.ok(audit.docs.some(item => item.data().targetId === participantId
+      && item.data().action === 'UPSERT_PARTICIPANT'));
+  });
+});
+
+test('interrupted chunk cleanup keeps token references discoverable and retry removes every credential', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    for (let start = 0; start < 520; start += 200) {
+      const batch = firestore.writeBatch(db);
+      for (let i = start; i < Math.min(start + 200, 520); i++) {
+        batch.set(firestore.doc(db, path('accessSessions/large_session_' + i)), {
+          centerId, participantId, scope: 'PERSONAL', tokenId: 'large_token_' + i,
+          status: 'ACTIVE', expiresAt: new Date('2099-01-01')
+        });
+        batch.set(firestore.doc(db, path('linkTokens/large_token_' + i)), {
+          participantId, scope: 'PERSONAL', status: 'ACTIVE', expiresAt: new Date('2099-01-01')
+        });
+      }
+      await batch.commit();
+    }
+  });
+  let calls = 0;
+  const module = await loadDeletionModule({
+    runTransaction: (db, callback) => firestore.runTransaction(db, async transaction => {
+      await callback(transaction);
+      if (++calls === 4) throw new Error('interrupted after two chunks');
+    })
+  });
+  await assert.rejects(module.deleteAdminParticipant(participantId), /interrupted/);
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    const tokens = await firestore.getDocs(firestore.collection(db, path('linkTokens')));
+    const sessions = await firestore.getDocs(firestore.collection(db, path('accessSessions')));
+    const referenced = new Set(sessions.docs.map(doc => doc.data().tokenId));
+    for (const token of tokens.docs.filter(doc => doc.data().participantId === participantId)) {
+      assert.ok(referenced.has(token.id), 'no orphan token after interruption');
+    }
+  });
+  await (await loadDeletionModule()).deleteAdminParticipant(participantId);
+  await env.withSecurityRulesDisabled(async context => {
+    const tokens = await firestore.getDocs(firestore.collection(context.firestore(), path('linkTokens')));
+    assert.equal(tokens.docs.filter(doc => doc.data().participantId === participantId).length, 0);
   });
 });
 
 test('the actual vice deletion cannot disable or delete a vice or administrator', async () => {
   const module = await loadDeletionModule();
   for (const id of ['vice_person', 'administrator']) {
-    await assert.rejects(module.deleteAdminParticipant(id), error => error.code === 'permission-denied');
+    await assert.rejects(module.deleteAdminParticipant(id), error => id === 'administrator'
+      ? error.deletionProtection === 'owner' : error.code === 'permission-denied');
   }
   await env.withSecurityRulesDisabled(async context => {
     for (const id of ['vice_person', 'administrator']) {

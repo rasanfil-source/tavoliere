@@ -3,13 +3,14 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const source = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url), 'utf8');
-const names = ['captureWeekOperationContext', 'getWeekSickDraft', 'handleWeekInvitedSave', 'handleWeekHealthSave',
+const names = ['captureWeekOperationContext', 'getWeekSickDraft', 'handleWeekHealthSave',
   'handleWeekDietSave', 'handleWeekDietListClick', 'handleWeekKitchenNoteSave', 'handleWeekKitchenNoteListClick'];
 const functions = names.map(name => source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`))[0]).join('\n');
 
 function setup() {
   const state = { mode: 'week', weekOperationalDateId: '2026-10-05', weekOperationsRequestVersion: 1,
-    weekOperationalHealth: { dateId: '2026-10-05', dietAssignments: [] }, adminParticipants: [] };
+    weekOperationalHealth: { dateId: '2026-10-05', dietAssignments: [] },
+    weekOperationalNote: { mealDate: '2026-10-05' }, adminParticipants: [] };
   const elements = Object.fromEntries(['weekInvitedSave', 'weekInvitedStatus', 'weekHealthSave', 'weekHealthStatus',
     'weekDietSave', 'weekDietStatus', 'weekKitchenNoteSave', 'weekKitchenNoteStatus'].map(key => [key, {}]));
   Object.assign(elements, { weekInvitedInputs: [], weekHealthList: { querySelectorAll: () => [] },
@@ -20,6 +21,7 @@ function setup() {
   const save = (...args) => { calls.push(args); return pending; };
   let renders = 0;
   const deps = { state, elements, getActiveCenterId: () => 'center_test', t: x => x,
+    canManageDailyOperations: () => true,
     blockOfflineAction: () => false,
     parseDateId: x => x, formatDateId: x => x, addCalendarDays: x => x, readDietCode: () => '1',
     renderWeekOperations: () => renders++, renderWeekKitchenNotes: () => renders++,

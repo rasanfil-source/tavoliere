@@ -112,8 +112,9 @@ test('agenda centro vive nella vista settimana e sostituisce il vecchio collegam
   assert.doesNotMatch(html, /data-admin-week-link|>Settimana operativa<\/a>/);
   assert.match(html, /<details class="week-operations"[\s\S]*class="agenda-center-toggle"[\s\S]*Agenda centro/);
   assert.match(html, /class="week-operations-grid"[\s\S]*Ammalati[\s\S]*Note[\s\S]*Dieta occasionale/);
-  assert.match(css, /\.week-operations-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.week-operations-grid[\s\S]*grid-template-columns: 1fr/);
+  assert.match(css, /\.week-operations-grid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.week-operations\s*\{[^}]*container-type: inline-size/);
+  assert.match(css, /@container \(max-width: 640px\)\s*\{\s*\.week-operations-grid\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('la palette colori usa un selettore nativo con anteprima immediata', () => {
@@ -166,7 +167,7 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(styleSelect, /value="cool"[^>]*selected/);
   assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'cool'/);
   assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'cool'/);
-  assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
+  assert.match(app, /if \(isWeek && !needsResidentLogin && \(canManageDailyOperations\(\) \|\| canManageMass\(\)\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
 test('il nuovo amministratore richiede una persona diversa da quello attuale', () => {
@@ -269,7 +270,7 @@ test('il salvataggio della configurazione non pubblica le preferenze personali',
   const start = app.indexOf('async function performAdminCenterSettingsSave()');
   const end = app.indexOf('async function saveAdministratorAsParticipant', start);
   const handler = app.slice(start, end);
-  assert.match(handler, /\.\.\.PERSONAL_APPEARANCE_DEFAULTS/);
+  assert.doesNotMatch(handler, /\.\.\.PERSONAL_APPEARANCE_DEFAULTS/);
 });
 
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
@@ -366,7 +367,8 @@ test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
   assert.match(app, /function syncAdaptationsContextCopy\(\)[\s\S]*?adminSectionNav\.hidden = residentDeviceMode/);
   assert.match(app, /resident\.preferences\.defaultViewHelp/);
   assert.match(app, /resident\.preferences\.layoutsHelp/);
-  assert.match(app, /adminKitchenLayoutPicker\.hidden = residentDeviceMode/);
+  assert.match(app, /adminKitchenLayoutPicker\.hidden = false/);
+  assert.match(app, /adminKitchenLayoutSelect\.disabled = !canEditKitchenLayout\(\)/);
   assert.match(app, /summaryResidentLabel: elements\.adminSummaryResidentLabelSelect\?\.value/);
   assert.match(app, /summaryResidentLabel: 'name'/);
 });
@@ -466,7 +468,7 @@ test('l archivio affianca scarica e carica con un ripristino configurazione prot
 
 test('il salvataggio del responsabile crea o aggiorna automaticamente la Persona', () => {
   assert.match(app, /saveAdministratorAsParticipant\(\{/);
-  assert.match(app, /participantWithPreviousSignature \|\| participantWithNextSignature/);
+  assert.match(app, /configuredParticipant \|\| participantWithPreviousSignature \|\| null/);
   assert.match(app, /groupId: participant\?\.groupId \|\| 'group_residenti'/);
   assert.match(app, /state\.adminParticipants = await listAdminParticipants\(\)/);
   assert.match(app, /state\.adminParticipantId = administratorParticipantId/);
@@ -508,8 +510,8 @@ test('l invito di successione separa decisione e identificazione senza percorsi 
   assert.doesNotMatch(app, /storeImplicitAdministratorInvitationAcceptance/);
   assert.match(app, /storeAdminInvitationDecision\('ACCEPT'\)/);
   assert.match(app, /storeAdminInvitationDecision\('REJECT'\)/);
-  assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
-  assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
+  assert.match(app, /useExistingAccountForCenterInvitation\(\)/);
+  assert.match(html, /data-admin-existing-account/);
   assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
   assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
   assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
@@ -596,7 +598,7 @@ test('l amministratore forte riapre il calendario dalla vista mese usando il ref
 test('l autenticazione del candidato non accetta automaticamente l invito', () => {
   const pendingBranch = adminCenter.slice(
     adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'),
-    adminCenter.indexOf('const profileSnapshot = await getDoc')
+    adminCenter.indexOf('if (existingAccess.active)', adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'))
   );
   assert.match(html, /Sì, accetto/);
   assert.match(adminCenter, /invitationPending: true/);

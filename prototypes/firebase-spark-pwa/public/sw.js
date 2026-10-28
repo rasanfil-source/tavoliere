@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v456';
+const CACHE_NAME = CACHE_PREFIX + 'v460';
 const SHELL_ENTRY = '/app.js?v=20261014b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Solo file SDK pubblici e immutabili: sono escluse risposte Auth e dati di sessione.
@@ -12,6 +12,7 @@ const APP_SHELL = [
   '/app.js',
   '/summary-contact-hint.mjs',
   '/html-utils.js',
+  '/blessing-view.mjs',
   '/firebase-client.js',
   '/core/firebase-runtime-policy.mjs',
   '/core/startup-timing.mjs',

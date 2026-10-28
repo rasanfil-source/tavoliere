@@ -391,7 +391,7 @@ export async function verifyResidentCommonPassword(centerId, password) {
 // La seconda istanza Auth non modifica la sessione dell'amministratore.
 export async function setResidentTechnicalPassword(centerId, previousPassword, nextPassword) {
   const email = getResidentTechnicalEmail(centerId);
-  const next = String(nextPassword || '');
+  const next = String(nextPassword || '').trim();
   const previous = String(previousPassword || '');
   if (next.length < 4 || next.length > 32) {
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
@@ -455,7 +455,7 @@ export async function setAdministratorTechnicalPassword(
 ) {
   const email = String(currentEmail || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId);
-  const next = String(nextPassword || '');
+  const next = String(nextPassword || '').trim();
   const previous = String(previousPassword || '');
   if (next.length < 6 || next.length > 64) {
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
@@ -468,8 +468,13 @@ export async function setAdministratorTechnicalPassword(
     let credential = null;
     if (formattedPrevious) {
       credential = await signInWithEmailAndPassword(maintenanceAuth, email, formattedPrevious)
-        .catch((error) => {
+        .catch(async (error) => {
           if (error?.code === 'auth/user-not-found') return null;
+          // Un tentativo precedente può avere aggiornato Auth prima di perdere
+          // la connessione: riprendere con la nuova password è idempotente.
+          if (['auth/wrong-password', 'auth/invalid-credential'].includes(error?.code)) {
+            return signInWithEmailAndPassword(maintenanceAuth, email, formattedNext);
+          }
           throw error;
         });
     }

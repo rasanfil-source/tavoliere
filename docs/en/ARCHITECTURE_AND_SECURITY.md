@@ -29,7 +29,7 @@ Personal code plus common password creates a resident session. A deputy code plu
 
 `accessSessions` supports `PUBLIC`, `PERSONAL` and `KITCHEN`. A personal session lasts up to 30 days and renews during use; it is bound to a revocable personal token with a maximum life of 9,000 days. Links and tokens are centre-bound credentials.
 
-Shared passwords are checked through a secondary Firebase Auth instance using technical identities. Rotating the administrators password changes its version and invalidates previous deputy sessions without replacing the primary administrator account.
+Shared passwords are checked through a secondary Firebase Auth instance using technical identities. Deputy sessions use the technical credential for the active rotation; renewing that credential updates the technical identity without replacing the administrator's Firebase account.
 
 ## Firestore model
 
@@ -43,7 +43,7 @@ Base diets use `STANDARD` or numeric tags displayed with `D`; daily health may o
 
 CSS attributes apply palette and interface style. Local resident preferences win on that device; centre settings remain authoritative in the strong administrative panel. Language catalogues fall back from the selected language to Italian and then embedded minimum strings.
 
-The service worker uses network-first HTML, cache-first versioned assets and stale-while-revalidate app resources. It does not cache Firestore data independently. Updates wait for the next full close/reopen; there is no `skipWaiting` or forced reload.
+The service worker uses network-first HTML, cache-first content-fingerprinted assets and stale-while-revalidate app resources. It does not cache Firestore data independently. Updates wait for the next full close/reopen; there is no `skipWaiting` or forced reload.
 
 ## Backups and defences
 

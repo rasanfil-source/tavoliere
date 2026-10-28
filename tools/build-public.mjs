@@ -1,10 +1,12 @@
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { extname, relative, resolve, sep } from 'node:path';
+import { dirname, extname, relative, resolve, sep } from 'node:path';
 import { build, transform } from 'esbuild';
 
 const root = resolve('.');
 const sourceRoot = resolve('prototypes/firebase-spark-pwa/public');
+const catalogHash = digest((await Promise.all(['it', 'en', 'fr', 'es', 'de', 'ca']
+  .map(locale => readFile(resolve(sourceRoot, 'i18n', `${locale}.json`), 'utf8')))).join('\n')).slice(0, 16);
 const defaultOutputRoot = resolve('prototypes/firebase-spark-pwa/dist');
 const outputRoot = resolve(process.env.TAT_BUILD_OUTPUT || defaultOutputRoot);
 // La destinazione della build non può coincidere con i sorgenti o una loro cartella superiore.
@@ -53,6 +55,12 @@ const result = await build({
   plugins: [{
     name: 'browser-module-identities',
     setup(bundler) {
+      // Ogni catalogo usa l'impronta del proprio contenuto per mantenere la cache coerente con le traduzioni.
+      bundler.onLoad({ filter: /[\\/]i18n[\\/]i18n\.mjs$/ }, async args => ({
+        contents: (await readFile(args.path, 'utf8')).replace(/const CATALOG_CACHE_KEY = [^;]+;/,
+          `const CATALOG_CACHE_KEY = '${catalogHash}';`),
+        loader: 'js', resolveDir: dirname(args.path)
+      }));
       // Lo sviluppo usa import dal CDN; la produzione incorpora lo stesso SDK con Firestore completo e cache in memoria.
       bundler.onResolve({ filter: /^https:\/\/www\.gstatic\.com\/firebasejs\// }, async (args) => {
         const match = args.path.match(/\/firebasejs\/([^/]+)\/firebase-(app|auth|firestore)\.js$/);

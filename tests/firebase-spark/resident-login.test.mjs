@@ -617,7 +617,7 @@ test('l area amministrativa segue il ruolo registrato nel centro', () => {
   assert.match(index, /data-admin-email-create/);
   assert.match(app, /signInAdministratorWithEmail/);
   assert.match(app, /createAdministratorWithEmail/);
-  assert.match(app, /reuseAdministratorAccountForInvitation/);
+  assert.match(app, /useExistingAccountForCenterInvitation/);
   assert.match(firebaseClient, /EmailAuthProvider\.credential/);
   assert.match(firebaseClient, /linkWithCredential/);
   assert.match(firebaseClient, /authenticatedEmail !== normalizedEmail/);
@@ -660,7 +660,7 @@ test('i salvataggi aggiornano lo stato locale e i bulk usano batch piccoli', () 
 test('le prenotazioni usano la sorgente coerente con la sessione attiva', () => {
   assert.match(participantData, /function getReservationWriteSource\(\)/);
   assert.match(participantData, /!user\.isAnonymous[\s\S]*'ADMIN'[\s\S]*'PERSONAL'/);
-  assert.match(participantData, /source: getReservationWriteSource\(\)/);
+  assert.match(participantData, /source: actorUid \? 'DELEGATED' : getReservationWriteSource\(\)/);
 });
 
 test('un bulk riuscito conserva createdAt e non ricrea gli override al clic successivo', () => {
@@ -947,7 +947,7 @@ test('il riepilogo mostra telefono e WhatsApp soltanto con consenso', () => {
   assert.match(app, /href="tel:\$\{escapeHtml\(phone\)\}"/);
   assert.match(app, /href="https:\/\/wa\.me\/\$\{whatsappNumber\}"/);
   assert.match(app, /src="\/icons\/whatsapp\.svg\?v=20260808a"/);
-  assert.match(app, /renderParticipantContact\(participant, ` \(\$\{dietCodes\.join\(', '\)\}\)`\)/);
+  assert.match(app, /renderParticipantContact\(participant, dietCodes.length \? ` \(\$\{dietCodes\.join\(', '\)\}\)` : ''\)/);
 });
 
 test('la chiamata ai commensali e attiva per impostazione predefinita', () => {
@@ -1093,7 +1093,8 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /loadDailyHealth/);
   assert.match(app, /saveSickPeople/);
   assert.match(app, /data-week-sick-select/);
-  assert.match(app, /elements\.weekHealthSection\.open = sickCount > 0/);
+  assert.match(app, /state\.weekAgendaReady\?\.health && elements\.weekHealthSection\.open/);
+  assert.doesNotMatch(app, /elements\.weekHealthSection\.open = sickCount > 0/);
   assert.match(app, /removeKitchenNoteMessage/);
   assert.match(app, /data-week-kitchen-note-remove/);
   assert.doesNotMatch(app, /weekKitchenNoteInput\.value = state\.weekOperationalNote/);

@@ -1,3 +1,4 @@
+import { renderBlessing } from './blessing-view.mjs?v=20261014b';
 import {
   initI18n,
   t,
@@ -20,7 +21,6 @@ import {
   isResidentTechnicalEmail,
   missingFirebaseConfigValues,
   createAdministratorWithEmail,
-  reuseAdministratorAccountForInvitation,
   signInAdministratorWithEmail,
   signInWithGoogle,
   signOutCurrentUser,
@@ -45,6 +45,7 @@ import {
   removeCenterAvatar,
   saveCenterAvatar,
   synchronizeCenterOwnerEmail,
+  updateKitchenLayout,
   updateCenterSettings
 } from './center-settings.js?v=20261014b';
 import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
@@ -217,6 +218,7 @@ const revokeViceAdministratorAccess = callDomain('admin', 'revokeViceAdministrat
 const acceptAdministratorInvitation = callDomain('admin', 'acceptAdministratorInvitation');
 const initializeAdminCenter = callDomain('admin', 'initializeAdminCenter');
 const linkCurrentAdministratorParticipant = callDomain('admin', 'linkCurrentAdministratorParticipant');
+const linkCenterAdministratorParticipant = callDomain('admin', 'linkCenterAdministratorParticipant');
 const listPlatformCenters = callDomain('admin', 'listPlatformCenters');
 const listAdministratorInvitations = callDomain('admin', 'listAdministratorInvitations');
 const loadCurrentAdminMembership = callDomain('admin', 'loadCurrentAdminMembership');
@@ -241,6 +243,7 @@ const saveSickPeople = callDomain('daily', 'saveSickPeople');
 const saveDietAssignments = callDomain('daily', 'saveDietAssignments');
 const saveInvitedMeals = callDomain('daily', 'saveInvitedMeals');
 const saveMassStatus = callDomain('daily', 'saveMassStatus');
+const saveBlessing = callDomain('daily', 'saveBlessing');
 const saveMassStatuses = callDomain('daily', 'saveMassStatuses');
 const ensurePublicDemoSession = callDomain('participant', 'ensurePublicDemoSession');
 const ensureStoredResidentSession = callDomain('participant', 'ensureStoredResidentSession');
@@ -455,7 +458,7 @@ function openResidentEntryGate() {
 const PERSONAL_APPEARANCE_DEFAULTS = Object.freeze({
   themePalette: 'inchiostro', interfaceStyle: 'cool',
   defaultView: DEFAULT_OPENING_VIEW, summaryLayout: 'classic',
-  kitchenLayout: 'classic', summaryResidentLabel: 'name',
+  summaryResidentLabel: 'name',
   monthControlsSide: 'right', weekStartsOn: 'monday', language: 'it'
 });
 
@@ -487,6 +490,9 @@ function applyResidentPreferences(settings) {
   const appearance = Object.fromEntries(Object.entries(PERSONAL_APPEARANCE_DEFAULTS)
     .map(([key, fallback]) => [key, preferences[key] || fallback]));
   appearance.weekStartsOn = preferences.weekStartsOn === 'sunday' ? 'sunday' : 'monday';
+  // La cucina segue la scelta condivisa degli amministratori anche quando
+  // il browser conserva una preferenza personale memorizzata per kitchenLayout.
+  appearance.kitchenLayout = settings?.kitchenLayout === 'international' ? 'international' : 'classic';
   return { ...settings, ...appearance };
 }
 
@@ -599,6 +605,10 @@ function syncCustomDietNumber(select, numberInput) {
 
 const cachedCenterContactSettings = loadCachedCenterContactSettings();
 
+let weekInvitedRequest = 0;
+let weekInvitedLoaded = null;
+let weekInvitedTodayId = null;
+
 const state = {
   timerId: 0,
   backgroundRefreshTimerId: 0,
@@ -695,7 +705,11 @@ const state = {
   weekOperationalHealth: null,
   weekSickDraft: null,
   weekOperationalNote: null,
+  weekOperationalBlessing: null,
+  weekAgendaReady: {},
+  weekAgendaContext: '',
   weekOperationalDateId: '',
+  weekCalendarCoverage: null,
   weekDailyOperations: [],
   pendingCenterAvatarDataUrl: '',
   pendingThemePalette: '',
@@ -724,7 +738,6 @@ const state = {
     administratorProfileRequired: false,
     administratorProfileComplete: true,
     administratorPasswordRequired: false,
-    adminPasswordSet: false,
     adminSharedPasswordSet: false,
     adminPasswordVersion: 0,
     adminTechnicalEmail: '',
@@ -751,6 +764,8 @@ function invalidateViewRequests() {
   state.weekMassReady = false;
   state.weekExtrasReady = false;
   state.weekSickDraft = null;
+  state.weekAgendaReady = {};
+  state.weekAgendaContext = '';
 }
 
 function beginParticipantRequest() {
@@ -795,6 +810,8 @@ const elements = {
   adminPassword: document.querySelector('[data-admin-password]'),
   adminEmailSignIn: document.querySelector('[data-admin-email-signin]'),
   adminEmailCreate: document.querySelector('[data-admin-email-create]'),
+  adminExistingAccount: document.querySelector('[data-admin-existing-account]'),
+  adminCancelInvitation: document.querySelector('[data-admin-cancel-invitation]'),
   adminPasswordReset: document.querySelector('[data-admin-password-reset]'),
   adminPasswordSetupDialog: document.querySelector('[data-admin-password-setup-dialog]'),
   adminPasswordSetupForm: document.querySelector('[data-admin-password-setup-form]'),
@@ -962,7 +979,19 @@ const elements = {
   weekOperations: document.querySelector('[data-week-operations]'),
   weekOperationsStatus: document.querySelector('[data-week-operations-status]'),
   weekOperationsDay: document.querySelector('[data-week-operations-day]'),
+  weekOperationsDate: document.querySelector('[data-week-operations-date]'),
+  weekOperationsDateToggle: document.querySelector('[data-week-operations-date-toggle]'),
+  weekBlessingSection: document.querySelector('[data-week-blessing-section]'),
+  weekBlessingEnabled: document.querySelector('[data-week-blessing-enabled]'),
+  weekBlessingTime: document.querySelector('[data-week-blessing-time]'),
+  weekBlessingSave: document.querySelector('[data-week-blessing-save]'),
+  weekBlessingStatus: document.querySelector('[data-week-blessing-status]'),
+  weekBlessingDate: document.querySelector('[data-week-blessing-date]'),
+  weekBookingSection: document.querySelector('[data-week-booking-section]'),
+  weekNotesSection: document.querySelector('[data-week-notes-section]'),
+  weekDietSection: document.querySelector('[data-week-diet-section]'),
   weekInvitedSection: document.querySelector('[data-week-invited-section]'),
+  weekInvitedDay: document.querySelector('[data-week-invited-day]'),
   weekInvitedInputs: document.querySelectorAll('[data-week-invited-meal]'),
   weekInvitedSave: document.querySelector('[data-week-invited-save]'),
   weekInvitedStatus: document.querySelector('[data-week-invited-status]'),
@@ -978,6 +1007,7 @@ const elements = {
   weekDietList: document.querySelector('[data-week-diet-list]'),
   weekDietStatus: document.querySelector('[data-week-diet-status]'),
   weekKitchenNoteStatus: document.querySelector('[data-week-kitchen-note-status]'),
+  weekKitchenNoteDate: document.querySelector('[data-week-kitchen-note-date]'),
   weekKitchenNoteInput: document.querySelector('[data-week-kitchen-note-input]'),
   weekKitchenNoteSave: document.querySelector('[data-week-kitchen-note-save]'),
   weekKitchenNoteList: document.querySelector('[data-week-kitchen-note-list]'),
@@ -1123,7 +1153,14 @@ function createInertElement() {
   });
 }
 
-function showActionDialog({
+function showActionDialog(options) {
+  const previous = state.actionDialogQueue || Promise.resolve();
+  const request = previous.catch(() => {}).then(() => openActionDialog(options));
+  state.actionDialogQueue = request;
+  return request;
+}
+
+function openActionDialog({
   title,
   message,
   confirmLabel = t('common.actions.confirm'),
@@ -1177,13 +1214,16 @@ function showActionDialog({
 
 populateAdminDietSelect('Nessuna dieta');
 
-// Il pannello globale vive fuori dall area del singolo centro.
+// Il pannello globale vive fuori dall'area del singolo centro.
 elements.adminShell.append(elements.ownerInvitationPanel);
 populateDietSelect(elements.weekDietType, 'Nessuna dieta occasionale', elements.weekDietNumber);
 
 document.addEventListener('click', handleOfflineNetworkAction, true);
 document.addEventListener('submit', handleOfflineNetworkAction, true);
 elements.refreshButtons.forEach((button) => button.addEventListener('click', () => refreshNow('manuale')));
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-calendar-retry]')) void refreshNow('manuale');
+});
 elements.participantPanel.addEventListener('touchstart', handleMealViewSwipeStart, { passive: true });
 elements.participantPanel.addEventListener('touchend', handleMealViewSwipeEnd, { passive: false });
 elements.participantPanel.addEventListener('touchcancel', cancelMealViewSwipe, { passive: true });
@@ -1197,6 +1237,8 @@ elements.platformOwnerExitButton?.addEventListener('click', handleOwnerExit);
 elements.adminEmailChoice.addEventListener('click', handleAdministratorEmailChoice);
 elements.adminEmailSignIn.addEventListener('click', handleAdministratorEmailSignIn);
 elements.adminEmailCreate.addEventListener('click', handleAdministratorEmailCreation);
+elements.adminExistingAccount.addEventListener('click', useExistingAccountForCenterInvitation);
+elements.adminCancelInvitation.addEventListener('click', cancelPendingCenterInvitation);
 elements.adminPasswordReset.addEventListener('click', handleAdministratorPasswordReset);
 elements.ownerInvitationGenerate.addEventListener('click', handleCenterInvitationGeneration);
 elements.ownerInvitationCopy.addEventListener('click', handleCenterInvitationCopy);
@@ -1268,8 +1310,8 @@ if (elements.activationChecklistList) {
 }
 elements.adminAuditLoad.addEventListener('click', handleAuditDialogOpen);
 elements.adminAuditClose.addEventListener('click', () => elements.adminAuditDialog.close());
-elements.adminAuditDateFilter.addEventListener('input', renderFilteredAuditEvents);
-elements.adminAuditUserFilter.addEventListener('input', renderFilteredAuditEvents);
+elements.adminAuditDateFilter.addEventListener('input', handleAuditFilterChange);
+elements.adminAuditUserFilter.addEventListener('input', handleAuditFilterChange);
 elements.adminAuditMore.addEventListener('click', handleAuditLoad);
 elements.adminCenterAvatarInput.addEventListener('change', handleAdminCenterAvatarSelection);
 elements.adminCenterAvatarRemove.addEventListener('click', handleAdminCenterAvatarRemove);
@@ -1290,6 +1332,16 @@ if (elements.adminThemeSelect) {
 }
 if (elements.adminInterfaceStyleSelect) {
   elements.adminInterfaceStyleSelect.addEventListener('change', handleInterfaceStyleSelectChange);
+}
+for (const control of [
+  'adminDefaultViewSelect', 'adminSummaryLayoutSelect', 'adminKitchenLayoutSelect',
+  'adminSummaryResidentLabelSelect', 'adminMonthControlsSideSelect',
+  'adminWeekStartsOnSelect', 'adminLanguageSelect'
+]) {
+  elements[control]?.addEventListener('change', () => {
+    state.editedAdaptationControls ||= new Set();
+    state.editedAdaptationControls.add(control);
+  });
 }
 if (elements.adminLanguageSelect) {
   elements.adminLanguageSelect.addEventListener('change', async (event) => {
@@ -1352,8 +1404,53 @@ document.querySelectorAll('[data-share-access-link]').forEach((button) => {
 elements.kitchenPanel.addEventListener('click', handleKitchenPanelClick);
 window.addEventListener('beforeunload', handleBeforeUnload);
 window.addEventListener('hashchange', handleAdminHashChange);
-elements.weekOperationsDay.addEventListener('change', () => refreshWeekOperations(true));
+elements.weekOperationsDay.addEventListener('change', handleWeekOperationalDateChange);
+elements.weekOperationsDate.addEventListener('change', handleWeekOperationalDateChange);
+elements.weekOperationsDateToggle.addEventListener('click', openWeekOperationalDatePicker);
+elements.weekOperations.addEventListener('toggle', () => {
+  if (elements.weekOperations.open) void refreshWeekOperations();
+});
+elements.weekOperations.querySelectorAll('.week-operation-section').forEach(section => {
+  section.addEventListener('toggle', () => {
+    if (section.open && !section.hidden && elements.weekOperations.open) void refreshWeekOperations(false, section);
+  });
+});
+elements.weekBlessingEnabled.addEventListener('change', () => {
+  elements.weekBlessingTime.disabled = !elements.weekBlessingEnabled.checked;
+  elements.weekBlessingTime.required = elements.weekBlessingEnabled.checked;
+});
+elements.weekBlessingSave.addEventListener('click', handleWeekBlessingSave);
+elements.weekInvitedDay.addEventListener('change', () => refreshWeekInvited(true));
 elements.weekInvitedSave.addEventListener('click', handleWeekInvitedSave);
+let bookingForView;
+document.querySelector('[data-booking-open]').addEventListener('click', async () => {
+  if (!canManageDailyOperations() || state.pendingMealKeys?.size) return;
+  const participantId = document.querySelector('[data-booking-person]').value;
+  const { createBookingFor } = await import('./booking-for.mjs?v=20261014b');
+  bookingForView ||= createBookingFor({
+    dialog: document.querySelector('[data-booking-dialog]'),
+    canBook: () => canManageDailyOperations() && state.mode === 'week',
+    identity: () => `${getActiveCenterId()}:${getCurrentUser()?.uid || ''}`,
+    listPeople: () => state.adminParticipants,
+    today: getCenterToday,
+    loadWeek: (id, date) => loadParticipantWeek(id, date, 7, {
+      forceStaticRefresh: true, requireServer: true, timezone: state.centerContactSettings.timezone || 'Europe/Rome'
+    }),
+    saveMeal: saveBookingForMeal
+  });
+  await bookingForView.open(participantId);
+});
+
+async function saveBookingForMeal(person, meal, effect) {
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid;
+  await saveParticipantMeal(person, meal, effect, { bookingFor: true });
+  if (centerId !== getActiveCenterId() || uid !== getCurrentUser()?.uid) return;
+  if (person.participantId === state.selectedParticipant?.participantId) {
+    invalidateParticipantCalendarCache();
+    await refreshParticipant('manuale');
+  }
+}
 elements.weekHealthList.addEventListener('click', handleWeekHealthListClick);
 elements.weekHealthSave.addEventListener('click', handleWeekHealthSave);
 elements.weekDietType.addEventListener('change', () => {
@@ -1385,11 +1482,23 @@ window.addEventListener('popstate', async () => {
   refreshNow('navigazione');
 });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
-    scheduleBackgroundRefresh('ripresa');
-  }
+  refreshCalendarOnResume();
   if (!document.hidden) scheduleMealRemindersFromCurrentCalendar();
 });
+window.addEventListener('pageshow', refreshCalendarOnResume);
+window.addEventListener('focus', refreshCalendarOnResume);
+
+function refreshCalendarOnResume() {
+  if (document.hidden) return;
+  const missingCalendar = ['week', 'participant'].includes(state.mode)
+    && (state.residentReady || state.residentRestorePending || state.selectedParticipant)
+    && !(state.mode === 'week' ? state.participantWeek : state.participantMonth).length;
+  // Una riapertura può trovare il calendario iniziale ancora incompleto,
+  // anche se il timer del prossimo aggiornamento è lontano.
+  if (missingCalendar || Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
+    scheduleBackgroundRefresh('ripresa');
+  }
+}
 // I timer delle PWA possono essere sospesi dal sistema operativo. Quando la
 // pagina resta visibile riconciliamo il piano senza nuove letture Firebase;
 // al ritorno in primo piano visibilitychange/focus recuperano l'eventuale
@@ -1402,6 +1511,9 @@ window.addEventListener('offline', handleConnectivityChange);
 window.addEventListener('focus', refreshAdminRolesWhenVisible);
 window.addEventListener('focus', scheduleMealRemindersFromCurrentCalendar);
 document.addEventListener('visibilitychange', refreshAdminRolesWhenVisible);
+document.addEventListener('visibilitychange', refreshWeekInvitedOnNewDay);
+window.addEventListener('focus', refreshWeekInvitedOnNewDay);
+window.setInterval(refreshWeekInvitedOnNewDay, 30 * 1000);
 
 function handleSummaryPanelClick(event) {
   const button = event.target.closest('[data-summary-day]');
@@ -1453,6 +1565,7 @@ function renderAllViews() {
 
 async function bootstrapApp() {
   watchAuth((user) => {
+    bookingForView?.checkIdentity();
     const scope = state.personalCalendarScope;
     if (scope && scope.uid !== user?.uid) {
       state.personalCalendarScope = null;
@@ -1462,6 +1575,8 @@ async function bootstrapApp() {
       state.weekMassReady = false;
       state.weekExtrasReady = false;
       renderParticipantMeals();
+      if (user && state.residentReady && !state.residentAuthTransition
+          && ['week', 'participant'].includes(state.mode)) scheduleBackgroundRefresh('cambio-sessione');
     }
   });
   syncStartupSplashPresentation();
@@ -1833,7 +1948,7 @@ async function handleInAppNavigation(event) {
         }
       } catch (error) {
         // Il collegamento Prenotarsi deve restare utilizzabile anche se la
-        // scheda persona dell'amministratore non e' ancora collegata: in quel
+        // scheda persona dell'amministratore non è ancora collegata: in quel
         // caso mostriamo il normale accesso residente, senza interrompere la
         // navigazione con un errore tecnico.
         console.warn('[admin-to-resident]', error?.code || error?.message || error);
@@ -2243,7 +2358,17 @@ function hasPendingAdminAdaptationChanges() {
   ) || Boolean(
     state.pendingInterfaceStyle
       && state.pendingInterfaceStyle !== (state.centerContactSettings.interfaceStyle || 'cool')
-  );
+  ) || [
+    ['adminDefaultViewSelect', 'defaultView', DEFAULT_OPENING_VIEW],
+    ['adminSummaryLayoutSelect', 'summaryLayout', 'classic'],
+    ['adminKitchenLayoutSelect', 'kitchenLayout', 'classic'],
+    ['adminSummaryResidentLabelSelect', 'summaryResidentLabel', 'name'],
+    ['adminMonthControlsSideSelect', 'monthControlsSide', 'right'],
+    ['adminWeekStartsOnSelect', 'weekStartsOn', 'monday'],
+    ['adminLanguageSelect', 'language', 'it']
+  ].some(([control, key, fallback]) => state.editedAdaptationControls?.has(control)
+    && elements[control]?.value
+    && elements[control].value !== (state.centerContactSettings[key] || fallback));
 }
 
 async function confirmAdminSectionTransition() {
@@ -2272,7 +2397,7 @@ async function confirmAdminSectionTransition() {
     syncAdminCenterSettingsForm();
     renderAdminCenterAvatarEditor();
   }
-  if (hasAdaptationChanges) handleAdminAdaptationsCancel();
+  if (hasAdaptationChanges) await handleAdminAdaptationsCancel();
   return true;
 }
 
@@ -2794,10 +2919,12 @@ function setSignedOutState() {
     ? t('auth.email.continue')
     : t('auth.email.createWithInvite');
   elements.adminPasswordReset.hidden = hasCenterInvitation;
+  elements.adminExistingAccount.hidden = !hasCenterInvitation;
+  elements.adminCancelInvitation.hidden = !hasCenterInvitation;
 
   if (hasCenterInvitation) {
     elements.adminPasswordLabel.textContent = 'Password temporanea dell\'invito';
-    elements.adminPassword.value = centerInvitationId;
+    if (state.centerInvitationEmailSignIn !== centerInvitationId) elements.adminPassword.value = centerInvitationId;
     elements.adminPassword.readOnly = true;
     elements.adminPassword.autocomplete = 'new-password';
     elements.adminPassword.placeholder = 'Password derivata dall\'invito';
@@ -2806,6 +2933,9 @@ function setSignedOutState() {
     elements.adminPassword.readOnly = false;
     elements.adminPassword.autocomplete = hasRoleInvitation ? 'new-password' : 'current-password';
     elements.adminPassword.placeholder = '';
+  }
+  if (hasCenterInvitation && state.centerInvitationEmailSignIn === centerInvitationId) {
+    renderExistingAccountForCenterInvitation();
   }
 
   if (hasRoleInvitation) {
@@ -2852,6 +2982,12 @@ function setSignedOutState() {
 function clearAdminAuthorizationState() {
   // L'uscita invalida i caricamenti amministrativi pendenti: le risposte tardive non possono assegnare privilegi alla sessione residente.
   state.adminHydrationVersion += 1;
+  state.adminAuditEvents = [];
+  state.adminAuditCursors = {};
+  state.adminAuditHasMore = false;
+  if (elements.adminAuditLoad) elements.adminAuditLoad.dataset.loaded = 'false';
+  if (elements.adminAuditTableWrap) elements.adminAuditTableWrap.hidden = true;
+  if (elements.adminAuditDialog?.open) elements.adminAuditDialog.close();
   adminLoadedResources.clear();
   adminResourceLoads.clear();
   state.adminAuthorizationPending = false;
@@ -2867,6 +3003,11 @@ function clearAdminAuthorizationState() {
   state.adminCanManageDailyOperations = false;
   state.adminCenters = [];
   state.weekOperationalHealth = null;
+  state.weekCalendarCoverage = null;
+  elements.weekInvitedDay.value = '0';
+  weekInvitedTodayId = null;
+  weekInvitedLoaded = null;
+  ++weekInvitedRequest;
   state.weekSickDraft = null;
   state.weekOperationalNote = null;
   state.weekOperationalDateId = '';
@@ -2975,6 +3116,7 @@ function handleAdminCenterChange(event) {
   const url = new URL(window.location.href);
   url.searchParams.delete('invite');
   url.searchParams.delete('adminInvite');
+  url.searchParams.delete('t');
   window.location.assign(url.href);
 }
 
@@ -3063,6 +3205,40 @@ async function handleAdministratorEmailSignIn() {
   }
 }
 
+function renderExistingAccountForCenterInvitation() {
+  elements.adminPasswordLabel.textContent = t('auth.password.label');
+  elements.adminPassword.readOnly = false;
+  elements.adminPassword.autocomplete = 'current-password';
+  elements.adminPassword.placeholder = '';
+  elements.adminEmailCreate.hidden = true;
+  elements.adminEmailSignIn.hidden = false;
+  elements.adminPasswordReset.hidden = false;
+  elements.adminExistingAccount.hidden = true;
+}
+
+function useExistingAccountForCenterInvitation() {
+  const invitationId = getAdminInvitationId();
+  if (!invitationId) return;
+  state.centerInvitationEmailSignIn = invitationId;
+  elements.adminPassword.value = '';
+  renderExistingAccountForCenterInvitation();
+  elements.adminEmailStatus.textContent = t('auth.email.existingAccountHelp');
+  elements.adminPassword.focus();
+}
+
+function cancelPendingCenterInvitation() {
+  for (const storage of ['sessionStorage', 'localStorage']) {
+    try { window[storage].removeItem(CENTER_INVITATION_STORAGE_KEY); } catch { /* Storage facoltativo. */ }
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.delete('invite');
+  window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  state.centerInvitationEmailSignIn = '';
+  elements.adminPassword.value = '';
+  state.adminAuthNotice = '';
+  setSignedOutState();
+}
+
 function handleAdministratorEmailChoice() {
   state.adminAuthNotice = '';
   state.adminInviteEmailExpanded = !state.adminInviteEmailExpanded;
@@ -3134,16 +3310,7 @@ async function handleAdministratorEmailCreation() {
         } else if (roleInvitationId || !centerInvitationId) {
           elements.adminEmailStatus.textContent = t('auth.email.existingAccountHelp');
         } else {
-          try {
-            elements.adminEmailStatus.textContent = 'Account già presente. Conferma la tua identità con Google...';
-            await reuseAdministratorAccountForInvitation(email, password);
-            elements.adminPassword.value = '';
-            elements.adminEmailStatus.textContent = 'Account riconosciuto. Puoi attivare il nuovo centro.';
-          } catch (reuseError) {
-            elements.adminEmailStatus.textContent = reuseError?.code === 'auth/popup-closed-by-user'
-              ? 'Accesso annullato. Usa Google oppure la password personale associata a questo indirizzo.'
-              : friendlyErrorMessage(reuseError, 'Account già esistente. Usa Google oppure la password personale.');
-          }
+          useExistingAccountForCenterInvitation();
         }
       }
     } else {
@@ -3160,6 +3327,8 @@ function setAdministratorEmailButtonsDisabled(disabled) {
   elements.adminEmailSignIn.disabled = disabled;
   elements.adminEmailCreate.disabled = disabled;
   elements.adminPasswordReset.disabled = disabled;
+  elements.adminExistingAccount.disabled = disabled;
+  elements.adminCancelInvitation.disabled = disabled;
 }
 
 function showRequiredAdminPasswordSetup(user, passwordSetupRequired) {
@@ -3943,10 +4112,17 @@ function renderCalendarPlaceholder() {
   const target = state.mode === 'week' ? elements.participantMeals : elements.monthGrid;
   delete target.dataset.renderKey;
   // La presentazione iniziale rimane fino alla disponibilità del calendario. Alla scadenza dell'attesa viene mostrato uno stato informativo.
-  target.innerHTML = `<p class="empty-state" role="status">${escapeHtml(t('common.status.loading'))}</p>`;
+  const failed = state.calendarLoadErrorKey === calendarLoadContextKey();
+  target.innerHTML = failed
+    ? `<p class="empty-state" role="status" data-i18n="calendar.loadFailed">${escapeHtml(t('calendar.loadFailed'))}</p><button type="button" class="tertiary-action" data-calendar-retry data-i18n="calendar.retry">${escapeHtml(t('calendar.retry'))}</button>`
+    : `<p class="empty-state" role="status" data-i18n="common.status.loading">${escapeHtml(t('common.status.loading'))}</p>`;
   elements.weekOperations.hidden = true;
   if (state.mode === 'week') renderWeekControls();
   else renderCalendarControls();
+}
+
+function calendarLoadContextKey() {
+  return `${buildRefreshContextKey()}:${getCurrentUser()?.uid || ''}`;
 }
 
 async function refreshParticipantExtras(source, request) {
@@ -3986,22 +4162,10 @@ async function refreshParticipantExtras(source, request) {
       state.weekMassReady = true;
       renderParticipantMeals();
     }).catch(report) : Promise.resolve();
-    const operationalDate = canManageDailyOperations() ? prepareWeekOperationalDate(dates) : null;
-    const operationsVersion = ++state.weekOperationsRequestVersion;
-    const operationsCurrent = () => isCurrent() && operationsVersion === state.weekOperationsRequestVersion
-      && state.weekOperationalDateId === formatDateId(operationalDate);
-    const operations = operationalDate ? Promise.all([
-      listPublicParticipants({ forceRefresh, staticVersion: state.centerContactSettings.participantDataVersion || '0' }),
-      loadDailyHealth(operationalDate, { forceRefresh }),
-      loadKitchenNote(operationalDate, { forceRefresh })
-    ]).then(([participants, health, note]) => {
-      if (!operationsCurrent()) return;
-      state.adminParticipants = participants;
-      state.weekOperationalHealth = health;
-      state.weekOperationalNote = note;
-      state.weekExtrasReady = true;
-      renderWeekOperations();
-    }).catch(report) : Promise.resolve();
+    if (canManageDailyOperations() || canManageMass()) prepareWeekOperationalDate();
+    renderWeekOperations();
+    const operations = elements.weekOperations.open && (canManageDailyOperations() || canManageMass())
+      ? refreshWeekOperations(forceRefresh) : Promise.resolve();
     await Promise.all([mass, operations, presentation]);
   } catch { report(); }
 }
@@ -4011,6 +4175,8 @@ async function refreshParticipant(source, options = {}) {
   // L'aggiornamento viene programmato al completamento della scrittura per mantenere visibile la selezione ottimistica ancora in attesa.
   if (state.residentAuthTransition || state.pendingMealKeys?.size) return;
   let request = beginParticipantRequest();
+  const initialCalendarRevision = participantCalendarRevision;
+  state.calendarLoadErrorKey = '';
   const scope = currentPersonalCalendarScope();
   if (state.personalCalendarScope && JSON.stringify(scope) !== JSON.stringify(state.personalCalendarScope)) {
     state.participantWeek = [];
@@ -4130,7 +4296,7 @@ async function refreshParticipant(source, options = {}) {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
       const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
         const dateId = formatDateId(date);
-        const [meals, dailyOperation, dailyHealth] = await Promise.all([
+        const [meals, dailyOperation, dailyHealth, kitchenNote] = await Promise.all([
           loadParticipantDaySummaries(date, {
             forceStaticRefresh: source === 'manuale',
             staticVersion: state.centerContactSettings.participantDataVersion || '0',
@@ -4144,21 +4310,26 @@ async function refreshParticipant(source, options = {}) {
               sickPeople: [],
               dietAssignments: [],
               invitedMeals: []
-            }))
+            })),
+          loadKitchenNote(date, { forceRefresh: source === 'manuale' })
+            .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null))
         ]);
         return {
           dateId,
           meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
           dailyOperation,
-          dailyHealth
+          dailyHealth,
+          notes: Array.isArray(kitchenNote?.messages) && kitchenNote.messages.length > 0
+            ? kitchenNote.messages : kitchenNote?.text ? [kitchenNote] : []
         };
       }));
       if (!isCurrentParticipantRequest(request)) return;
       state.summaryDays = summaryPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
-      state.summaryOperations = summaryPayloads.map(({ dateId, dailyOperation, dailyHealth }) => ({
+      state.summaryOperations = summaryPayloads.map(({ dateId, dailyOperation, dailyHealth, notes }) => ({
         dateId,
         dailyOperation,
-        dailyHealth
+        dailyHealth,
+        notes
       }));
       state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || [];
       state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || null;
@@ -4258,6 +4429,10 @@ async function refreshParticipant(source, options = {}) {
       setParticipantStatus(formatPreviousDataMessage(message), 'previous');
     } else {
       setParticipantStatus(message);
+      if (['week', 'participant'].includes(state.mode)) {
+        state.calendarLoadErrorKey = calendarLoadContextKey();
+        renderCalendarPlaceholder();
+      }
     }
   } finally {
     hideStartupSplash();
@@ -4267,9 +4442,15 @@ async function refreshParticipant(source, options = {}) {
         && request.version === state.participantRequestVersion
         && request.centerId === getActiveCenterId()
         && request.mode === state.mode
-        && (request.authUid === undefined || request.authUid === getCurrentUser()?.uid)
+        && (request.authUid === undefined || request.authUid === getCurrentUser()?.uid
+          || state.residentReady && Boolean(getCurrentUser()?.uid))
+        && !state.pendingMealKeys?.size
+        && !state.calendarLoadErrorKey
         && (request.weekStartDate !== state.weekStartDate.getTime()
-          || request.monthDate !== state.monthDate.getTime())) {
+          || request.monthDate !== state.monthDate.getTime()
+          || initialCalendarRevision !== participantCalendarRevision
+            && !(state.mode === 'week' ? state.participantWeek : state.participantMonth).length
+          || request.authUid !== undefined && request.authUid !== getCurrentUser()?.uid)) {
       scheduleBackgroundRefresh('contesto-calendario');
     }
   }
@@ -4550,7 +4731,11 @@ function adminResourcesForSection(section) {
   if (section === 'access') {
     ['participants', 'accounts', 'invitations'].forEach((resource) => resources.add(resource));
   }
-  if (section === 'activity') resources.add('coverage');
+  if (section === 'activity') {
+    resources.add('coverage');
+    resources.add('participants');
+    resources.add('accounts');
+  }
   return resources;
 }
 
@@ -5022,43 +5207,79 @@ async function performOwnershipTransfer() {
 }
 
 function handleAuditLoad() {
-  return operationGuard.run('admin:audit-load', performAuditLoad);
+  return operationGuard.run(`admin:audit-load:${state.adminAuditRevision || 0}`, performAuditLoad);
+}
+
+function handleAuditFilterChange() {
+  state.adminAuditRevision = (state.adminAuditRevision || 0) + 1;
+  renderFilteredAuditEvents();
+  clearTimeout(state.adminAuditFilterTimer);
+  state.adminAuditFilterTimer = setTimeout(() => {
+    if (elements.adminAuditDialog.open
+        && (state.adminAuditHasMore || elements.adminAuditLoad.dataset.loaded !== 'true')) handleAuditLoad();
+  }, 250);
 }
 
 function handleAuditDialogOpen() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
-  if (!elements.adminAuditDialog.open) elements.adminAuditDialog.showModal();
+  if (!elements.adminAuditDialog.open) {
+    elements.adminAuditDialog.showModal();
+    state.adminAuditRevision = (state.adminAuditRevision || 0) + 1;
+    state.adminAuditEvents = [];
+    state.adminAuditCursors = {};
+    state.adminAuditHasMore = false;
+    elements.adminAuditLoad.dataset.loaded = 'false';
+  }
   if (elements.adminAuditLoad.dataset.loaded !== 'true') handleAuditLoad();
 }
 
 async function performAuditLoad() {
   if (!hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG)) return;
-  elements.adminAuditLoad.disabled = true;
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid;
+  const version = state.adminHydrationVersion;
+  const revision = state.adminAuditRevision;
+  const isCurrent = () => centerId === getActiveCenterId() && uid === getCurrentUser()?.uid
+    && version === state.adminHydrationVersion && revision === state.adminAuditRevision
+    && elements.adminAuditDialog.open && hasCurrentCapability(CAPABILITIES.VIEW_AUDIT_LOG);
+  elements.adminAuditLoad.disabled = false;
   elements.adminAuditMore.disabled = true;
   elements.adminAuditLoad.setAttribute('aria-busy', 'true');
   elements.adminAuditStatus.textContent = t('admin.activity.loading');
   try {
-    const page = await listAuditEvents({
-      maximum: 20,
-      cursors: state.adminAuditCursors || {}
-    });
-    const currentEvents = state.adminAuditEvents || [];
-    const knownIds = new Set(currentEvents.map((event) => event.eventId));
-    state.adminAuditEvents = [
-      ...currentEvents,
-      ...page.events.filter((event) => !knownIds.has(event.eventId))
-    ].sort((left, right) => auditTimestampValue(right.createdAt) - auditTimestampValue(left.createdAt));
-    state.adminAuditCursors = page.cursors;
-    state.adminAuditHasMore = page.hasMore;
-    renderFilteredAuditEvents();
-    elements.adminAuditLoad.dataset.loaded = 'true';
+    const filtered = Boolean(elements.adminAuditDateFilter.value || elements.adminAuditUserFilter.value.trim());
+    const initialMatches = renderFilteredAuditEvents();
+    let pagesLoaded = 0;
+    do {
+      elements.adminAuditStatus.textContent = t('admin.activity.loading');
+      const page = await listAuditEvents({
+        maximum: 20,
+        cursors: state.adminAuditCursors || {}
+      });
+      if (!isCurrent()) return;
+      pagesLoaded += 1;
+      const currentEvents = state.adminAuditEvents || [];
+      const knownIds = new Set(currentEvents.map((event) => event.eventId));
+      state.adminAuditEvents = [
+        ...currentEvents,
+        ...page.events.filter((event) => !knownIds.has(event.eventId))
+      ].sort((left, right) => auditTimestampValue(right.createdAt) - auditTimestampValue(left.createdAt));
+      state.adminAuditCursors = page.cursors;
+      state.adminAuditHasMore = page.hasMore;
+      const matches = renderFilteredAuditEvents();
+      elements.adminAuditLoad.dataset.loaded = 'true';
+      if (!filtered || !page.hasMore || matches >= initialMatches + 20 || pagesLoaded >= 3) break;
+    } while (isCurrent());
   } catch (error) {
+    if (!isCurrent()) return;
     elements.adminAuditStatus.textContent = friendlyErrorMessage(error, 'Attività non disponibili');
     elements.adminAuditTableWrap.hidden = true;
   } finally {
-    elements.adminAuditLoad.disabled = false;
-    elements.adminAuditMore.disabled = false;
-    elements.adminAuditLoad.setAttribute('aria-busy', 'false');
+    if (isCurrent()) {
+      elements.adminAuditLoad.disabled = false;
+      elements.adminAuditMore.disabled = false;
+      elements.adminAuditLoad.setAttribute('aria-busy', 'false');
+    }
   }
 }
 
@@ -5067,7 +5288,8 @@ function renderFilteredAuditEvents() {
   const userFilter = elements.adminAuditUserFilter.value.trim().toLocaleLowerCase(getLocale());
   const events = (state.adminAuditEvents || []).filter((event) => {
     const date = event.createdAt?.toDate?.();
-    const eventDate = date instanceof Date ? formatDateId(date) : '';
+    const eventDate = date instanceof Date
+      ? formatDateId(getDateInTimeZone(state.centerContactSettings.timezone || 'Europe/Rome', date)) : '';
     const actor = [resolveAuditActorLabel(event), event.actorLabel, event.actorName, event.actorEmail, event.actorUid]
       .filter(Boolean).join(' ').toLocaleLowerCase(getLocale());
     return (!dateFilter || eventDate === dateFilter) && (!userFilter || actor.includes(userFilter));
@@ -5076,8 +5298,9 @@ function renderFilteredAuditEvents() {
   elements.adminAuditTableWrap.hidden = events.length === 0;
   elements.adminAuditMore.hidden = state.adminAuditHasMore !== true;
   elements.adminAuditStatus.textContent = events.length === 0
-    ? t('admin.activity.noEvents')
+    ? t(state.adminAuditHasMore ? 'admin.activity.loadedOnly' : 'admin.activity.noEvents')
     : t('admin.activity.eventCount', { count: events.length });
+  return events.length;
 }
 
 function renderAuditEvents(events) {
@@ -5111,14 +5334,17 @@ function resolveAuditActorLabel(event) {
 }
 
 function formatAuditDateTime(date) {
-  const now = new Date();
+  const timeZone = state.centerContactSettings.timezone || 'Europe/Rome';
+  const now = getDateInTimeZone(timeZone);
+  const zonedDate = getDateInTimeZone(timeZone, date);
   const todayId = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const dateId = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const dateId = Date.UTC(zonedDate.getFullYear(), zonedDate.getMonth(), zonedDate.getDate());
   const dayDifference = Math.round((todayId - dateId) / 86400000);
-  const time = formatDateTime(date, { hour: '2-digit', minute: '2-digit' }, getLocale());
+  const time = formatDateTime(date, { hour: '2-digit', minute: '2-digit', timeZone }, getLocale());
   if (dayDifference === 0) return t('admin.activity.todayAt', { time });
   if (dayDifference === 1) return t('admin.activity.yesterdayAt', { time });
   return formatDateTime(date, {
+    timeZone,
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -5358,6 +5584,9 @@ function renderAdminAccountList() {
 
   const currentUid = getCurrentUser()?.uid || '';
   const accounts = state.adminAccounts.filter((account) => account.adminUid !== currentUid);
+  const linkedPeople = new Set(state.adminAccounts.filter(account => account.status === 'ACTIVE')
+    .map(account => account.participantId).filter(Boolean));
+  linkedPeople.add(getConfiguredAdministratorParticipantId());
   const activeAccounts = accounts.filter((account) => account.status === 'ACTIVE');
   elements.adminAccountList.innerHTML = accounts.map((account) => {
     const participant = state.adminParticipants.find((item) => (
@@ -5376,6 +5605,15 @@ function renderAdminAccountList() {
         <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(account.email || '')}</small></span>
         ${statusBadge}
         <span>${escapeHtml(roleLabel)}</span>
+        ${active && account.role === 'ADMIN' && !account.participantId ? `
+          <label>${escapeHtml(t('admin.invitations.choosePerson'))}
+            <select data-admin-link-person="${escapeHtml(account.adminUid)}">
+              <option value="">${escapeHtml(t('admin.invitations.choosePerson'))}</option>
+              ${state.adminParticipants.filter(person => person.status === 'ACTIVE' && !linkedPeople.has(person.participantId)).map(person =>
+                `<option value="${escapeHtml(person.participantId)}">${escapeHtml(person.displayName)}</option>`).join('')}
+            </select>
+          </label>
+          <button type="button" data-link-center-admin="${escapeHtml(account.adminUid)}">${escapeHtml(t('common.actions.save'))}</button>` : ''}
         ${active
           ? `<button type="button" class="danger-action" data-revoke-center-admin="${escapeHtml(account.adminUid)}">${escapeHtml(t('admin.accounts.revokeAccess'))}</button>`
           : ''}
@@ -5389,6 +5627,22 @@ function renderAdminAccountList() {
 }
 
 async function handleAdminAccountListClick(event) {
+  const linkButton = event.target.closest('[data-link-center-admin]');
+  if (linkButton) {
+    const uid = linkButton.dataset.linkCenterAdmin;
+    const select = [...elements.adminAccountList.querySelectorAll('[data-admin-link-person]')]
+      .find(item => item.dataset.adminLinkPerson === uid);
+    if (!select?.value || !hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) return;
+    linkButton.disabled = true;
+    try {
+      await operationGuard.run(`admin:link-person:${uid}`, () => linkCenterAdministratorParticipant(uid, select.value));
+      await refreshAdminInvitationList();
+    } catch (error) {
+      elements.adminAccountStatus.textContent = friendlyErrorMessage(error, 'Collegamento non riuscito');
+      linkButton.disabled = false;
+    }
+    return;
+  }
   const button = event.target.closest('[data-revoke-center-admin]');
   if (!button) return;
   const targetUid = button.dataset.revokeCenterAdmin;
@@ -5455,7 +5709,8 @@ async function performAdminCenterSettingsSave() {
     const newSharedAdminPassword = elements.adminSharedPasswordNew?.value || '';
     const currentSharedAdminPassword = elements.adminSharedPasswordCurrent?.value || '';
     const passwordRequired = requiresAdministratorPassword(getCurrentUser());
-    if (passwordRequired && !state.centerContactSettings.adminPasswordSet && !newAdminPassword) {
+    const passwordProviderSet = getCurrentUser()?.providerData?.some(provider => provider.providerId === 'password');
+    if (passwordRequired && !passwordProviderSet && !newAdminPassword) {
       throw new Error('Inserisci la password amministratore');
     }
     if (newAdminPassword) {
@@ -5484,7 +5739,6 @@ async function performAdminCenterSettingsSave() {
       participantContactSharingEnabled: elements.adminContactSharingSelect
         ? elements.adminContactSharingSelect.value === 'enabled'
         : state.centerContactSettings.participantContactSharingEnabled,
-      ...PERSONAL_APPEARANCE_DEFAULTS,
       commonPassword: elements.adminCommonPasswordInput?.value || '',
       administratorSharedPassword: newSharedAdminPassword,
       currentAdministratorSharedPassword: currentSharedAdminPassword,
@@ -5499,9 +5753,18 @@ async function performAdminCenterSettingsSave() {
         dinner: elements.adminCutoffDinner.value,
         nextDayBreakfast: elements.adminCutoffBreakfast.value
       },
-      onProgress: ({ completedDays, totalDays, status, credential }) => {
+      onProgress: ({ completedDays, totalDays, status, credential, settings }) => {
         if (status === 'AUTH_UPDATED') {
           updatedCredentials.add(credential);
+          return;
+        }
+        if (status === 'CREDENTIALS_SAVED') {
+          Object.assign(state.centerContactSettings, settings);
+          // Le credenziali sono già confermate anche se il calendario si interrompe.
+          for (const input of [elements.adminCommonPasswordInput, elements.adminSharedPasswordCurrent, elements.adminSharedPasswordNew]) {
+            if (input) input.value = '';
+          }
+          updatedCredentials.clear();
           return;
         }
         if (status === 'COMPLETED') return;
@@ -5523,23 +5786,17 @@ async function performAdminCenterSettingsSave() {
       ...state.centerContactSettings,
       ...applyResidentPreferences(settings),
       administratorProfileComplete: true,
-      adminPasswordSet: state.centerContactSettings.adminPasswordSet || Boolean(newAdminPassword),
       // Se è stata inserita una nuova password, aggiorna il flag; altrimenti mantieni quello attuale.
-      commonPasswordSet: settings.commonPassword !== null
-        ? true
-        : state.centerContactSettings.commonPasswordSet,
-      adminSharedPasswordSet: state.centerContactSettings.adminSharedPasswordSet
-        || Boolean(newSharedAdminPassword),
-      adminPasswordVersion: newSharedAdminPassword
-        ? Number(state.centerContactSettings.adminPasswordVersion || 0) + 1
-        : Number(state.centerContactSettings.adminPasswordVersion || 0),
-      adminPasswordRotationRequired: newSharedAdminPassword
-        ? false
-        : state.centerContactSettings.adminPasswordRotationRequired
+      commonPasswordSet: settings.commonPasswordSet,
+      adminSharedPasswordSet: settings.adminSharedPasswordSet,
+      adminPasswordVersion: settings.adminPasswordVersion,
+      adminPasswordRotationRequired: settings.adminPasswordRotationRequired
     };
     const administratorParticipantId = administratorSave.participantId;
-    state.adminParticipantId = administratorParticipantId;
-    await linkCurrentAdministratorParticipant(administratorParticipantId);
+    if (state.adminRole === 'OWNER') {
+      await linkCurrentAdministratorParticipant(administratorParticipantId);
+      state.adminParticipantId = administratorParticipantId;
+    }
     state.adminParticipants = await listAdminParticipants();
     let avatarNotice = '';
     if (state.pendingCenterAvatarDataUrl && state.centerContactSettings.commonPasswordSet) {
@@ -5580,13 +5837,16 @@ async function saveAdministratorAsParticipant({
   previousAdministratorSignature,
   prepareOnly = false
 }) {
+  // La configurazione è caricata prima dell'anagrafica: rileggere le persone
+  // evita duplicati e conserva dati e revisione della scheda del responsabile.
+  const participants = await listAdminParticipants();
   const nextSignature = administratorSignature.toUpperCase();
   const previousSignature = previousAdministratorSignature.trim().toUpperCase();
-  const participantWithNextSignature = state.adminParticipants.find(
+  const participantWithNextSignature = participants.find(
     (participant) => participant.signature === nextSignature
   );
   const participantWithPreviousSignature = previousSignature
-    ? state.adminParticipants.find((participant) => participant.signature === previousSignature)
+    ? participants.find((participant) => participant.signature === previousSignature)
     : null;
 
   if (participantWithNextSignature && participantWithPreviousSignature
@@ -5594,9 +5854,15 @@ async function saveAdministratorAsParticipant({
     throw new Error('La nuova sigla appartiene già a un\'altra persona');
   }
 
-  const participant = participantWithPreviousSignature || participantWithNextSignature || null;
+  const configuredParticipant = participants.find((person) =>
+    person.participantId === state.centerContactSettings.administratorParticipantId);
+  const participant = configuredParticipant || participantWithPreviousSignature || null;
+  if (participantWithNextSignature
+      && participantWithNextSignature.participantId !== participant?.participantId) {
+    throw new Error('La nuova sigla appartiene già a un\'altra persona');
+  }
   const sortOrder = participant?.sortOrder
-    ?? Math.max(0, ...state.adminParticipants.map((item) => Number(item.sortOrder || 0))) + 1;
+    ?? Math.max(0, ...participants.map((item) => Number(item.sortOrder || 0))) + 1;
 
   return saveAdminParticipant(participant?.participantId || '', {
     displayName: administratorName,
@@ -5664,7 +5930,7 @@ function syncAdminCenterSettingsForm() {
     const passwordProviderSet = getCurrentUser()?.providerData?.some(
       (provider) => provider.providerId === 'password'
     );
-    elements.adminAdministratorPassword.placeholder = state.centerContactSettings.adminPasswordSet || passwordProviderSet
+    elements.adminAdministratorPassword.placeholder = passwordProviderSet
       ? 'Password già impostata'
       : 'Minimo 6 caratteri';
     if (elements.adminAdministratorPassword.type !== 'password') {
@@ -5715,7 +5981,7 @@ function syncAdaptationsContextCopy() {
     'resident.preferences.layoutsHelp'
   );
   if (elements.adminKitchenLayoutPicker) {
-    elements.adminKitchenLayoutPicker.hidden = residentDeviceMode;
+    elements.adminKitchenLayoutPicker.hidden = false;
   }
   setContextualTranslation(
     elements.adminAdaptationsSave,
@@ -5750,7 +6016,7 @@ function syncAdminAdaptationsForm() {
   }
   if (elements.adminKitchenLayoutSelect) {
     elements.adminKitchenLayoutSelect.value = state.centerContactSettings.kitchenLayout || 'classic';
-    elements.adminKitchenLayoutSelect.disabled = state.residentSettingsMode;
+    elements.adminKitchenLayoutSelect.disabled = !canEditKitchenLayout();
   }
   if (elements.adminMonthControlsSideSelect) {
     elements.adminMonthControlsSideSelect.value = state.centerContactSettings.monthControlsSide || 'right';
@@ -5839,6 +6105,10 @@ function handleInterfaceStyleSelectChange(event) {
   renderMode();
 }
 
+function canEditKitchenLayout() {
+  return !state.residentSettingsMode && ['OWNER', 'ADMIN', 'MANAGER'].includes(state.adminRole);
+}
+
 async function handleAdminAdaptationsSave() {
   try {
     if (elements.adminAdaptationsSave) elements.adminAdaptationsSave.disabled = true;
@@ -5854,16 +6124,20 @@ async function handleAdminAdaptationsSave() {
       interfaceStyle: interfaceStyleToSave,
       defaultView: elements.adminDefaultViewSelect?.value || state.centerContactSettings.defaultView,
       summaryLayout: elements.adminSummaryLayoutSelect?.value || state.centerContactSettings.summaryLayout,
-      kitchenLayout: elements.adminKitchenLayoutSelect?.value || state.centerContactSettings.kitchenLayout,
       summaryResidentLabel: elements.adminSummaryResidentLabelSelect?.value || state.centerContactSettings.summaryResidentLabel,
       monthControlsSide: elements.adminMonthControlsSideSelect?.value || state.centerContactSettings.monthControlsSide,
       weekStartsOn: elements.adminWeekStartsOnSelect?.value || state.centerContactSettings.weekStartsOn || 'monday',
       language: languageToSave
     };
+    const kitchenLayout = elements.adminKitchenLayoutSelect?.value;
+    if (canEditKitchenLayout() && kitchenLayout && kitchenLayout !== state.centerContactSettings.kitchenLayout) {
+      state.centerContactSettings.kitchenLayout = await updateKitchenLayout(kitchenLayout);
+    }
     storeResidentPreferences(preferences);
     state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
     state.pendingThemePalette = '';
     state.pendingInterfaceStyle = '';
+    state.editedAdaptationControls = new Set();
     document.documentElement.dataset.theme = state.centerContactSettings.themePalette;
     applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
     updateThemeSelectControl(state.centerContactSettings.themePalette);
@@ -5879,11 +6153,14 @@ async function handleAdminAdaptationsSave() {
   }
 }
 
-function handleAdminAdaptationsCancel() {
+async function handleAdminAdaptationsCancel() {
+  state.editedAdaptationControls = new Set();
   state.pendingThemePalette = '';
   state.pendingInterfaceStyle = '';
   document.documentElement.dataset.theme = state.centerContactSettings.themePalette || 'inchiostro';
   applyInterfaceStyle(state.centerContactSettings.interfaceStyle || 'cool');
+  await setLocale(state.centerContactSettings.language || 'it');
+  renderAllViews();
   syncAdminAdaptationsForm();
   if (elements.adminThemeStatus) elements.adminThemeStatus.textContent = t('admin.adaptations.changesCancelled');
 }
@@ -6037,12 +6314,26 @@ function loadImage(source) {
   });
 }
 
+function realignPersonalWeek() {
+  const previousStart = new Date(state.weekStartDate);
+  const previousEnd = addCalendarDays(previousStart, 7);
+  const today = getCenterToday();
+  const selected = state.selectedSummaryDate ? parseDateId(state.selectedSummaryDate) : null;
+  const inPreviousWeek = date => date && date >= previousStart && date < previousEnd;
+  const anchor = inPreviousWeek(today) ? today
+    : inPreviousWeek(selected) ? selected : addCalendarDays(previousStart, 3);
+  state.weekStartDate = startOfWeek(anchor);
+  state.participantWeek = [];
+  invalidateParticipantCalendarCache();
+  if (state.selectedParticipant && ['week', 'participant', 'summary'].includes(state.mode)) {
+    scheduleBackgroundRefresh('settimana');
+  }
+}
+
 function renderMode() {
   state.centerContactSettings = applyResidentPreferences(state.centerContactSettings);
   if (state.weekStartDate.getDay() !== (state.centerContactSettings.weekStartsOn === 'sunday' ? 0 : 1)) {
-    const anchor = new Date(state.weekStartDate);
-    anchor.setDate(anchor.getDate() + 3);
-    state.weekStartDate = startOfWeek(anchor);
+    realignPersonalWeek();
   }
   const activePalette = state.pendingThemePalette
     || state.centerContactSettings.themePalette
@@ -6196,7 +6487,7 @@ function renderMode() {
   }
 
   // Il cambio di aspetto riutilizza i dati settimanali e riconcilia la sezione operativa con l'autorizzazione corrente.
-  if (isWeek && !needsResidentLogin && canManageDailyOperations()) {
+  if (isWeek && !needsResidentLogin && (canManageDailyOperations() || canManageMass())) {
     renderWeekOperations();
   }
 }
@@ -6312,8 +6603,8 @@ function anchorCalendarToCenterToday() {
 
   // Se l'app rimane aperta oltre mezzanotte, sposta automaticamente il
   // calendario quando il nuovo giorno appartiene a una nuova settimana o a
-  // un nuovo mese. Una consultazione volontaria di un periodo storico resta
-  // invece dov'è: avanziamo soltanto la vista che mostrava il periodo
+  // un nuovo mese. Una consultazione volontaria di un periodo passato resta
+  // dov'è: avanziamo soltanto la vista che mostrava il periodo
   // corrente prima del cambio di data.
   const previousToday = state.calendarAnchorDateId
     ? parseDateId(state.calendarAnchorDateId)
@@ -7250,10 +7541,10 @@ function renderMassCard(dailyOperation) {
   const massScheduled = dailyOperation?.massScheduled === true;
   const statusLabel = t(massScheduled ? 'summary.yes' : 'summary.no');
   return `
-    <article class="today-card mass-card ${massScheduled ? 'mass-card-yes' : 'mass-card-no'}" aria-label="Messa: ${statusLabel}">
+    <article class="today-card mass-card ${massScheduled ? 'mass-card-yes' : 'mass-card-no'}">
       <div class="mass-card-content">
         <strong>${escapeHtml(t('summary.mass'))}</strong>
-        <span>${statusLabel}</span>
+        <div class="mass-status-stack"><span>${statusLabel}</span>${renderBlessing(dailyOperation.blessingTime)}</div>
       </div>
     </article>
   `;
@@ -7341,6 +7632,7 @@ function formatRefreshLabel(source, updatedAt = new Date()) {
     manuale: t('status.updatedAt', { time }),
     prenotazione: t('participant.meal.save.success'),
     settimana: t('status.weekUpdated'),
+    mese: t('status.monthUpdated'),
     ripresa: t('status.updatedAt', { time }),
     timer: t('status.updatedAt', { time })
   };
@@ -8174,6 +8466,13 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     return;
   }
 
+  try {
+    await deleteAdminParticipant(participant.participantId, participant.revision, { checkOnly: true });
+  } catch (error) {
+    elements.adminStatus.textContent = participantDeletionErrorMessage(error);
+    return;
+  }
+
   const decision = await showActionDialog({
     title: t('dialog.deletePerson.title'), // Eliminazione definitiva della persona.
     message: t('dialog.deletePerson.message', { name: participant.displayName }),
@@ -8211,6 +8510,12 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   } catch (error) {
     state.adminParticipants = previousAdminParticipants;
     state.participants = previousParticipants;
+    if (error.participantState?.participantId === participant.participantId) {
+      for (const people of [state.adminParticipants, state.participants]) {
+        const suspended = people.find(item => item.participantId === participant.participantId);
+        if (suspended) Object.assign(suspended, error.participantState);
+      }
+    }
     state.adminParticipantId = previousSelectedParticipantId;
     state.adminPersonDirty = previousPersonDirty;
     try {
@@ -8220,7 +8525,7 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
     }
     renderAdminPeopleList();
     syncAdminContactForm();
-    elements.adminStatus.textContent = friendlyErrorMessage(error, 'Eliminazione non riuscita');
+    elements.adminStatus.textContent = participantDeletionErrorMessage(error);
   } finally {
     state.pendingAdminParticipantDeleteIds.delete(participant.participantId);
     elements.adminSaveButton.disabled = false;
@@ -8229,57 +8534,215 @@ async function deleteParticipantFromAdminPanel(participant, triggerButton) {
   }
 }
 
-function prepareWeekOperationalDate(dates) {
-  const dateIds = dates.map((date) => formatDateId(date));
+function participantDeletionErrorMessage(error) {
+  if (!error.deletionProtection) return friendlyErrorMessage(error, t('admin.people.deleteFailed'));
+  if (error.deletionProtection === 'unavailable') return t('admin.people.protectionUnavailable');
+  if (!hasCurrentCapability(CAPABILITIES.MANAGE_ADMINS)) return t('admin.people.protectedVice');
+  if (error.deletionProtection === 'owner') return t('admin.people.protectedOwner');
+  return t(state.adminRole === 'OWNER' ? 'admin.people.protectedAdmin' : 'admin.people.protectedVice');
+}
+
+function prepareWeekOperationalDate() {
   const todayId = formatDateId(getCenterToday());
-  const preferredId = dateIds.includes(state.weekOperationalDateId)
+  const through = state.weekCalendarCoverage ? state.weekCalendarCoverage.through || todayId : '';
+  const maxDateId = through && through < todayId ? todayId : through;
+  const dates = Array.from({ length: 7 }, (_, index) => addCalendarDays(getCenterToday(), index))
+    .filter(date => !maxDateId || formatDateId(date) <= maxDateId);
+  const dateIds = dates.map((date) => formatDateId(date));
+  const preferredId = state.weekOperationalDateId >= todayId
+      && (!maxDateId || state.weekOperationalDateId <= maxDateId)
     ? state.weekOperationalDateId
-    : dateIds.includes(todayId) ? todayId : dateIds[0];
-  if (state.weekOperationalDateId !== preferredId) state.weekSickDraft = null;
+    : todayId;
+  if (!dateIds.includes(preferredId)) dates.push(parseDateId(preferredId));
+  if (state.weekOperationalDateId !== preferredId) {
+    state.weekSickDraft = null;
+    elements.weekInvitedDay.value = '0';
+    weekInvitedLoaded = null;
+    ++weekInvitedRequest;
+  }
   state.weekOperationalDateId = preferredId;
   elements.weekOperationsDay.innerHTML = dates.map((date) => (
-    `<option value="${formatDateId(date)}">${escapeHtml(formatCalendarWeekLabel(date))}</option>`
+    `<option value="${formatDateId(date)}">${escapeHtml(formatDateId(date) === todayId ? t('time.today') : formatCalendarWeekLabel(date))}</option>`
   )).join('');
   elements.weekOperationsDay.value = preferredId;
+  elements.weekOperationsDate.min = todayId;
+  elements.weekOperationsDate.max = maxDateId;
+  elements.weekOperationsDate.value = preferredId;
+  syncWeekOperationDateLabels();
   return parseDateId(preferredId);
 }
 
-async function refreshWeekOperations(forceRefresh = false) {
-  if (!canManageDailyOperations() || state.mode !== 'week') {
+function openWeekOperationalDatePicker() {
+  prepareWeekOperationalDate();
+  const input = elements.weekOperationsDate;
+  try {
+    if (typeof input.showPicker === 'function') {
+      input.showPicker();
+      return;
+    }
+  } catch {
+    // I browser meno recenti aprono il selettore tramite il campo nativo.
+  }
+  input.focus({ preventScroll: true });
+  input.click();
+}
+
+function handleWeekOperationalDateChange(event) {
+  const dateId = event.target.value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateId) || dateId < formatDateId(getCenterToday())
+    || formatDateId(parseDateId(dateId)) !== dateId
+    || (elements.weekOperationsDate.max && dateId > elements.weekOperationsDate.max)) {
+    prepareWeekOperationalDate();
+    return;
+  }
+  if (dateId !== state.weekOperationalDateId) {
+    state.weekSickDraft = null;
+    state.weekOperationalDateId = dateId;
+    elements.weekInvitedDay.value = '0';
+    weekInvitedLoaded = null;
+    ++weekInvitedRequest;
+    elements.weekKitchenNoteInput.value = '';
+  }
+  prepareWeekOperationalDate();
+  return refreshWeekOperations(true);
+}
+
+function syncWeekOperationDateLabels() {
+  const todayId = formatDateId(getCenterToday());
+  const date = parseDateId(state.weekOperationalDateId || todayId);
+  const next = addCalendarDays(date, 1);
+  const isToday = formatDateId(date) === todayId;
+  if (elements.weekKitchenNoteDate) {
+    elements.weekKitchenNoteDate.hidden = isToday;
+    elements.weekKitchenNoteDate.textContent = isToday ? ''
+      : formatDateId(date) === formatDateId(addCalendarDays(getCenterToday(), 1))
+        ? t('week.operations.note.forTomorrow')
+        : t('week.operations.note.forDate', { date: formatCalendarWeekLabel(date) });
+  }
+  const maxDateId = elements.weekOperationsDate.max;
+  const nextIsCovered = !maxDateId || formatDateId(next) <= maxDateId;
+  elements.weekInvitedDay.options[1].disabled = !nextIsCovered;
+  elements.weekDietDuration.options[1].disabled = !nextIsCovered;
+  if (!nextIsCovered) {
+    elements.weekInvitedDay.value = '0';
+    elements.weekDietDuration.value = '1';
+  }
+  elements.weekInvitedDay.options[0].textContent = isToday ? t('time.today') : formatCalendarWeekLabel(date);
+  elements.weekInvitedDay.options[1].textContent = isToday ? t('time.tomorrow') : formatCalendarWeekLabel(next);
+  const sameYear = date.getFullYear() === next.getFullYear();
+  const sameMonth = sameYear && date.getMonth() === next.getMonth();
+  const dateRange = t('week.operations.datePair', {
+    first: formatDateTime(date, { day: 'numeric', ...(!sameMonth ? { month: 'short' } : {}), ...(!sameYear ? { year: 'numeric' } : {}) }),
+    second: formatDateTime(next, { day: 'numeric', month: 'short', ...(!sameYear ? { year: 'numeric' } : {}) })
+  });
+  elements.weekDietDuration.options[0].textContent = t('week.operations.duration.todayOnly')
+    + (isToday ? '' : ` (${formatCalendarWeekLabel(date)})`);
+  elements.weekDietDuration.options[1].textContent = t('week.operations.duration.todayAndNext')
+    + (isToday ? '' : ` (${dateRange})`);
+}
+
+async function refreshWeekOperations(forceRefresh = false, openedSection = null) {
+  if (!(canManageDailyOperations() || canManageMass()) || state.mode !== 'week') {
     elements.weekOperations.hidden = true;
     return;
   }
+  if (!elements.weekOperations.open) return;
+  renderWeekOperations();
+  const selected = getOpenAgendaSections().filter(key => !openedSection
+    || elements[`week${key[0].toUpperCase() + key.slice(1)}Section`] === openedSection);
   const requestVersion = ++state.weekOperationsRequestVersion;
+  if (!selected.length) {
+    elements.weekOperationsStatus.textContent = '';
+    elements.weekOperations.querySelector('.agenda-center-content').inert = false;
+    return;
+  }
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid;
   const dateId = elements.weekOperationsDay.value || state.weekOperationalDateId;
   if (!dateId) return;
+  const contextKey = `${centerId}:${uid}:${dateId}`;
+  if (state.weekAgendaContext !== contextKey) {
+    state.weekAgendaContext = contextKey;
+    state.weekAgendaReady = {};
+    state.weekExtrasReady = false;
+  }
+  selected.forEach(key => { state.weekAgendaReady[key] = false; });
+  const isCurrent = () => requestVersion === state.weekOperationsRequestVersion
+    && state.mode === 'week' && state.weekOperationalDateId === dateId
+    && getActiveCenterId() === centerId && getCurrentUser()?.uid === uid
+    && (canManageDailyOperations() || canManageMass());
+  const content = elements.weekOperations.querySelector('.agenda-center-content');
+  content.inert = true;
   if (state.weekOperationalDateId !== dateId) state.weekSickDraft = null;
   state.weekOperationalDateId = dateId;
   elements.weekOperationsStatus.textContent = t('week.operations.status.updating');
   try {
-    const [health, note] = await Promise.all([
-      loadDailyHealth(parseDateId(dateId), { forceRefresh }),
-      loadKitchenNote(parseDateId(dateId), { forceRefresh })
+    const needsHealth = selected.some(key => ['health', 'diet'].includes(key));
+    const needsPeople = selected.some(key => ['booking', 'health', 'diet'].includes(key));
+    const [health, note, participants, coverage, blessing] = await Promise.all([
+      needsHealth ? loadDailyHealth(parseDateId(dateId), { forceRefresh }) : null,
+      selected.includes('notes') ? loadKitchenNote(parseDateId(dateId), { forceRefresh }) : null,
+      needsPeople ? listPublicParticipants({ forceRefresh, staticVersion: state.centerContactSettings.participantDataVersion || '0' }) : null,
+      loadMealWindowCoverage(),
+      selected.includes('blessing') ? loadDailyOperation(parseDateId(dateId), { forceRefresh }) : null
     ]);
-    if (requestVersion !== state.weekOperationsRequestVersion
-      || state.mode !== 'week'
-      || state.weekOperationalDateId !== dateId) {
-      return;
-    }
-    state.weekOperationalHealth = health;
-    state.weekOperationalNote = note;
+    if (!isCurrent()) return;
+    state.weekCalendarCoverage = coverage;
+    prepareWeekOperationalDate();
+    if (state.weekOperationalDateId !== dateId) return refreshWeekOperations(forceRefresh);
+    if (participants) state.adminParticipants = participants;
+    if (health) state.weekOperationalHealth = health;
+    if (note) state.weekOperationalNote = note;
+    if (blessing) state.weekOperationalBlessing = blessing;
+    Object.assign(state.weekAgendaReady, Object.fromEntries(selected.map(key => [key, true])));
+    state.weekExtrasReady = true;
+    if (blessing) renderWeekBlessing();
+    if (selected.includes('invited')) await refreshWeekInvited(forceRefresh);
+    if (!isCurrent()) return;
     renderWeekOperations();
-    elements.weekOperationsStatus.textContent = t('week.operations.status.ready');
+    const readyMessage = t('week.operations.status.ready');
+    elements.weekOperationsStatus.textContent = readyMessage;
+    window.setTimeout(() => {
+      if (isCurrent() && elements.weekOperationsStatus.textContent === readyMessage) {
+        elements.weekOperationsStatus.textContent = '';
+      }
+    }, 3000);
   } catch (error) {
+    if (!isCurrent()) return;
     elements.weekOperationsStatus.textContent = friendlyErrorMessage(error, 'Dati giornalieri non disponibili');
+  } finally {
+    if (isCurrent()) content.inert = false;
   }
 }
 
 function renderWeekOperations() {
-  const allowed = state.mode === 'week' && canManageDailyOperations() && state.weekExtrasReady;
+  bookingForView?.checkIdentity();
+  const allowed = state.mode === 'week' && (canManageDailyOperations() || canManageMass());
   elements.weekOperations.hidden = !allowed;
-  if (!allowed) return;
+  const dailyAllowed = canManageDailyOperations();
+  for (const key of ['Booking', 'Invited', 'Health', 'Notes', 'Diet']) {
+    const section = elements[`week${key}Section`];
+    section.hidden = !dailyAllowed;
+    if (!dailyAllowed) section.open = false;
+  }
+  elements.weekBlessingSection.hidden = !allowed;
+  if (!allowed || !elements.weekOperations.open || !state.weekExtrasReady) return;
+  syncWeekOperationDateLabels();
+  if (!dailyAllowed) return;
 
   const activeParticipants = state.adminParticipants.filter((participant) => participant.status === 'ACTIVE');
+  if (state.weekAgendaReady?.booking && elements.weekBookingSection.open) {
+  const bookingSelect = document.querySelector('[data-booking-person]');
+  const bookingSelection = bookingSelect.value;
+  bookingSelect.innerHTML = ['group_residenti', 'group_ospiti'].map(groupId =>
+    `<optgroup label="${escapeHtml(t(groupId === 'group_ospiti' ? 'role.guestPlural' : 'role.residentPlural'))}">${activeParticipants
+      .filter(person => person.groupId === groupId)
+      .map(person => `<option value="${escapeHtml(person.participantId)}">${escapeHtml(person.displayName)}${person.signature ? ' · ' + escapeHtml(person.signature) : ''}</option>`).join('')}</optgroup>`
+  ).join('');
+  if (activeParticipants.some(person => person.participantId === bookingSelection)) bookingSelect.value = bookingSelection;
+  document.querySelector('[data-booking-open]').disabled = !bookingSelect.value;
+  }
+  if (state.weekAgendaReady?.health && elements.weekHealthSection.open) {
   const sickPeople = getWeekSickDraft()?.people || state.weekOperationalHealth?.sickPeople || [];
   const selectedSickIds = new Set(sickPeople.map((person) => person.participantId));
   const availableParticipants = activeParticipants.filter((participant) => !selectedSickIds.has(participant.participantId));
@@ -8301,6 +8764,13 @@ function renderWeekOperations() {
     </div>
   ` : '<p class="empty-state">Nessuna persona disponibile</p>';
 
+  const sickCount = selectedSickIds.size;
+  elements.weekHealthStatus.textContent = sickCount > 0
+    ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
+    : 'Nessun ammalato';
+  }
+
+  if (state.weekAgendaReady?.diet && elements.weekDietSection.open) {
   const selectedParticipantId = elements.weekDietParticipant.value;
   elements.weekDietParticipant.innerHTML = activeParticipants.map((participant) => (
     `<option value="${escapeHtml(participant.participantId)}">${escapeHtml(participant.displayName)}</option>`
@@ -8309,22 +8779,80 @@ function renderWeekOperations() {
     elements.weekDietParticipant.value = selectedParticipantId;
   }
 
-  const sickCount = selectedSickIds.size;
-  const invitedMeals = state.weekOperationalHealth?.invitedMeals || {};
-  let invitedTotal = 0;
-  elements.weekInvitedInputs.forEach((input) => {
-    const count = Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[input.dataset.weekInvitedMeal]) || 0)));
-    input.value = String(count);
-    invitedTotal += count;
-  });
-  elements.weekInvitedSection.open = invitedTotal > 0;
-  renderWeekInvitedStatus(invitedMeals);
-  elements.weekHealthSection.open = sickCount > 0;
-  elements.weekHealthStatus.textContent = sickCount > 0
-    ? `${sickCount} ${sickCount === 1 ? 'persona ammalata' : 'persone ammalate'}`
-    : 'Nessun ammalato';
-  renderWeekKitchenNotes();
   renderWeekDietAssignments();
+  }
+  if (state.weekAgendaReady?.notes && elements.weekNotesSection.open) renderWeekKitchenNotes();
+}
+
+function getOpenAgendaSections() {
+  return ['blessing', 'booking', 'invited', 'health', 'notes', 'diet'].filter(key => {
+    const section = elements[`week${key[0].toUpperCase() + key.slice(1)}Section`];
+    return section.open && !section.hidden;
+  });
+}
+
+function renderWeekBlessing() {
+  const operation = state.weekOperationalBlessing;
+  if (operation?.dateId !== state.weekOperationalDateId) return;
+  const planned = Boolean(operation.blessingTime);
+  elements.weekBlessingDate.textContent = formatCalendarDate(parseDateId(operation.dateId));
+  elements.weekBlessingEnabled.checked = planned;
+  elements.weekBlessingEnabled.disabled = false;
+  elements.weekBlessingTime.value = operation.blessingTime || '';
+  elements.weekBlessingTime.disabled = !planned;
+  elements.weekBlessingTime.required = planned;
+  elements.weekBlessingSave.disabled = false;
+  elements.weekBlessingStatus.textContent = '';
+}
+
+async function handleWeekBlessingSave() {
+  if (!(canManageDailyOperations() || canManageMass()) || state.mode !== 'week'
+    || elements.weekBlessingSave.disabled || blockOfflineAction(elements.weekBlessingStatus)) return;
+  const dateId = state.weekOperationalDateId;
+  if (state.weekOperationalBlessing?.dateId !== dateId || !state.weekAgendaReady?.blessing) return;
+  const time = elements.weekBlessingEnabled.checked ? elements.weekBlessingTime.value : '';
+  if (elements.weekBlessingEnabled.checked && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    elements.weekBlessingStatus.textContent = t('blessing.invalidTime');
+    elements.weekBlessingTime.reportValidity();
+    return;
+  }
+  const centerId = getActiveCenterId(), uid = getCurrentUser()?.uid;
+  const requestVersion = state.weekOperationsRequestVersion;
+  const isCurrent = () => state.mode === 'week' && dateId === state.weekOperationalDateId
+    && centerId === getActiveCenterId() && uid === getCurrentUser()?.uid
+    && requestVersion === state.weekOperationsRequestVersion;
+  elements.weekBlessingSave.disabled = true;
+  elements.weekBlessingEnabled.disabled = true;
+  elements.weekBlessingTime.disabled = true;
+  elements.weekBlessingStatus.textContent = t('blessing.saving');
+  try {
+    const operation = await saveBlessing(parseDateId(dateId), time, {
+      timezone: state.centerContactSettings.timezone || 'Europe/Rome'
+    });
+    if (!isCurrent()) return;
+    state.weekOperationalBlessing = operation;
+    const index = state.weekDailyOperations.findIndex(item => item.dateId === dateId);
+    if (index >= 0) state.weekDailyOperations[index] = operation;
+    renderWeekBlessing();
+    elements.weekBlessingStatus.textContent = t('blessing.saved');
+  } catch (error) {
+    if (isCurrent()) elements.weekBlessingStatus.textContent = blessingSaveErrorMessage(error);
+  } finally {
+    if (isCurrent()) {
+      elements.weekBlessingSave.disabled = false;
+      elements.weekBlessingEnabled.disabled = false;
+      elements.weekBlessingTime.disabled = !elements.weekBlessingEnabled.checked;
+    }
+  }
+}
+
+function blessingSaveErrorMessage(error) {
+  const messageKey = {
+    'blessing/past-time': 'blessing.pastTime',
+    'blessing/cutoff': 'blessing.cutoff',
+    'blessing/calendar-unavailable': 'blessing.calendarUnavailable'
+  }[error?.code];
+  return messageKey ? t(messageKey) : friendlyErrorMessage(error, t('blessing.saveFailed'));
 }
 
 function renderFutureMonth() {
@@ -8401,7 +8929,7 @@ function renderFutureMonthMeal(day, mealTypeId) {
 }
 
 function renderWeekInvitedStatus(invitedMeals = {}) {
-  const entries = ['breakfast', 'lunch', 'dinner']
+  const entries = ['lunch', 'dinner', 'breakfast']
     .filter((mealTypeId) => Number(invitedMeals[mealTypeId] || 0) > 0)
     .map((mealTypeId) => (
       `<span class="week-invited-saved-meal"><span aria-hidden="true">${getMealIcon(mealTypeId)}</span> ${Number(invitedMeals[mealTypeId])}</span>`
@@ -8589,54 +9117,139 @@ async function activateResidentAdministratorPanel() {
   return true;
 }
 
-function captureWeekOperationContext() {
+function captureWeekOperationContext(section = 'health') {
   const dateId = state.weekOperationalDateId;
   const requestVersion = state.weekOperationsRequestVersion;
   const centerId = getActiveCenterId();
   return {
     dateId,
     isCurrent: () => state.mode === 'week'
+      && canManageDailyOperations()
       && state.weekOperationalDateId === dateId
-      && state.weekOperationalHealth?.dateId === dateId
+      && (section === 'notes' ? state.weekOperationalNote?.mealDate === dateId
+        : state.weekOperationalHealth?.dateId === dateId)
       && state.weekOperationsRequestVersion === requestVersion
       && getActiveCenterId() === centerId
   };
 }
 
-async function handleWeekInvitedSave() {
-  if (blockOfflineAction(elements.weekInvitedStatus)) return;
-  const context = captureWeekOperationContext();
-  if (!context.isCurrent()) return;
-  const invitedMeals = {};
-  elements.weekInvitedInputs.forEach((input) => {
-    invitedMeals[input.dataset.weekInvitedMeal] = Math.min(
-      999,
-      Math.max(0, Math.floor(Number(input.value) || 0))
-    );
+function refreshWeekInvitedOnNewDay() {
+  if (document.hidden || state.mode !== 'week' || !canManageDailyOperations()
+    || !elements.weekOperations.open
+    || !weekInvitedTodayId || weekInvitedTodayId === formatDateId(getCenterToday())) return;
+  prepareWeekOperationalDate();
+  return refreshWeekOperations(true);
+}
+
+function getWeekInvitedDates() {
+  const date = state.weekOperationalDateId && state.weekOperationalDateId >= formatDateId(getCenterToday())
+    ? parseDateId(state.weekOperationalDateId) : getCenterToday();
+  date.setDate(date.getDate() + Number(elements.weekInvitedDay.value));
+  const breakfast = new Date(date);
+  breakfast.setDate(breakfast.getDate() + 1);
+  return { date, breakfast };
+}
+
+async function refreshWeekInvited(forceRefresh = false) {
+  if (elements.weekInvitedDay.disabled) return;
+  const todayId = formatDateId(getCenterToday());
+  if (weekInvitedTodayId && weekInvitedTodayId !== todayId) {
+    elements.weekInvitedDay.value = '0';
+  }
+  weekInvitedTodayId = todayId;
+  const request = ++weekInvitedRequest;
+  const centerId = getActiveCenterId();
+  const { date, breakfast } = getWeekInvitedDates();
+  const breakfastIsCovered = !elements.weekOperationsDate?.max
+    || formatDateId(breakfast) <= elements.weekOperationsDate.max;
+  if (weekInvitedLoaded?.dateId === formatDateId(date)
+      && weekInvitedLoaded?.centerId === centerId
+      && weekInvitedLoaded.values
+      && Array.from(elements.weekInvitedInputs).some(input =>
+        input.value !== weekInvitedLoaded.values[input.dataset.weekInvitedMeal])) return;
+  weekInvitedLoaded = null;
+  elements.weekInvitedSave.disabled = true;
+  elements.weekInvitedInputs.forEach(input => { input.disabled = true; });
+  const tomorrow = elements.weekInvitedDay.value === '1';
+  const masterIsToday = !state.weekOperationalDateId || state.weekOperationalDateId === todayId;
+  document.querySelectorAll('[data-week-invited-label]').forEach(label => {
+    const meal = label.dataset.weekInvitedLabel;
+    const suffix = meal === 'breakfast' ? (tomorrow ? 'afterTomorrow' : 'tomorrow') : (tomorrow ? 'tomorrow' : 'today');
+    label.textContent = t('meal.type.' + meal) + ' ' + (masterIsToday
+      ? t('week.operations.invited.' + suffix)
+      : `(${formatCalendarWeekLabel(meal === 'breakfast' ? breakfast : date)})`);
   });
+  try {
+    const [day, next] = await Promise.all([
+      loadDailyHealth(date, { forceRefresh }), breakfastIsCovered
+        ? loadDailyHealth(breakfast, { forceRefresh }) : Promise.resolve({ invitedMeals: {} })
+    ]);
+    if (request !== weekInvitedRequest || centerId !== getActiveCenterId()) return;
+    if (todayId !== formatDateId(getCenterToday())) return refreshWeekInvited(true);
+    const invitedMeals = { ...day.invitedMeals, breakfast: next.invitedMeals.breakfast };
+    elements.weekInvitedInputs.forEach(input => {
+      input.value = String(invitedMeals[input.dataset.weekInvitedMeal] || 0);
+      input.disabled = input.dataset.weekInvitedMeal === 'breakfast' && !breakfastIsCovered;
+    });
+    weekInvitedLoaded = { dateId: formatDateId(date), centerId,
+      values: Object.fromEntries(Array.from(elements.weekInvitedInputs, input => [input.dataset.weekInvitedMeal, input.value])) };
+    elements.weekInvitedSave.disabled = false;
+    renderWeekInvitedStatus(invitedMeals);
+  } catch (error) {
+    if (request !== weekInvitedRequest || centerId !== getActiveCenterId()) return;
+    elements.weekInvitedStatus.textContent = friendlyErrorMessage(error, t('week.operations.invited.notSaved'));
+  }
+}
+
+async function handleWeekInvitedSave() {
+  if (blockOfflineAction(elements.weekInvitedStatus) || !canManageDailyOperations() || elements.weekInvitedSave.disabled) return;
+  if (weekInvitedTodayId !== formatDateId(getCenterToday())) {
+    await refreshWeekInvitedOnNewDay();
+    return;
+  }
+  const { date, breakfast } = getWeekInvitedDates();
+  const centerId = getActiveCenterId();
+  const request = weekInvitedRequest;
+  const isCurrent = () => request === weekInvitedRequest && centerId === getActiveCenterId()
+    && formatDateId(getWeekInvitedDates().date) === formatDateId(date);
+  if (weekInvitedLoaded?.dateId !== formatDateId(date) || weekInvitedLoaded?.centerId !== centerId) {
+    await refreshWeekInvited(true);
+    return;
+  }
+  const invitedMeals = {};
+  elements.weekInvitedInputs.forEach(input => {
+    invitedMeals[input.dataset.weekInvitedMeal] = Math.min(999, Math.max(0, Math.floor(Number(input.value) || 0)));
+    input.disabled = true;
+  });
+  elements.weekInvitedDay.disabled = true;
   elements.weekInvitedSave.disabled = true;
   elements.weekInvitedStatus.textContent = t('week.operations.invited.saving');
   try {
-    const health = await saveInvitedMeals(
-      parseDateId(context.dateId),
-      invitedMeals
-    );
-    if (!context.isCurrent()) return;
-    state.weekOperationalHealth = health;
-    renderWeekOperations();
+    await saveInvitedMeals(date, invitedMeals, { nextDayBreakfast: true,
+      ...(elements.weekOperationsDate?.max ? { through: elements.weekOperationsDate.max } : {}) });
+    if (!isCurrent()) return;
+    renderWeekInvitedStatus(invitedMeals);
+    weekInvitedLoaded.values = Object.fromEntries(Array.from(elements.weekInvitedInputs, input => [input.dataset.weekInvitedMeal, input.value]));
   } catch (error) {
-    if (!context.isCurrent()) return;
-    elements.weekInvitedStatus.textContent = friendlyErrorMessage(
-      error,
-      t('week.operations.invited.notSaved')
-    );
+    if (!isCurrent()) return;
+    elements.weekInvitedStatus.textContent = friendlyErrorMessage(error, t('week.operations.invited.notSaved'));
   } finally {
-    elements.weekInvitedSave.disabled = false;
+    elements.weekInvitedDay.disabled = false;
+    if (isCurrent()) {
+      elements.weekInvitedSave.disabled = false;
+      elements.weekInvitedInputs.forEach(input => {
+        input.disabled = input.dataset.weekInvitedMeal === 'breakfast' && Boolean(elements.weekOperationsDate?.max)
+          && formatDateId(breakfast) > elements.weekOperationsDate.max;
+      });
+    } else {
+      await refreshWeekInvited(true);
+    }
+    await refreshWeekInvitedOnNewDay();
   }
 }
 
 function renderWeekKitchenNotes() {
-  const visibleNote = filterKitchenNoteForToday(state.weekOperationalNote);
+  const visibleNote = state.weekOperationalNote;
   const messages = Array.isArray(visibleNote?.messages)
     ? visibleNote.messages
     : visibleNote?.text
@@ -8703,7 +9316,7 @@ function renderWeekDietAssignments() {
     return `
       <div class="week-diet-row">
         <span>${escapeHtml(name)} · ${escapeHtml(normalizeDietCode(assignment.dietTag))}</span>
-        <button type="button" class="tertiary-action" data-week-diet-remove="${escapeHtml(assignment.participantId)}">Rimuovi</button>
+        <button type="button" class="tertiary-action" data-week-diet-remove="${escapeHtml(assignment.participantId)}">${escapeHtml(t('common.actions.delete'))} · ${escapeHtml(formatCalendarWeekLabel(parseDateId(state.weekOperationalDateId)))}</button>
       </div>
     `;
   }).join('') || '<p class="empty-state">Nessuna dieta occasionale</p>';
@@ -8797,7 +9410,7 @@ async function handleWeekDietListClick(event) {
     if (!context.isCurrent()) return;
     state.weekOperationalHealth = health;
     renderWeekOperations();
-    elements.weekDietStatus.textContent = t('week.operations.diet.removed');
+    elements.weekDietStatus.textContent = `${t('week.operations.diet.removed')} · ${formatCalendarWeekLabel(parseDateId(context.dateId))}`;
   } catch (error) {
     button.disabled = false;
     if (!context.isCurrent()) return;
@@ -8806,7 +9419,7 @@ async function handleWeekDietListClick(event) {
 }
 
 async function handleWeekKitchenNoteSave() {
-  const context = captureWeekOperationContext();
+  const context = captureWeekOperationContext('notes');
   if (!context.isCurrent()) return;
   const noteText = elements.weekKitchenNoteInput.value.trim();
   if (!noteText) {
@@ -8834,7 +9447,7 @@ async function handleWeekKitchenNoteSave() {
 }
 
 async function handleWeekKitchenNoteListClick(event) {
-  const context = captureWeekOperationContext();
+  const context = captureWeekOperationContext('notes');
   if (!context.isCurrent()) return;
   const button = event.target.closest('[data-week-kitchen-note-remove]');
   if (!button) return;
@@ -9068,7 +9681,7 @@ function renderGroupedSummary(participants) {
             <h3>Ospiti</h3>
             <span>${guests.length}</span>
           </div>
-          ${renderNameList(guests)}
+          ${renderDietNameList(guests)}
         </section>
       ` : ''}
       ${residentDietParticipants.length > 0 ? `
@@ -9089,7 +9702,7 @@ function renderDietNameList(participants) {
     const dietCodes = (Array.isArray(participant.dietTags) ? participant.dietTags : [])
       .filter((tag) => tag !== 'STANDARD')
       .map((tag) => formatDietLabel(tag, t));
-    return `<li>${renderParticipantContact(participant, ` (${dietCodes.join(', ')})`)}</li>`;
+    return `<li>${renderParticipantContact(participant, dietCodes.length ? ` (${dietCodes.join(', ')})` : '')}</li>`;
   }).join('') + '</ul>';
 }
 
@@ -9176,8 +9789,8 @@ function renderKitchenMass() {
   card.hidden = false;
   card.classList.toggle('mass-card-yes', massScheduled);
   card.classList.toggle('mass-card-no', !massScheduled);
-  card.setAttribute('aria-label', `Messa: ${statusLabel}`);
-  card.querySelector('[data-kitchen-mass-value]').textContent = statusLabel;
+  card.removeAttribute('aria-label');
+  card.querySelector('.mass-card-content').innerHTML = `<strong>${escapeHtml(t('summary.mass'))}</strong><div class="mass-status-stack"><span data-kitchen-mass-value>${statusLabel}</span>${renderBlessing(state.kitchenDailyOperation.blessingTime)}</div>`;
 }
 
 function renderKitchenNote() {
@@ -9192,19 +9805,14 @@ function renderKitchenNote() {
 function filterKitchenNoteForToday(note) {
   if (!note) return null;
   const todayId = formatDateId(getCenterToday());
-  const fallbackDateId = kitchenNoteTimestampDateId(note.updatedAt)
-    || String(note.mealDate || '');
+  const mealDate = String(note.mealDate || '');
+  if (mealDate && mealDate < todayId) return null;
   const sourceMessages = Array.isArray(note.messages)
     ? note.messages
     : note.text?.trim()
       ? [{ text: note.text.trim(), createdAt: '', updatedAt: note.updatedAt }]
       : [];
-  const messages = sourceMessages.filter((message) => {
-    const writtenDateId = kitchenNoteTimestampDateId(message?.createdAt)
-      || kitchenNoteTimestampDateId(message?.updatedAt)
-      || fallbackDateId;
-    return !writtenDateId || writtenDateId === todayId;
-  });
+  const messages = sourceMessages.filter((message) => message?.text?.trim());
   if (messages.length === 0) return null;
   return {
     ...note,
@@ -9496,7 +10104,7 @@ function shiftWeek(days) {
 function shiftMonth(offset) {
   const nextMonth = new Date(state.monthDate);
   nextMonth.setMonth(nextMonth.getMonth() + offset, 1);
-  setWeekStartFromDate(nextMonth, 'settimana');
+  setWeekStartFromDate(nextMonth, 'mese');
 }
 
 function setWeekStartFromDate(date, source) {
@@ -10106,7 +10714,7 @@ async function resolveAccessLinkUrl(scope) {
   const cachedUrl = getCachedAccessLinkUrl(scope);
   if (cachedUrl) return cachedUrl;
 
-  const { loadOperationalLinks } = await import(domainModulePaths.accessLinks);
+  const { loadOperationalLinks } = await loadDomainModule('accessLinks');
   const links = await loadOperationalLinks({ forceRefresh: true });
   const centerId = getActiveCenterId();
   if (scope === 'pasti') {

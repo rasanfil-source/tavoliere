@@ -154,6 +154,7 @@ test('administrative activation retains its transaction and invalidates resident
   const writes = [], invalidations = [], commit = deferred();
   const { setAdminParticipantActiveStatus } = await loadBrowserModule('admin-participant-data.js', {
     db: {}, getActiveCenterId: () => 'center', doc: (_, ...parts) => parts.join('/'),
+    getDoc: async () => ({ data: () => ({ status: 'ACTIVE' }) }),
     serverTimestamp: () => 'timestamp', normalizeRevision: value => value,
     assertCurrentRevision: (actual, expected) => { assert.equal(actual, expected); return actual; },
     nextRevision: value => value + 1, appendAuditEvent: () => writes.push('audit'), AUDIT_ACTIONS: {},

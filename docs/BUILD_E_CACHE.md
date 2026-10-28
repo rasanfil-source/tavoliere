@@ -6,7 +6,7 @@ Gestione persone, esportazione, preparazione del ripristino e ispezione delle co
 
 ## Risorse pubblicate
 
-`dist/assets` contiene moduli JavaScript e fogli CSS identificati dall'impronta del contenuto. I moduli immutabili restano disponibili per le schede già aperte, che possono richiedere una funzione facoltativa durante un aggiornamento. I cataloghi delle sei lingue mantengono il percorso `/i18n/`.
+`dist/assets` contiene moduli JavaScript e fogli CSS identificati dall'impronta del contenuto. I moduli immutabili restano disponibili per le schede già aperte, che possono richiedere una funzione facoltativa durante un aggiornamento. I cataloghi delle sei lingue mantengono il percorso `/i18n/`; un parametro derivato dall'impronta dei cataloghi identifica il contenuto in cache. Le richieste usano la cache HTTP e le traduzioni dell’Agenda sono presenti anche nei testi di riserva del modulo, così la disponibilità delle etichette non dipende dal caricamento del catalogo.
 
 `build-manifest.json` descrive sorgenti, file compilati, impronte e grafo di avvio. Gli identificatori tecnici garantiscono coerenza e riproducibilità; non compaiono nella presentazione del prodotto.
 

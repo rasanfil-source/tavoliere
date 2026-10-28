@@ -5,6 +5,15 @@ const publicRoot = new URL('../../prototypes/firebase-spark-pwa/public/', import
 // Carica il modulo effettivo con dipendenze esplicite. Node non importa l'SDK dal CDN; i test di integrazione forniscono SDK e database emulato. Ogni caricamento ha cache indipendenti.
 export async function loadBrowserModule(file, dependencies, exportedNames) {
   const original = await readFile(new URL(file, publicRoot), 'utf8');
+  if (original.includes('blessing-view.mjs')) {
+    const blessing = await loadBrowserModule('blessing-view.mjs', dependencies, ['renderBlessing']);
+    dependencies = { ...blessing, ...dependencies };
+  }
+  if (original.includes("from './administrator-deletion-protection.js")) {
+    const protection = await loadBrowserModule('administrator-deletion-protection.js', dependencies,
+      ['writeAdministratorDeletionProtection', 'synchronizeAdministratorDeletionProtection']);
+    dependencies = { ...protection, ...dependencies };
+  }
   const source = original
     .replace(/^import\s+[\s\S]*?\sfrom\s+['"][^'"]+['"];\s*/gm, '')
     .replace(/^export\s*\{[\s\S]*?\}(?:\s+from\s+['"][^'"]+['"])?;\s*/gm, '')

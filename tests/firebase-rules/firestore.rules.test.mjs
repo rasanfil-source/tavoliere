@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import assert from 'node:assert/strict';
 
 import {
   assertFails,
@@ -8,6 +9,10 @@ import {
 } from '@firebase/rules-unit-testing';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
+import * as firestore from 'firebase/firestore';
+import { loadBrowserModule } from '../helpers/browser-module.mjs';
+import * as revision from '../../prototypes/firebase-spark-pwa/public/core/revision.mjs';
+import { zonedLocalDateTimeToDate } from '../../prototypes/firebase-spark-pwa/public/schedule-utils.mjs';
 
 const PROJECT_ID = 'demo-tavola-comune-rules';
 const CENTER_ID = 'center_demo';
@@ -44,6 +49,35 @@ test.after(async () => {
 test.beforeEach(async () => {
   await testEnv.clearFirestore();
   await seedBaseData();
+});
+
+test('prenotazioni per altri: vice autorizzato, autore verificato e revoca', async () => {
+  const db = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  const reference = db.doc(overridePath(LUCA_ID, OPEN_WINDOW_ID));
+  const data = { ...buildOverrideData(LUCA_ID, OPEN_WINDOW_ID, 'PRESENT', 'DELEGATED'), actorUid: PERSONAL_UID };
+  await assertFails(reference.set(data));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await context.firestore().doc(privateParticipantPath(LUCA_ID)).set({
+      centerId: CENTER_ID, groupId: 'group_residenti', displayName: 'Luca', status: 'ACTIVE'
+    });
+    await context.firestore().doc(rulePath(LUCA_ID)).set({
+      centerId: CENTER_ID, participantId: LUCA_ID, groupId: 'group_residenti',
+      dietTags: ['STANDARD'], mealTypeIds: ['breakfast', 'lunch', 'dinner'],
+      startsOn: '2026-08-01', endsOn: null, status: 'ACTIVE'
+    });
+    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
+    await createAuthorizedViceSession(context.firestore(), PERSONAL_UID, MARIO_ID);
+  });
+  await assertFails(reference.set({ ...data, actorUid: ADMIN_UID }));
+  await assertSucceeds(reference.set(data));
+  await assertSucceeds(reference.update({ effect: 'ABSENT', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  await assertFails(db.doc(overridePath(LUCA_ID, CLOSED_WINDOW_ID)).set({
+    ...buildOverrideData(LUCA_ID, CLOSED_WINDOW_ID, 'PRESENT', 'DELEGATED'), actorUid: PERSONAL_UID
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await context.firestore().doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: false }, { merge: true });
+  });
+  await assertFails(reference.update({ effect: 'PRESENT', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
 });
 
 test('anonymous users cannot read center data', async () => {
@@ -806,6 +840,7 @@ test('un amministratore attivo senza invito accettato non può diventare respons
     ownerUid: CENTER_ADMIN_UID,
     administratorName: 'Luca',
     administratorSignature: 'LU',
+    administratorParticipantId: LUCA_ID,
     adminEmail: 'admin@example.test',
     administratorProfileComplete: true,
     administratorPasswordRequired: false,
@@ -848,6 +883,7 @@ test('la responsabilita passa atomicamente a un amministratore attivo con invito
     ownerUid: CENTER_ADMIN_UID,
     administratorName: 'Luca',
     administratorSignature: 'LU',
+    administratorParticipantId: LUCA_ID,
     adminEmail: 'admin@example.test',
     administratorProfileComplete: true,
     administratorPasswordRequired: false,
@@ -882,6 +918,7 @@ test('la responsabilita passa atomicamente a un amministratore attivo con invito
     if (center.ownerUid !== CENTER_ADMIN_UID
         || center.administratorName !== 'Luca'
         || center.administratorSignature !== 'LU'
+        || center.administratorParticipantId !== LUCA_ID
         || center.adminEmail !== 'admin@example.test'
         || center.administratorPasswordRequired !== false
         || previousOwner.role !== 'ADMIN'
@@ -1324,6 +1361,55 @@ test('gli inviti amministrativi mostrano il ciclo di vita e rispettano la gerarc
   }, { merge: true }));
 });
 
+test('shared kitchen layout is writable by an administrator, readable in kitchen, and not writable by a resident', async () => {
+  const settingsPath = `${centerPath()}/presentationSettings/current`;
+  const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const residentDb = testEnv.authenticatedContext(PERSONAL_UID).firestore();
+  const kitchenDb = testEnv.authenticatedContext(KITCHEN_UID).firestore();
+  const module = await loadBrowserModule('center-settings.js', {
+    ...firestore, db: ownerDb, getActiveCenterId: () => CENTER_ID
+  }, ['updateKitchenLayout']);
+  await assertSucceeds(module.updateKitchenLayout('international'));
+  const snapshot = await assertSucceeds(kitchenDb.doc(settingsPath).get());
+  if (snapshot.data().kitchenLayout !== 'international') throw new Error('Kitchen did not read shared layout');
+  await assertFails(residentDb.doc(settingsPath).set({ kitchenLayout: 'classic',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+});
+
+test('invitation rejection creates its audit event atomically without granting general audit access', async () => {
+  const id = 'b'.repeat(64);
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await context.firestore().doc(`adminInvitations/${id}`).set({
+      centerId: CENTER_ID, participantId: MARIO_ID, role: 'ADMIN', status: 'ACTIVE', expiresAt: new Date('2099-01-01')
+    });
+  });
+  const db = testEnv.authenticatedContext('invited_user', adminToken()).firestore();
+  const event = {
+    centerId: CENTER_ID, actorUid: 'invited_user', action: 'REJECT_ADMIN_INVITATION',
+    actorParticipantId: MARIO_ID,
+    targetType: 'ADMIN_INVITATION', targetId: id, summary: 'Invito amministratore rifiutato',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  const eventRef = db.doc(`${centerPath()}/auditEvents/rejected_${id}`);
+  await assertFails(eventRef.set(event));
+  const forged = db.batch();
+  forged.set(db.doc(`adminInvitations/${id}`), {
+    status: 'REJECTED', rejectedBy: 'invited_user',
+    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  forged.set(eventRef, { ...event, actorParticipantId: LUCA_ID });
+  await assertFails(forged.commit());
+  const batch = db.batch();
+  batch.set(db.doc(`adminInvitations/${id}`), {
+    status: 'REJECTED', rejectedBy: 'invited_user',
+    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  batch.set(eventRef, event);
+  await assertSucceeds(batch.commit());
+  await assertFails(eventRef.set(event));
+  await assertFails(db.collection(`${centerPath()}/auditEvents`).get());
+});
+
 test('la riconfigurazione del calendario e privata riprendibile e conserva lo stato dei pasti', async () => {
   const ownerDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const viceDb = testEnv.authenticatedContext(VICE_ADMIN_UID, adminToken()).firestore();
@@ -1658,6 +1744,7 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
   const targetUid = 'anon_vice_scope_target';
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    await db.doc(`${centerPath()}/participantMetadata/administratorProtection`).set({ ready: true });
     await db.doc(publicParticipantPath(MARIO_ID)).set({ viceAdminRole: true }, { merge: true });
     await createAuthorizedViceSession(db, PERSONAL_UID, MARIO_ID);
     await db.doc(`${centerPath()}/privateSettings/operationalLinks`).set({
@@ -1764,6 +1851,7 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
       centerId: CENTER_ID,
       participantId: targetId,
       scope: 'PERSONAL',
+      tokenId: `personal_${targetId}`,
       status: 'ACTIVE'
     });
     await db.doc(`${centerPath()}/viceSessions/${targetUid}`).set({
@@ -1787,18 +1875,19 @@ test('una sessione vice validata gestisce persone pulizia impostazioni visive e 
     });
   });
 
-  // Come nel percorso applicativo, la lettura transazionale protegge la
-  // revisione dell'anagrafica durante la cancellazione dei documenti collegati.
-  await assertSucceeds(viceDb.runTransaction(async cleanup => {
-    await cleanup.get(viceDb.doc(privateParticipantPath(targetId)));
-    cleanup.delete(viceDb.doc(`${centerPath()}/accessSessions/${targetUid}`));
-    cleanup.delete(viceDb.doc(`${centerPath()}/viceSessions/${targetUid}`));
-    cleanup.delete(viceDb.doc(`${centerPath()}/linkTokens/personal_${targetId}`));
-    cleanup.delete(viceDb.doc(overridePath(targetId, OPEN_WINDOW_ID)));
-    cleanup.delete(viceDb.doc(rulePath(targetId)));
-    cleanup.delete(viceDb.doc(publicParticipantPath(targetId)));
-    cleanup.delete(viceDb.doc(privateParticipantPath(targetId)));
-  }));
+  // Eseguiamo il percorso applicativo completo, comprese sospensione, revisione,
+  // metadati e registro attività, anziché ricostruire un batch diverso dall'app.
+  const getCurrentUser = () => ({ uid: PERSONAL_UID, isAnonymous: true });
+  const audit = await loadBrowserModule('audit-log.js', {
+    ...firestore, db: viceDb, getCurrentUser,
+    getActiveCenterId: () => CENTER_ID, getCenterScopedStorageKey: key => key
+  }, ['appendAuditEvent', 'AUDIT_ACTIONS']);
+  const deletion = await loadBrowserModule('admin-participant-data.js', {
+    ...firestore, ...audit, ...revision, db: viceDb, getCurrentUser,
+    getActiveCenterId: () => CENTER_ID, commitWithRetry: operation => operation(),
+    invalidateParticipantDataCaches: () => {}, invalidateCenterContactSettingsCache: () => {}
+  }, ['deleteAdminParticipant']);
+  await assertSucceeds(deletion.deleteAdminParticipant(targetId, 3));
   await testEnv.withSecurityRulesDisabled(async context => {
     for (const path of [privateParticipantPath(targetId), publicParticipantPath(targetId),
       rulePath(targetId), overridePath(targetId, OPEN_WINDOW_ID),
@@ -2041,10 +2130,11 @@ test('kitchen session can read overrides without participant names', async () =>
   await assertFails(db.doc(privateParticipantPath(MARIO_ID)).get());
 });
 
-test('admin writes kitchen notes, kitchen reads them, and public sessions cannot', async () => {
+test('admin writes notes; kitchen, public and personal sessions read them without editing', async () => {
   const adminDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const kitchenDb = testEnv.authenticatedContext(KITCHEN_UID, anonymousToken()).firestore();
   const publicDb = testEnv.authenticatedContext(PUBLIC_UID, anonymousToken()).firestore();
+  const personalDb = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
   const notePath = kitchenNotePath('2026-08-05');
 
   await assertSucceeds(adminDb.doc(notePath).set({
@@ -2055,7 +2145,10 @@ test('admin writes kitchen notes, kitchen reads them, and public sessions cannot
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
   await assertSucceeds(kitchenDb.doc(notePath).get());
-  await assertFails(publicDb.doc(notePath).get());
+  await assertSucceeds(publicDb.doc(notePath).get());
+  await assertSucceeds(personalDb.doc(notePath).get());
+  await assertFails(publicDb.doc(notePath).set({ text: 'Modifica non autorizzata' }, { merge: true }));
+  await assertFails(personalDb.doc(notePath).delete());
   await assertFails(kitchenDb.doc(notePath).set({
     centerId: CENTER_ID,
     mealDate: '2026-08-05',
@@ -2091,6 +2184,87 @@ test('admin sets the daily mass status and summary and kitchen sessions can read
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }));
 });
+
+test('benedizione: amministratori senza incarico liturgico salvano orario ma non cambiano Messa', async () => {
+  const db = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const ref = db.doc(dailyOperationPath('2026-08-06'));
+  const stamp = () => firebase.firestore.FieldValue.serverTimestamp();
+  await assertSucceeds(ref.set({ centerId: CENTER_ID, dateId: '2026-08-06',
+    massScheduled: false, blessingTime: '18:30', updatedAt: stamp() }));
+  await assertSucceeds(ref.update({ blessingTime: '19:00', updatedAt: stamp() }));
+  await assertFails(ref.update({ massScheduled: true, updatedAt: stamp() }));
+  await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(dailyOperationPath('2026-08-06'))
+    .update({ massScheduled: true }));
+  await assertSucceeds(ref.update({ blessingTime: '', updatedAt: stamp() }));
+  await assertFails(ref.update({ massScheduled: false, updatedAt: stamp() }));
+  await assertFails(ref.delete());
+  for (const time of ['24:00', '18:60', '9:00', '18:30:00', 'abc', 1830, null]) {
+    await assertFails(ref.update({ blessingTime: time, updatedAt: stamp() }));
+  }
+  await assertFails(ref.update({ dateId: '2026-08-07', blessingTime: '18:30', updatedAt: stamp() }));
+});
+
+test('benedizione: liturgista abilitato, cucina e riepilogo in lettura, residente ordinario escluso', async () => {
+  const personal = testEnv.authenticatedContext(PERSONAL_UID, anonymousToken()).firestore();
+  const operationPath = dailyOperationPath('2026-08-07');
+  const data = { centerId: CENTER_ID, dateId: '2026-08-07', massScheduled: false,
+    blessingTime: '18:30', updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  await assertFails(personal.doc(operationPath).set(data));
+  await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(publicParticipantPath(MARIO_ID))
+    .update({ liturgicalRole: true }));
+  await assertSucceeds(personal.doc(operationPath).set(data));
+  await assertFails(personal.doc(kitchenNotePath('2026-08-07')).set({ centerId: CENTER_ID,
+    mealDate: '2026-08-07', text: 'No', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  await assertFails(personal.doc(`${centerPath()}/dailyHealth/2026-08-07`).set({ centerId: CENTER_ID,
+    dateId: '2026-08-07', sickPeople: [], updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  for (const uid of [KITCHEN_UID, PUBLIC_UID]) {
+    const db = testEnv.authenticatedContext(uid, anonymousToken()).firestore();
+    await assertSucceeds(db.doc(operationPath).get());
+    await assertFails(db.doc(operationPath).update({ blessingTime: '19:00',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+  }
+  await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(publicParticipantPath(MARIO_ID))
+    .update({ liturgicalRole: false }));
+  await assertFails(personal.doc(operationPath).update({ blessingTime: '',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+});
+
+for (const [identity, uid, token] of [
+  ['liturgista residente', PERSONAL_UID, residentTechnicalToken],
+  ['liturgista anonimo', PERSONAL_UID, anonymousToken],
+  ['amministratore', ADMIN_UID, adminToken]
+]) {
+  test(`benedizione dopo scadenza cena: ${identity} riceve il limite orario, non un errore di ruolo`, async () => {
+    const date = new Date(Date.now() + 86400000);
+    const dateId = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    await testEnv.withSecurityRulesDisabled(async ctx => {
+      await ctx.firestore().doc(publicParticipantPath(MARIO_ID)).update({ liturgicalRole: true });
+      await ctx.firestore().doc(`${centerPath()}/mealWindows/${dateId}_dinner`).set({
+        status: 'OPEN', closesAt: new Date(Date.now() - 60000)
+      });
+    });
+    const db = testEnv.authenticatedContext(uid, token()).firestore();
+    const module = await loadBrowserModule('daily-operations.js', { ...firestore, db,
+      zonedLocalDateTimeToDate, getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
+    await assert.rejects(module.saveBlessing(date, '18:30'), { code: 'blessing/cutoff' });
+    await assertFails(db.doc(dailyOperationPath(dateId)).set({ centerId: CENTER_ID, dateId,
+      massScheduled: false, blessingTime: '18:30', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(`${centerPath()}/mealWindows/${dateId}_dinner`)
+      .update({ closesAt: new Date(Date.now() + 86400000 * 2) }));
+    await assertSucceeds(module.saveBlessing(date, '18:30'));
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(dailyOperationPath(dateId)).update({ massScheduled: true }));
+    await assertSucceeds(module.saveBlessing(date, '19:00'));
+    await assertSucceeds(module.saveBlessing(date, ''));
+    const saved = await db.doc(dailyOperationPath(dateId)).get();
+    if (saved.data().massScheduled !== true || saved.data().blessingTime !== '') throw new Error('Dati giornalieri alterati');
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(`${centerPath()}/mealWindows/${dateId}_dinner`)
+      .update({ closesAt: new Date(Date.now() - 60000) }));
+    await assert.rejects(module.saveBlessing(date, ''), { code: 'blessing/cutoff' });
+    await assertFails(db.doc(dailyOperationPath(dateId)).update({ massScheduled: false,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    await assertFails(db.doc(dailyOperationPath(dateId)).delete());
+  });
+}
 
 test('la Messa non puo essere modificata dopo la scadenza della cena', async () => {
   const adminDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();

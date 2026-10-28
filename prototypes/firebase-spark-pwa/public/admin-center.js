@@ -6,6 +6,7 @@ import {
   getDocs,
   limit,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -22,6 +23,8 @@ import {
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20261014b';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
+import { t } from './i18n/i18n.mjs?v=20261014b';
+import { writeAdministratorDeletionProtection, synchronizeAdministratorDeletionProtection } from './administrator-deletion-protection.js?v=20261014b';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';
 const CENTER_INVITATION_COLLECTION = 'centerInvitations';
@@ -63,11 +66,25 @@ export async function linkCurrentAdministratorParticipant(participantId, user = 
   }
 
   const profileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
-  const profileSnapshot = await getDoc(profileRef);
-  const batch = writeBatch(db);
+  await runTransaction(db, async batch => {
+  await batch.get(doc(db, 'centers', centerId, 'participantMetadata', 'administratorProtection'));
+  const profileSnapshot = await batch.get(profileRef);
+  const center = (await batch.get(doc(db, 'centers', centerId))).data() || {};
+  const person = (await batch.get(doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId))).data() || {};
+  const ownerPerson = center.administratorParticipantId === normalizedParticipantId
+    || !center.administratorParticipantId && center.administratorSignature
+      && center.administratorSignature === person.signature;
+  if (ownerPerson && center.ownerUid !== user.uid) throw new Error('La persona è il responsabile del centro');
+  const linked = await getDocs(query(collection(db, 'centers', centerId, 'admins'), where('participantId', '==', normalizedParticipantId)));
+  if (linked.docs.some(item => item.id !== user.uid && item.data().status === 'ACTIVE')) {
+    throw new Error('Questa persona è già collegata a un amministratore');
+  }
   batch.update(doc(db, 'centers', centerId, 'admins', user.uid), {
     participantId: normalizedParticipantId,
     updatedAt: serverTimestamp()
+  });
+  writeAdministratorDeletionProtection(batch, centerId, user.uid, {
+    participantId: normalizedParticipantId, role: access.role, status: 'ACTIVE'
   });
   if (profileSnapshot.exists()) {
     batch.update(profileRef, {
@@ -79,7 +96,35 @@ export async function linkCurrentAdministratorParticipant(participantId, user = 
       updatedAt: serverTimestamp()
     });
   }
-  await batch.commit();
+  });
+}
+
+export async function linkCenterAdministratorParticipant(adminUid, participantId, user = getCurrentUser()) {
+  if (!db || !user || user.isAnonymous || !adminUid || !participantId) throw new Error('Collegamento non valido');
+  const centerId = getActiveCenterId();
+  const membershipRef = doc(db, 'centers', centerId, 'admins', adminUid);
+  await runTransaction(db, async transaction => {
+    // Ogni modifica alle membership aggiorna questo documento tramite la funzione di protezione.
+    // La lettura prima della query fa ripetere il controllo dei duplicati in caso di assegnazioni concorrenti.
+    await transaction.get(doc(db, 'centers', centerId, 'participantMetadata', 'administratorProtection'));
+    const owner = (await transaction.get(doc(db, 'centers', centerId, 'admins', user.uid))).data() || {};
+    const center = (await transaction.get(doc(db, 'centers', centerId))).data() || {};
+    const membership = (await transaction.get(membershipRef)).data() || {};
+    const person = (await transaction.get(doc(db, 'centers', centerId, 'publicParticipants', participantId))).data() || {};
+    const linked = await getDocs(query(collection(db, 'centers', centerId, 'admins'), where('participantId', '==', participantId)));
+    if (owner.status !== 'ACTIVE' || owner.role !== 'OWNER' || center.ownerUid !== user.uid) {
+      throw new Error('Solo il responsabile può collegare un amministratore');
+    }
+    if (membership.status !== 'ACTIVE' || membership.role !== 'ADMIN' || person.status !== 'ACTIVE'
+        || center.administratorParticipantId === participantId
+        || !center.administratorParticipantId && center.administratorSignature && center.administratorSignature === person.signature
+        || linked.docs.some(item => item.id !== adminUid && item.data().status === 'ACTIVE')
+        || membership.participantId && membership.participantId !== participantId) {
+      throw new Error('Collegamento non disponibile. Aggiorna l’elenco.');
+    }
+    transaction.update(membershipRef, { participantId, updatedAt: serverTimestamp() });
+    writeAdministratorDeletionProtection(transaction, centerId, adminUid, { ...membership, participantId });
+  });
 }
 
 export async function loadAdminCenterAccess(user = getCurrentUser()) {
@@ -104,6 +149,7 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
         needsInitialization: true
       };
     }
+    forgetStoredCenterInvitation();
   }
 
   const requestedCenterId = getActiveCenterId();
@@ -113,7 +159,24 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
     getDoc(profileRef)
   ]);
   const profileData = profileSnapshot.exists() ? profileSnapshot.data() : {};
+  const roleInvitationId = getAdminRoleInvitationId();
+  if (roleInvitationId) {
+    const roleInvitation = await loadRoleInvitation(roleInvitationId);
+    if (roleInvitation.active) {
+      return {
+        ...emptyAccess(),
+        centerId: roleInvitation.centerId,
+        invitationPending: true,
+        invitationParticipantId: roleInvitation.participantId,
+        invitationRole: roleInvitation.role
+      };
+    }
+    if (!existingAccess.active) return { ...emptyAccess(), invitationError: true };
+  }
   if (existingAccess.active) {
+    if (['OWNER', 'ADMIN'].includes(existingAccess.role)) {
+      await synchronizeAdministratorDeletionProtection(requestedCenterId);
+    }
     // Il profilo facilita la navigazione; la membership determina i permessi. Il riallineamento del profilo avviene fuori dal percorso critico dell'accesso.
     if (adminProfileNeedsRepair(profileData, user, requestedCenterId, existingAccess.role)) {
       void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
@@ -133,21 +196,6 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
         navigationProfile,
         new Map([[requestedCenterId, existingAccess]])
       )
-    };
-  }
-
-  const roleInvitationId = getAdminRoleInvitationId();
-  if (roleInvitationId) {
-    const roleInvitation = await loadRoleInvitation(roleInvitationId);
-    if (!roleInvitation.active) {
-      return { ...emptyAccess(), invitationError: true };
-    }
-    return {
-      ...emptyAccess(),
-      centerId: roleInvitation.centerId,
-      invitationPending: true,
-      invitationParticipantId: roleInvitation.participantId,
-      invitationRole: roleInvitation.role
     };
   }
 
@@ -182,6 +230,7 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
         needsInitialization: true
       };
     }
+    forgetStoredCenterInvitation();
     return {
       ...emptyAccess(),
       invitationError: true
@@ -221,6 +270,7 @@ export async function initializeAdminCenter({ name, timezone, invitationId, admi
   const centerId = normalizedInvitationId
     ? createOwnedCenterId(user.uid, normalizedInvitationId.slice(0, 16))
     : createOwnedCenterId(user.uid);
+  const existingProfile = await getDoc(profileRef);
   const now = serverTimestamp();
   const administratorPasswordRequired = requiresAdministratorPassword(user);
   const batch = writeBatch(db);
@@ -255,6 +305,10 @@ export async function initializeAdminCenter({ name, timezone, invitationId, admi
     createdAt: now,
     updatedAt: now
   });
+  writeAdministratorDeletionProtection(batch, centerId, user.uid, { role: 'OWNER', status: 'ACTIVE' });
+  batch.set(doc(db, 'centers', centerId, 'participantMetadata', 'administratorProtection'), {
+    ready: true, updatedAt: now
+  }, { merge: true });
   batch.set(profileRef, {
     centerId,
     centerIds: arrayUnion(centerId),
@@ -263,7 +317,7 @@ export async function initializeAdminCenter({ name, timezone, invitationId, admi
     role: 'OWNER',
     massPermission: true,
     dailyOperationsPermission: true,
-    createdAt: now,
+    ...(!existingProfile.exists() ? { createdAt: now } : {}),
     updatedAt: now
   }, { merge: true });
   if (normalizedInvitationId) {
@@ -278,7 +332,7 @@ export async function initializeAdminCenter({ name, timezone, invitationId, admi
   try {
     await batch.commit();
   } catch (error) {
-    error.operationStage = 'salvataggio del centro, del responsabile e dell invito';
+    error.operationStage = "salvataggio del centro, del responsabile e dell'invito";
     throw error;
   }
   forgetStoredCenterInvitation();
@@ -401,27 +455,26 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
   if (!normalizedParticipantId) return;
   const centerId = getActiveCenterId();
   const access = await readCenterAdmin(user, centerId);
-  if (!access.active || !['OWNER', 'ADMIN', 'MANAGER'].includes(access.role)) {
+  if (!access.active || !['OWNER', 'ADMIN'].includes(access.role)) {
     throw new Error('Solo il responsabile o l’amministratore può revocare un vice');
   }
   const [membershipsSnapshot, viceSessionsSnapshot] = await Promise.all([
     getDocs(query(
       collection(db, 'centers', centerId, 'admins'),
       where('participantId', '==', normalizedParticipantId),
-      where('role', '==', 'MANAGER'),
-      limit(10)
+      where('role', '==', 'MANAGER')
     )),
     getDocs(query(
       collection(db, 'centers', centerId, 'viceSessions'),
-      where('participantId', '==', normalizedParticipantId),
-      limit(20)
+      where('participantId', '==', normalizedParticipantId)
     ))
   ]);
   const now = serverTimestamp();
-  const batch = writeBatch(db);
-  membershipsSnapshot.docs.forEach((item) => {
+  // Blocchi piccoli: ogni membership e il suo indice cambiano insieme.
+  for (const item of membershipsSnapshot.docs) {
     const membership = item.data();
-    if (membership.role !== 'MANAGER' || membership.status !== 'ACTIVE') return;
+    if (membership.role !== 'MANAGER' || membership.status !== 'ACTIVE') continue;
+    const batch = writeBatch(db);
     batch.set(item.ref, {
       status: 'REVOKED',
       massPermission: false,
@@ -430,9 +483,14 @@ export async function revokeViceAdministratorAccess(participantId, user = getCur
       revokedAt: now,
       updatedAt: now
     }, { merge: true });
-  });
-  viceSessionsSnapshot.docs.forEach((item) => batch.delete(item.ref));
-  await batch.commit();
+    writeAdministratorDeletionProtection(batch, centerId, item.id, { ...membership, status: 'REVOKED' });
+    await batch.commit();
+  }
+  for (let offset = 0; offset < viceSessionsSnapshot.docs.length; offset += 100) {
+    const batch = writeBatch(db);
+    viceSessionsSnapshot.docs.slice(offset, offset + 100).forEach(item => batch.delete(item.ref));
+    await batch.commit();
+  }
 }
 
 export async function listAdministratorInvitations(user = getCurrentUser()) {
@@ -456,12 +514,14 @@ export async function listAdministratorInvitations(user = getCurrentUser()) {
 }
 
 export async function revokeAdministratorInvitation(invitationId, user = getCurrentUser()) {
+  const normalizedInvitationId = normalizeInvitationId(invitationId);
+  if (!normalizedInvitationId) throw new Error(t('admin.invitations.invalidId'));
   if (!db || !user || user.isAnonymous) {
     throw new Error('Accesso amministratore richiesto');
   }
   const centerId = getActiveCenterId();
   const access = await readCenterAdmin(user, centerId);
-  const invitationRef = doc(db, ADMIN_INVITATION_COLLECTION, normalizeInvitationId(invitationId));
+  const invitationRef = doc(db, ADMIN_INVITATION_COLLECTION, normalizedInvitationId);
   const invitationSnapshot = await getDoc(invitationRef);
   const invitation = invitationSnapshot.exists() ? invitationSnapshot.data() : {};
   // Gli inviti assegnano il ruolo ADMIN e sono gestiti dal responsabile.
@@ -526,6 +586,9 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
     revokedAt: now,
     updatedAt: now
   }, { merge: true });
+  writeAdministratorDeletionProtection(batch, centerId, normalizedUid, {
+    ...membership, role: 'ADMIN', status: 'REVOKED'
+  });
   // La membership determina l'accesso. Il profilo privato di navigazione viene filtrato per membership e può includere altri centri: il responsabile del centro non può leggerlo né revocarne gli altri accessi.
   appendAuditEvent(batch, {
     action: AUDIT_ACTIONS.REVOKE_ADMIN,
@@ -537,10 +600,12 @@ export async function revokeCenterAdministrator(targetUid, user = getCurrentUser
 }
 
 export async function rejectAdministratorInvitation(invitationId, user = getCurrentUser()) {
+  const normalizedInvitationId = normalizeInvitationId(invitationId);
+  if (!normalizedInvitationId) throw new Error(t('admin.invitations.invalidId'));
   if (!db || !user || user.isAnonymous) {
     throw new Error('Accesso amministratore richiesto');
   }
-  const invitationRef = doc(db, ADMIN_INVITATION_COLLECTION, normalizeInvitationId(invitationId));
+  const invitationRef = doc(db, ADMIN_INVITATION_COLLECTION, normalizedInvitationId);
   const invitationSnapshot = await getDoc(invitationRef);
   const invitation = invitationSnapshot.exists() ? invitationSnapshot.data() : {};
   if (invitation.status !== 'ACTIVE') {
@@ -554,6 +619,18 @@ export async function rejectAdministratorInvitation(invitationId, user = getCurr
     rejectedAt: now,
     updatedAt: now
   }, { merge: true });
+  // Chi rifiuta non è ancora membro: l'evento è legato dalle regole
+  // al cambio di stato dello stesso invito nello stesso commit.
+  batch.set(doc(db, 'centers', invitation.centerId, 'auditEvents', `rejected_${invitationRef.id}`), {
+    centerId: invitation.centerId,
+    actorUid: user.uid,
+    action: AUDIT_ACTIONS.REJECT_ADMIN_INVITATION,
+    actorParticipantId: invitation.participantId || '',
+    targetType: 'ADMIN_INVITATION',
+    targetId: invitationRef.id,
+    summary: 'Invito amministratore rifiutato',
+    createdAt: now
+  });
   await batch.commit();
 }
 
@@ -590,10 +667,11 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     throw new Error('Seleziona un amministratore diverso dal responsabile attuale');
   }
   const successorRef = doc(db, 'centers', centerId, 'admins', normalizedSuccessorUid);
-  // Il profilo globale del successore e' privato e non deve essere letto dal
-  // responsabile uscente. Membership e invito accettato contengono gia' tutti
+  // Il profilo globale del successore è privato e non deve essere letto dal
+  // responsabile uscente. Membership e invito accettato contengono già tutti
   // i dati necessari al passaggio.
   const successorSnapshot = await getDoc(successorRef);
+  const previousOwnerSnapshot = await getDoc(doc(db, 'centers', centerId, 'admins', user.uid));
   const successor = successorSnapshot.exists() ? successorSnapshot.data() : {};
   if (successor.status !== 'ACTIVE' || successor.role !== 'ADMIN') {
     throw new Error('Il successore deve essere un amministratore attivo');
@@ -640,6 +718,7 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   const batch = writeBatch(db);
   batch.set(doc(db, 'centers', centerId), {
     ownerUid: normalizedSuccessorUid,
+    administratorParticipantId: successor.participantId,
     administratorName: String(successorParticipant.displayName || '').trim(),
     administratorSignature: String(successorParticipant.signature || '').trim().toUpperCase(),
     adminEmail: successorEmail,
@@ -674,6 +753,10 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
     dailyOperationsPermission: true,
     updatedAt: now
   }, { merge: true });
+  writeAdministratorDeletionProtection(batch, centerId, normalizedSuccessorUid, { ...successor, role: 'OWNER' });
+  writeAdministratorDeletionProtection(batch, centerId, user.uid, {
+    ...previousOwnerSnapshot.data(), role: 'ADMIN', status: revokePrevious ? 'REVOKED' : 'ACTIVE'
+  });
   batch.set(doc(db, ADMIN_INVITATION_COLLECTION, successorInvitationId), {
     status: 'TRANSFERRED',
     transferredBy: user.uid,
@@ -885,6 +968,8 @@ async function claimRoleInvitation(invitationId, invitation, user) {
   }
   const role = 'ADMIN';
   const massPermission = true;
+  const profileRef = doc(db, ADMIN_PROFILE_COLLECTION, user.uid);
+  const existingProfile = await getDoc(profileRef);
   const now = serverTimestamp();
   const batch = writeBatch(db);
   batch.set(doc(db, 'centers', invitation.centerId, 'admins', user.uid), {
@@ -904,7 +989,10 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     createdAt: now,
     updatedAt: now
   }, { merge: true });
-  batch.set(doc(db, ADMIN_PROFILE_COLLECTION, user.uid), {
+  writeAdministratorDeletionProtection(batch, invitation.centerId, user.uid, {
+    participantId: invitation.participantId || '', role: 'ADMIN', status: 'ACTIVE'
+  });
+  batch.set(profileRef, {
     centerId: invitation.centerId,
     centerIds: arrayUnion(invitation.centerId),
     participantId: invitation.participantId || '',
@@ -913,7 +1001,7 @@ async function claimRoleInvitation(invitationId, invitation, user) {
     role,
     massPermission,
     dailyOperationsPermission: true,
-    createdAt: now,
+    ...(!existingProfile.exists() ? { createdAt: now } : {}),
     updatedAt: now
   }, { merge: true });
   batch.set(doc(db, ADMIN_INVITATION_COLLECTION, invitationId), {
@@ -981,10 +1069,16 @@ function storePendingCenterInvitation(invitationId) {
 }
 
 function forgetStoredCenterInvitation() {
+  // Rimuovere anche l'URL evita che il prossimo render ripristini il token.
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('invite')) {
+    url.searchParams.delete('invite');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }
   try {
     window.sessionStorage.removeItem(CENTER_INVITATION_STORAGE_KEY);
   } catch {
-    // La rimozione locale è solo una comodità e non condiziona la validità dell invito.
+    // La rimozione locale è solo una comodità e non condiziona la validità dell'invito.
   }
   try {
     window.localStorage.removeItem(CENTER_INVITATION_STORAGE_KEY);

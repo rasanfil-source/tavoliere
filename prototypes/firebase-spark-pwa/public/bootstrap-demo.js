@@ -102,7 +102,8 @@ export async function bootstrapCenterData(user, { centerId = getActiveCenterId()
     updatedAt: now
   }, { merge: true });
 
-  const batch = writeBatch(db);
+  const initialWrites = [];
+  let batch = { set: (...args) => initialWrites.push(args) };
 
   GROUPS.forEach((group) => {
     if (existingGroupIds.has(group.groupId)) return;
@@ -137,11 +138,18 @@ export async function bootstrapCenterData(user, { centerId = getActiveCenterId()
       mealTypeIds: MEAL_TYPES.map((meal) => meal.mealTypeId),
       startsOn: formatDateId(getDateInTimeZone(centerSnapshot.data()?.timezone || 'Europe/Rome')),
       endsOn: null,
-      status: 'ACTIVE',
+      status: participant.status === 'ACTIVE' ? 'ACTIVE' : 'DISABLED',
       updatedAt: now
     }, { merge: true });
   });
 
+  for (let offset = 0; offset < initialWrites.length; offset += 400) {
+    const chunk = writeBatch(db);
+    initialWrites.slice(offset, offset + 400).forEach(args => chunk.set(...args));
+    await chunk.commit();
+  }
+  // I token operativi e il documento che li riferisce restano nello stesso commit.
+  batch = writeBatch(db);
   if (
     !operationalLinksSnapshot.exists()
     || storedOperationalLinks.publicTokenId !== publicTokenId

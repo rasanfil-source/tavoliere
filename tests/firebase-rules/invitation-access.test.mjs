@@ -46,7 +46,7 @@ test.beforeEach(async () => {
 async function moduleFor(uid) {
   const db = dbFor(uid);
   const user = identity(uid);
-  const window = { location: { search: '' },
+  const window = { location: new URL('https://example.test/?view=admin'), history: { replaceState() {} },
     localStorage: { getItem: () => null, removeItem() {} },
     sessionStorage: { getItem: () => null, removeItem() {} } };
   const context = await loadBrowserModule('center-context.js', {}, ['createOwnedCenterId']);
@@ -60,6 +60,19 @@ async function moduleFor(uid) {
   }, ['revokeCenterAdministrator', 'loadAdminCenterAccess', 'initializeAdminCenter']);
   return { db, user, ...module };
 }
+
+test('existing centers initialize minimal deletion protection and keep it after revocation', async () => {
+  const owner = await moduleFor('owner');
+  const protection = await loadBrowserModule('administrator-deletion-protection.js', {
+    ...firestore, db: owner.db
+  }, ['synchronizeAdministratorDeletionProtection']);
+  await protection.synchronizeAdministratorDeletionProtection(centerId);
+  const ref = firestore.doc(owner.db, `centers/${centerId}/administratorDeletionProtection/target`);
+  assert.equal((await firestore.getDoc(ref)).data().status, 'ACTIVE');
+  assert.equal((await firestore.getDoc(ref)).data().email, undefined);
+  await owner.revokeCenterAdministrator('target');
+  assert.equal((await firestore.getDoc(ref)).data().status, 'REVOKED');
+});
 
 test('an ordinary center owner revokes membership without reading the private global profile', async () => {
   const owner = await moduleFor('owner');

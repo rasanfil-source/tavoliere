@@ -1,0 +1,30 @@
+<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prova locale · Prenoto per altri</title><link rel="stylesheet" href="/styles.css">
+<body style="padding:24px;max-width:1000px;margin:auto"><h1>Agenda centro · Prova locale</h1>
+<p>Dati fittizi salvati solo in questo browser. Nessun collegamento a Firebase.</p>
+<p>La tua vista: <strong>Anna Amministratrice</strong> · Identità: <code>operatore-demo</code></p>
+<label>Ruolo <select id="role"><option>Amministratore</option><option>Vice</option></select></label>
+<details open><summary>Prenoto per altri</summary><label>Residente o ospite <select id="person"><optgroup label="Residenti"><option value="mario">Mario Rossi</option></optgroup><optgroup label="Ospiti"><option value="lucia">Lucia Bianchi</option></optgroup></select></label>
+<button type="button" id="open">Apri prenotazioni della persona selezionata</button></details>
+<h2>Prenotazioni salvate · riscontro locale</h2><p>Le modifiche rimangono passando da una persona all’altra e ricaricando la pagina.</p><div id="results"></div>
+<button type="button" id="reset">Azzera i dati della prova</button>
+<dialog class="booking-for-dialog" aria-label="Prenotazioni per un’altra persona"></dialog>
+<script type="module">
+import { createBookingFor } from '/booking-for.mjs';
+import { setLocale } from '/i18n/i18n.mjs?v=20261014b';
+await setLocale('it', { persist: false });
+const key = 'tat-booking-for-local-demo';
+const people = [{ participantId: 'mario', displayName: 'Mario Rossi', groupId: 'group_residenti', status: 'ACTIVE' }, { participantId: 'lucia', displayName: 'Lucia Bianchi', groupId: 'group_ospiti', status: 'ACTIVE' }];
+let saved = JSON.parse(localStorage.getItem(key) || '{}');
+const role = document.querySelector('#role');
+const id = date => [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
+function show() { document.querySelector('#results').textContent = Object.entries(saved).map(([key, value]) => `${key}: ${value === 'PRESENT' ? 'Presente' : 'Assente'}`).join(' · ') || 'Nessuna modifica'; }
+const view = createBookingFor({ dialog: document.querySelector('dialog'), canBook: () => ['Amministratore', 'Vice'].includes(role.value), identity: () => 'demo:operatore-demo', listPeople: () => people, today: () => new Date(),
+  loadWeek: async (person, start) => Array.from({length:7}, (_,offset) => { const date = new Date(start); date.setDate(date.getDate()+offset); return { date:id(date), label:date.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}), meals: ['breakfast','lunch','dinner'].map((mealTypeId,index) => ({ mealTypeId, mealDate:id(date), label:['Colazione','Pranzo','Cena'][index], isOpen:id(date)>=id(new Date()), effect:saved[`${person}/${id(date)}/${mealTypeId}`] || 'ABSENT' })) }; }),
+  saveMeal: async (person, meal, effect) => { saved[`${person.participantId}/${meal.mealDate}/${meal.mealTypeId}`] = effect; localStorage.setItem(key,JSON.stringify(saved)); meal.effect = effect; show(); }
+});
+document.querySelector('#open').onclick = () => view.open(document.querySelector('#person').value);
+role.onchange = () => view.checkIdentity();
+document.querySelector('#reset').onclick = () => { saved={};localStorage.removeItem(key);show(); };
+show();
+</script></body></html>

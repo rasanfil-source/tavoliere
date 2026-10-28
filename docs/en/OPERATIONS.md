@@ -24,7 +24,7 @@ Foreground resume and manual refresh may trigger an immediate read. Annual meal-
 2. Run application, i18n and Firestore-rule tests.
 3. Build and run `git diff --check`.
 4. Test affected roles on mobile and desktop.
-5. Create a descriptive rollback commit.
+5. Record the approved source revision and deployment target.
 6. Deploy Hosting; add rules/indexes only when changed.
 7. Verify public hashes.
 
@@ -57,6 +57,6 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run test:backup-restore-emulator -- <b
 
 A real full restore changes production data and requires explicit authorisation, a prior backup, exact centre identification and post-checks.
 
-## Rollback
+## Recovery
 
-Identify the stable commit, create a traceable revert without deleting history, rerun tests/build, redeploy compatible Hosting/rules and verify the public release. Firebase keeps release history, but Git is the reproducible source.
+If a production check fails, restore the approved Hosting build and apply the matching Rules and indexes. Rerun verification and confirm the public service. Firestore writes remain independent of Hosting recovery; Git is the reproducible source.

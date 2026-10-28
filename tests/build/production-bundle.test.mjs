@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 import { verifyBuild } from '../../tools/verify-build.mjs';
 
 const buildRoot = resolve('prototypes/firebase-spark-pwa/dist');
@@ -154,6 +155,10 @@ test('old hashed chunks remain cacheable and are never substituted for a differe
 test('bundling preserves full SDK identity and live locale URLs', async () => {
   const sources = await Promise.all(manifest.resident.map(path => readFile(resolve(buildRoot, '.' + path), 'utf8')));
   assert.ok(sources.some(source => source.includes('/i18n/')));
+  const catalogContent = (await Promise.all(['it', 'en', 'fr', 'es', 'de', 'ca'].map(locale =>
+    readFile(resolve('prototypes/firebase-spark-pwa/public/i18n', `${locale}.json`), 'utf8')))).join('\n');
+  const catalogVersion = createHash('sha256').update(catalogContent).digest('hex').slice(0, 16);
+  assert.ok(sources.some(source => source.includes(catalogVersion)), 'la versione delle traduzioni deve seguire il contenuto dei cataloghi');
   assert.ok(manifest.resident.length < 20);
   const files = Object.keys(manifest.outputs);
   assert.ok(files.every(path => /^\/assets\/[\w-]+-[A-Z0-9]{8}\.(js|css)$/.test(path)));

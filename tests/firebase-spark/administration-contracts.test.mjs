@@ -119,6 +119,7 @@ test('duplicate responsible signature is rejected before configuration or passwo
   const module = functions(['performAdminCenterSettingsSave', 'saveAdministratorAsParticipant'], {
     state, elements, CAPABILITIES, hasCurrentCapability: () => true,
     updateAdministratorPassword: () => writes++, updateCenterSettings: () => writes++,
+    listAdminParticipants: async () => state.adminParticipants,
     friendlyErrorMessage: error => error.message
   });
   await module.performAdminCenterSettingsSave();
@@ -168,7 +169,7 @@ test('a post-commit membership error accurately reports the saved configuration 
   });
   await module.performAdminCenterSettingsSave();
   assert.equal(state.centerContactSettings.name, 'Centro salvato');
-  assert.equal(state.adminParticipantId, 'saved-person');
+  assert.equal(state.adminParticipantId, undefined);
   assert.match(elements.adminCenterSettingsStatus.textContent, /Configurazione e Persona salvate/);
   assert.doesNotMatch(elements.adminCenterSettingsStatus.textContent, /Centro non salvato/);
   assert.equal(elements.adminCenterSettingsSave.disabled, false);

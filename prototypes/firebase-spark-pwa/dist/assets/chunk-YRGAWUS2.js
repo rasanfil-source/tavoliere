@@ -1,0 +1,1 @@
+import{a as e}from"./chunk-JUUUUMHC.js";import{f as s}from"./chunk-VLN3V4AK.js";function t(r){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(r||""))return"";let a=`${s("blessing.title")} (${r})`;return`<span class="blessing-indicator" role="img" aria-label="${e(a)}" title="${e(a)}"><span aria-hidden="true">+</span><small aria-hidden="true">(${e(r)})</small></span>`}export{t as a};

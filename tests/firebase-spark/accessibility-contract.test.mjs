@@ -94,7 +94,7 @@ test('la scheda persona conserva le modifiche e offre annullamento esplicito', (
   assert.match(app, /async function requestAdminSectionChange/);
   assert.match(app, /section !== state\.adminActiveSection && !await confirmAdminSectionTransition\(\)/);
   assert.match(app, /async function confirmAdminSectionTransition[\s\S]*state\.adminPersonDirty[\s\S]*state\.adminCenterDirty[\s\S]*state\.pendingThemePalette[\s\S]*state\.pendingInterfaceStyle/);
-  assert.match(app, /if \(hasAdaptationChanges\) handleAdminAdaptationsCancel\(\)/);
+  assert.match(app, /if \(hasAdaptationChanges\) await handleAdminAdaptationsCancel\(\)/);
   assert.doesNotMatch(app, /if \(section === 'people'\) \{\s*state\.adminParticipantId = '';\s*state\.adminPersonDirty = false/);
 });
 
@@ -104,7 +104,7 @@ test('la scheda persona assegna larghezze coerenti ai campi brevi', () => {
   assert.match(index, /admin-person-field-diet/);
   assert.match(index, /admin-person-field-phone/);
   assert.match(styles, /\.admin-person-fields\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 0\.85fr\) minmax\(0, 1fr\) minmax\(0, 1\.25fr\)/);
-  assert.match(styles, /\.admin-person-field-signature,[\s\S]*?\.admin-person-field-group,[\s\S]*?\.admin-person-field-diet\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(styles, /\.admin-person-fields > \.field-label\s*\{[\s\S]*?min-width:\s*0/);
   assert.doesNotMatch(index, /class="field-label admin-field-wide"\s*>\s*Dieta/);
   assert.doesNotMatch(index, /class="field-label admin-field-wide"\s*>\s*Telefono/);
 });

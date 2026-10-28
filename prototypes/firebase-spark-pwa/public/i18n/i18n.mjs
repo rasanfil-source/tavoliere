@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20261017-ca';
+const CATALOG_CACHE_KEY = 'sorgenti';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -25,6 +25,28 @@ export const KEY_ALIASES = Object.freeze({
 
 export const CORE_FALLBACKS = Object.freeze({
   ca: Object.freeze({
+    "common.status.loading": "S’està carregant…",
+    "calendar.loadFailed": "No s’ha pogut carregar el calendari. Torna-ho a provar.",
+    "calendar.retry": "Torna-ho a provar",
+    "admin.invitations.invalidId": "Invitació no vàlida. Obre un enllaç d’invitació vàlid.",
+    "status.monthUpdated": "Mes actualitzat",
+    "bookingFor.title": "Reservar per a altres persones",
+    "bookingFor.person": "Resident o hoste",
+    "bookingFor.personAria": "Persona per a qui reservar",
+    "bookingFor.open": "Obre les reserves de la persona seleccionada",
+    "bookingFor.dialogAria": "Reserves per a una altra persona",
+    "bookingFor.heading": "Estàs reservant per a {name}",
+    "bookingFor.exit": "Surt de {name} i torna a la teva vista",
+    "bookingFor.loading": "S’estan carregant les reserves…",
+    "bookingFor.updated": "Reserves actualitzades",
+    "bookingFor.present": "Present",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "No s’ha desat la reserva",
+    "week.operations.referenceDay": "Data de referència",
+    "week.operations.chooseDate": "Tria una altra data",
+    "week.operations.datePair": "{first} i {second}",
+    "week.operations.note.forTomorrow": "Per demà",
+    "week.operations.note.forDate": "Per al {date}",
     "admin.access.title": "Administrador",
     "admin.activity.title": "Manteniment",
     "admin.adaptations.appDisplayName.help": "Nom que es mostra a la primera línia de la pantalla inicial.",
@@ -122,6 +144,28 @@ export const CORE_FALLBACKS = Object.freeze({
     "summary.yes": "Sí"
 }),
   it: Object.freeze({
+    "common.status.loading": "Caricamento…",
+    "calendar.loadFailed": "Non è stato possibile caricare il calendario. Riprova.",
+    "calendar.retry": "Riprova",
+    "admin.invitations.invalidId": "Invito non valido. Apri un collegamento di invito valido.",
+    "status.monthUpdated": "Mese aggiornato",
+    "bookingFor.title": "Prenoto per altri",
+    "bookingFor.person": "Residente o ospite",
+    "bookingFor.personAria": "Persona per cui prenotare",
+    "bookingFor.open": "Apri prenotazioni della persona selezionata",
+    "bookingFor.dialogAria": "Prenotazioni per un’altra persona",
+    "bookingFor.heading": "Stai prenotando per {name}",
+    "bookingFor.exit": "Abbandona {name} e rientra nella tua vista",
+    "bookingFor.loading": "Caricamento prenotazioni…",
+    "bookingFor.updated": "Prenotazioni aggiornate",
+    "bookingFor.present": "Presente",
+    "bookingFor.absent": "Assente",
+    "bookingFor.notSaved": "Prenotazione non salvata",
+    "week.operations.referenceDay": "Data di riferimento",
+    "week.operations.chooseDate": "Scegli un’altra data",
+    "week.operations.datePair": "{first} e {second}",
+    "week.operations.note.forTomorrow": "Per domani",
+    "week.operations.note.forDate": "Per {date}",
     'app.title.compact': 'Prenotarsi',
     'app.header.controlPanel': 'Pannello di controllo',
     'app.header.verifyingAuth': 'Accesso al pannello in corso…',
@@ -219,6 +263,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Link per accedere'
   }),
   en: Object.freeze({
+    "common.status.loading": "Loading…",
+    "calendar.loadFailed": "The calendar could not be loaded. Please try again.",
+    "calendar.retry": "Try again",
+    "admin.invitations.invalidId": "Invalid invitation. Open a valid invitation link.",
+    "status.monthUpdated": "Month updated",
+    "bookingFor.title": "Book for others",
+    "bookingFor.person": "Resident or guest",
+    "bookingFor.personAria": "Person to book for",
+    "bookingFor.open": "Open reservations for the selected person",
+    "bookingFor.dialogAria": "Reservations for another person",
+    "bookingFor.heading": "You are booking for {name}",
+    "bookingFor.exit": "Leave {name} and return to your view",
+    "bookingFor.loading": "Loading reservations…",
+    "bookingFor.updated": "Reservations updated",
+    "bookingFor.present": "Present",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "Reservation not saved",
+    "week.operations.referenceDay": "Reference date",
+    "week.operations.chooseDate": "Choose another date",
+    "week.operations.datePair": "{first} and {second}",
+    "week.operations.note.forTomorrow": "For tomorrow",
+    "week.operations.note.forDate": "For {date}",
     'app.title.compact': 'Book meals',
     'app.header.controlPanel': 'Control panel',
     'app.header.verifyingAuth': 'Opening the control panel…',
@@ -273,6 +339,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Access links'
   }),
   fr: Object.freeze({
+    "common.status.loading": "Chargement…",
+    "calendar.loadFailed": "Le calendrier n’a pas pu être chargé. Réessayez.",
+    "calendar.retry": "Réessayer",
+    "admin.invitations.invalidId": "Invitation non valide. Ouvrez un lien d’invitation valide.",
+    "status.monthUpdated": "Mois mis à jour",
+    "bookingFor.title": "Réserver pour d’autres",
+    "bookingFor.person": "Résident ou invité",
+    "bookingFor.personAria": "Personne pour qui réserver",
+    "bookingFor.open": "Ouvrir les réservations de la personne sélectionnée",
+    "bookingFor.dialogAria": "Réservations pour une autre personne",
+    "bookingFor.heading": "Vous réservez pour {name}",
+    "bookingFor.exit": "Quitter {name} et revenir à votre vue",
+    "bookingFor.loading": "Chargement des réservations…",
+    "bookingFor.updated": "Réservations actualisées",
+    "bookingFor.present": "Présent",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "Réservation non enregistrée",
+    "week.operations.referenceDay": "Date de référence",
+    "week.operations.chooseDate": "Choisir une autre date",
+    "week.operations.datePair": "{first} et {second}",
+    "week.operations.note.forTomorrow": "Pour demain",
+    "week.operations.note.forDate": "Pour {date}",
     'app.title.compact': 'Réserver',
     'app.header.controlPanel': 'Panneau de contrôle',
     'app.header.verifyingAuth': 'Ouverture du panneau de contrôle…',
@@ -327,6 +415,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Liens d\'accès'
   }),
   es: Object.freeze({
+    "common.status.loading": "Cargando…",
+    "calendar.loadFailed": "No se ha podido cargar el calendario. Vuelve a intentarlo.",
+    "calendar.retry": "Reintentar",
+    "admin.invitations.invalidId": "Invitación no válida. Abre un enlace de invitación válido.",
+    "status.monthUpdated": "Mes actualizado",
+    "bookingFor.title": "Reservar para otras personas",
+    "bookingFor.person": "Residente o invitado",
+    "bookingFor.personAria": "Persona para quien reservar",
+    "bookingFor.open": "Abrir las reservas de la persona seleccionada",
+    "bookingFor.dialogAria": "Reservas para otra persona",
+    "bookingFor.heading": "Estás reservando para {name}",
+    "bookingFor.exit": "Salir de {name} y volver a tu vista",
+    "bookingFor.loading": "Cargando reservas…",
+    "bookingFor.updated": "Reservas actualizadas",
+    "bookingFor.present": "Presente",
+    "bookingFor.absent": "Ausente",
+    "bookingFor.notSaved": "Reserva no guardada",
+    "week.operations.referenceDay": "Fecha de referencia",
+    "week.operations.chooseDate": "Elige otra fecha",
+    "week.operations.datePair": "{first} y {second}",
+    "week.operations.note.forTomorrow": "Para mañana",
+    "week.operations.note.forDate": "Para el {date}",
     'app.title.compact': 'Reservar',
     'app.header.controlPanel': 'Panel de control',
     'app.header.verifyingAuth': 'Abriendo el panel de control…',
@@ -381,6 +491,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Enlaces de acceso'
   }),
   de: Object.freeze({
+    "common.status.loading": "Wird geladen…",
+    "calendar.loadFailed": "Der Kalender konnte nicht geladen werden. Bitte versuche es erneut.",
+    "calendar.retry": "Erneut versuchen",
+    "admin.invitations.invalidId": "Ungültige Einladung. Öffne einen gültigen Einladungslink.",
+    "status.monthUpdated": "Monat aktualisiert",
+    "bookingFor.title": "Für andere buchen",
+    "bookingFor.person": "Bewohner oder Gast",
+    "bookingFor.personAria": "Person, für die gebucht wird",
+    "bookingFor.open": "Buchungen der ausgewählten Person öffnen",
+    "bookingFor.dialogAria": "Buchungen für eine andere Person",
+    "bookingFor.heading": "Sie buchen für {name}",
+    "bookingFor.exit": "{name} verlassen und zur eigenen Ansicht zurückkehren",
+    "bookingFor.loading": "Buchungen werden geladen…",
+    "bookingFor.updated": "Buchungen aktualisiert",
+    "bookingFor.present": "Anwesend",
+    "bookingFor.absent": "Abwesend",
+    "bookingFor.notSaved": "Buchung nicht gespeichert",
+    "week.operations.referenceDay": "Bezugsdatum",
+    "week.operations.chooseDate": "Anderes Datum wählen",
+    "week.operations.datePair": "{first} und {second}",
+    "week.operations.note.forTomorrow": "Für morgen",
+    "week.operations.note.forDate": "Für {date}",
     'app.title.compact': 'Buchen',
     'app.header.controlPanel': 'Systemsteuerung',
     'app.header.verifyingAuth': 'Bedienfeld wird geöffnet…',
@@ -542,12 +674,12 @@ async function loadCatalogUncached(locale) {
       ? new URL(`/i18n/${locale}.json`, window.location.href)
       : new URL(`./${locale}.json`, import.meta.url);
     const catalogFetchUrl = new URL(catalogUrl.href);
-    catalogFetchUrl.searchParams.set('v', CATALOG_RELEASE);
+    catalogFetchUrl.searchParams.set('v', CATALOG_CACHE_KEY);
     let catalog = null;
 
     if (typeof fetch === 'function') {
       try {
-        const response = await fetch(catalogFetchUrl.href);
+        const response = await fetch(catalogFetchUrl.href, { cache: 'no-cache' });
         if (response && response.ok) {
           catalog = await response.json();
         }

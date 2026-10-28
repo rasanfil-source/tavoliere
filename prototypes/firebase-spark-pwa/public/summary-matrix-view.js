@@ -1,5 +1,6 @@
 import { t, getLocale } from "./i18n/i18n.mjs?v=20261014b";
 import { escapeHtml } from "./html-utils.js?v=20261014b";
+import { renderBlessing } from "./blessing-view.mjs?v=20261014b";
 import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20261014b";
 import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20261014b";
 import {
@@ -78,6 +79,7 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
           <div class="summary-future-meals">
             ${screen.columns.map((column) => renderFutureMeal(column, residentLabel, showContactHint)).join("")}
           </div>
+          ${renderNotes(screen)}
         </article>
       `).join("")}
     </div>
@@ -159,14 +161,15 @@ function renderFuturePerson(person, residentLabel) {
 }
 
 function renderFutureMass(screen) {
-  const status = screen.columns.find((column) => column.dayIndex === screen.index)?.dayMassStatus;
+  const column = screen.columns.find((column) => column.dayIndex === screen.index);
+  const status = column?.dayMassStatus;
   if (!status || status === "UNKNOWN") return "";
-  return renderMassMetadata(status);
+  return renderMassMetadata(status, column.blessingTime);
 }
 
-function renderMassMetadata(status) {
+function renderMassMetadata(status, blessingTime = '') {
   const yes = status === "YES";
-  return `<span class="summary-mass-metadata summary-mass-metadata-${yes ? "yes" : "no"}"><span>${escapeHtml(t("summary.mass"))}:</span><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong></span>`;
+  return `<span class="summary-mass-metadata summary-mass-metadata-${yes ? "yes" : "no"}"><span>${escapeHtml(t("summary.mass"))}:</span><span class="mass-status-stack"><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong>${renderBlessing(blessingTime)}</span></span>`;
 }
 
 export function scrollSummaryMatrix(
@@ -261,7 +264,7 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", sh
         </tbody>
       </table>
       ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
-      ${kitchen ? renderNotes(screen) : ""}
+      ${renderNotes(screen)}
     </section>
   `;
 }
@@ -521,7 +524,7 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
         })).join("")}
       </div>
       ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
-      ${kitchen ? renderNotes(screen) : ""}
+      ${renderNotes(screen)}
     </section>
   `;
 }
@@ -538,7 +541,7 @@ function hasSpecialOperationalContent(screen) {
 function renderInternationalCard(column, { kitchen, residentLabel = "name", showContactHint = true, showMassMetadata = false }) {
   const diets = kitchen ? renderKitchenDietCell(column) : renderDietCell(column);
   const massMetadata = showMassMetadata && column.dayMassStatus !== "UNKNOWN"
-    ? renderMassMetadata(column.dayMassStatus)
+    ? renderMassMetadata(column.dayMassStatus, column.blessingTime)
     : "";
   const mobileGuests = column.guestCount > 0
     ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>`
@@ -573,6 +576,7 @@ function getMassDateGroups(screen) {
     return {
       ...dateGroup,
       massStatus: column?.dayMassStatus || "UNKNOWN",
+      blessingTime: column?.blessingTime || '',
     };
   });
 }
@@ -624,10 +628,21 @@ function nextDateClass(column, screen) {
 }
 
 function renderMassControl(group) {
+  const hasBlessing = /^([01]\d|2[0-3]):[0-5]\d$/.test(group.blessingTime || "");
+  const narrowBlessing = hasBlessing && Number(group.span) < 2;
+  const blessingClass = hasBlessing
+    ? narrowBlessing ? " summary-mass-control-blessing-narrow" : " summary-mass-control-blessing-wide"
+    : "";
+  const statusClass = hasBlessing
+    ? ` mass-status-with-blessing${narrowBlessing ? " mass-status-narrow" : " mass-status-wide-blessing"}`
+    : "";
+  const blessingMarkup = hasBlessing
+    ? renderBlessing(group.blessingTime, narrowBlessing ? { narrow: true } : { compact: true })
+    : "";
   return `
-    <span class="summary-mass-control">
+    <span class="summary-mass-control${blessingClass}">
       <span class="summary-mass-control-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
-      <span class="summary-mass-control-state">${renderMassCell(group)}</span>
+      <span class="summary-mass-control-state mass-status-stack${statusClass}">${renderMassCell(group)}${blessingMarkup}</span>
     </span>`;
 }
 

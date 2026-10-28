@@ -22,5 +22,7 @@ yarn-error.log*
 
 *.log
 dev-server.*.log
+/artifacts/
+/.agenda-layout-*.png
 .DS_Store
 Thumbs.db

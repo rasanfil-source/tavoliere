@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildSummaryMatrixScreens, buildKitchenMatrixScreens } from '../../prototypes/firebase-spark-pwa/public/summary-matrix-model.js';
 
 import {
   ABSENT,
@@ -26,6 +27,27 @@ const guestRule = {
   endsOn: null,
   status: 'ACTIVE'
 };
+
+test('selezioni personali e per altri producono identici riepilogo e cucina', () => {
+  for (const rule of [residentRule, guestRule]) {
+    for (const effect of [PRESENT, ABSENT]) {
+      const render = source => {
+        const override = { effect, source, actorUid: source === 'DELEGATED' ? 'operator' : rule.participantId, dietTags: ['3'] };
+        const person = { participantId: rule.participantId, displayName: 'Persona', groupId: rule.groupId,
+          dietTags: resolveEffectiveDietTags(rule, override) };
+        const selected = resolveEffectiveEffect({ participantId: rule.participantId, mealTypeId, mealDate, rules: [rule], override });
+        const days = [{ dateId: mealDate, meals: [{ mealTypeId, label: 'Pranzo', present: selected === PRESENT ? [person] : [] }] }];
+        return { summary: buildSummaryMatrixScreens(days, [person], []), kitchen: buildKitchenMatrixScreens(days, []) };
+      };
+      const personal = render('PERSONAL');
+      const delegated = render('DELEGATED');
+      assert.deepEqual(delegated, personal);
+      assert.equal(delegated.summary[0].columns[0].total, effect === PRESENT ? 1 : 0);
+      assert.equal(delegated.kitchen[0].columns[0].total, effect === PRESENT ? 1 : 0);
+      assert.equal(delegated.summary[0].columns[0].guestCount, 0, 'non aggiunge invitati occasionali');
+    }
+  }
+});
 
 test('residenti e ospiti sono assenti senza una prenotazione esplicita', () => {
   assert.equal(resolveEffectiveEffect({

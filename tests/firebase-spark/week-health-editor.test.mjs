@@ -39,7 +39,7 @@ async function harness(initialIds = []) {
   };
   const app = functions(['captureWeekOperationContext', 'getWeekSickDraft', 'handleWeekHealthListClick',
     'handleWeekHealthSave'], {
-    state, elements, getActiveCenterId: () => 'test', renderWeekOperations: () => {},
+    state, elements, getActiveCenterId: () => 'test', renderWeekOperations: () => {}, canManageDailyOperations: () => true,
     t: key => key, parseDateId: id => new Date(id + 'T12:00:00'),
     friendlyErrorMessage: error => error.message, saveSickPeople: daily.saveSickPeople
   });

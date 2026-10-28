@@ -9,6 +9,7 @@ import { db } from './firebase-client.js?v=20261014b';
 import { getActiveCenterId } from './center-context.js?v=20261014b';
 import { formatDateId } from './date-utils.mjs?v=20261014b';
 import { normalizeDietCode } from './diet-utils.mjs?v=20261014b';
+import { zonedLocalDateTimeToDate } from './schedule-utils.mjs?v=20261014b';
 
 const DAILY_OPERATION_CACHE_MS = 60 * 1000;
 const DAILY_CACHE_MAX_ENTRIES = 30;
@@ -46,6 +47,7 @@ export async function loadDailyOperation(date = new Date(), options = {}) {
   const value = {
     dateId,
     massScheduled: data.massScheduled === true,
+    blessingTime: data.blessingTime || '',
     updatedAt: data.updatedAt || null
   };
   writeCenterCache(dailyOperationCache, dateId, centerId, value);
@@ -83,13 +85,66 @@ export async function saveMassStatuses(dates, massScheduled) {
 
   return dateIds.map((dateId) => {
     const value = {
+      ...readCenterCache(dailyOperationCache, dateId, centerId)?.value,
       dateId,
       massScheduled: massScheduled === true,
       updatedAt: new Date()
     };
-    writeCenterCache(dailyOperationCache, dateId, centerId, value);
+    // La scrittura parziale conserva la benedizione sul server; rileggere al prossimo accesso.
+    dailyOperationCache.delete(dateId);
     return value;
   });
+}
+
+export function validateBlessingTime(dateId, time, timezone = 'Europe/Rome', now = new Date()) {
+  if (time && zonedLocalDateTimeToDate(dateId, time, timezone).getTime() <= now.getTime()) {
+    throw Object.assign(new Error('La data o l’ora della benedizione è già trascorsa.'), { code: 'blessing/past-time' });
+  }
+}
+
+function validateBlessingWindow(snapshot) {
+  if (!snapshot.exists()) {
+    throw Object.assign(new Error('Calendario non disponibile per il giorno scelto.'), { code: 'blessing/calendar-unavailable' });
+  }
+  const window = snapshot.data();
+  const closesAt = window.closesAt?.toDate ? window.closesAt.toDate() : new Date(window.closesAt);
+  if (window.status !== 'OPEN' || !Number.isFinite(closesAt.getTime()) || closesAt.getTime() <= Date.now()) {
+    throw Object.assign(new Error('Il termine per le modifiche di questa giornata è scaduto.'), { code: 'blessing/cutoff' });
+  }
+}
+
+export async function saveBlessing(date, time, { timezone = 'Europe/Rome' } = {}) {
+  if (!db) throw new Error('Firebase non configurato');
+  if (typeof time !== 'string' || (time !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) {
+    throw new Error('Orario non valido');
+  }
+  const centerId = getActiveCenterId();
+  const dateId = formatDateId(date);
+  validateBlessingTime(dateId, time, timezone);
+  const reference = doc(db, 'centers', centerId, 'dailyOperations', dateId);
+  const windowReference = doc(db, 'centers', centerId, 'mealWindows', `${dateId}_dinner`);
+  const value = await runTransaction(db, async (transaction) => {
+    // Lettura solo al salvataggio: usa la stessa scadenza verificata dalle regole.
+    validateBlessingWindow(await transaction.get(windowReference));
+    validateBlessingTime(dateId, time, timezone);
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    transaction.set(reference, {
+      centerId, dateId, blessingTime: time, updatedAt: serverTimestamp(),
+      ...(!snapshot.exists() ? { massScheduled: false } : {})
+    }, { merge: true });
+    return { dateId, massScheduled: current.massScheduled === true, blessingTime: time, updatedAt: new Date() };
+  }).catch(async error => {
+    if (['permission-denied', 'firestore/permission-denied'].includes(error.code)) {
+      // La scadenza può essere superata fra lettura e commit. Un errore di rete
+      // durante questa verifica non deve nascondere il rifiuto originale.
+      const snapshot = await getDoc(windowReference).catch(() => null);
+      if (snapshot) validateBlessingWindow(snapshot);
+    }
+    throw error;
+  });
+  writeCenterCache(dailyOperationCache, dateId, centerId, value);
+  return value;
 }
 
 export async function loadDailyHealth(date = new Date(), options = {}) {
@@ -196,7 +251,7 @@ export async function saveDietAssignments(date, participantId, dietTag) {
   return cloneDailyHealth(value);
 }
 
-export async function saveInvitedMeals(date, invitedMeals) {
+export async function saveInvitedMeals(date, invitedMeals, options = {}) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
@@ -204,17 +259,39 @@ export async function saveInvitedMeals(date, invitedMeals) {
   const centerId = getActiveCenterId();
   const normalizedInvitedMeals = normalizeInvitedMeals(invitedMeals);
   const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
+  // L’Agenda raggruppa pranzo e cena con la colazione della mattina successiva.
+  const breakfastDate = new Date(date);
+  breakfastDate.setDate(breakfastDate.getDate() + 1);
+  const breakfastDateId = formatDateId(breakfastDate);
+  const breakfastRef = options.nextDayBreakfast && (!options.through || breakfastDateId <= options.through)
+    ? doc(db, 'centers', centerId, 'dailyHealth', breakfastDateId) : null;
+  let breakfastValue;
   const value = await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(reference);
     const current = snapshot.exists() ? snapshot.data() : {};
+    const breakfastSnapshot = breakfastRef ? await transaction.get(breakfastRef) : null;
+    const savedMeals = { ...normalizedInvitedMeals };
+    if (options.nextDayBreakfast) {
+      savedMeals.breakfast = normalizeInvitedMeals(current.invitedMeals).breakfast;
+    }
+    if (breakfastRef) {
+      const next = breakfastSnapshot.exists() ? breakfastSnapshot.data() : {};
+      const nextMeals = { ...normalizeInvitedMeals(next.invitedMeals), breakfast: normalizedInvitedMeals.breakfast };
+      transaction.set(breakfastRef, {
+        centerId, dateId: breakfastDateId, invitedMeals: nextMeals, updatedAt: serverTimestamp()
+      }, { merge: true });
+      breakfastValue = { dateId: breakfastDateId, sickPeople: normalizeSickPeople(next.sickPeople),
+        dietAssignments: normalizeDietAssignments(next.dietAssignments), invitedMeals: nextMeals, updatedAt: new Date() };
+    }
     transaction.set(reference, {
-      centerId, dateId, invitedMeals: normalizedInvitedMeals, updatedAt: serverTimestamp()
+      centerId, dateId, invitedMeals: savedMeals, updatedAt: serverTimestamp()
     }, { merge: true });
     return { dateId, sickPeople: normalizeSickPeople(current.sickPeople),
       dietAssignments: normalizeDietAssignments(current.dietAssignments),
-      invitedMeals: normalizedInvitedMeals, updatedAt: new Date() };
+      invitedMeals: savedMeals, updatedAt: new Date() };
   });
   writeCenterCache(dailyHealthCache, dateId, centerId, value);
+  if (breakfastValue) writeCenterCache(dailyHealthCache, breakfastDateId, centerId, breakfastValue);
   return cloneDailyHealth(value);
 }
 

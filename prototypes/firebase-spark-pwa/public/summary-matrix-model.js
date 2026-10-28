@@ -173,6 +173,7 @@ function buildColumn(
     sickDiets: sickMeal.diets,
     massStatus: getMassStatus(operationDay.dailyOperation, meal.mealTypeId),
     dayMassStatus: getDayMassStatus(operationDay.dailyOperation),
+    blessingTime: (operationDay.dailyOperation?.dailyOperation || operationDay.dailyOperation)?.blessingTime || '',
     breakfastPlanned:
       meal.mealTypeId === BREAKFAST_MEAL_TYPE_ID &&
       diningTotal + invitedCount + sickMeal.count > 0,

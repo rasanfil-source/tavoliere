@@ -45,6 +45,14 @@ test('legacy shared preferences and center appearance cannot leak into a new use
   assert.equal(run(`applyResidentPreferences({name:'Center'}).name`), 'Center');
 });
 
+test('kitchen layout follows the center even with stale local overrides and another account', () => {
+  const { run } = harness();
+  run(`user = { uid: 'owner' }; storeResidentPreferences({ kitchenLayout: 'classic' });`);
+  assert.equal(run(`applyResidentPreferences({kitchenLayout:'international'}).kitchenLayout`), 'international');
+  run(`user = { uid: 'anonymous', isAnonymous: true };`);
+  assert.equal(run(`applyResidentPreferences({kitchenLayout:'international'}).kitchenLayout`), 'international');
+});
+
 test('saving appearance never writes center settings and storage failures are reported', () => {
   const handler = source.slice(source.indexOf('async function handleAdminAdaptationsSave()'), source.indexOf('function handleAdminAdaptationsCancel()'));
   assert.doesNotMatch(handler, /updateCenterSettings|state\.residentSettingsMode/);

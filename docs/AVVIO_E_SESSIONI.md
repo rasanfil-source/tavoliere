@@ -4,6 +4,8 @@ L'apertura della PWA ricostruisce identità e calendario attraverso fasi indipen
 
 ## Identificazione e persistenza
 
+L'accesso conserva le sessioni sul dispositivo e usa il collegamento del centro, la sigla e la password prevista per il residente o per il vice. La Cucina apre il riepilogo direttamente dal proprio link. Questi percorsi non richiedono passaggi aggiuntivi.
+
 Firebase Auth usa `initializeAuth` con `browserLocalPersistence`. Il supporto alla finestra Google viene fornito soltanto quando richiesto. La seconda istanza Auth, dedicata alle password condivise, usa la memoria e non sostituisce l'identità principale.
 
 La password comune viene verificata per prima; soltanto un rifiuto delle credenziali avvia il percorso della password amministratori. Un errore di rete non provoca altri tentativi di password. Il token personale del dispositivo ha durata massima configurata di 9000 giorni; la sessione Firestore dura 30 giorni ed è ricostruibile da un token valido. In memoria una sessione confermata può essere riutilizzata entro cinque minuti.

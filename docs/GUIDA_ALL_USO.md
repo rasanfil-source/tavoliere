@@ -98,13 +98,18 @@ La posizione destra o sinistra scelta in **Aspetto** viene applicata in modo coe
 
 ## Agenda del centro
 
-Compare sotto la settimana per amministratore e vice; la sola Messa è disponibile a chi possiede il ruolo liturgico.
+Compare sotto la settimana per amministratore e vice. Chi possiede soltanto il ruolo liturgico vede nell’Agenda la sola sezione **Benedizione eucaristica**; la Messa resta gestibile nella colonna della settimana. Aprire l’Agenda mostra calendario e intestazioni senza caricare i dati delle sezioni: ogni sezione legge soltanto i dati necessari quando viene aperta. Il messaggio Pronto conferma il caricamento e scompare dopo tre secondi; eventuali errori rimangono visibili.
 
-- **Invitati:** coperti senza nome, distinti per pasto e sommati ai totali.
+**Prenoto per altri**, distinta da un bordo sottile, apre il calendario indipendente di un residente o ospite censito. Le prenotazioni sono attribuite alla persona selezionata e confluiscono normalmente nei riepiloghi. Il pulsante di ritorno chiude questo calendario conservando i salvataggi e l’identità dell’operatore.
+
+Il menu **Giorno per le sezioni seguenti** governa Invitati, Ammalati, Note e Dieta occasionale. Propone oggi e fino a sei giorni successivi già disponibili. Il tocco dell’icona del calendario accanto alla casella apre direttamente il selettore di data, senza una casella aggiuntiva. Sono selezionabili le date da oggi fino all’ultimo giorno generato per il centro; l’estensione del calendario amplia anche questo intervallo. La settimana consultata nel calendario personale e il calendario di Prenoto per altri non modificano questa data.
+
+- **Invitati:** coperti senza nome, distinti per pasto e sommati ai totali. Il menu mostra Oggi e Domani quando la data di riferimento è oggi; per una data futura mostra la data selezionata e quella successiva. Pranzo e cena appartengono al giorno scelto nel menu Invitati, la colazione alla mattina seguente.
 - **Ammalati:** persone spostate dal conteggio in sala al conteggio separato, con le relative diete.
-- **Note cucina:** messaggi fino a 1000 caratteri, aggiungibili ed eliminabili singolarmente. Sono mostrati soltanto nella data a cui appartengono.
-- **Dieta occasionale:** sostituisce la dieta abituale per uno o due giorni senza modificare la scheda della persona.
+- **Note cucina:** messaggi fino a 1000 caratteri, aggiungibili ed eliminabili singolarmente. Se il giorno scelto è domani, la sezione indica Per domani; per altre date future indica Per seguito da giorno e data. Una nota scritta in anticipo rimane associata alla data scelta e compare nei riepiloghi residenti e cucina, inclusa la vista Domani del giorno precedente: una nota del 12 febbraio appare quindi già l’11 febbraio nella vista Domani, anche se inserita a ottobre.
+- **Dieta occasionale:** sostituisce la dieta abituale per uno o due giorni senza modificare la scheda della persona. Se il riferimento è futuro, le durate riportano la data accanto a Solo questo giorno e l’intervallo accanto a Questo giorno e il successivo, anche a cavallo di mese o anno.
 - **Messa:** indicazione unica per la giornata, gestita soltanto da chi ha il ruolo liturgico.
+- **Benedizione eucaristica:** amministratori, vice autorizzati e liturgista possono indicarla per il giorno scelto nel calendario dell’Agenda. Attivare “Benedizione prevista”, inserire l’ora e salvare; togliere la spunta e salvare per annullarla. L’orario è obbligatorio e la benedizione è indipendente dalla Messa. Riepilogo e Cucina mostrano nella casella Messa il segno **+** accanto al simbolo e sotto l’ora fra parentesi, centrati. Non si possono inserire date o orari già trascorsi nel fuso del centro. La modifica segue la finestra giornaliera della Messa, fino al limite delle prenotazioni della cena. Se il termine è scaduto, il messaggio indica il limite orario, senza attribuire il rifiuto al ruolo.
 
 Ogni sezione viene salvata separatamente.
 
@@ -112,7 +117,7 @@ Ogni sezione viene salvata separatamente.
 
 ### Riepilogo
 
-Mostra **Oggi** e **Domani**, anche tramite scorrimento orizzontale. **Originale** usa una tabella compatta, **Internazionale** una scheda per pasto e **Futura** schede scorrevoli alternative. Comprende coperti, invitati, diete, ammalati, Messa e nominativi.
+Mostra **Oggi** e **Domani**, anche tramite scorrimento orizzontale. **Originale** usa una tabella compatta, **Internazionale** una scheda per pasto e **Futura** schede scorrevoli alternative. Comprende coperti, invitati, diete, ammalati, Messa, nominativi e note, raggruppate per data.
 
 I nomi possono essere visualizzati come nome, sigla o iniziali. Quando la condivisione dei contatti è attiva e la persona ha dato il consenso, toccandone il nome si può telefonare o aprire WhatsApp. Il suggerimento di contatto scompare dopo trenta aperture sul dispositivo.
 

@@ -99,7 +99,7 @@ test('la spunta Attiva usa una transazione dedicata e revoca le sessioni senza b
   assert.match(participantData, /runTransaction\(db/);
   assert.match(participantData, /transaction\.update\(participantRef, \{ status, revision/);
   assert.match(participantData, /void deleteParticipantAccessCredentials\(centerId, normalizedId\)\.catch/);
-  assert.doesNotMatch(participantData, /await deleteParticipantAccessCredentials\(centerId, normalizedId\)/);
+  assert.match(participantData, /if \(previous\.data\(\)\?\.status === 'DISABLED'\) await deleteParticipantAccessCredentials\(centerId, normalizedId, normalizeRevision\(expectedRevision\)\)/);
   assert.match(app, /const nextActive = toggle\.checked/);
   assert.match(app, /setAdminParticipantActiveStatus\([\s\S]*participant\.revision/);
 });

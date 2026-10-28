@@ -81,7 +81,7 @@ test('diete e invitati aggiornano soltanto il proprio campo Firestore', () => {
   const invitedWrite = invited.match(/transaction.set[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
   assert.match(dietsWrite, /dietAssignments: assignments/);
   assert.doesNotMatch(dietsWrite, /\n\s*sickPeople,/);
-  assert.match(invitedWrite, /invitedMeals: normalizedInvitedMeals/);
+  assert.match(invitedWrite, /invitedMeals: nextMeals/);
   assert.doesNotMatch(invitedWrite, /dietAssignments/);
 });
 

@@ -4,6 +4,8 @@
 
 ## Requisiti
 
+Le verifiche di ogni modifica comprendono i [percorsi di accesso](SCELTE_ACCESSO_E_SEMPLICITA.md): link Cucina diretto anche su nuovo dispositivo, accesso ordinario, persistenza delle sessioni e tempi di apertura. Queste verifiche si applicano a password, regole Firestore e sessioni.
+
 - Node.js `24.12.0` come indicato in `.nvmrc`;
 - npm;
 - PowerShell 7 su Windows;
