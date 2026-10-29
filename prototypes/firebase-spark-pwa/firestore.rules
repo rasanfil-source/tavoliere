@@ -683,6 +683,25 @@ service cloud.firestore {
       return mealWindowIsOpen(centerId, dateId + '_dinner');
     }
 
+    function blessingChangeIsAllowed(centerId, dateId, previousTime, nextTime) {
+      return previousTime == nextTime
+        || blessingChangeWindowIsOpen(centerId, dateId, previousTime, nextTime);
+    }
+
+    function blessingChangeWindowIsOpen(centerId, dateId, previousTime, nextTime) {
+      let lunch = get(/databases/$(database)/documents/centers/$(centerId)/mealWindows/$(dateId + '_lunch')).data;
+      return lunch.closesAt is timestamp
+        && ((lunch.status == 'OPEN' && request.time < lunch.closesAt)
+          || blessingChangeIsAfterDinner(centerId, previousTime, nextTime));
+    }
+
+    function blessingChangeIsAfterDinner(centerId, previousTime, nextTime) {
+      let dinnerTime = get(/databases/$(database)/documents/centers/$(centerId)).data
+        .get('reservationCutoffs', {}).get('dinner', '15:00');
+      return (previousTime == '' || previousTime > dinnerTime)
+        && (nextTime == '' || nextTime > dinnerTime);
+    }
+
     function reservationRuleAllowsOverride(centerId, ruleId, mealTypeId, mealDate) {
       return exists(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId))
         && get(/databases/$(database)/documents/centers/$(centerId)/reservationRules/$(ruleId)).data.status == 'ACTIVE'
@@ -1613,11 +1632,14 @@ service cloud.firestore {
         }
         allow create: if massWindowIsOpen(centerId, dateId)
           && validOperation()
+          && blessingChangeIsAllowed(centerId, dateId, '', request.resource.data.get('blessingTime', ''))
           && canWriteDailyOperation(centerId, request.resource.data.massScheduled);
         allow update: if massWindowIsOpen(centerId, dateId)
           && validOperation()
+          && blessingChangeIsAllowed(centerId, dateId, resource.data.get('blessingTime', ''), request.resource.data.get('blessingTime', ''))
           && canWriteDailyOperation(centerId, request.resource.data.diff(resource.data).affectedKeys().hasAny(['massScheduled']));
-        allow delete: if canManageMass(centerId) && massWindowIsOpen(centerId, dateId);
+        allow delete: if canManageMass(centerId) && massWindowIsOpen(centerId, dateId)
+          && blessingChangeIsAllowed(centerId, dateId, resource.data.get('blessingTime', ''), '');
       }
 
       match /dailyHealth/{dateId} {

@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "The lunch booking cutoff has passed. You can only add, change or cancel benedictions scheduled after the dinner booking cutoff. The benediction was not changed.",
   "blessing.pastTime": "A benediction cannot be saved with a date or time in the past. Choose a future time.",
   "blessing.cutoff": "The deadline for changes to this day has passed (the dinner booking cutoff). The benediction was not saved.",
   "blessing.calendarUnavailable": "The calendar is unavailable for the selected day. Refresh the Agenda and try again.",

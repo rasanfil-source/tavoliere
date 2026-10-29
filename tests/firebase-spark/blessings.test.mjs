@@ -11,11 +11,17 @@ import { buildKitchenMatrixScreens, buildSummaryMatrixScreens } from '../../prot
 const catalog = JSON.parse(await readFile(new URL('../../prototypes/firebase-spark-pwa/public/i18n/it.json', import.meta.url)));
 const t = key => catalog[key] || key;
 
-async function dataHarness({ failCommit = null } = {}) {
+async function dataHarness({ failCommit = null, clock = null } = {}) {
   const documents = new Map();
+  documents.set('centers/test', { timezone: 'Europe/Rome', reservationCutoffs: { dinner: '17:00' } });
+  class ClockDate extends Date {
+    constructor(...args) { super(...(args.length ? args : [clock?.now ?? Date.now()])); }
+    static now() { return clock?.now ?? Date.now(); }
+  }
   const snapshot = ref => ({ exists: () => documents.has(ref), data: () => documents.get(ref) });
   const merge = (ref, value) => documents.set(ref, { ...documents.get(ref), ...value });
   const module = await loadBrowserModule('daily-operations.js', {
+    Date: ClockDate,
     db: {}, getActiveCenterId: () => 'test', doc: (_, ...parts) => parts.join('/'),
     formatDateId, zonedLocalDateTimeToDate, serverTimestamp: () => 'timestamp', getDoc: async ref => snapshot(ref),
     runTransaction: async (_, callback) => {
@@ -31,10 +37,15 @@ async function dataHarness({ failCommit = null } = {}) {
   return { module, documents };
 }
 
+function openLunch(documents, dateId) {
+  documents.set(`centers/test/mealWindows/${dateId}_lunch`, { status: 'OPEN', closesAt: new Date(Date.now() + 86400000) });
+}
+
 test('benedizione e Messa si salvano indipendentemente, anche con cache precedente', async () => {
   const { module, documents } = await dataHarness();
   const date = new Date(Date.now() + 86400000 * 2), key = `centers/test/dailyOperations/${formatDateId(date)}`;
   documents.set(`centers/test/mealWindows/${formatDateId(date)}_dinner`, { status: 'OPEN', closesAt: new Date(Date.now() + 86400000) });
+  openLunch(documents, formatDateId(date));
   assert.equal((await module.loadDailyOperation(date)).blessingTime, '');
   await module.saveBlessing(date, '18:30');
   assert.equal(documents.get(key).massScheduled, false);
@@ -77,6 +88,7 @@ test('scadenza, calendario assente e autentico rifiuto di accesso restano distin
   h.documents.set(key, { status: 'CLOSED', closesAt: new Date(Date.now() + 86400000) });
   await assert.rejects(h.module.saveBlessing(date, '18:30'), { code: 'blessing/cutoff' });
   const denied = await dataHarness({ failCommit: () => Object.assign(new Error('denied'), { code: 'permission-denied' }) });
+  openLunch(denied.documents, id);
   denied.documents.set(key, { status: 'OPEN', closesAt: new Date(Date.now() + 86400000) });
   await assert.rejects(denied.module.saveBlessing(date, '18:30'), { code: 'permission-denied' });
   const race = await dataHarness({ failCommit: documents => {
@@ -84,6 +96,7 @@ test('scadenza, calendario assente e autentico rifiuto di accesso restano distin
     return Object.assign(new Error('denied'), { code: 'permission-denied' });
   } });
   race.documents.set(key, { status: 'OPEN', closesAt: new Date(Date.now() + 86400000) });
+  openLunch(race.documents, id);
   await assert.rejects(race.module.saveBlessing(date, '18:30'), { code: 'blessing/cutoff' });
 });
 
@@ -116,6 +129,103 @@ test('tutti i riepiloghi mostrano + e ora nel giorno giusto anche senza Messa', 
       assert.match(container.innerHTML, /Benedizione eucaristica \(18:30\)/);
     }
   }
+});
+
+async function cutoffHarness(now = '2030-06-02T10:00:00Z', options = {}) {
+  const clock = { now: Date.parse(now) };
+  const h = await dataHarness({ ...options, clock });
+  const date = new Date(2030, 5, 2, 12), id = '2030-06-02';
+  h.documents.set(`centers/test/mealWindows/${id}_lunch`, { status: 'OPEN', closesAt: new Date('2030-06-02T08:00:00Z') });
+  h.documents.set(`centers/test/mealWindows/${id}_dinner`, { status: 'OPEN', closesAt: new Date('2030-06-02T15:00:00Z') });
+  const key = `centers/test/dailyOperations/${id}`;
+  return { ...h, date, id, key, clock,
+    seed: time => h.documents.set(key, { dateId: id, massScheduled: true, blessingTime: time }) };
+}
+
+test('prima del limite pranzo si può inserire, modificare e cancellare; al limite esatto la fascia si blocca', async () => {
+  const h = await cutoffHarness('2030-06-02T07:59:59.999Z');
+  h.seed('');
+  await h.module.saveBlessing(h.date, '15:00');
+  await h.module.saveBlessing(h.date, '16:00');
+  await h.module.saveBlessing(h.date, '');
+  assert.equal(h.documents.get(h.key).massScheduled, true);
+  h.clock.now = Date.parse('2030-06-02T08:00:00Z');
+  for (const time of ['15:00', '17:00']) {
+    await assert.rejects(h.module.saveBlessing(h.date, time), { code: 'blessing/lunch-cutoff' });
+  }
+  await h.module.saveBlessing(h.date, '17:01');
+});
+
+test('alle 12 rifiuta le 15; dopo il pranzo modifica e cancella soltanto benedizioni oltre il limite cena', async () => {
+  const h = await cutoffHarness();
+  await assert.rejects(h.module.saveBlessing(h.date, '15:00'), { code: 'blessing/lunch-cutoff' });
+  assert.equal(h.documents.has(h.key), false);
+  await h.module.saveBlessing(h.date, '18:00');
+  await h.module.saveBlessing(h.date, '19:00');
+  await assert.rejects(h.module.saveBlessing(h.date, '16:00'), { code: 'blessing/lunch-cutoff' });
+  assert.equal(h.documents.get(h.key).blessingTime, '19:00');
+  await h.module.saveBlessing(h.date, '');
+  assert.equal(h.documents.get(h.key).blessingTime, '');
+});
+
+test('una benedizione già bloccata non si può cancellare né spostare oltre cena; la Messa resta indipendente', async () => {
+  const h = await cutoffHarness();
+  h.seed('15:00');
+  for (const time of ['', '16:00', '18:00']) {
+    await assert.rejects(h.module.saveBlessing(h.date, time), { code: 'blessing/lunch-cutoff' });
+    assert.equal(h.documents.get(h.key).blessingTime, '15:00');
+  }
+  await h.module.saveMassStatus(h.date, false);
+  assert.equal(h.documents.get(h.key).blessingTime, '15:00');
+  await h.module.saveBlessing(h.date, '15:00'); // Nessuna modifica all'orario.
+  assert.equal(h.documents.get(h.key).massScheduled, false);
+});
+
+test('limite cena: modifica e cancellazione consentite prima, rifiutate al limite e dopo', async () => {
+  const h = await cutoffHarness('2030-06-02T14:59:59.999Z');
+  await h.module.saveBlessing(h.date, '18:00');
+  await h.module.saveBlessing(h.date, '19:00');
+  await h.module.saveBlessing(h.date, '');
+  await h.module.saveBlessing(h.date, '18:00');
+  for (const now of ['2030-06-02T15:00:00Z', '2030-06-02T15:00:00.001Z']) {
+    h.clock.now = Date.parse(now);
+    for (const time of ['19:00', '']) await assert.rejects(h.module.saveBlessing(h.date, time), { code: 'blessing/cutoff' });
+    assert.equal((await h.module.loadDailyOperation(h.date, { forceRefresh: true })).blessingTime, '18:00');
+  }
+});
+
+test('configurazione personalizzata, fuso del centro e cambio giorno conservano la benedizione', async () => {
+  const h = await cutoffHarness('2030-06-01T14:59:00Z'); // 23:59 Tokyo
+  h.documents.set('centers/test', { timezone: 'Asia/Tokyo', reservationCutoffs: { dinner: '18:45' } });
+  h.documents.set(`centers/test/mealWindows/${h.id}_lunch`, { status: 'OPEN', closesAt: new Date('2030-06-02T01:00Z') });
+  h.documents.set(`centers/test/mealWindows/${h.id}_dinner`, { status: 'OPEN', closesAt: new Date('2030-06-02T09:45Z') });
+  await h.module.saveBlessing(h.date, '15:00', { timezone: 'Asia/Tokyo' });
+  h.clock.now = Date.parse('2030-06-01T15:01:00Z');
+  assert.equal((await h.module.loadDailyOperation(h.date, { forceRefresh: true })).blessingTime, '15:00');
+  await h.module.saveBlessing(h.date, '');
+  h.clock.now = Date.parse('2030-06-02T03:00:00Z'); // 12:00 Tokyo
+  await assert.rejects(h.module.saveBlessing(h.date, '18:45', { timezone: 'Asia/Tokyo' }), { code: 'blessing/lunch-cutoff' });
+  await h.module.saveBlessing(h.date, '18:46', { timezone: 'Asia/Tokyo' });
+});
+
+test('calendario pranzo assente o invalido non consente nuove benedizioni', async () => {
+  const h = await cutoffHarness();
+  const key = `centers/test/mealWindows/${h.id}_lunch`;
+  h.documents.delete(key);
+  await assert.rejects(h.module.saveBlessing(h.date, '18:00'), { code: 'blessing/calendar-unavailable' });
+  h.documents.set(key, { status: 'OPEN', closesAt: 'invalid' });
+  await assert.rejects(h.module.saveBlessing(h.date, '18:00'), { code: 'blessing/calendar-unavailable' });
+  h.documents.set(key, { status: 'CLOSED', closesAt: new Date('2030-06-02T13:00Z') });
+  await assert.rejects(h.module.saveBlessing(h.date, '15:00'), { code: 'blessing/lunch-cutoff' });
+  await h.module.saveBlessing(h.date, '18:00');
+});
+
+test('scadenza pranzo fra lettura e commit restituisce il messaggio specifico', async () => {
+  const h = await cutoffHarness('2030-06-02T07:59:59Z', { failCommit: documents => {
+    documents.set('centers/test/mealWindows/2030-06-02_lunch', { status: 'CLOSED', closesAt: new Date('2030-06-02T08:00Z') });
+    return Object.assign(new Error('denied'), { code: 'permission-denied' });
+  } });
+  await assert.rejects(h.module.saveBlessing(h.date, '15:00'), { code: 'blessing/lunch-cutoff' });
 });
 
 function formHarness() {
@@ -163,7 +273,7 @@ test('una risposta tardiva non modifica il giorno selezionato successivamente', 
   assert.equal(h.elements.weekBlessingTime.value, '20:00');
 });
 
-for (const [code, key] of [['blessing/cutoff', 'blessing.cutoff'], ['blessing/past-time', 'blessing.pastTime']]) {
+for (const [code, key] of [['blessing/cutoff', 'blessing.cutoff'], ['blessing/past-time', 'blessing.pastTime'], ['blessing/lunch-cutoff', 'blessing.lunchCutoff']]) {
   test(`il form spiega ${code} e permette di correggere l’inserimento`, async () => {
     const h = formHarness();
     const pending = h.app.handleWeekBlessingSave();

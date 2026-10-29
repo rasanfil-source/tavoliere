@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "Ha pasado la hora límite de las reservas del almuerzo. Solo puedes añadir, modificar o cancelar bendiciones previstas después de la hora límite de las reservas de cena. La bendición no se ha modificado.",
   "blessing.pastTime": "No se puede guardar una bendición con fecha u hora pasada. Elige un momento futuro.",
   "blessing.cutoff": "Ha vencido el plazo para modificar este día (hora límite de las reservas de cena). La bendición no se ha guardado.",
   "blessing.calendarUnavailable": "El calendario no está disponible para el día seleccionado. Actualiza la Agenda e inténtalo de nuevo.",

@@ -8856,6 +8856,7 @@ async function handleWeekBlessingSave() {
 function blessingSaveErrorMessage(error) {
   const messageKey = {
     'blessing/past-time': 'blessing.pastTime',
+    'blessing/lunch-cutoff': 'blessing.lunchCutoff',
     'blessing/cutoff': 'blessing.cutoff',
     'blessing/calendar-unavailable': 'blessing.calendarUnavailable'
   }[error?.code];

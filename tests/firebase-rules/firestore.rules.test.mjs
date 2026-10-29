@@ -2279,6 +2279,9 @@ for (const [identity, uid, token] of [
       await ctx.firestore().doc(`${centerPath()}/mealWindows/${dateId}_dinner`).set({
         status: 'OPEN', closesAt: new Date(Date.now() - 60000)
       });
+      await ctx.firestore().doc(`${centerPath()}/mealWindows/${dateId}_lunch`).set({
+        status: 'OPEN', closesAt: new Date(Date.now() + 86400000)
+      });
     });
     const db = testEnv.authenticatedContext(uid, token()).firestore();
     const module = await loadBrowserModule('daily-operations.js', { ...firestore, db,
@@ -2302,6 +2305,104 @@ for (const [identity, uid, token] of [
     await assertFails(db.doc(dailyOperationPath(dateId)).delete());
   });
 }
+
+for (const [identity, uid, token] of [
+  ['amministratore', ADMIN_UID, adminToken],
+  ['liturgista residente', PERSONAL_UID, residentTechnicalToken],
+  ['liturgista anonimo', PERSONAL_UID, anonymousToken]
+]) {
+  test(`benedizione: blocco pranzo protegge inserimento, modifica e cancellazione per ${identity}`, async () => {
+    const date = new Date(Date.now() + 2 * 86400000);
+    const dateId = date.toISOString().slice(0, 10);
+    const lunchPath = mealWindowPath(`${dateId}_lunch`);
+    const dinnerPath = mealWindowPath(`${dateId}_dinner`);
+    await testEnv.withSecurityRulesDisabled(async ctx => {
+      const db = ctx.firestore();
+      await db.doc(centerPath()).update({ reservationCutoffs: { lunch: '10:00', dinner: '17:00', nextDayBreakfast: '17:00' } });
+      await db.doc(publicParticipantPath(MARIO_ID)).update({ liturgicalRole: true });
+      await db.doc(adminPath(ADMIN_UID)).update({ participantId: MARIO_ID });
+      for (const path of [lunchPath, dinnerPath]) await db.doc(path).set({ status: 'OPEN', closesAt: new Date(Date.now() + 86400000) });
+    });
+    const db = testEnv.authenticatedContext(uid, token()).firestore();
+    const ref = db.doc(dailyOperationPath(dateId));
+    const stamp = () => firebase.firestore.FieldValue.serverTimestamp();
+    const write = blessingTime => ref.set({ centerId: CENTER_ID, dateId, massScheduled: false, blessingTime, updatedAt: stamp() });
+    const change = blessingTime => ref.update({ blessingTime, updatedAt: stamp() });
+    const module = await loadBrowserModule('daily-operations.js', { ...firestore, db, zonedLocalDateTimeToDate,
+      getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
+
+    // Prima del pranzo: inserimento, modifica, cancellazione e rimozione documento.
+    await assertSucceeds(write('15:00'));
+    await assertSucceeds(change('16:00'));
+    await assertSucceeds(change(''));
+    await assertSucceeds(ref.delete());
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(lunchPath).update({ closesAt: new Date(Date.now() - 60000) }));
+    // Dopo pranzo: nessuna scorciatoia tramite SDK diretto, orario al confine incluso.
+    for (const time of ['15:00', '17:00']) {
+      await assertFails(write(time));
+      await assert.rejects(module.saveBlessing(date, time), { code: 'blessing/lunch-cutoff' });
+    }
+    await assertSucceeds(module.saveBlessing(date, '17:01'));
+    await assertSucceeds(module.saveBlessing(date, '18:00'));
+    await assertSucceeds(module.saveBlessing(date, ''));
+    await assertSucceeds(change('18:00'));
+    await assertFails(change('15:00'));
+    await assertSucceeds(change('19:00'));
+    await assertSucceeds(change(''));
+    await assertSucceeds(ref.delete());
+    // Un orario prenotato prima del limite rimane visibile e non si può spostare fuori fascia.
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(dailyOperationPath(dateId)).set({
+      centerId: CENTER_ID, dateId, massScheduled: false, blessingTime: '15:00', updatedAt: new Date()
+    }));
+    for (const time of ['', '16:00', '18:00']) {
+      await assertFails(change(time));
+      await assert.rejects(module.saveBlessing(date, time), { code: 'blessing/lunch-cutoff' });
+    }
+    await assertFails(ref.update({ blessingTime: firebase.firestore.FieldValue.delete(), updatedAt: stamp() }));
+    await assertFails(ref.delete());
+    await assertSucceeds(ref.update({ massScheduled: true, updatedAt: stamp() }));
+    assert.equal((await ref.get()).data().blessingTime, '15:00');
+    await assertSucceeds(change('15:00')); // Non modifica l'orario.
+    for (const viewer of [KITCHEN_UID, PUBLIC_UID]) {
+      const view = testEnv.authenticatedContext(viewer, anonymousToken()).firestore();
+      assert.equal((await assertSucceeds(view.doc(dailyOperationPath(dateId)).get())).data().blessingTime, '15:00');
+    }
+    // Dopo cena rimane la lettura, ma nessuna modifica o cancellazione.
+    await testEnv.withSecurityRulesDisabled(ctx => ctx.firestore().doc(dinnerPath).update({ closesAt: new Date(Date.now() - 60000) }));
+    await assertFails(change('19:00'));
+    await assertFails(change(''));
+    await assertFails(ref.delete());
+    assert.equal((await ref.get()).data().blessingTime, '15:00');
+  });
+}
+
+test('benedizione: ultima scrittura valida prevale e le modifiche concorrenti alla Messa restano indipendenti', async () => {
+  const date = new Date(Date.now() + 2 * 86400000), dateId = date.toISOString().slice(0, 10);
+  await testEnv.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await db.doc(publicParticipantPath(MARIO_ID)).update({ liturgicalRole: true });
+    await db.doc(adminPath(ADMIN_UID)).update({ participantId: MARIO_ID });
+    for (const meal of ['lunch', 'dinner']) await db.doc(mealWindowPath(`${dateId}_${meal}`)).set({
+      status: 'OPEN', closesAt: new Date(Date.now() + 86400000)
+    });
+  });
+  const dbA = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
+  const dbB = testEnv.authenticatedContext(PERSONAL_UID, residentTechnicalToken()).firestore();
+  const load = db => loadBrowserModule('daily-operations.js', { ...firestore, db, zonedLocalDateTimeToDate,
+    getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing', 'loadDailyOperation', 'saveMassStatus']);
+  const a = await load(dbA), b = await load(dbB);
+  await a.saveBlessing(date, '18:00');
+  await b.loadDailyOperation(date);
+  await Promise.all([a.saveBlessing(date, '18:30'), b.saveBlessing(date, '19:00')]);
+  assert.ok(['18:30', '19:00'].includes((await dbA.doc(dailyOperationPath(dateId)).get()).data().blessingTime));
+  await a.saveBlessing(date, '20:00');
+  await b.saveBlessing(date, '');
+  assert.equal((await dbA.doc(dailyOperationPath(dateId)).get()).data().blessingTime, '');
+  await Promise.all([a.saveBlessing(date, '18:30'), b.saveMassStatus(date, true)]);
+  const saved = (await dbA.doc(dailyOperationPath(dateId)).get()).data();
+  assert.equal(saved.blessingTime, '18:30');
+  assert.equal(saved.massScheduled, true);
+});
 
 test('la Messa non puo essere modificata dopo la scadenza della cena', async () => {
   const adminDb = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
@@ -2914,6 +3015,9 @@ async function seedBaseData() {
       closesAt: past
     });
     for (const dateId of ['2026-08-06', '2026-08-07', '2026-08-08', '2026-08-09', '2026-08-10', '2026-08-11', '2026-08-12']) {
+      await db.doc(mealWindowPath(`${dateId}_lunch`)).set({
+        centerId: CENTER_ID, mealDate: dateId, mealTypeId: 'lunch', status: 'OPEN', closesAt: future
+      });
       await db.doc(mealWindowPath(`${dateId}_dinner`)).set({
         centerId: CENTER_ID,
         mealDate: dateId,

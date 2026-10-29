@@ -113,6 +113,25 @@ function validateBlessingWindow(snapshot) {
   }
 }
 
+function validateBlessingChange(lunchSnapshot, centerSnapshot, previousTime, time) {
+  if (previousTime === time) return;
+  if (!lunchSnapshot.exists() || !centerSnapshot.exists()) {
+    throw Object.assign(new Error('Calendario non disponibile per il giorno scelto.'), { code: 'blessing/calendar-unavailable' });
+  }
+  const lunch = lunchSnapshot.data();
+  const closesAt = lunch.closesAt?.toDate ? lunch.closesAt.toDate() : new Date(lunch.closesAt);
+  if (!Number.isFinite(closesAt.getTime())) {
+    throw Object.assign(new Error('Calendario non disponibile per il giorno scelto.'), { code: 'blessing/calendar-unavailable' });
+  }
+  // HH:mm usa il fuso del centro, come gli orari configurati e le regole Firestore.
+  const dinnerTime = centerSnapshot.data().reservationCutoffs?.dinner || '15:00';
+  if ((lunch.status !== 'OPEN' || closesAt.getTime() <= Date.now())
+    && ((previousTime && previousTime <= dinnerTime) || (time && time <= dinnerTime))) {
+    throw Object.assign(new Error('Il limite del pranzo è scaduto: sono modificabili solo benedizioni successive al limite della cena.'),
+      { code: 'blessing/lunch-cutoff' });
+  }
+}
+
 export async function saveBlessing(date, time, { timezone = 'Europe/Rome' } = {}) {
   if (!db) throw new Error('Firebase non configurato');
   if (typeof time !== 'string' || (time !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) {
@@ -123,12 +142,18 @@ export async function saveBlessing(date, time, { timezone = 'Europe/Rome' } = {}
   validateBlessingTime(dateId, time, timezone);
   const reference = doc(db, 'centers', centerId, 'dailyOperations', dateId);
   const windowReference = doc(db, 'centers', centerId, 'mealWindows', `${dateId}_dinner`);
+  const lunchReference = doc(db, 'centers', centerId, 'mealWindows', `${dateId}_lunch`);
+  const centerReference = doc(db, 'centers', centerId);
   const value = await runTransaction(db, async (transaction) => {
     // Lettura solo al salvataggio: usa la stessa scadenza verificata dalle regole.
     validateBlessingWindow(await transaction.get(windowReference));
     validateBlessingTime(dateId, time, timezone);
     const snapshot = await transaction.get(reference);
     const current = snapshot.exists() ? snapshot.data() : {};
+    if ((current.blessingTime || '') !== time) {
+      validateBlessingChange(await transaction.get(lunchReference), await transaction.get(centerReference),
+        current.blessingTime || '', time);
+    }
     transaction.set(reference, {
       centerId, dateId, blessingTime: time, updatedAt: serverTimestamp(),
       ...(!snapshot.exists() ? { massScheduled: false } : {})
@@ -140,6 +165,9 @@ export async function saveBlessing(date, time, { timezone = 'Europe/Rome' } = {}
       // durante questa verifica non deve nascondere il rifiuto originale.
       const snapshot = await getDoc(windowReference).catch(() => null);
       if (snapshot) validateBlessingWindow(snapshot);
+      const context = await Promise.all([getDoc(lunchReference), getDoc(centerReference), getDoc(reference)])
+        .catch(() => null);
+      if (context) validateBlessingChange(context[0], context[1], context[2].data()?.blessingTime || '', time);
     }
     throw error;
   });

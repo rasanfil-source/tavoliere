@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "Der Buchungsschluss für das Mittagessen ist vorbei. Du kannst nur Segnungen nach dem Buchungsschluss für das Abendessen hinzufügen, ändern oder absagen. Die Segnung wurde nicht geändert.",
   "blessing.pastTime": "Ein Segen mit einem Datum oder einer Uhrzeit in der Vergangenheit kann nicht gespeichert werden. Wähle einen zukünftigen Zeitpunkt.",
   "blessing.cutoff": "Die Änderungsfrist für diesen Tag ist abgelaufen (Buchungsschluss für das Abendessen). Der Segen wurde nicht gespeichert.",
   "blessing.calendarUnavailable": "Der Kalender ist für den gewählten Tag nicht verfügbar. Aktualisiere die Agenda und versuche es erneut.",

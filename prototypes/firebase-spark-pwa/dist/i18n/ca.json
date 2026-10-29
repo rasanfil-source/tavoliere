@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "Ha passat l’hora límit de les reserves del dinar. Només pots afegir, modificar o cancel·lar benediccions previstes després de l’hora límit de les reserves del sopar. La benedicció no s’ha modificat.",
   "blessing.pastTime": "No es pot desar una benedicció amb data o hora passada. Tria un moment futur.",
   "blessing.cutoff": "Ha vençut el termini per modificar aquest dia (hora límit de les reserves del sopar). La benedicció no s’ha desat.",
   "blessing.calendarUnavailable": "El calendari no està disponible per al dia seleccionat. Actualitza l’Agenda i torna-ho a provar.",

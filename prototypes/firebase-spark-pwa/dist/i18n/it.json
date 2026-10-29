@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "Il limite delle prenotazioni del pranzo è scaduto. Puoi inserire, modificare o cancellare solo benedizioni successive al limite della cena. La benedizione non è stata modificata.",
   "blessing.pastTime": "Non è possibile salvare una benedizione con data o ora già trascorsa. Scegli un momento futuro.",
   "blessing.cutoff": "Il termine per modificare questa giornata è scaduto (orario limite delle prenotazioni della cena). La benedizione non è stata salvata.",
   "blessing.calendarUnavailable": "Il calendario non è disponibile per il giorno scelto. Aggiorna l’Agenda e riprova.",

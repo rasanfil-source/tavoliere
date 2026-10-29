@@ -1,4 +1,5 @@
 {
+  "blessing.lunchCutoff": "L’heure limite des réservations du déjeuner est dépassée. Vous pouvez uniquement ajouter, modifier ou annuler des bénédictions prévues après l’heure limite des réservations du dîner. La bénédiction n’a pas été modifiée.",
   "blessing.pastTime": "Impossible d’enregistrer une bénédiction à une date ou une heure passée. Choisissez un moment futur.",
   "blessing.cutoff": "Le délai pour modifier cette journée est dépassé (heure limite des réservations du dîner). La bénédiction n’a pas été enregistrée.",
   "blessing.calendarUnavailable": "Le calendrier n’est pas disponible pour le jour choisi. Actualisez l’Agenda et réessayez.",
