@@ -6,11 +6,13 @@ Audit iniziale del codice locale a `24d1386`, con particolare attenzione alla fu
 
 Il rilievo 1 è stato corretto nei sorgenti e nelle regole Firestore: dopo il limite pranzo si controllano entrambi gli orari, precedente e nuovo. La cancellazione resta possibile entro il termine della benedizione interessata; non può aggirare il blocco di una benedizione già fissata nella fascia chiusa. Le scritture della sola Messa e la visibilità dei dati salvati sono preservate. Aggiunto un messaggio specifico nelle sei lingue disponibili. Le prove di regressione sono in `tests/firebase-spark/blessings.test.mjs` e `tests/firebase-rules/firestore.rules.test.mjs`.
 
-La politica di concorrenza rimane «ultima scrittura valida»; il miglioramento notturno del rilievo 3 è rinviato. La diagnosi sotto descrive il comportamento precedente alla correzione. Nessuna pubblicazione in produzione effettuata.
+La politica di concorrenza rimane «ultima scrittura valida»; il miglioramento notturno del rilievo 3 è rinviato. La diagnosi sotto descrive il comportamento precedente alla correzione.
 
 Verifica della correzione: gate pre-deploy superato (704 test applicativi e di dominio, validazione delle traduzioni, build e 10 test di build); suite completa nell’emulatore Firestore superata (140 test). Coperti inserimento, modifica e cancellazione prima/dopo i limiti, confini esatti nel client, blocchi nelle regole per amministratore e liturgisti, conservazione in lettura, indipendenza della Messa e ultima scrittura concorrente. La build `dist` è stata rigenerata dagli strumenti del progetto.
 
 Verifica prima della pubblicazione: `tools/check-blessings-browser.mjs` superato con Edge a 375 e 1200 px, usando dati sintetici; controllati accesso del solo liturgista alla sezione, caricamento su richiesta, salvataggio e messaggi di errore.
+
+Pubblicazione completata il 29 ottobre 2026 su https://tavola-comune.web.app: Hosting e regole Firestore, senza modifiche agli indici. Commit applicativo `cc43209`, release `f00ecc05701897bd`. `npm run release:verify` ha confermato la corrispondenza degli hash dei file pubblicati con la build locale. Il commit è stato inviato al ramo GitHub `codex/interface-style-cool`. Per caricare la nuova versione della PWA, chiudere tutte le finestre dell’app e riaprirla.
 
 ## Regola confermata
 
