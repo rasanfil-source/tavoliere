@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it" data-theme="inchiostro">
+<html lang="it" data-theme="inchiostro" data-interface-style="cool" data-interface-variant="cool" data-interface-family="cool">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -15,27 +15,68 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-    <link rel="dns-prefetch" href="https://securetoken.googleapis.com">
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js" crossorigin>
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js" crossorigin>
+    <script data-resident-modulepreload>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        // Una vista assente o sconosciuta apre il calendario personale, come in resolveMode.
+        if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
+            || params.has('invite') || params.has('adminInvite')) return;
+        // La build sostituisce il grafo aggiuntivo con URL identificati dall'impronta del contenuto.
+        var residentModulePreloads = ['/participant-data.js?v=20261014b'];
+        residentModulePreloads.forEach(function (path) {
+          var link = document.createElement('link');
+          link.rel = 'modulepreload';
+          link.href = path;
+          document.head.appendChild(link);
+        });
+      }());
+    </script>
     <link rel="manifest" data-app-manifest href="/manifest.webmanifest?v=20260824b">
     <link rel="preload" as="image" href="/icons/splash-512-transparent.png?v=20260824a" fetchpriority="high">
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
+        function syncManifest() {
+          var current = new URLSearchParams(window.location.search);
+          var center = current.get('c') || '';
+          try { center = center || localStorage.getItem('tavolaComune.centerId') || ''; } catch (_) {}
+          if (!/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) {
+            try { center = document.cookie.split(';').map(function (item) { return item.trim(); })
+              .find(function (item) { return item.indexOf('tavolaComune.centerId=') === 0; })?.slice('tavolaComune.centerId='.length) || ''; } catch (_) {}
+          }
+          // Senza il service worker, il manifest statico usa l'URL del documento.
+          // Il centro viene quindi conservato nell'indirizzo prima dell'installazione.
+          if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center) && !current.get('c')) {
+            current.set('c', center);
+            window.history.replaceState(window.history.state, '', window.location.pathname + '?' + current + window.location.hash);
+          }
+          var path = current.get('view') === 'kitchen'
+            ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
+          var manifest = new URL(path, window.location.origin);
+          manifest.searchParams.set('v', '20261014b');
+          if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) manifest.searchParams.set('c', center);
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) manifest.searchParams.set('controlled', '1');
+          document.querySelector('[data-app-manifest]').href = manifest.href;
+        }
+        syncManifest();
+        if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', syncManifest);
+        window.addEventListener('centerchange', syncManifest);
         if (params.get('view') !== 'kitchen') {
           return;
         }
 
-        document.querySelector('[data-app-manifest]').href = '/manifest-kitchen.webmanifest?v=20260824d';
         document.title = 'Prenotazione pasti - Cucina';
         document.querySelector('meta[name="description"]').content = 'Conteggi pasti e indicazioni operative per la cucina.';
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/styles.css?v=20260824e">
+    <link rel="stylesheet" href="/styles.css?v=20261014b">
     <link rel="stylesheet" href="/summary-matrix-refinements.css?v=20260824b">
+    <script type="module" src="/app.js?v=20261014b"></script>
   </head>
   <body>
     <div class="startup-gate" data-startup-gate aria-hidden="true">
@@ -198,13 +239,47 @@
             <span data-week-operations-status aria-live="polite">-</span>
           </summary>
           <div class="agenda-center-content">
+            <details class="week-operation-section agenda-booking" data-week-booking-section>
+              <summary data-i18n="bookingFor.title">Prenoto per altri</summary>
+              <label class="field-label"><span data-i18n="bookingFor.person">Residente o ospite</span>
+                <select data-booking-person aria-label="Persona per cui prenotare" data-i18n-aria-label="bookingFor.personAria"></select>
+              </label>
+              <button type="button" class="save-button" data-booking-open data-i18n="bookingFor.open">Apri prenotazioni della persona selezionata</button>
+            </details>
           <div class="agenda-center-toolbar">
+            <div class="agenda-day-control">
             <label class="field-label week-operations-day">
-              <span data-i18n="week.operations.day">Giorno</span>
+              <span data-i18n="week.operations.referenceDay">Data di riferimento</span>
               <select data-week-operations-day aria-label="Giorno da organizzare" data-i18n-aria-label="a11y.weekOperationsDay"></select>
             </label>
+            <span class="agenda-date-control">
+            <button type="button" class="secondary-action agenda-date-more" data-week-operations-date-toggle
+              aria-label="Scegli un’altra data" data-i18n-aria-label="week.operations.chooseDate" aria-controls="agenda-date-picker">
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                <path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"></path>
+              </svg>
+            </button>
+            <input type="date" data-week-operations-date id="agenda-date-picker" class="agenda-date-native"
+              tabindex="-1" aria-hidden="true">
+            </span>
+            </div>
           </div>
           <div class="week-operations-grid">
+            <details class="week-operation-section" data-week-blessing-section>
+              <summary data-i18n="blessing.title">Benedizione eucaristica</summary>
+              <p class="operation-status" data-week-blessing-date></p>
+              <p class="operation-status" data-week-blessing-status aria-live="polite"></p>
+              <label class="blessing-toggle">
+                <input type="checkbox" data-week-blessing-enabled>
+                <span data-i18n="blessing.planned">Benedizione prevista</span>
+              </label>
+              <label class="field-label">
+                <span data-i18n="blessing.time">Ora</span>
+                <input type="time" data-week-blessing-time disabled>
+              </label>
+              <button type="button" class="save-button" data-week-blessing-save data-i18n="common.actions.save" disabled>Salva</button>
+            </details>
             <details class="week-operation-section" data-week-invited-section>
               <summary>
                 <span class="week-operation-heading">
@@ -218,18 +293,25 @@
                 </span>
               </summary>
               <p class="operation-status" data-week-invited-status aria-live="polite">-</p>
+              <label class="field-label">
+                <span data-i18n="week.operations.day">Giorno</span>
+                <select data-week-invited-day>
+                  <option value="0">Oggi</option>
+                  <option value="1">Domani</option>
+                </select>
+              </label>
               <div class="week-invited-meals">
                 <label class="field-label">
-                  <span data-i18n="meal.type.breakfast">Colazione</span>
-                  <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="breakfast">
-                </label>
-                <label class="field-label">
-                  <span data-i18n="meal.type.lunch">Pranzo</span>
+                  <span data-week-invited-label="lunch"></span>
                   <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="lunch">
                 </label>
                 <label class="field-label">
-                  <span data-i18n="meal.type.dinner">Cena</span>
+                  <span data-week-invited-label="dinner"></span>
                   <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="dinner">
+                </label>
+                <label class="field-label">
+                  <span data-week-invited-label="breakfast"></span>
+                  <input type="number" min="0" max="999" step="1" inputmode="numeric" value="0" data-week-invited-meal="breakfast">
                 </label>
               </div>
               <button type="button" class="save-button" data-week-invited-save data-i18n="common.actions.save">Salva</button>
@@ -242,8 +324,9 @@
               <button type="button" class="save-button" data-week-health-save data-i18n="common.actions.save">Salva ammalati</button>
             </details>
 
-            <details class="week-operation-section">
+            <details class="week-operation-section" data-week-notes-section>
               <summary data-i18n="week.operations.notes">Note</summary>
+              <p class="operation-status" data-week-kitchen-note-date aria-live="polite" hidden></p>
               <p class="operation-status" data-week-kitchen-note-status aria-live="polite">-</p>
               <label class="field-label">
                 <span data-i18n="week.operations.specialNotes">Indicazioni speciali</span>
@@ -253,7 +336,7 @@
               <div class="week-kitchen-note-list" data-week-kitchen-note-list></div>
             </details>
 
-            <details class="week-operation-section">
+            <details class="week-operation-section" data-week-diet-section>
               <summary data-i18n="week.operations.diet">Dieta occasionale</summary>
               <p class="operation-status" data-week-diet-status aria-live="polite">-</p>
               <label class="field-label">
@@ -272,8 +355,8 @@
               <label class="field-label">
                 <span data-i18n="week.operations.duration">Durata</span>
                 <select data-week-diet-duration>
-                  <option value="1" data-i18n="week.operations.duration.todayOnly">Solo questo giorno</option>
-                  <option value="2" data-i18n="week.operations.duration.todayAndNext">Questo giorno e il successivo</option>
+                  <option value="1">Solo questo giorno</option>
+                  <option value="2">Questo giorno e il successivo</option>
                 </select>
               </label>
               <button type="button" class="save-button" data-week-diet-save data-i18n="common.actions.save">Aggiorna dieta</button>
@@ -383,6 +466,8 @@
                 <button type="button" class="primary-action" data-admin-email-signin data-i18n="auth.email.signIn">Accedi con email</button>
                 <button type="button" class="primary-action" data-admin-email-create hidden data-i18n="auth.email.continue">Continua</button>
                 <button type="button" class="tertiary-action" data-admin-password-reset hidden data-i18n="auth.email.forgotPassword">Password dimenticata?</button>
+                <button type="button" class="tertiary-action" data-admin-existing-account hidden data-i18n="auth.email.existingAccount">Ho già un account</button>
+                <button type="button" class="tertiary-action" data-admin-cancel-invitation hidden data-i18n="auth.email.cancelInvitation">Abbandona questo invito</button>
               </div>
               <p data-admin-email-status aria-live="polite" data-i18n="auth.email.noGoogleNeeded">Puoi accedere anche senza un account Google.</p>
            </div>
@@ -702,8 +787,8 @@
                     <p class="field-help" data-i18n="admin.adaptations.interfaceStyle.help">Scegli il linguaggio visivo dell'app senza cambiare funzioni o navigazione.</p>
                     <select data-admin-interface-style-select aria-label="Aspetto">
                       <option value="original" data-i18n="admin.adaptations.interfaceStyle.original">Originale</option>
-                      <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool">Elegante</option>
-                      <option value="urban-plus" data-i18n="admin.adaptations.interfaceStyle.urbanPlus" selected>Essenziale</option>
+                      <option value="cool" data-i18n="admin.adaptations.interfaceStyle.cool" selected>Elegante</option>
+                      <option value="urban-plus" data-i18n="admin.adaptations.interfaceStyle.urbanPlus">Essenziale</option>
                       <option value="future" data-i18n="admin.adaptations.interfaceStyle.future">Futura</option>
                     </select>
                   </fieldset>
@@ -721,7 +806,7 @@
                         </select>
                       </label>
                       <label class="field-label admin-layout-setting" for="admin-kitchen-layout-select" data-admin-kitchen-layout-picker>
-                        <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina</span>
+                        <span data-i18n="admin.adaptations.kitchenLayout.label">Vista cucina · condivisa nel centro</span>
                         <select id="admin-kitchen-layout-select" data-admin-kitchen-layout-select aria-label="Vista cucina">
                           <option value="classic" data-i18n="admin.adaptations.layout.classic">Originale</option>
                           <option value="international" data-i18n="admin.adaptations.layout.international">Internazionale</option>
@@ -735,6 +820,14 @@
                         <option value="signature" data-i18n="admin.adaptations.summaryResidentLabel.signature">Sigla</option>
                         <option value="initials" data-i18n="admin.adaptations.summaryResidentLabel.initials">Iniziali</option>
                       </select>
+                    </label>
+                    <label class="field-label" for="admin-week-starts-on-select">
+                      <span data-i18n="admin.adaptations.weekStartsOn.label">Inizio della settimana</span>
+                      <select id="admin-week-starts-on-select" data-admin-week-starts-on-select>
+                        <option value="monday" data-i18n="admin.adaptations.weekStartsOn.monday">Lunedì</option>
+                        <option value="sunday" data-i18n="admin.adaptations.weekStartsOn.sunday">Domenica</option>
+                      </select>
+                      <small class="field-help" data-i18n="admin.adaptations.weekStartsOn.help">Si applica solo alle tue viste mese e settimana su questo dispositivo.</small>
                     </label>
                     <label class="field-label admin-month-controls-side" for="admin-month-controls-side-select">
                       <span data-i18n="admin.adaptations.monthControlsSide.label">Pulsanti nella vista mese</span>
@@ -772,6 +865,7 @@
                       <option value="fr" data-i18n="language.fr">Francese</option>
                       <option value="es" data-i18n="language.es">Spagnolo</option>
                       <option value="de" data-i18n="language.de">Tedesco</option>
+                      <option value="ca" data-i18n="language.ca">Catalano</option>
                     </select>
                     <small class="field-help" data-i18n="admin.adaptations.language.help">La lingua scelta viene usata per l'interfaccia di questo dispositivo.</small>
                   </label>
@@ -1101,7 +1195,7 @@
             <tbody data-admin-audit-list></tbody>
           </table>
         </div>
-        <button type="button" class="secondary-action admin-audit-more" data-admin-audit-more data-i18n="admin.activity.loadMore" hidden>Carica versioni precedenti</button>
+        <button type="button" class="secondary-action admin-audit-more" data-admin-audit-more data-i18n="admin.activity.loadMore" hidden>Carica attività precedenti</button>
       </div>
     </dialog>
 
@@ -1138,6 +1232,6 @@
       }());
     </script>
 
-    <script type="module" src="/app.js?v=20260825a"></script>
-  </body>
+  <dialog class="booking-for-dialog" data-booking-dialog aria-label="Prenotazioni per un’altra persona" data-i18n-aria-label="bookingFor.dialogAria"></dialog>
+</body>
 </html>

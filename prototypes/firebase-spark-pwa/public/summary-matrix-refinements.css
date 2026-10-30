@@ -644,7 +644,7 @@ html[data-interface-style="original"] .month-week-action-row .month-scope-toggle
   color: var(--confirmed);
 }
 
-/* Classic: la Messa resta compatta e circolare, non una seconda griglia. */
+/* Nell'aspetto Originale la Messa usa un controllo compatto e circolare. */
 .summary-layout-classic .summary-mass-control {
   width: auto;
   min-width: 48px;
@@ -703,7 +703,7 @@ html[data-interface-style="original"] .month-week-action-row .month-scope-toggle
   padding: 0;
 }
 
-/* Cool: interpretazione leggera dei mockup, senza cambiare la struttura dell'app. */
+/* L'aspetto Elegante usa superfici leggere mantenendo la struttura dell'applicazione. */
 html[data-interface-family="cool"] {
   --cool-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
   --cool-confirmed-soft: color-mix(in srgb, var(--confirmed) 15%, var(--surface));
@@ -866,8 +866,7 @@ html[data-interface-family="cool"] .month-week-action-row.month-week-complete {
   background: var(--cool-confirmed-soft);
 }
 
-/* In Cool la matrice settimanale e' volutamente piu ariosa. L'Agenda centro
-   resta in fondo, dopo la matrice e il riepilogo, come nelle altre viste. */
+/* Nell'aspetto Elegante la matrice settimanale è ariosa. L'Agenda centro segue matrice e riepilogo. */
 html[data-interface-style="cool"] [data-week-panel] {
   display: flex;
   flex-direction: column;
@@ -909,8 +908,7 @@ html[data-interface-family="cool"] .week-mass-button-no strong {
   color: var(--danger);
 }
 
-/* Urban riusa integralmente tipografia e icone Cool, ma trasforma le matrici
-   in tabelle aperte: niente riquadri ripetuti, salvo il giorno corrente. */
+/* L'aspetto Essenziale condivide tipografia e icone con Elegante e usa tabelle aperte, con evidenza del giorno corrente. */
 html[data-interface-style="urban"] .week-scope-button,
 html[data-interface-style="urban"] .week-meal-heading,
 html[data-interface-style="urban"] .week-mass-heading,
@@ -1003,8 +1001,7 @@ html[data-interface-style="urban"] .month-grid button:focus-visible {
   }
 }
 
-/* Essenziale più eredita integralmente Essenziale. L'unica differenza è il
-   ritorno dei riquadri dei singoli pasti nella sola griglia mensile. */
+/* La variante urban-plus condivide l'aspetto Essenziale e delimita i singoli pasti nella griglia mensile. */
 html[data-interface-variant="urban-plus"] .month-flag,
 html[data-interface-variant="urban-plus"] .month-flag-absent {
   border-color: var(--view-border);
@@ -1081,8 +1078,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   display: none;
 }
 
-/* La nuova Cucina è un unico riepilogo, non una delle tre vecchie card:
-   sui desktop deve quindi occupare l'intera griglia. */
+/* La Cucina è un riepilogo unico che occupa l'intera griglia desktop. */
 [data-kitchen-panel] .meal-grid > .summary-matrix-track {
   grid-column: 1 / -1;
   min-width: 0;
@@ -1104,7 +1100,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   text-align: center;
 }
 
-/* Classic: un'unica griglia, con righe che compaiono solo quando servono. */
+/* Nell'aspetto Originale una sola griglia mostra le righe necessarie. */
 .summary-layout-classic .summary-matrix {
   --classic-diet-code-size: 1.12rem;
   width: 100%;
@@ -1617,8 +1613,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   background: var(--mass-no-bg);
 }
 
-/* Cucina Classic: come nel riepilogo, Sì/No sono testo nella fascia, non
-   pillole con un secondo contorno interno. */
+/* Nella Cucina Originale Sì/No sono indicazioni testuali nella fascia, senza contorno interno aggiuntivo. */
 .summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-yes,
 .summary-layout-kitchen.summary-layout-classic .summary-matrix-mass-no {
   display: inline;
@@ -1973,14 +1968,14 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   line-height: 1;
 }
 
-/* Nel Classic il terzo giorno deve restare leggibile nel controllo compatto. */
+/* Nell'aspetto Originale il terzo giorno resta leggibile nel controllo compatto. */
 .summary-layout-classic .summary-day-tone-2 .summary-mass-control-day {
   padding-inline: 2px;
   font-size: 0.56rem;
   letter-spacing: -0.015em;
 }
 
-/* International: keep the long Dopodomani label inside the compact control. */
+/* Nell'aspetto Internazionale l'etichetta Dopodomani rimane all'interno del controllo compatto. */
 .summary-layout-international .summary-day-tone-2 .summary-mass-control-day {
   padding-inline: 1px;
   font-size: clamp(0.42rem, 1.25vw, 0.58rem);
@@ -2096,7 +2091,7 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   justify-self: center;
 }
 
-/* Originale: Sì/No usa un piccolo disco pieno, senza il vecchio anello. */
+/* Nell'aspetto Originale Sì/No usa un piccolo disco pieno. */
 .summary-layout-diners.summary-layout-classic .summary-mass-control-state,
 .summary-layout-kitchen.summary-layout-classic .summary-mass-control-state {
   min-width: 34px;
@@ -2275,6 +2270,89 @@ html[data-interface-style="urban"] .week-matrix-row-today > button {
 @keyframes meal-snap-forward {
   50% { transform: translateX(-18px); opacity: .82; }
 }
+
+.summary-mass-control-state.mass-status-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+.summary-mass-control-state.mass-status-with-blessing {
+  border-radius: 12px;
+  padding: 6px 8px;
+}
+.summary-mass-control-blessing-wide {
+  width: 94px;
+  min-width: 94px;
+  aspect-ratio: auto;
+  grid-template-rows: auto auto;
+  overflow: visible;
+}
+.summary-mass-control-blessing-wide .summary-mass-control-state {
+  padding: 5px 4px;
+}
+.summary-mass-control-blessing-narrow {
+  width: 68px;
+  min-width: 68px;
+}
+.summary-mass-control-state.mass-status-wide-blessing {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.summary-mass-control-state.mass-status-narrow {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+.summary-mass-control-state.mass-status-narrow > .blessing-plus-side {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  transform: translateY(-50%);
+}
+.blessing-inline-mark {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 3px;
+  row-gap: 3px;
+  align-items: center;
+  justify-items: center;
+}
+.blessing-inline-mark > .blessing-plus {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.blessing-inline-mark > .blessing-indicator-compact {
+  grid-column: 2;
+  grid-row: 1;
+}
+.blessing-inline-mark > .blessing-time {
+  grid-column: 2;
+  grid-row: 2;
+}
+.blessing-indicator-compact {
+  gap: 3px;
+}
+.blessing-time {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 500;
+  line-height: 1.05;
+}
+.blessing-plus-side { display: inline; font-size: .9rem; font-weight: 700; line-height: 1; }
+.summary-mass-metadata .mass-status-stack { min-width: 46px; }
 
 @keyframes meal-snap-backward {
   50% { transform: translateX(18px); opacity: .82; }

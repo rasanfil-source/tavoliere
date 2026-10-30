@@ -36,6 +36,18 @@ test('il guardiano riutilizza la stessa operazione quando arrivano due invii ugu
   assert.equal(guard.isPending('salva-persona'), false);
 });
 
+test('il guardiano normalizza allo stesso modo le chiavi di avvio e verifica', async () => {
+  const guard = createOperationGuard();
+  let release;
+  const first = guard.run(' salva ', () => new Promise(resolve => { release = resolve; }));
+  assert.equal(guard.isPending('salva'), true);
+  assert.equal(guard.run('salva', () => 'duplicata'), first);
+  await Promise.resolve();
+  release('ok');
+  assert.equal(await first, 'ok');
+  assert.equal(guard.isPending(' salva '), false);
+});
+
 test('lo stato revisionato notifica le modifiche e riconosce le risposte superate', () => {
   const store = createStateStore({ loading: false, value: 1 });
   const notifications = [];
@@ -51,6 +63,19 @@ test('lo stato revisionato notifica le modifiche e riconosce le risposte superat
   assert.equal(notifications.length, 1);
   assert.equal(store.isCurrentRequest(firstRequest), false);
   assert.equal(store.isCurrentRequest(secondRequest), true);
+});
+
+test('lo stato revisionato consegna gli aggiornamenti rientranti in ordine', () => {
+  const store = createStateStore({ value: 0 });
+  const seen = [];
+  store.subscribe((state, revision) => {
+    if (revision === 1) store.update({ value: 2 });
+  });
+  store.subscribe((state, revision) => seen.push({ value: state.value, revision }));
+
+  store.update({ value: 1 });
+
+  assert.deepEqual(seen, [{ value: 1, revision: 1 }, { value: 2, revision: 2 }]);
 });
 
 test('gli errori tecnici diventano messaggi comprensibili', () => {

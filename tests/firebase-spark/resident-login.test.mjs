@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const participantData = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/admin-participant-data.js', import.meta.url), 'utf8'
+) + readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/participant-data.js', import.meta.url),
   'utf8'
 );
@@ -160,7 +162,7 @@ test('technical resident auth uses local Firebase persistence', () => {
   assert.match(firebaseClient, /browserLocalPersistence/);
   assert.match(firebaseClient, /signInWithEmailAndPassword/);
   assert.match(firebaseClient, /signInResidentTechnicalUser/);
-  assert.match(firebaseClient, /withResidentTechnicalSession[\s\S]*getFirestore\(maintenanceAuth\.app\)/);
+  assert.match(firebaseClient, /withResidentTechnicalSession[\s\S]*initializeFirestore\(maintenanceAuth\.app, firestoreSettings\)/);
   assert.match(firebaseClient, /async function runAuthMutation\(operation\)[\s\S]*await authPersistenceReady;[\s\S]*return await operation\(\)/);
   assert.match(firebaseClient, /waitForStableAuth/);
   assert.match(firebaseClient, /watchAuth[\s\S]*revision === eventRevision/);
@@ -170,7 +172,7 @@ test('friendly access is explicit and offers device exit', () => {
   assert.match(app, /get\('access'\) === 'friendly'/);
   assert.match(app, /\['participant', 'week'\]\.includes\(initialMode\)/);
   assert.match(app, /data-forget-device/);
-  assert.match(app, /const showResidentExit = isOrdinaryView/);
+  assert.match(app, /const showResidentExit = \(isOrdinaryView && showResidentLogin\)/);
   assert.match(app, /const showResidentLogin = needsResidentLogin\s*&& !isAdminView/);
   assert.match(app, /document\.body\.dataset\.residentLoginVisible = showResidentLogin \? 'true' : 'false'/);
   assert.match(app, /elements\.residentLogin\.hidden = !showResidentLogin/);
@@ -291,9 +293,10 @@ test('uscendo da mese, settimana o riepilogo si torna alla rotta residente stabi
   assert.match(app, /function clearAdminAuthorizationState\(\)[\s\S]*state\.adminHydrationVersion \+= 1[\s\S]*state\.adminRole = ''[\s\S]*state\.adminCanManageDailyOperations = false[\s\S]*state\.residentAdministratorAuthorized = false/);
 });
 
-test('le preferenze locali residenti non sovrascrivono lo stile del pannello amministrativo', () => {
-  assert.match(app, /if \(!state\.residentReady \|\| state\.adminRole \|\| \(state\.mode === 'admin' && !state\.residentSettingsMode\)\)\s*\{\s*return settings;/);
-  assert.match(app, /if \(state\.residentReady \|\| state\.adminRole\) \{\s*const residentPreferences = loadResidentPreferences\(\);/);
+test('le preferenze personali valgono anche nel pannello amministrativo', () => {
+  const apply = app.match(/function applyResidentPreferences\(settings\)[\s\S]*?\n}/)[0];
+  assert.doesNotMatch(apply, /state\.adminRole|state\.residentSettingsMode/);
+  assert.match(apply, /loadResidentPreferences\(\)/);
 });
 
 test('gli aggiornamenti concorrenti vengono serializzati e accodati', () => {
@@ -310,7 +313,7 @@ test('un aggiornamento fallito conserva i dati partecipante già visibili', () =
 });
 
 test('un errore temporaneo conserva identita e sessione residente', () => {
-  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
   assert.match(restore, /isRecoverableSessionError\(error\)/);
   assert.match(restore, /error\.preserveResidentIdentity = true/);
   assert.match(restore, /throw error/);
@@ -320,7 +323,7 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
 });
 
 test('un amministratore forte ripristina la propria persona anche senza una vecchia sessione residente locale', () => {
-  const restore = participantData.match(/export async function restoreFriendlyResidentSession\(\)[\s\S]*?\n}/)?.[0] || '';
+  const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
   const restoreAdmin = participantData.match(/export async function restoreResidentIdentityForAuthorizedAdministrator\([\s\S]*?\n}/)?.[0] || '';
   assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\);/);
   assert.match(restoreAdmin, /membershipSnapshot\.exists\(\)[\s\S]*membershipSnapshot\.data\(\)\.status !== 'ACTIVE'/);
@@ -376,7 +379,7 @@ test('il comando mensile compatto sostituisce la barra doppia', () => {
   assert.match(app, /data-month-scope="month"/);
   assert.match(app, /function getMonthSelectionEffect/);
   assert.match(app, /month-day-number-today/);
-  assert.match(app, /day\.isToday \? ', oggi' : ''/);
+  assert.match(app, /day\.isToday \? ', ' \+ escapeHtml\(t\('time\.today'\)\) : ''/);
   assert.doesNotMatch(app, /month-today-badge|>OGGI</);
   assert.match(app, /aria-current="date"/);
   assert.match(styles, /--today-ink: #24698f/);
@@ -421,8 +424,8 @@ test('la vista mese su mobile e tablet porta la griglia in primo piano senza sca
 test('la vista futura mantiene selezioni singole e azioni collettive', () => {
   assert.match(app, /function renderFutureMonth\(\)/);
   assert.match(app, /function renderFutureMonthScopeButton\(label, weekStart, mealTypeId/);
-  assert.match(app, /renderFutureMonthScopeButton\('Mese', null, null, \{ scope: 'month' \}\)/);
-  assert.match(app, /renderFutureMonthScopeButton\('Settimana', weekStart, null\)/);
+  assert.match(app, /renderFutureMonthScopeButton\(t\('month\.view\.short'\), null, null, \{ scope: 'month' \}\)/);
+  assert.match(app, /renderFutureMonthScopeButton\(t\('week\.view\.short'\), weekStart, null\)/);
   assert.match(app, /renderFutureMonthScopeButton\(getLocalizedMealLabel\(mealTypeId\), weekStart, mealTypeId\)/);
   assert.match(app, /data-month-scope="\$\{resolvedScope\}"/);
   assert.match(app, /data-month-effect="\$\{effect\}"/);
@@ -482,7 +485,7 @@ test('una richiesta residente superata non può rimontare il login dopo l access
   const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n}/)?.[0] || '';
   const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n}/)?.[0] || '';
-  assert.match(refresh, /if \(state\.residentAuthTransition\) return/);
+  assert.match(refresh, /if \(state\.residentAuthTransition \|\| state\.pendingMealKeys\?\.size\) return/);
   assert.match(refresh, /!isCurrentParticipantRequest\(request\) \|\| state\.residentAuthTransition/);
   assert.match(login, /state\.residentAuthTransition = 'signing-in'[\s\S]*invalidateViewRequests\(\)/);
   assert.match(logout, /state\.residentAuthTransition = 'signing-out'[\s\S]*invalidateViewRequests\(\)/);
@@ -493,7 +496,7 @@ test('il refresh pasti attende Firebase e lascia passare l amministratore forte 
   assert.match(refresh, /await waitForAuthReady\(\)[\s\S]*shouldBlockResidentEntryRestore/);
   assert.match(refresh, /entryGateClosed: isResidentEntryGateClosed\(\)/);
   assert.match(refresh, /strongAuthUser: hasStrongAdministratorIdentity\(\)/);
-  assert.match(refresh, /restoreFriendlyResidentSession\(\)/);
+  assert.match(refresh, /restoreFriendlyResidentSession\(\{/);
 });
 
 test('il ritorno dal pannello carica gli stili moderni per mese settimana e riepilogo', () => {
@@ -516,7 +519,7 @@ test('l uscita residente chiude soltanto il modulo mentre il pannello privilegia
 test('il pannello amministrativo appare soltanto dopo autorizzazioni e dati operativi', () => {
   const applyAuth = app.match(/async function resolveAdminAuthState\(user[\s\S]*?\n}/)?.[0] || '';
   assert.match(app, /function beginAdminAuthorizationCheck\(\)[\s\S]*elements\.adminPanel\.hidden = true/);
-  assert.match(app, /if \(hasAdminInterface\) initializeAuthPanel\(\);[\s\S]*await i18nPromise/);
+  assert.match(app, /if \(hasAdminInterface\) initializeAuthPanel\(\);[\s\S]*void i18nPromise\.then/);
   assert.match(applyAuth, /elements\.adminPanel\.hidden = true[\s\S]*await refreshAdminParticipants\(\{[\s\S]*progressive: true[\s\S]*elements\.adminPanel\.hidden = !isAdmin[\s\S]*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(app, /adminPanelHydrating: false/);
   assert.match(app, /hydrationVersion === state\.adminHydrationVersion/);
@@ -593,7 +596,7 @@ test('le transizioni auth non possono smontare una sessione residente in corso',
 });
 
 test('Originale rigenera subito la matrice e non riusa le icone della vista precedente', () => {
-  assert.match(app, /interfaceStyle: document\.documentElement\.dataset\.interfaceStyle \|\| 'original'/);
+  assert.match(app, /interfaceStyle: document\.documentElement\.dataset\.interfaceStyle \|\| 'cool'/);
   assert.match(app, /if \(state\.residentReady \|\| \(state\.mode === 'week' && canUseWeekWithoutParticipant\(\)\)\) \{[\s\S]*renderParticipantMeals\(\)/);
 });
 
@@ -614,7 +617,7 @@ test('l area amministrativa segue il ruolo registrato nel centro', () => {
   assert.match(index, /data-admin-email-create/);
   assert.match(app, /signInAdministratorWithEmail/);
   assert.match(app, /createAdministratorWithEmail/);
-  assert.match(app, /reuseAdministratorAccountForInvitation/);
+  assert.match(app, /useExistingAccountForCenterInvitation/);
   assert.match(firebaseClient, /EmailAuthProvider\.credential/);
   assert.match(firebaseClient, /linkWithCredential/);
   assert.match(firebaseClient, /authenticatedEmail !== normalizedEmail/);
@@ -632,7 +635,6 @@ test('il profilo amministratore ricorda l ultimo centro senza impedire appartene
   assert.doesNotMatch(ownershipTransfer, /batch\.set\([^\n]*ProfileRef/);
   assert.doesNotMatch(ownershipTransfer, /successorProfileSnapshot|successorProfileRef/);
   assert.match(ownershipTransfer, /successorInvitation\.acceptedEmail[\s\S]*successor\.email/);
-  assert.match(ownershipTransfer, /La membership del centro e'\s*\/\/ la fonte autorevole/);
 });
 
 test('il salvataggio settimanale non provoca una seconda lettura completa', () => {
@@ -658,7 +660,7 @@ test('i salvataggi aggiornano lo stato locale e i bulk usano batch piccoli', () 
 test('le prenotazioni usano la sorgente coerente con la sessione attiva', () => {
   assert.match(participantData, /function getReservationWriteSource\(\)/);
   assert.match(participantData, /!user\.isAnonymous[\s\S]*'ADMIN'[\s\S]*'PERSONAL'/);
-  assert.match(participantData, /source: getReservationWriteSource\(\)/);
+  assert.match(participantData, /source: actorUid \? 'DELEGATED' : getReservationWriteSource\(\)/);
 });
 
 test('un bulk riuscito conserva createdAt e non ricrea gli override al clic successivo', () => {
@@ -668,7 +670,7 @@ test('un bulk riuscito conserva createdAt e non ricrea gli override al clic succ
   const weekMealHandler = app.match(/async function handleWeekMealBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   const monthHandler = app.match(/async function handleMonthBulkButton\(button\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(optimisticBulk, /commit\(\)[\s\S]*meal\.createdAt = savedAt/);
-  assert.match(optimisticBulk, /\[state\.participantWeek, state\.participantMonth\]/);
+  assert.match(optimisticBulk, /\[state\.participantWeek, state\.participantMonth, state\.mealReminderDays\]/);
   assert.match(dayHandler, /optimistic\.commit\(\)/);
   assert.match(weekHandler, /result\.failed > 0[\s\S]*optimistic\.commit\(\)/);
   assert.match(weekMealHandler, /result\.failed > 0[\s\S]*optimistic\.commit\(\)/);
@@ -695,7 +697,7 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
   assert.match(app, /function scheduleBackgroundRefresh\(source\)/);
   assert.match(app, /window\.clearTimeout\(state\.backgroundRefreshTimerId\)/);
   assert.match(app, /sessionPromise = ensurePublicDemoSession\(\)/);
-  assert.match(app, /await sessionPromise;[\s\S]*const centerSettings = await loadCenterContactSettings/);
+  assert.match(app, /await sessionPromise;[\s\S]*const centerSettings = await \(personalRoute \? loadCenterCalendarSettings : loadCenterContactSettings\)/);
   assert.match(app, /await ensureKitchenDemoSession\(\)[\s\S]*const centerSettings = await loadCenterContactSettings/);
   assert.match(centerSettings, /refreshCenterContactSettings\(\)\.catch\(\(\) => undefined\);\s*}\s*return centerContactSettingsCache\.value/);
 });
@@ -703,7 +705,7 @@ test('sessioni e refresh ravvicinati evitano round trip duplicati senza anticipa
 test('il bootstrap residente completa la sessione prima delle letture protette', () => {
   const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(refresh, /sessionPromise = ensureStoredResidentSession\(\)/);
-  assert.match(refresh, /await sessionPromise;[\s\S]*const centerSettings = await loadCenterContactSettings/);
+  assert.match(refresh, /await sessionPromise;[\s\S]*const centerSettings = await \(personalRoute \? loadCenterCalendarSettings : loadCenterContactSettings\)/);
   assert.doesNotMatch(refresh, /Promise\.all\(\[sessionPromise, settingsPromise\]\)/);
   assert.match(participantData, /export async function recoverStoredResidentSession/);
   assert.match(participantData, /ensurePersonalSession\(participantId, token, \{ forceRefresh: true \}\)/);
@@ -717,7 +719,7 @@ test('il primo caricamento mostra subito le selezioni del periodo corrente', () 
   assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);\s*}/);
   assert.match(anchor, /state\.calendarAnchoredToCenter[\s\S]*return false/);
   assert.match(anchor, /state\.calendarAnchoredToCenter = true;\s*return true/);
-  assert.match(calendarLoad, /const participantMonth = await loadParticipantMonthData\(/);
+  assert.match(calendarLoad, /const participantMonth = await \(options\.calendarRead \|\| loadParticipantMonthData\(/);
   assert.match(calendarLoad, /if \(options\.isCurrentRequest && !options\.isCurrentRequest\(\)\) return false;\s*state\.participantMonth = participantMonth/);
   assert.match(calendarLoad, /prefetchNextParticipantMonth\(/);
   assert.match(app, /requestIdleCallback\(run, \{ timeout: 3000 \}\)/);
@@ -731,9 +733,24 @@ test('un caricamento impostazioni iniziato prima del salvataggio non ripristina 
   assert.match(centerSettings, /centerContactSettingsLoad === request/);
 });
 
-test('mese e settimana condividono la domenica come primo giorno', () => {
-  assert.match(app, /result\.setDate\(result\.getDate\(\) - result\.getDay\(\)\)/);
-  assert.match(app, /gridStart\.setDate\(firstDay\.getDate\(\) - firstDay\.getDay\(\)\)/);
+test('mese e settimana condividono il primo giorno personale, lunedì per default', () => {
+  assert.match(app, /const gridStart = startOfWeek\(firstDay\)/);
+  const source = app.match(/function startOfWeek\(date,[\s\S]*?\n}/)[0];
+  const startOfWeek = new Function('state', `${source}; return startOfWeek;`)({ centerContactSettings: {} });
+  for (const [date, monday, sunday] of [
+    ['2026-10-11', '2026-10-05', '2026-10-11'],
+    ['2026-10-12', '2026-10-12', '2026-10-11'],
+    ['2027-01-01', '2026-12-28', '2026-12-27'],
+    ['2026-02-01', '2026-01-26', '2026-02-01']
+  ]) {
+    const input = new Date(`${date}T12:00:00`);
+    const format = (value) => [value.getFullYear(), String(value.getMonth() + 1).padStart(2, '0'), String(value.getDate()).padStart(2, '0')].join('-');
+    assert.equal(format(startOfWeek(input)), monday);
+    assert.equal(format(startOfWeek(input, 'monday')), monday);
+    assert.equal(format(startOfWeek(input, 'sunday')), sunday);
+    assert.equal(format(startOfWeek(input, 'invalid')), monday);
+    assert.equal(input.getHours(), 12);
+  }
 });
 
 test('mese e settimana tornano al periodo corrente al cambio vista e avanzano oltre mezzanotte', () => {
@@ -820,9 +837,9 @@ test('il refresh diretto di Mese e Settimana ripristina Firebase prima di mostra
   const plainLoginBranch = bootstrap.match(/if \(isPlainResidentLogin\) \{[\s\S]*?\n  }/)?.[0] || '';
   assert.match(plainLoginBranch, /setParticipantStatus/);
   assert.doesNotMatch(plainLoginBranch, /hideStartupSplash\(\)/);
-  assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\)/);
-  assert.match(participantRefresh, /await refreshStrongAdministratorOperationalAuthorization\(\)/);
-  assert.match(participantRefresh, /options\.loginHandshake && applyResidentEntryView\(\)/);
+  assert.match(participantRefresh, /await restoreFriendlyResidentSession\(\{/);
+  assert.match(participantRefresh, /void refreshParticipantExtras\(source, request\)/);
+  assert.match(participantRefresh, /useOpeningPreference && applyResidentEntryView\(\)/);
   assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);
   assert.match(styles, /\.operational-view-switch-measure \{[\s\S]*visibility: hidden/);
   assert.match(styles, /\.meal-view-nav > \[data-summary-nav-link\] \{[\s\S]*margin-left: auto/);
@@ -835,8 +852,8 @@ test('la riapertura usa la vista preferita senza cambiare la vista durante un re
   assert.match(app, /function resolveMode\(\{ appLaunch = false \} = \{\}\)/);
   assert.match(app, /appLaunch && isLegacyParticipantAppLaunch\(params\) && loadPreferredInitialView\(\) === 'week'/);
   assert.match(app, /navigationEntry\.type === 'navigate'/);
-  assert.match(app, /cacheDefaultView\(preferences\.defaultView\)/);
-  assert.match(app, /function loadPreferredInitialView\(\)[\s\S]*tavolaComune\.residentPreferences[\s\S]*preferences\.defaultView/);
+  assert.doesNotMatch(app, /cacheDefaultView\(preferences\.defaultView\)/);
+  assert.match(app, /function loadPreferredInitialView\(\) \{\s*return DEFAULT_OPENING_VIEW/);
 });
 
 test('sul mobile selettori e pulsante operativo restano affiancati e stabili', () => {
@@ -930,7 +947,7 @@ test('il riepilogo mostra telefono e WhatsApp soltanto con consenso', () => {
   assert.match(app, /href="tel:\$\{escapeHtml\(phone\)\}"/);
   assert.match(app, /href="https:\/\/wa\.me\/\$\{whatsappNumber\}"/);
   assert.match(app, /src="\/icons\/whatsapp\.svg\?v=20260808a"/);
-  assert.match(app, /renderParticipantContact\(participant, ` \(\$\{dietCodes\.join\(', '\)\}\)`\)/);
+  assert.match(app, /renderParticipantContact\(participant, dietCodes.length \? ` \(\$\{dietCodes\.join\(', '\)\}\)` : ''\)/);
 });
 
 test('la chiamata ai commensali e attiva per impostazione predefinita', () => {
@@ -966,7 +983,7 @@ test('il pannello amministratore distingue sospensione ed eliminazione definitiv
   assert.match(app, /data-admin-person-delete/);
   assert.match(index, /data-admin-delete-participant[^>]*hidden>Elimina persona/);
   assert.match(app, /handleAdminDeleteParticipant/);
-  assert.match(app, /title: 'Elimina definitivamente la persona'[\s\S]*destructive: true/);
+  assert.match(app, /title: t\('dialog.deletePerson.title'\)[\s\S]*destructive: true/);
   const deleteHandler = app.match(/async function deleteParticipantFromAdminPanel[\s\S]*?\n}/)?.[0] || '';
   assert.doesNotMatch(deleteHandler, /requiredText/);
   assert.match(app, /pendingAdminParticipantStatusIds: new Set\(\)/);
@@ -988,7 +1005,7 @@ test('la condivisione contatti appartiene alla Configurazione e usa il salvatagg
   assert.doesNotMatch(app, /updateParticipantContactSharing/);
   assert.match(app, /participantContactSharingEnabled: elements\.adminContactSharingSelect/);
   assert.match(app, /adminCenterSettingsSection\.addEventListener\('change', markAdminCenterDirty\)/);
-  assert.match(app, /administratorName: state\.centerContactSettings\.administratorName/);
+  assert.match(app, /administratorName,/);
   assert.match(centerSettings, /participantContactSharingEnabled: Boolean\(participantContactSharingEnabled\)/);
   assert.match(calendarConfiguration, /participantContactSharingEnabled: target\.participantContactSharingEnabled/);
   assert.doesNotMatch(app, /saveRequests\.push\(updateCenterContactSettings/);
@@ -1076,7 +1093,8 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /loadDailyHealth/);
   assert.match(app, /saveSickPeople/);
   assert.match(app, /data-week-sick-select/);
-  assert.match(app, /elements\.weekHealthSection\.open = sickCount > 0/);
+  assert.match(app, /state\.weekAgendaReady\?\.health && elements\.weekHealthSection\.open/);
+  assert.doesNotMatch(app, /elements\.weekHealthSection\.open = sickCount > 0/);
   assert.match(app, /removeKitchenNoteMessage/);
   assert.match(app, /data-week-kitchen-note-remove/);
   assert.doesNotMatch(app, /weekKitchenNoteInput\.value = state\.weekOperationalNote/);
@@ -1089,17 +1107,17 @@ test('la gestione quotidiana resta nella vista settimana e alimenta riepilogo e 
   assert.match(app, /function applyDailyDietsToKitchenMeals/);
   assert.match(app, /function renderSickCard/);
   assert.match(app, /function renderKitchenSickPeople/);
-  assert.match(app, /state\.mode === 'week'[\s\S]*canManageDailyOperations\(\)[\s\S]*state\.adminParticipants\.length === 0/);
+  assert.match(app, /state\.mode !== 'week'[\s\S]*canManageDailyOperations\(\)[\s\S]*listPublicParticipants\(/);
 });
 
 test('il refresh diretto della settimana ripristina le capability operative dell amministratore', () => {
   const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n\}/)?.[0] || '';
   const strongAuthorization = app.match(
-    /async function refreshStrongAdministratorOperationalAuthorization\(\)[\s\S]*?\n\}/
+    /async function refreshStrongAdministratorOperationalAuthorization\([^]*?\n\}/
   )?.[0] || '';
   assert.match(
     refresh,
-    /await refreshResidentAdministratorAuthorization\(\);[\s\S]*await refreshStrongAdministratorOperationalAuthorization\(\);[\s\S]*loadCurrentParticipantCalendar/
+    /loadCurrentParticipantCalendar[\s\S]*renderParticipantMeals\(\)[\s\S]*void refreshParticipantExtras\(source, request\)/
   );
   assert.match(strongAuthorization, /state\.residentEntryKind !== 'strong-admin'/);
   assert.match(strongAuthorization, /loadCurrentAdminMembership\(user\)/);

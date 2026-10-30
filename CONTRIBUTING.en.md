@@ -1,4 +1,4 @@
-# Contributing to Tutti a tavola
+# Contributing to Oggi a tavola
 
 🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](CONTRIBUTING.md) 🇬🇧 [![English](https://img.shields.io/badge/English-16615a)](CONTRIBUTING.en.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-6b7280)](CONTRIBUTING.es.md)
 
@@ -27,7 +27,7 @@ Authentication changes must cover at least sign-in, refresh, persistence, logout
 
 Use short, descriptive messages, for example:
 
-- `fix(auth): restore session after refresh`
+- `test(auth): verify persistent session`
 - `feat(kitchen): add diet legend`
 - `docs: rewrite project documentation`
 

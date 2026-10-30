@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
 const readPublic = (name) => readFile(
@@ -30,7 +31,8 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
     assert.doesNotMatch(app, new RegExp(`from ['"]\\./${moduleName.replace('.', '\\.')}[^'"]*['"]`));
     assert.match(app, new RegExp(moduleName.replace('.', '\\.')));
   }
-  assert.match(app, /import\(domainModulePaths\[name\]\)/);
+  assert.match(app, /domainModuleLoaders\[name\]\(\)/);
+  assert.match(app, /admin: \(\) => import\('\.\/admin-center\.js/);
   assert.match(app, /if \(initialMode === 'kitchen'\)/);
   assert.match(app, /const hasStoredResidentIdentity = Boolean\(loadStoredResidentSignature\(\)\)/);
   assert.match(app, /initialMode === 'summary'[\s\S]*hasStoredResidentIdentity/);
@@ -38,19 +40,43 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
 });
 
-test('la schermata iniziale avvia Auth prima delle lingue e riconcilia le impostazioni senza bloccare', () => {
+test('la schermata iniziale avvia Auth prima delle lingue e attende il calendario senza anteprime', async () => {
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
   assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
-  assert.match(bootstrap, /state\.mode === 'kitchen'[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
+  assert.match(bootstrap, /\['kitchen', 'participant', 'week'\]\.includes\(state\.mode\)[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
-  assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*await i18nPromise/);
+  assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*void i18nPromise\.then/);
+  assert.doesNotMatch(bootstrap, /await i18nPromise/);
   assert.match(bootstrap, /void settingsPromise\.then\(async \(centerSettings\)/);
   assert.match(bootstrap, /const isDirectMealRoute = \['participant', 'week'\]\.includes\(state\.mode\)/);
   assert.match(bootstrap, /const isPlainResidentLogin =[\s\S]*!loadStoredResidentSignature\(\)/);
   assert.match(bootstrap, /const keepStartupGate =[\s\S]*isDirectMealRoute/);
   assert.match(bootstrap, /void refreshNow\(isPlainResidentLogin \? 'ripristino-accesso' : 'avvio'\)/);
   assert.doesNotMatch(bootstrap, /if \(!isPlainResidentLogin\)/);
+
+  for (const mode of ['week', 'participant']) {
+    const calls = [];
+    let fallback;
+    const context = vm.createContext({
+      state: { mode, friendlyAccess: true, residentRestorePending: true, centerContactSettings: {} },
+      watchAuth() {}, syncStartupSplashPresentation() {}, applyMealReminderUrlPreference() {},
+      registerServiceWorker() {}, updateConnectivityState() {}, initializeOperationalLinks() {}, initializeResidentAccess() {},
+      hasAdminInterface: true, initializeAuthPanel: () => calls.push('auth'),
+      window: { location: { hostname: 'localhost' }, setTimeout: (callback, delay) => {
+        assert.equal(delay, 8000); fallback = callback;
+      } },
+      initI18n: () => { calls.push('i18n'); return new Promise(() => {}); },
+      renderMode() {}, renderAllViews() {}, renderCalendarPlaceholder() {},
+      loadStoredResidentSignature: () => 'RM', canUseWeekWithoutParticipant: () => false,
+      hideStartupSplash: () => calls.push('hide'), refreshNow: (source) => calls.push(source), console
+    });
+    vm.runInContext(bootstrap, context);
+    await context.bootstrapApp();
+    assert.deepEqual(calls, ['auth', 'i18n', 'avvio'], 'start data reads without dismissing the startup presentation');
+    fallback();
+    assert.equal(calls.at(-1), 'hide', 'retain the timeout escape for a slow or stalled connection');
+  }
 });
 
 test('l applicazione non conserva telemetria o contatori diagnostici globali', () => {
@@ -67,7 +93,7 @@ test('il primo ingresso nel pannello pubblica soltanto uno stato Auth definitivo
 
   assert.doesNotMatch(adminRefresh, /hideStartupSplash\(/);
   assert.match(signedOut, /applyAdminCapabilityVisibility\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
-  assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\{ recoverable: isRecoverableSessionError\(error\) \}\);/);
   assert.match(authHydration, /if \(!authorizationFailed && state\.adminAuthorizationPending\)[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(app, /elements\.adminPanel\.hidden = !isAdmin \|\| state\.platformOwner;\s*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
 });
@@ -79,7 +105,9 @@ test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo co
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
   assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);
-  assert.doesNotMatch(index, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
+  for (const [, script] of index.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
+    assert.doesNotMatch(script, /document\.createElement\('link'\)[\s\S]*summary-matrix-refinements/);
+  }
   assert.match(app, /function ensureSummaryStyles\(\)/);
   assert.match(app, /if \(isOperationalTarget\) await ensureSummaryStyles\(\)/);
   assert.match(app, /if \(nextMode === 'summary'\) await ensureSummaryStyles\(\)/);
@@ -228,10 +256,11 @@ test('le risposte tardive non sostituiscono una vista o una data piu recenti', (
   assert.match(app, /kitchenDayOffset !== state\.kitchenDayOffset/);
 });
 
-test('l esportazione legge le collezioni in parallelo e usa pagine ampie', () => {
-  assert.match(participantData, /Promise\.all\(collections\.map/);
-  assert.match(participantData, /limit\(1000\)/);
-  assert.match(participantData, /snapshot\.size < 1000/);
+test('l esportazione legge le collezioni in parallelo e usa pagine ampie', async () => {
+  const administration = await readPublic('admin-participant-data.js');
+  assert.match(administration, /Promise\.all\(collections\.map/);
+  assert.match(administration, /limit\(1000\)/);
+  assert.match(administration, /snapshot\.size < 1000/);
 });
 
 test('il deploy genera asset minificati in una cartella distinta dalle sorgenti', () => {

@@ -21,10 +21,7 @@ function buildMatrixScreens(days, participants, operationDays, includeNames) {
   const operationByDate = new Map(
     normalizedOperations.map((day) => [day.dateId, day]),
   );
-  const participantDirectory = buildParticipantDirectory(
-    normalizedDays,
-    participants,
-  );
+  const participantDirectory = buildParticipantDirectory(participants);
   const mealOrder = getMealOrder(normalizedDays);
   const breakfastIndex = mealOrder.findIndex(
     (meal) => meal.mealTypeId === BREAKFAST_MEAL_TYPE_ID,
@@ -95,7 +92,7 @@ function getMealOrder(days) {
     : [];
 }
 
-function buildParticipantDirectory(days, participants) {
+function buildParticipantDirectory(participants) {
   const directory = new Map();
   const remember = (participant) => {
     if (participant?.participantId) {
@@ -107,16 +104,6 @@ function buildParticipantDirectory(days, participants) {
   };
 
   (Array.isArray(participants) ? participants : []).forEach(remember);
-  days.forEach((day) =>
-    day.meals?.forEach((meal) => {
-      (Array.isArray(meal.present) ? meal.present : []).forEach(remember);
-      (Array.isArray(meal.absent) ? meal.absent : []).forEach(remember);
-      (Array.isArray(meal.dietParticipants)
-        ? meal.dietParticipants
-        : []
-      ).forEach(remember);
-    }),
-  );
   return directory;
 }
 
@@ -162,7 +149,11 @@ function buildColumn(
     operationDay,
     meal.mealTypeId,
     participantDirectory,
-    present,
+    [
+      ...(Array.isArray(meal.participantDiets) ? meal.participantDiets : []),
+      ...(Array.isArray(meal.absent) ? meal.absent : []),
+      ...present,
+    ],
   );
   const configuredTotal = Math.max(0, Math.floor(Number(meal.count) || 0));
   const diningTotal = Array.isArray(meal.present)
@@ -182,6 +173,7 @@ function buildColumn(
     sickDiets: sickMeal.diets,
     massStatus: getMassStatus(operationDay.dailyOperation, meal.mealTypeId),
     dayMassStatus: getDayMassStatus(operationDay.dailyOperation),
+    blessingTime: (operationDay.dailyOperation?.dailyOperation || operationDay.dailyOperation)?.blessingTime || '',
     breakfastPlanned:
       meal.mealTypeId === BREAKFAST_MEAL_TYPE_ID &&
       diningTotal + invitedCount + sickMeal.count > 0,
@@ -223,15 +215,12 @@ function applyOccasionalDiets(participants, assignments, mealTypeId) {
     assignmentByParticipant.set(assignment.participantId, labels);
   });
 
-  return participants.map((participant) => ({
-    ...participant,
-    dietTags: [
-      ...new Set([
-        ...(Array.isArray(participant.dietTags) ? participant.dietTags : []),
-        ...(assignmentByParticipant.get(participant.participantId) || []),
-      ]),
-    ],
-  }));
+  return participants.map((participant) => {
+    const temporaryDiets = assignmentByParticipant.get(participant.participantId);
+    return temporaryDiets
+      ? { ...participant, dietTags: [...new Set(temporaryDiets)] }
+      : participant;
+  });
 }
 
 function summarizeSpecialDiets(participants) {
@@ -285,12 +274,8 @@ function findSickMeal(
   }
 
   const assignments = getDietAssignments(operationDay);
-  const assignmentByParticipant = new Map(
-    assignments.map((assignment) => [
-      assignment.participantId,
-      String(assignment.dietLabel || assignment.dietTag || "").trim(),
-    ]),
-  );
+  // Le righe dei pasti possono contenere diete occasionali: usare soltanto
+  // il pasto della data corrente, mai una directory ricavata da altri giorni.
   const mealDirectory = new Map(
     (Array.isArray(mealParticipants) ? mealParticipants : []).map(
       (participant) => [participant.participantId, participant],
@@ -303,14 +288,8 @@ function findSickMeal(
       mealDirectory.get(sickPerson.participantId) ||
       participantDirectory.get(sickPerson.participantId) ||
       sickPerson;
-    const participantDiets = new Set(getSpecialDietTags(participant));
-    const occasionalDiet = assignmentByParticipant.get(
-      sickPerson.participantId,
-    );
-    if (occasionalDiet && occasionalDiet.toUpperCase() !== STANDARD_DIET_TAG) {
-      participantDiets.add(occasionalDiet);
-    }
-    participantDiets.forEach((tag) => dietLabels.push(tag));
+    const [effectiveParticipant] = applyOccasionalDiets([participant], assignments, mealTypeId);
+    getSpecialDietTags(effectiveParticipant).forEach((tag) => dietLabels.push(tag));
   });
   return {
     count: sickPeople.length,

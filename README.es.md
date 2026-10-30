@@ -12,6 +12,8 @@
 - aplicar selecciones múltiples a un día, una comida, una semana o al mes completo;
 - consultar un resumen operativo sin modificar las reservas;
 - mostrar a la cocina comensales, dietas, celebraciones y notas del día;
+- programar bendiciones eucarísticas con los límites de almuerzo y cena del centro;
+- consultar totales mensuales de cocina, cargados solo al abrir su casilla;
 - gestionar personas, roles, horarios límite, calendario y enlaces operativos;
 - instalar la PWA en Android y Windows sin publicarla en una tienda;
 - mantener sesiones persistentes de residentes sin confundirlas con la autenticación administrativa.
@@ -71,11 +73,12 @@ Las preferencias personales se guardan en el dispositivo; los ajustes del centro
 
 ## Arquitectura resumida
 
-La solución utiliza únicamente servicios compatibles con el plan gratuito Firebase Spark:
+La PWA utiliza servicios compatibles con el plan gratuito Firebase Spark; GitHub Actions calcula los totales mensuales:
 
 - Firebase Hosting para la PWA estática;
 - Cloud Firestore para la configuración y los datos operativos;
 - Firebase Authentication para administradores e identidades técnicas;
+- GitHub Actions para los conteos agregados, sin planificación cloud de pago;
 - un service worker que utiliza la red como fuente principal y la caché de la aplicación como alternativa;
 - ninguna Cloud Function y ningún Cloud Storage.
 

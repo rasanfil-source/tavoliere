@@ -37,6 +37,11 @@
   font-weight: 650;
 }
 
+[data-freshness="degraded"] {
+  color: var(--warn);
+  font-weight: 650;
+}
+
 .admin-section-nav a[aria-current="page"] {
   background: var(--hover-surface);
   box-shadow: inset 0 0 0 1px var(--primary);
@@ -724,6 +729,8 @@ body[data-mode="admin"] .title-center-name::before {
 body {
   margin: 0;
   min-height: 100vh;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: var(--bg);
   color: var(--ink);
 }
@@ -1392,9 +1399,7 @@ body[data-center-activation="true"] .admin-shell-body {
   word-break: break-all;
 }
 
-/* L'input nativo resta accessibile da tastiera, ma la sua UI non viene
-   mostrata accanto al pulsante personalizzato: era la causa del controllo
-   apparentemente duplicato. */
+/* L'input nativo resta accessibile da tastiera; la rappresentazione visiva è affidata al pulsante personalizzato. */
 .visually-hidden {
   position: absolute !important;
   width: 1px !important;
@@ -1719,8 +1724,7 @@ html[data-theme="terracotta"] {
   --warn: #96630f;
   --danger: #9a4935;
   --info: #3f6e78;
-  /* Intestazioni di calendario calde e materiche: il blu-grigio
-     appartiene alla palette Smeraldo e stonava sulle superfici terracotta. */
+  /* Le intestazioni del calendario adottano i colori della palette Terracotta. */
   --calendar-heading-bg: #f3e3d7;
   --calendar-heading-border: #d8ad98;
   --calendar-heading-ink: #8e492f;
@@ -2452,7 +2456,7 @@ html[data-theme="neutro"] {
 .admin-person-fields {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.25fr);
-  align-items: end;
+  align-items: start;
   gap: 12px;
 }
 
@@ -2460,19 +2464,21 @@ html[data-theme="neutro"] {
   grid-column: 1 / -1;
 }
 
-.admin-person-field-signature,
-.admin-person-field-group,
-.admin-person-field-diet {
+.admin-person-fields > .field-label {
   min-width: 0;
 }
 
-.admin-person-field-signature > input,
-.admin-person-field-group > select,
+.admin-person-fields > .field-label > input,
+.admin-person-fields > .field-label > select,
 .admin-person-field-diet > .admin-diet-fields,
 .admin-person-field-diet select {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.admin-person-field-diet {
+  grid-column: 1 / -1;
 }
 
 .admin-person-field-phone {
@@ -2506,6 +2512,7 @@ html[data-theme="neutro"] {
 }
 
 .admin-new-person-action > .secondary-action {
+  width: 100%;
   min-height: 48px;
 }
 
@@ -4057,7 +4064,8 @@ body[data-resident-login-visible="true"] .account-footer {
   margin: 0;
 }
 
-.mass-card-content span {
+.mass-card-content > span,
+.mass-card-content > .mass-status-stack > span:not(.blessing-indicator) {
   display: inline-grid;
   min-width: 36px;
   min-height: 36px;
@@ -4407,16 +4415,6 @@ body[data-resident-login-visible="true"] .account-footer {
   line-height: 1;
 }
 
-.week-meal-caption {
-  display: none;
-  max-width: 100%;
-  overflow: hidden;
-  font-size: 0.7rem;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .meal-state-present {
   border-color: var(--confirmed);
   background: var(--confirmed);
@@ -4735,6 +4733,7 @@ body[data-resident-login-visible="true"] .account-footer {
 .week-operations {
   margin-top: 14px;
   border: 0;
+  container-type: inline-size;
 }
 
 .agenda-center-toggle {
@@ -4792,15 +4791,76 @@ body[data-resident-login-visible="true"] .account-footer {
 }
 
 .week-operations-day {
-  width: min(100%, 320px);
-  margin-top: 8px;
+  width: 100%;
+  margin-top: 0;
+}
+
+.week-operation-section.agenda-booking {
+  margin: 10px 0 20px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.agenda-center-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agenda-date-more {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.agenda-day-control {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: calc((100% - 12px) / 2);
+}
+
+.agenda-day-control .week-operations-day {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.agenda-day-control select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+}
+
+.agenda-date-control {
+  position: relative;
+  flex: 0 0 48px;
+}
+
+.agenda-date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .week-operations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .week-operation-heading {
@@ -4831,7 +4891,7 @@ body[data-resident-login-visible="true"] .account-footer {
 
 .week-operation-section {
   min-width: 0;
-  padding: 10px;
+  padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -4840,6 +4900,7 @@ body[data-resident-login-visible="true"] .account-footer {
 .week-operation-section summary {
   display: flex;
   min-height: 44px;
+  gap: 12px;
   align-items: center;
   color: var(--ink);
   cursor: pointer;
@@ -4861,6 +4922,10 @@ body[data-resident-login-visible="true"] .account-footer {
 
 .week-operation-section[open] > summary::after {
   transform: rotate(180deg);
+}
+
+.week-operation-section[open] {
+  padding-bottom: 12px;
 }
 
 .week-operation-section .field-label {
@@ -4951,11 +5016,17 @@ body[data-resident-login-visible="true"] .account-footer {
   margin-top: 12px;
 }
 
-@media (max-width: 760px) {
+@container (max-width: 640px) {
   .week-operations-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
+  .agenda-day-control {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
   .week-invited-meals {
     grid-template-columns: 1fr;
   }
@@ -5511,8 +5582,7 @@ body[data-resident-login-visible="true"] .account-footer {
     gap: 8px;
   }
 
-  .week-heading-label,
-  .week-meal-caption {
+  .week-heading-label {
     display: block;
   }
 
@@ -5763,8 +5833,7 @@ html:not([data-interface-style="future"]) .month-day-number-today .month-day-num
   box-shadow: none;
 }
 
-/* Originale: il bordo esterno del giorno corrente resta assente, mentre il
-   numero mantiene il contrasto pieno usato in precedenza. */
+/* Nell'aspetto Originale il giorno corrente usa il numero a contrasto pieno, senza bordo esterno. */
 html[data-interface-style="original"] .month-day-number-today .month-day-number-value {
   background: var(--today-ink);
   color: #fff;
@@ -5970,7 +6039,7 @@ body[data-mode="admin"] .admin-shell[data-admin-active="resident-settings"] .adm
   }
 }
 
-/* Futura: la settimana adotta la stessa grammatica leggera del mese intero. */
+/* Stile Future: la settimana adotta la stessa grammatica leggera del mese intero. */
 html[data-interface-style="future"] .week-matrix {
   gap: 2px;
   padding: clamp(6px, 1.8vw, 12px);
@@ -7252,5 +7321,88 @@ body[data-mode="admin"] .admin-shell-body {
     min-width: 0;
     margin-left: 0;
     padding-inline: clamp(8px, 3vw, 14px);
+  }
+}
+/* Il calendario delegato è separato dal calendario personale dell'operatore. */
+.booking-for-dialog { width: min(960px, 94vw); max-height: 90vh; padding: 24px; border: 1px solid #bbb; border-radius: 18px; }
+.booking-for-dialog::backdrop { background: #0008; }
+.booking-for-heading { position: sticky; top: -24px; background: white; padding: 12px 0; z-index: 1; }
+.booking-for-dialog button { min-height: 44px; padding: 10px; margin: 4px; cursor: pointer; }
+.booking-for-dialog button:disabled { cursor: default; opacity: .6; }
+.booking-for-dialog button[aria-pressed="true"] { background: #d9efdd; color: #163c22; border: 2px solid #367148; }
+.booking-for-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.booking-for-days section { border: 1px solid #bbb; border-radius: 12px; padding: 12px; }
+.booking-for-days section button { display: block; width: calc(100% - 8px); }
+
+.mass-status-stack,
+.blessing-indicator {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+.blessing-indicator { color: var(--ink); line-height: 1.15; white-space: nowrap; }
+.blessing-symbol-row { display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 2px; white-space: nowrap; }
+.blessing-indicator .blessing-plus { display: inline; min-width: 0; min-height: 0; border: 0; border-radius: 0; font-size: .9rem; font-weight: 700; line-height: 1; }
+.blessing-icon { display: block; flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.blessing-indicator > small { font-size: .78rem; font-weight: 500; }
+.blessing-toggle { display: flex; align-items: center; gap: 8px; margin-block: 12px; }
+.blessing-toggle input { width: auto; margin: 0; flex: 0 0 auto; }
+.kitchen-monthly-summary {
+  margin: 14px 0 20px;
+  padding: 0 12px;
+}
+
+.kitchen-monthly-summary details {
+  border: 1px solid var(--border, #d8e0dc);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.kitchen-monthly-summary summary {
+  padding: 12px 14px;
+  color: var(--ink, #18342a);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.kitchen-monthly-summary-content {
+  padding: 0 14px 14px;
+}
+
+.kitchen-monthly-summary-content > p {
+  margin: 0 0 10px;
+}
+
+.kitchen-monthly-summary-content dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.kitchen-monthly-summary-content dl > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary, #2c7258) 7%, var(--surface, #fff));
+}
+
+.kitchen-monthly-summary-content dt {
+  font-size: .82rem;
+}
+
+.kitchen-monthly-summary-content dd {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .kitchen-monthly-summary-content dl {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

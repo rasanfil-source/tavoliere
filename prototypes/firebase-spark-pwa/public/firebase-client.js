@@ -3,7 +3,8 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  getAuth,
+  initializeAuth,
+  browserPopupRedirectResolver,
   onAuthStateChanged,
   signInAnonymously,
   signInWithEmailAndPassword,
@@ -13,7 +14,6 @@ import {
   inMemoryPersistence,
   linkWithCredential,
   browserLocalPersistence,
-  setPersistence,
   updatePassword,
   sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js';
@@ -21,10 +21,12 @@ import {
   Timestamp,
   deleteDoc,
   doc,
-  getFirestore,
+  initializeFirestore,
   serverTimestamp,
   setDoc
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
+import { firestoreSettingsForBrowser } from './core/firebase-runtime-policy.mjs?v=20261014b';
+import { markStartupStage, measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 
 export const firebaseConfig = {
   apiKey: 'AIzaSyCpU6mbE1vUtFfhnQUULkjuvzPGhIv3ZTY',
@@ -43,26 +45,25 @@ export const isFirebaseConfigured = missingConfigValues.length === 0;
 export const missingFirebaseConfigValues = missingConfigValues;
 
 export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+// Auth usa localStorage fin dalla creazione, senza interrogare IndexedDB né caricare anticipatamente la finestra Google. Il supporto ai popup viene fornito al momento dell'uso.
+markStartupStage('auth-start');
+export const auth = app ? initializeAuth(app, { persistence: browserLocalPersistence }) : null;
+const firestoreSettings = firestoreSettingsForBrowser(globalThis.navigator);
+export const db = app ? initializeFirestore(app, firestoreSettings) : null;
 
 const initialAuthReadyPromise = auth
   ? new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
+      markStartupStage('auth-ready');
       resolve(user);
     });
   })
   : Promise.resolve(null);
 
 const googleProvider = new GoogleAuthProvider();
-const authPersistenceReady = auth
-  ? setPersistence(auth, browserLocalPersistence)
-    // Private browsing and embedded webviews can reject localStorage. Keep
-    // the current tab usable in that exceptional case.
-    .catch(() => setPersistence(auth, inMemoryPersistence))
-    .catch(() => undefined)
-  : Promise.resolve();
+// Firebase usa la memoria soltanto se localStorage non è disponibile. Gli eventi di visibilità non modificano persistenza o utente corrente.
+const authPersistenceReady = initialAuthReadyPromise;
 
 let authMutationDepth = 0;
 let authMutationStablePromise = Promise.resolve();
@@ -132,7 +133,7 @@ export function signInWithGoogle() {
     return Promise.reject(new Error('Firebase non configurato'));
   }
 
-  return runAuthMutation(() => signInWithPopup(auth, googleProvider));
+  return runAuthMutation(() => signInWithPopup(auth, googleProvider, browserPopupRedirectResolver));
 }
 
 export async function signInAdministratorWithEmail(email, password) {
@@ -180,7 +181,7 @@ export async function reuseAdministratorAccountForInvitation(email, password) {
   return runAuthMutation(async () => {
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const normalizedPassword = String(password || '');
-    const credential = await signInWithPopup(auth, googleProvider);
+    const credential = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
     const authenticatedEmail = String(credential.user.email || '').trim().toLowerCase();
 
     if (!normalizedEmail || authenticatedEmail !== normalizedEmail) {
@@ -221,7 +222,7 @@ export function getCurrentUser() {
 }
 
 export function waitForAuthReady() {
-  return waitForStableAuth();
+  return measureStartupStep('auth-restore', waitForStableAuth);
 }
 
 export function signInAnonymousUser() {
@@ -301,8 +302,7 @@ async function getResidentMaintenanceAuth() {
     const appName = 'tavola-comune-resident-maintenance';
     const secondaryApp = getApps().find((candidate) => candidate.name === appName)
       || initializeApp(firebaseConfig, appName);
-    residentMaintenanceAuth = getAuth(secondaryApp);
-    await setPersistence(residentMaintenanceAuth, inMemoryPersistence);
+    residentMaintenanceAuth = initializeAuth(secondaryApp, { persistence: inMemoryPersistence });
   }
   return residentMaintenanceAuth;
 }
@@ -341,7 +341,7 @@ export async function withResidentTechnicalSession(centerId, password, operation
     );
     return await operation({
       auth: maintenanceAuth,
-      db: getFirestore(maintenanceAuth.app),
+      db: initializeFirestore(maintenanceAuth.app, firestoreSettings),
       user: credential.user
     });
   } finally {
@@ -372,7 +372,7 @@ export async function withAdministratorTechnicalSession(
     );
     return await operation({
       auth: maintenanceAuth,
-      db: getFirestore(maintenanceAuth.app),
+      db: initializeFirestore(maintenanceAuth.app, firestoreSettings),
       user: credential.user,
       email
     });
@@ -391,7 +391,7 @@ export async function verifyResidentCommonPassword(centerId, password) {
 // La seconda istanza Auth non modifica la sessione dell'amministratore.
 export async function setResidentTechnicalPassword(centerId, previousPassword, nextPassword) {
   const email = getResidentTechnicalEmail(centerId);
-  const next = String(nextPassword || '');
+  const next = String(nextPassword || '').trim();
   const previous = String(previousPassword || '');
   if (next.length < 4 || next.length > 32) {
     throw new Error('La password comune deve avere tra 4 e 32 caratteri');
@@ -455,7 +455,7 @@ export async function setAdministratorTechnicalPassword(
 ) {
   const email = String(currentEmail || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId);
-  const next = String(nextPassword || '');
+  const next = String(nextPassword || '').trim();
   const previous = String(previousPassword || '');
   if (next.length < 6 || next.length > 64) {
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
@@ -468,8 +468,13 @@ export async function setAdministratorTechnicalPassword(
     let credential = null;
     if (formattedPrevious) {
       credential = await signInWithEmailAndPassword(maintenanceAuth, email, formattedPrevious)
-        .catch((error) => {
+        .catch(async (error) => {
           if (error?.code === 'auth/user-not-found') return null;
+          // Un tentativo precedente può avere aggiornato Auth prima di perdere
+          // la connessione: riprendere con la nuova password è idempotente.
+          if (['auth/wrong-password', 'auth/invalid-credential'].includes(error?.code)) {
+            return signInWithEmailAndPassword(maintenanceAuth, email, formattedNext);
+          }
           throw error;
         });
     }
@@ -551,7 +556,7 @@ export async function authorizeResidentAdministratorSession({
     await deleteDoc(doc(db, 'centers', centerId, 'viceSessions', primaryUser.uid)).catch((error) => {
       if (error?.code !== 'not-found') throw error;
     });
-    const maintenanceDb = getFirestore(maintenanceAuth.app);
+    const maintenanceDb = initializeFirestore(maintenanceAuth.app, firestoreSettings);
     const expiresAt = Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     await setDoc(doc(maintenanceDb, 'centers', centerId, 'viceSessions', primaryUser.uid), {
       centerId,

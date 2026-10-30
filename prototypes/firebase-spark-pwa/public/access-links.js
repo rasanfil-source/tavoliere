@@ -4,10 +4,10 @@ import {
   runTransaction,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { createOperationalAccessExpiry } from './schedule-utils.mjs?v=20260816g';
+import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
+import { getActiveCenterId } from './center-context.js?v=20261014b';
+import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
+import { createOperationalAccessExpiry } from './schedule-utils.mjs?v=20261014b';
 
 const SETTINGS_DOCUMENT_ID = 'operationalLinks';
 const LEGACY_OPERATIONAL_TOKENS = new Set(['public_demo', 'kitchen_demo']);
@@ -27,11 +27,17 @@ const LINK_SCOPES = Object.freeze({
 });
 
 const cachedLinksByCenter = new Map();
+const cachedLinksReadAt = new Map();
+const OPERATIONAL_LINK_CACHE_MS = 60 * 1000;
 
 export async function loadOperationalLinks({ forceRefresh = false } = {}) {
   const centerId = getActiveCenterId();
   if (!forceRefresh && cachedLinksByCenter.has(centerId)) {
-    return cachedLinksByCenter.get(centerId);
+    const cached = cachedLinksByCenter.get(centerId);
+    const now = new Date();
+    const expired = ['public', 'kitchen'].some(scope => cached[`${scope}Status`] === 'ACTIVE'
+      && (!cached[`${scope}ExpiresAt`] || cached[`${scope}ExpiresAt`] <= now));
+    if (!expired && Date.now() - (cachedLinksReadAt.get(centerId) ?? -Infinity) < OPERATIONAL_LINK_CACHE_MS) return cached;
   }
   const snapshot = await getDoc(settingsRef(centerId));
   const links = await resolveOperationalLinkStatuses(
@@ -39,6 +45,7 @@ export async function loadOperationalLinks({ forceRefresh = false } = {}) {
     normalizeOperationalLinks(snapshot.exists() ? snapshot.data() : {})
   );
   cachedLinksByCenter.set(centerId, links);
+  cachedLinksReadAt.set(centerId, Date.now());
   return links;
 }
 
@@ -59,7 +66,7 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
     const currentKitchenRef = currentLinks.kitchenTokenId
       ? tokenRef(centerId, currentLinks.kitchenTokenId)
       : null;
-    // Firestore transactions require every read before the first write.
+    // Le transazioni Firestore richiedono tutte le letture prima della prima scrittura.
     const currentPublicSnapshot = currentPublicRef
       ? await transaction.get(currentPublicRef)
       : null;
@@ -72,7 +79,9 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
       return {
         ...currentLinks,
         publicStatus: 'ACTIVE',
-        kitchenStatus: 'ACTIVE'
+        kitchenStatus: 'ACTIVE',
+        publicExpiresAt: normalizeDate(currentPublicSnapshot.data().expiresAt),
+        kitchenExpiresAt: normalizeDate(currentKitchenSnapshot.data().expiresAt)
       };
     }
 
@@ -158,6 +167,8 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
       kitchenTokenId,
       publicStatus: 'ACTIVE',
       kitchenStatus: 'ACTIVE',
+      publicExpiresAt: publicUsable ? normalizeDate(currentPublicSnapshot.data().expiresAt) : expiresAt,
+      kitchenExpiresAt: kitchenUsable ? normalizeDate(currentKitchenSnapshot.data().expiresAt) : expiresAt,
       publicCreatedAt: publicUsable && currentLinks.publicCreatedAt
         ? currentLinks.publicCreatedAt
         : createdAt,
@@ -168,11 +179,13 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
   });
 
   cachedLinksByCenter.set(centerId, result);
+  cachedLinksReadAt.set(centerId, Date.now());
   return result;
 }
 
 export function invalidateOperationalLinksCache() {
   cachedLinksByCenter.clear();
+  cachedLinksReadAt.clear();
 }
 
 async function resolveOperationalLinkStatuses(centerId, links) {
@@ -183,7 +196,9 @@ async function resolveOperationalLinkStatuses(centerId, links) {
   return {
     ...links,
     publicStatus: tokenIsUsable(publicSnapshot, 'PUBLIC') ? 'ACTIVE' : 'INACTIVE',
-    kitchenStatus: tokenIsUsable(kitchenSnapshot, 'KITCHEN') ? 'ACTIVE' : 'INACTIVE'
+    kitchenStatus: tokenIsUsable(kitchenSnapshot, 'KITCHEN') ? 'ACTIVE' : 'INACTIVE',
+    publicExpiresAt: normalizeDate(publicSnapshot?.data()?.expiresAt),
+    kitchenExpiresAt: normalizeDate(kitchenSnapshot?.data()?.expiresAt)
   };
 }
 

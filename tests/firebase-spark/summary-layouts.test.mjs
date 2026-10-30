@@ -62,7 +62,7 @@ test('il mobile usa la stessa struttura per le due schermate anche senza situazi
 });
 
 test('Internazionale, Futura e Cucina Internazionale integrano la Messa nell intestazione', () => {
-  assert.match(view, /function renderMassMetadata\(status\)/);
+  assert.match(view, /function renderMassMetadata\(status, blessingTime = ''\)/);
   assert.match(view, /summary-mass-metadata-dot/);
   assert.match(view, /showMassMetadata: index === 0/);
   assert.match(view, /index === 0 \|\| columns\[index - 1\]\?\.dateId !== column\.dateId/);
@@ -251,15 +251,15 @@ test('la manutenzione usa righe uniformi, registro in dialogo e backup con avanz
 
 test('il registro mostra Quando Chi Cosa e diventa una lista di schede su mobile', () => {
   assert.match(index, />Quando<\/th>[\s\S]*>Chi<\/th>[\s\S]*>Cosa<\/th>/);
-  assert.match(index, /data-admin-audit-more[^>]*>Carica versioni precedenti<\/button>/);
+  assert.match(index, /data-admin-audit-more[^>]*>Carica attività precedenti<\/button>/);
   assert.match(app, /function resolveAuditActorLabel[\s\S]*participant\?\.displayName/);
   assert.match(app, /function formatAuditDateTime[\s\S]*admin\.activity\.todayAt[\s\S]*admin\.activity\.yesterdayAt/);
   assert.match(appStyles, /@media \(max-width: 767px\)[\s\S]*\.admin-audit-table tr \{[\s\S]*display: grid/);
 });
 
-test('le note non sopravvivono al cambio di giorno e quelle passate non vengono mostrate', () => {
+test('le note seguono il giorno del pasto e quelle passate non vengono mostrate', () => {
   assert.match(app, /const selectedNote = state\.kitchenNotes\[state\.kitchenDayOffset\];[\s\S]*selectedNote\?\.dateId === formatDateId\(getKitchenDate\(\)\)[\s\S]*: null/);
-  assert.match(app, /function filterKitchenNoteForToday\(note\)[\s\S]*writtenDateId === todayId/);
-  assert.match(app, /const visibleNote = filterKitchenNoteForToday\(state\.weekOperationalNote\)/);
+  assert.match(app, /function filterKitchenNoteForToday\(note\)[\s\S]*mealDate < todayId/);
+  assert.match(app, /function renderWeekKitchenNotes\(\)[\s\S]*const visibleNote = state\.weekOperationalNote/);
   assert.match(app, /const visibleKitchenOperations = state\.kitchenOperations\.map[\s\S]*filterKitchenNoteForToday\([\s\S]*operationDays: visibleKitchenOperations/);
 });

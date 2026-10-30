@@ -5,12 +5,9 @@ import { resolve } from 'node:path';
 const baseUrl = new URL(process.argv[2] || 'https://tavola-comune.web.app/');
 const buildRoot = resolve(process.env.TAT_BUILD_OUTPUT || 'prototypes/firebase-spark-pwa/dist');
 const releaseNonce = Date.now().toString(36);
-const assets = [
-  { path: 'index.html', local: 'index.html' },
-  { path: 'app.js', local: 'app.js' },
-  { path: 'styles.css', local: 'styles.css' },
-  { path: 'sw.js', local: 'sw.js' }
-];
+const manifest = JSON.parse(await readFile(resolve(buildRoot, 'build-manifest.json'), 'utf8'));
+const assets = [...Object.keys(manifest.files).map(path => ({ path: path.slice(1), local: path.slice(1) })),
+  { path: 'build-manifest.json', local: 'build-manifest.json' }];
 
 const results = [];
 for (const asset of assets) {

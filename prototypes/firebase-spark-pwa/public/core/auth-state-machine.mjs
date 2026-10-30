@@ -1,9 +1,4 @@
-// Single source of truth for the authentication/session lifecycle.
-//
-// Firebase and the friendly resident session are deliberately represented as
-// two independent identities.  A Firebase event can therefore never promote a
-// resident, and leaving the control panel cannot accidentally revoke a
-// resident session while navigating back to bookings.
+// Fonte unica del ciclo di autenticazione. L'identità Firebase e la sessione residente sono indipendenti: gli eventi Firebase non promuovono il residente e la navigazione conserva il corretto perimetro di accesso.
 
 export const AUTH_STATES = Object.freeze({
   SIGNED_OUT: 'signed-out',
@@ -27,6 +22,7 @@ export function createInitialAuthState(overrides = {}) {
     adminRole: '',
     adminAuthorized: false,
     adminPending: false,
+    pendingResidentVice: false,
     adminRequestId: 0,
     transitionId: 0,
     ...overrides
@@ -41,10 +37,7 @@ function withTransition(state, patch) {
   });
 }
 
-/**
- * Apply one lifecycle event. Unknown/stale events are no-ops, which makes
- * late Firebase callbacks harmless after logout or a newer login.
- */
+/* Applica un evento del ciclo di sessione. Gli eventi sconosciuti o superati non producono effetti; le risposte tardive restano subordinate all'autenticazione corrente. */
 export function reduceAuthState(input, event = {}) {
   const state = input?.state ? input : createInitialAuthState(input);
   const type = event.type;
@@ -60,16 +53,19 @@ export function reduceAuthState(input, event = {}) {
       residentEntry: '',
       adminAuthorized: false,
       adminRole: '',
-      adminPending: false
+      adminPending: false,
+      pendingResidentVice: false
     });
   }
   if (type === 'RESIDENT_LOGIN_START') {
     return withTransition(state, {
       state: AUTH_STATES.RESTORING_RESIDENT,
       residentReady: false,
+      residentEntry: '',
       adminAuthorized: false,
       adminRole: '',
-      adminPending: false
+      adminPending: false,
+      pendingResidentVice: false
     });
   }
   if (type === 'RESIDENT_READY') {
@@ -80,24 +76,39 @@ export function reduceAuthState(input, event = {}) {
       residentEntry: event.entry === 'vice' ? 'vice' : 'common',
       adminAuthorized: event.entry === 'vice',
       adminRole: event.entry === 'vice' ? 'MANAGER' : '',
-      adminPending: false
+      adminPending: false,
+      pendingResidentVice: false
     });
   }
   if (type === 'ADMIN_AUTH_START') {
     const adminRequestId = state.adminRequestId + 1;
+    const pendingResidentVice = state.state === AUTH_STATES.RESIDENT_READY
+      && state.residentReady
+      && state.residentEntry === 'vice'
+      && state.adminAuthorized
+      && state.adminRole === 'MANAGER';
     return withTransition(state, {
       state: AUTH_STATES.ADMIN_CHECKING,
       route: 'admin',
       adminPending: true,
       adminAuthorized: false,
       adminRole: '',
+      pendingResidentVice,
       adminRequestId
     });
   }
   if (type === 'ADMIN_AUTH_SUCCESS') {
     if (event.requestId !== undefined && event.requestId !== state.adminRequestId) return state;
     const role = ADMIN_ROLES.has(event.role) ? event.role : '';
-    if (!event.firebaseUid || !role) return state;
+    if (!event.firebaseUid || !role) {
+      return withTransition(state, {
+        state: state.residentReady ? AUTH_STATES.RESIDENT_READY : AUTH_STATES.SIGNED_OUT,
+        adminPending: false,
+        adminAuthorized: false,
+        adminRole: '',
+        pendingResidentVice: false
+      });
+    }
     return withTransition(state, {
       state: AUTH_STATES.ADMIN_READY,
       route: 'admin',
@@ -105,31 +116,39 @@ export function reduceAuthState(input, event = {}) {
       firebaseStrong: true,
       adminRole: role,
       adminAuthorized: true,
-      adminPending: false
+      adminPending: false,
+      pendingResidentVice: false
     });
   }
   if (type === 'ADMIN_AUTH_FAILURE') {
     if (event.requestId !== undefined && event.requestId !== state.adminRequestId) return state;
+    const preserveResidentVice = event.recoverable === true
+      && state.pendingResidentVice
+      && state.residentReady
+      && state.residentEntry === 'vice';
     return withTransition(state, {
       state: state.residentReady ? AUTH_STATES.RESIDENT_READY : AUTH_STATES.SIGNED_OUT,
       adminPending: false,
-      adminAuthorized: false,
-      adminRole: ''
+      adminAuthorized: preserveResidentVice,
+      adminRole: preserveResidentVice ? 'MANAGER' : '',
+      pendingResidentVice: false
     });
   }
   if (type === 'FIREBASE_AUTH_CHANGED') {
-    // A Firebase event without a strong identity is never an admin session.
+    // Un evento Firebase privo di identità forte non costituisce una sessione amministrativa.
     if (!event.strong || !event.uid) {
-      return state.adminAuthorized && state.state === AUTH_STATES.ADMIN_READY
-        ? withTransition(state, {
+      const lostStrongAdmin = state.adminAuthorized && state.state === AUTH_STATES.ADMIN_READY;
+      if (!state.firebaseUid && !state.firebaseStrong && !lostStrongAdmin) return state;
+      return withTransition(state, {
+        ...(lostStrongAdmin ? {
           state: state.residentReady ? AUTH_STATES.RESIDENT_READY : AUTH_STATES.SIGNED_OUT,
-          firebaseUid: '',
-          firebaseStrong: false,
           adminRole: '',
           adminAuthorized: false,
           adminPending: false
-        })
-        : state;
+        } : {}),
+        firebaseUid: '',
+        firebaseStrong: false
+      });
     }
     return withTransition(state, {
       firebaseUid: String(event.uid),
@@ -150,6 +169,7 @@ export function reduceAuthState(input, event = {}) {
       adminRole: '',
       adminAuthorized: false,
       adminPending: false,
+      pendingResidentVice: false,
       adminRequestId: state.adminRequestId + 1
     });
   }

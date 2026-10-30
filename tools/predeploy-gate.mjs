@@ -12,7 +12,15 @@ const checks = [
   ...toolFiles.map((file) => ['node', ['--check', file]]),
   ['node', ['prototypes/firebase-spark-pwa/scripts/validate-i18n.mjs']],
   ['node', ['--test', ...globSync('tests/firebase-spark/*.test.mjs'), ...globSync('tests/milestone1/*.test.mjs')]],
-  ['node', ['tools/build-public.mjs']]
+  ['node', [
+    'tools/firebase-cli.mjs',
+    '--config', 'firebase.json',
+    '--project', 'demo-tavola-comune-rules',
+    'emulators:exec', '--only', 'firestore',
+    'npm --prefix ../.. run test:firebase-rules'
+  ]],
+  ['node', ['tools/build-public.mjs']],
+  ['node', ['--test', ...globSync('tests/build/*.test.mjs')]]
 ];
 
 for (const [command, args] of checks) {

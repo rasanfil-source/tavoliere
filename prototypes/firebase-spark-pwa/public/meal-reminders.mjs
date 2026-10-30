@@ -29,8 +29,7 @@ export function buildMealReminderPlan(days, {
         delayMs: Math.max(0, reminderAtMs - nowMs)
       };
     })
-    // If Android suspended the PWA at the exact reminder time, recover the
-    // reminder when the app resumes, but never after the booking has closed.
+    // Alla ripresa dell'app viene recuperato il promemoria previsto durante la sospensione, purché la prenotazione sia ancora aperta.
     .filter((item) => Number.isFinite(item.closesAtMs)
       && nowMs < item.closesAtMs
       && !sent.has(item.reminderId))

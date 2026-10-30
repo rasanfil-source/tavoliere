@@ -10,6 +10,7 @@ export function getActiveCenterId() {
   }
 
   const stored = loadStoredCenterId();
+  if (CENTER_ID_PATTERN.test(stored)) storeCenterId(stored);
   return CENTER_ID_PATTERN.test(stored) ? stored : DEFAULT_CENTER_ID;
 }
 
@@ -24,6 +25,7 @@ export function setActiveCenterId(centerId, { updateUrl = true } = {}) {
     url.searchParams.set('c', centerId);
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
   }
+  window.dispatchEvent?.(new Event('centerchange'));
   return centerId;
 }
 
@@ -47,13 +49,20 @@ export function getCenterScopedStorageKey(baseKey) {
 
 function loadStoredCenterId() {
   try {
-    return window.localStorage.getItem(CENTER_STORAGE_KEY) || '';
-  } catch {
-    return '';
-  }
+    const stored = window.localStorage.getItem(CENTER_STORAGE_KEY) || '';
+    if (CENTER_ID_PATTERN.test(stored)) return stored;
+  } catch {}
+  // Nell'installazione dalla schermata Home, iOS copia i cookie ma non localStorage.
+  try {
+    return document.cookie.split(';').map((item) => item.trim())
+      .find((item) => item.startsWith(CENTER_STORAGE_KEY + '='))?.slice(CENTER_STORAGE_KEY.length + 1) || '';
+  } catch { return ''; }
 }
 
 function storeCenterId(centerId) {
+  try {
+    document.cookie = `${CENTER_STORAGE_KEY}=${centerId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+  } catch {}
   try {
     window.localStorage.setItem(CENTER_STORAGE_KEY, centerId);
   } catch {

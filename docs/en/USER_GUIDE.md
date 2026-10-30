@@ -77,21 +77,28 @@ The left or right position selected in **Appearance** is applied consistently to
 
 ## Centre Agenda
 
-Available under Week to administrators and deputies; Mass is available only to people with the liturgical role.
+Available under Week to administrators and deputies; Mass is available only to people with the liturgical role. The Ready message confirms loading and disappears after three seconds; errors remain visible.
 
-- **Guests:** unnamed covers per meal.
+**Book for others**, outlined by a thin border, opens a separate calendar for a registered resident or guest. Reservations belong to the selected person and appear normally in Summary and Kitchen. Returning closes this calendar while keeping saved reservations and the operator’s identity.
+
+**Day for the sections below** sets the date for Guests, Sick people, Notes and Temporary diet. It offers today and up to six following days already available in the calendar. Tapping the calendar icon beside the field opens the date picker directly, without another visible field. Dates run from today to the last day generated for the centre; extending the calendar expands this range. Navigating your own calendar or Book for others does not change this date.
+
+- **Guests:** unnamed covers per meal. The menu shows Today and Tomorrow when the reference date is today; otherwise it shows the selected date and the next date. Lunch and dinner belong to the day chosen in Guests; breakfast belongs to the following morning.
 - **Sick people:** moved from dining-room covers to separate meal and diet counts.
-- **Kitchen notes:** individual messages up to 1,000 characters, shown only on their date.
-- **Temporary diet:** replaces the usual diet for one or two days.
+- **Kitchen notes:** individual messages up to 1,000 characters. The section shows For tomorrow when tomorrow is selected, or For followed by the day and date for other future dates. Notes entered in advance remain attached to the selected date and appear in Summary and Kitchen, including Tomorrow on the preceding day: a note for 12 February appears in Tomorrow on 11 February, even when entered in October.
+- **Temporary diet:** replaces the usual diet for one or two days. For a future reference date, duration labels include the selected date or the two-day range, including month and year boundaries.
 - **Mass:** one daily value, managed only through the personal liturgical role.
+- **Eucharistic blessing:** administrators, authorised deputies and liturgical operators can schedule or cancel a blessing for the selected day. Enter a future time and save; the blessing is independent of Mass. Summary and Kitchen show a **+** beside the Mass symbol and the time underneath. Before the lunch cut-off, all future times can be changed. From lunch cut-off until dinner cut-off, new or changed blessings must be later than dinner cut-off; an existing blessing at or before the dinner cut-off cannot be moved or deleted. After the dinner cut-off the day is locked. Saved blessings remain visible. The last valid concurrent save wins.
 
 Each section is saved separately.
 
 ## Summary and Kitchen
 
-Summary offers **Today** and **Tomorrow**. **Original** is a compact table, **International** uses one card per meal and **Future** uses an alternative card layout. It includes covers, guests, diets, sick people, Mass and names. Names may appear as full name, code or initials. With both centre sharing and personal consent, tapping a name offers phone and WhatsApp actions; the contact hint disappears after thirty visits on the device.
+Summary offers **Today** and **Tomorrow**. **Original** is a compact table, **International** uses one card per meal and **Future** uses an alternative card layout. It includes covers, guests, diets, sick people, Mass, names and notes grouped by date. Names may appear as full name, code or initials. With both centre sharing and personal consent, tapping a name offers phone and WhatsApp actions; the contact hint disappears after thirty visits on the device.
 
 The Kitchen link creates a revocable technical session tied to the centre. It shows Today and Tomorrow counts, diets, sick people, guests, date-specific notes, Mass and the kitchen diet legend. It refreshes more frequently around operational hours and less often at night, and never exposes the full private directory.
+
+After the first complete monthly count, Kitchen also offers **Kitchen monthly totals**. Opening the disclosure shows the month's totals for breakfast, lunch and dinner. Counts include effective reservations and guests; sick residents remain separate. Breakfast is counted on the meal date, even if booked the previous day. Daily accounts close at 23:00 local time, except on the last day of the month, when they close at 21:00. The latest count remains available until the next monthly count. The app reads the aggregate only when the disclosure is opened, not when Kitchen loads. Daily logs and archived monthly summaries are deleted after three months. The workflow uses public-repository GitHub Actions and does not require a paid Firebase plan.
 
 ## Diets, Mass and reminders
 
@@ -127,7 +134,7 @@ Authentication is not acceptance, and acceptance is not yet transfer.
 
 An administrative account may belong to several centres and select the active one. A separate platform role may create or disable centres while preserving data; normal administrators cannot use it.
 
-- **Old version:** close every app window and site tab, then reopen. Updates activate on the next opening without a forced page reload.
+- **App update:** close every app window and site tab, then reopen. Updates activate on the next opening without a forced page reload.
 - **Wrong opening view:** save Appearance; reopening uses the preference, refresh keeps the current view.
 - **Session not restored:** ensure the browser does not delete site data.
 - **No Kitchen/Summary data:** use the complete current centre link.
@@ -135,3 +142,7 @@ An administrative account may belong to several centres and select the active on
 - **No reminders:** check both preference and notification permission.
 - **Meal locked:** its cut-off has passed.
 - **Offline:** cached information may remain visible, but changes wait for connectivity.
+
+## Interface language
+
+In **Appearance → App language**, choose Italian, English, French, Spanish, German or Catalan. Personal preferences stay on the device; the administrator can choose the centre default. Dates, weekdays and messages follow the selected language.

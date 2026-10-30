@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
-const publicRoot = resolve(process.cwd(), 'prototypes/firebase-spark-pwa/public');
+const publicRoot = resolve(process.env.TAT_SERVE_ROOT || 'prototypes/firebase-spark-pwa/public');
 const port = Number(process.env.PORT || 4180);
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -35,6 +35,14 @@ const server = createServer(async (request, response) => {
 
     const fileStat = await stat(filePath).catch(() => null);
     if (!fileStat?.isFile()) {
+      const acceptsHtml = request.method === 'GET'
+        && String(request.headers.accept || '').split(',')
+          .some((contentType) => contentType.trim().startsWith('text/html'));
+      if (!acceptsHtml) {
+        response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        response.end('Not found');
+        return;
+      }
       filePath = resolve(publicRoot, 'index.html');
     }
     const body = await readFile(filePath);

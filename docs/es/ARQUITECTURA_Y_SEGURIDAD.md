@@ -13,8 +13,9 @@ Este documento describe la arquitectura efectiva de Oggi a tavola. La aplicació
 - **Firebase Authentication** autentica al administrador y proporciona identidades técnicas secundarias para operaciones protegidas.
 - **Service worker** almacena la carcasa de la aplicación y activa las actualizaciones sin recargar una sesión activa.
 - **Módulos del cliente** separan política de roles, autenticación, enlaces, panel, reservas, traducciones y vistas.
+- **GitHub Actions** registra totales agregados de cocina y elimina registros vencidos con identidad temporal sin claves privadas.
 
-No se utilizan Cloud Functions ni servicios de pago en el flujo ordinario.
+No se utilizan Cloud Functions, Cloud Scheduler, Firestore TTL ni servicios Firebase de pago para estos conteos.
 
 ## Máquina de estados de autenticación
 
@@ -80,6 +81,8 @@ Los datos se agrupan bajo `centers/{centerId}`. Entre las colecciones y document
 - membresías e invitaciones administrativas;
 - eventos de auditoría.
 
+`kitchenDailyTotals/{dateId}` y `kitchenMonthlySummaries/{YYYY-MM}` almacenan únicamente sumas agregadas y no son legibles por la PWA. GitHub Actions borra esos registros a los tres meses. `kitchenTotalsMetadata/currentSummary` contiene el último conteo y solo pueden leerlo sesiones de Cocina y administradores; la aplicación lo consulta únicamente al abrir la casilla mensual. El registro empieza el 1 de noviembre de 2026, con cierre diario local a las 23:00 y cierre a las 21:00 el último día del mes, siempre después del límite efectivo de los platos.
+
 Los enlaces operativos contienen el identificador del centro y una credencial específica. El enlace de cocina expone únicamente la vista y las lecturas previstas por sus reglas; no es una sesión administrativa.
 
 ## Traspaso de responsabilidad
@@ -109,7 +112,7 @@ El italiano está incluido en la carga inicial. Inglés y español se cargan baj
 
 ## PWA, caché y actualización
 
-El service worker aplica una estrategia de carcasa versionada. Una nueva versión se instala en segundo plano y espera a que se cierren todas las ventanas y pestañas de la versión anterior. En la apertura siguiente toma el control. No se usa una recarga forzada durante una operación, para evitar regresiones de estado y pantallas intermedias.
+El service worker instala de forma atómica la página y sus recursos. La activación espera al cierre de las ventanas y pestañas controladas; la apertura siguiente utiliza el conjunto completo. Las operaciones del usuario continúan sin recargas forzadas.
 
 El manifiesto incluye iconos `any` y `maskable`; Android puede así aplicar su máscara sin inventar bordes irregulares.
 

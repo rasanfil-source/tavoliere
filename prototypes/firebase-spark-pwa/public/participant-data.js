@@ -4,15 +4,15 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocFromServer,
+  getDocsFromServer,
   query,
   serverTimestamp,
   setDoc,
   writeBatch,
   where,
   limit,
-  orderBy,
-  runTransaction,
-  startAfter
+  runTransaction
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import {
   db,
@@ -26,29 +26,25 @@ import {
   waitForAuthReady,
   withResidentTechnicalSession,
   withAdministratorTechnicalSession
-} from './firebase-client.js?v=20260822a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { resolveEffectiveEffect } from './reservation-state.mjs?v=20260823b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20260816g';
-import { normalizeDietTags } from './diet-utils.mjs?v=20260823c';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
+} from './firebase-client.js?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 import {
-  normalizeResidentSignature,
-  validateParticipantProfile
-} from './domain/participant-profile.mjs?v=20260816h';
-import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20260816g';
-import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/revision.mjs?v=20260816h';
-import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20260822a';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20260823c';
-import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
+  findApplicableRule,
+  resolveEffectiveDietTags,
+  resolveEffectiveEffect
+} from './reservation-state.mjs?v=20261014b';
+import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
+import { normalizeDietTags } from './diet-utils.mjs?v=20261014b';
 import {
-  CENTER_BACKUP_SCHEMA_VERSION,
-  RESTORABLE_CENTER_COLLECTIONS
-} from './domain/center-backup.mjs?v=20260823a';
+  normalizeResidentSignature
+} from './domain/participant-profile.mjs?v=20261014b';
+import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20261014b';
+import { clearPersonalCalendarSnapshots } from './core/personal-calendar-cache.mjs?v=20261014b';
 import {
-  invalidateCenterContactSettingsCache,
   loadCenterContactSettings
-} from './center-settings.js?v=20260825a';
+} from './center-settings.js?v=20261014b';
 export {
   CENTER_AVATAR_STORAGE_KEY,
   loadCachedCenterAvatar,
@@ -57,7 +53,7 @@ export {
   restoreCenterConfiguration,
   saveCenterAvatar,
   updateCenterSettings
-} from './center-settings.js?v=20260825a';
+} from './center-settings.js?v=20261014b';
 
 export const RESIDENT_TECHNICAL_EMAIL = 'residenti@tavola-comune.local';
 export const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
@@ -71,7 +67,6 @@ const SESSION_RECHECK_MS = 5 * 60 * 1000;
 const STATIC_QUERY_CACHE_MS = 10 * 60 * 1000;
 const RESERVATION_BATCH_SIZE = 6;
 const RESERVATION_BATCH_CONCURRENCY = 3;
-const ADMIN_DELETE_BATCH_SIZE = 400;
 let currentSession = null;
 let currentSessionAuthUid = '';
 let currentSessionCheckedAt = 0;
@@ -82,6 +77,7 @@ let summaryParticipantsCache = null;
 let summaryRulesCache = null;
 const mealWindowsCache = new Map();
 const participantRulesCache = new Map();
+let participantRulesRevision = 0;
 const staticQueryLoads = new Map();
 
 function shareStaticQuery(key, loader) {
@@ -108,36 +104,77 @@ export function findParticipantBySignature(participants, value) {
 }
 
 export function loadStoredResidentSignature() {
-  return normalizeResidentSignature(window.localStorage.getItem(
-    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY)
-  ));
+  return normalizeResidentSignature(readStoredResidentValue(RESIDENT_SIGNATURE_STORAGE_KEY));
 }
 
 function loadStoredResidentParticipantId() {
-  return String(window.localStorage.getItem(
-    getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY)
-  ) || '').trim();
+  return readStoredResidentValue(RESIDENT_PARTICIPANT_STORAGE_KEY);
 }
 
 function loadStoredResidentToken() {
   return {
-    tokenId: String(window.localStorage.getItem(
-      getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY)
-    ) || '').trim(),
-    expiresAt: String(window.localStorage.getItem(
-      getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY)
-    ) || '').trim()
+    tokenId: readStoredResidentValue(RESIDENT_TOKEN_STORAGE_KEY),
+    expiresAt: readStoredResidentValue(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY)
   };
 }
 
+function readStoredResidentValue(storageKey) {
+  try {
+    return String(window.localStorage.getItem(getCenterScopedStorageKey(storageKey)) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredResidentValues(entries) {
+  const scopedEntries = entries.map(([key, value]) => [
+    getCenterScopedStorageKey(key),
+    String(value)
+  ]);
+  try {
+    for (const [key, value] of scopedEntries) window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    // Evita di lasciare una combinazione parziale di identità e token.
+    for (const [key] of scopedEntries) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // Lo storage può essere completamente indisponibile nel browser.
+      }
+    }
+    return false;
+  }
+}
+
+function removeStoredResidentValues(keys) {
+  for (const key of keys) {
+    try {
+      window.localStorage.removeItem(getCenterScopedStorageKey(key));
+    } catch {
+      // La cancellazione locale è facoltativa; la sessione in memoria viene comunque chiusa.
+    }
+  }
+}
+
 function rememberResidentIdentity(participant, signature, token) {
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY), signature);
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY), participant.participantId);
-  window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY), token.tokenId);
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY),
-    token.expiresAt.toISOString()
-  );
+  try {
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY), signature);
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY), participant.participantId);
+    window.localStorage.setItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY), token.tokenId);
+    window.localStorage.setItem(
+      getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY),
+      token.expiresAt.toISOString()
+    );
+  } catch {
+    // Non lascia una combinazione parziale di identità e token se lo storage non è disponibile.
+    removeStoredResidentValues([
+      RESIDENT_SIGNATURE_STORAGE_KEY,
+      RESIDENT_PARTICIPANT_STORAGE_KEY,
+      RESIDENT_TOKEN_STORAGE_KEY,
+      RESIDENT_TOKEN_EXPIRES_STORAGE_KEY
+    ]);
+  }
 }
 
 async function loadPublicParticipantById(participantId, sourceDb = db) {
@@ -245,9 +282,7 @@ export async function signInFriendlyResident(signature, commonPassword) {
   const storedParticipantId = loadStoredResidentParticipantId();
   const storedSignature = loadStoredResidentSignature();
   const storedToken = loadStoredResidentToken();
-  // A restored Google session may belong to another centre. The common
-  // password is the explicit resident credential, so let it establish the
-  // resident session instead of rejecting the form before verification.
+  // La sessione Google può appartenere a un altro centro. La password comune autorizza esplicitamente l'accesso residente dopo la verifica.
   const keepStrongAdministratorSession = Boolean(strongAuthenticatedUser && authorizedAdministrator);
   try {
     let participant;
@@ -299,15 +334,19 @@ export async function signInFriendlyResident(signature, commonPassword) {
     rememberResidentIdentity(participant, normalized, token);
     return { participant, participants: [participant] };
   } catch (error) {
-    clearCurrentSession();
-    if (!keepStrongAdministratorSession) {
+    // Un controllo credenziali fallito o un errore temporaneo di rete conserva la sessione residente esistente. La pulizia riguarda solo un'identità appena sostituita.
+    if (getCurrentUser()?.uid !== existingUser?.uid) {
+      clearCurrentSession();
+    }
+    if (!keepStrongAdministratorSession && getCurrentUser()?.uid !== existingUser?.uid
+        && !isRecoverableSessionError(error)) {
       await signOutCurrentUser();
     }
     throw error;
   }
 }
 
-export async function restoreFriendlyResidentSession() {
+export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
   const signature = loadStoredResidentSignature();
   const participantId = loadStoredResidentParticipantId();
   const token = loadStoredResidentToken();
@@ -321,12 +360,30 @@ export async function restoreFriendlyResidentSession() {
     return null;
   }
   if (strongAuthenticatedUser && !authorizedAdministrator) {
-    // Show the resident form so the user can provide the common password.
+    // Mostra il modulo residente per richiedere la password comune.
     return null;
   }
   try {
-    await ensurePersonalSession(participantId, token);
-    const participant = await loadPublicParticipantById(participantId);
+    const initialUser = getCurrentUser();
+    // La lettura anticipata richiede un'identità anonima esistente e un token dispositivo valido. Gli errori vengono gestiti durante la verifica della sessione.
+    const profileRead = initialUser?.isAnonymous && new Date(token.expiresAt) > new Date()
+      ? loadPublicParticipantById(participantId).then(
+        (value) => ({ value }), (error) => ({ error })
+      )
+      : null;
+    const sessionUser = await ensurePersonalSession(participantId, token);
+    // La preparazione facoltativa non invalida un'identità autenticata.
+    if (onSessionReady) void Promise.resolve().then(() => onSessionReady({
+      participantId, uid: sessionUser.uid
+    })).catch(() => undefined);
+    const profileResult = profileRead && initialUser.uid === sessionUser.uid
+      ? await profileRead : null;
+    // Una lettura negata per sessione assente viene ripetuta dopo la creazione della sessione; un cambio di identità invalida il profilo già letto.
+    if (profileResult?.error && !['permission-denied', 'firestore/permission-denied'].includes(profileResult.error.code)) {
+      throw profileResult.error;
+    }
+    const participant = profileResult && !profileResult.error
+      ? profileResult.value : await loadPublicParticipantById(participantId);
     if (!participant) {
       throw new Error('Sigla non attiva');
     }
@@ -339,9 +396,8 @@ export async function restoreFriendlyResidentSession() {
     });
     return { participant, participants: [participant] };
   } catch (error) {
-    const permissionError = error?.code === 'permission-denied'
-      || error?.code === 'firestore/permission-denied';
-    if (isRecoverableSessionError(error) && (!permissionError || !isConnectionAvailable())) {
+    // Durante il recupero di token e sessione le letture possono essere negate. Le credenziali del dispositivo restano disponibili per riprovare; le regole continuano a proteggere i dati.
+    if (isRecoverableSessionError(error)) {
       error.preserveResidentIdentity = true;
       throw error;
     }
@@ -391,14 +447,10 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
     return null;
   }
   const normalizedSignature = normalizeResidentSignature(participant.signature);
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY),
-    normalizedSignature
-  );
-  window.localStorage.setItem(
-    getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY),
-    participant.participantId
-  );
+  writeStoredResidentValues([
+    [RESIDENT_SIGNATURE_STORAGE_KEY, normalizedSignature],
+    [RESIDENT_PARTICIPANT_STORAGE_KEY, participant.participantId]
+  ]);
   return { participant, participants: [participant], strongAdministrator: true };
 }
 
@@ -410,10 +462,13 @@ export async function forgetResidentDevice() {
 }
 
 function clearStoredResidentIdentity() {
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_SIGNATURE_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_PARTICIPANT_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_TOKEN_STORAGE_KEY));
-  window.localStorage.removeItem(getCenterScopedStorageKey(RESIDENT_TOKEN_EXPIRES_STORAGE_KEY));
+  clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
+  removeStoredResidentValues([
+    RESIDENT_SIGNATURE_STORAGE_KEY,
+    RESIDENT_PARTICIPANT_STORAGE_KEY,
+    RESIDENT_TOKEN_STORAGE_KEY,
+    RESIDENT_TOKEN_EXPIRES_STORAGE_KEY
+  ]);
 }
 
 async function revokeStoredPersonalAccess() {
@@ -467,7 +522,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   }
   const centerId = getActiveCenterId();
   // Su un dispositivo nuovo non esiste ancora alcun permesso per leggere la
-  // versione della password amministratori. Il token del link residenti crea
+  // identificativo di rotazione della password amministratori. Il token del link residenti crea
   // prima una sessione PUBLIC; l'autenticazione tecnica resta su Auth
   // secondaria e non sostituisce questa identità.
   try {
@@ -475,13 +530,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   } catch (error) {
     if (!knownSettings?.adminSharedPasswordSet) throw error;
   }
-  // La lettura di publicParticipants è protetta: prima si valida la password
-  // sull'account tecnico amministratori, poi si legge la persona usando quella
-  // stessa sessione tecnica. In precedenza la lettura avveniva anonimamente e
-  // faceva ricadere il flusso sulla password comune.
-  // Le impostazioni passate dalla schermata possono provenire dalla cache
-  // dell'accesso precedente. Per questa operazione rara rileggiamo sempre il
-  // documento autorevole, mantenendo il valore noto solo come fallback offline.
+  // La lettura protetta di publicParticipants usa la stessa sessione tecnica con cui viene verificata la password amministratori. Le impostazioni vengono rilette dalla fonte autorevole; il valore in cache serve soltanto in assenza di rete.
   const settings = await loadCenterContactSettings({ forceRefresh: true })
     .catch((error) => {
       if (knownSettings?.adminSharedPasswordSet) return knownSettings;
@@ -569,11 +618,7 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
     passwordVersion,
     technicalEmail: technicalEmail || settings.adminTechnicalEmail
   });
-  // La lettura effettuata con l'account tecnico può essere rifiutata quando
-  // l'identità tecnica del centro è in fase di rotazione. A questo punto,
-  // invece, la vice-sessione anonima è già stata creata e attesa: rileggere i
-  // link con l'identità definitiva elimina la finestra in cui il pannello del
-  // vice resta con i pulsanti Copia/Apri/Condividi disabilitati.
+  // Dopo la creazione della vice-sessione, i collegamenti vengono letti con l'identità definitiva, anche quando l'account tecnico del centro è in rotazione.
   const authorizedLinksSnapshot = await getDoc(doc(
     db,
     'centers',
@@ -614,12 +659,12 @@ export async function loadResidentAdministratorAuthorization() {
   if (!user?.isAnonymous || !participantId) return { active: false };
   const centerId = getActiveCenterId();
   const viceSessionRef = doc(db, 'centers', centerId, 'viceSessions', user.uid);
-  const [snapshot, centerSnapshot, participantSnapshot] = await Promise.all([
-    getDoc(viceSessionRef),
+  const snapshot = await getDoc(viceSessionRef);
+  if (!snapshot.exists()) return { active: false };
+  const [centerSnapshot, participantSnapshot] = await Promise.all([
     getDoc(doc(db, 'centers', centerId)),
     getDoc(doc(db, 'centers', centerId, 'publicParticipants', participantId))
   ]);
-  if (!snapshot.exists()) return { active: false };
   const data = snapshot.data();
   const expiresAt = data.expiresAt ? toDate(data.expiresAt) : null;
   const center = sanitizeCenterBackupDocument(centerSnapshot.exists() ? centerSnapshot.data() : {});
@@ -819,7 +864,10 @@ async function listSummaryParticipants(options = {}) {
 
   const key = `summaryParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
   return shareStaticQuery(key, async () => {
-    const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'participants'));
+    const snapshot = await getDocs(query(
+      collection(db, 'centers', getActiveCenterId(), 'participants'),
+      where('phoneConsent', '==', true)
+    ));
     const contactsByParticipant = new Map(snapshot.docs.map((docSnap) => {
       const data = docSnap.data();
       const phone = String(data.phone || '').trim();
@@ -885,13 +933,13 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
   const startDateId = formatDateId(dates[0]);
   const endDateId = formatDateId(dates[dates.length - 1]);
   const [mealTypes, windows, overrides, rules] = await Promise.all([
-    tagResidentCalendarRead(getMealTypes(options.forceStaticRefresh), 'mealTypes'),
+    tagResidentCalendarRead(getMealTypes(options.forceStaticRefresh, options.requireServer), 'mealTypes'),
     tagResidentCalendarRead(
-      getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh),
+      getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh, options.requireServer),
       'mealWindows'
     ),
-    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId), 'reservationOverrides'),
-    tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh), 'reservationRule')
+    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId, options.requireServer), 'reservationOverrides'),
+    tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh, options.requireServer), 'reservationRule')
   ]);
   const windowsByKey = new Map(
     windows.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
@@ -900,7 +948,7 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
     overrides.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
   );
 
-  return dates.map((date) => {
+  const result = dates.map((date) => {
     const mealDate = formatDateId(date);
     const meals = mealTypes.map((meal) => {
       const key = mealDate + '_' + meal.mealTypeId;
@@ -932,6 +980,10 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
       meals
     };
   });
+  Object.defineProperty(result, 'serverConfirmed', {
+    value: [mealTypes, windows, overrides, rules].every((values) => values.serverConfirmed === true)
+  });
+  return result;
 }
 
 function tagResidentCalendarRead(promise, stage) {
@@ -945,11 +997,9 @@ export async function loadParticipantWeek(participantId, startDate = new Date(),
   return loadParticipantPeriod(participantId, startDate, days, options);
 }
 
-export async function saveParticipantMeal(participant, meal, effect) {
+export async function saveParticipantMeal(participant, meal, effect, options = {}) {
   assertOnline();
-  const batch = writeBatch(db);
-  queueReservationWrite(batch, participant, meal, effect);
-  await commitWithRetry(() => batch.commit());
+  await commitReservationMeals(participant, [meal], effect, options);
   markMealSaved(meal, effect);
 }
 
@@ -965,9 +1015,7 @@ export async function saveParticipantDay(participant, meals, effect) {
     return 0;
   }
 
-  const batch = writeBatch(db);
-  mealsToUpdate.forEach((meal) => queueReservationWrite(batch, participant, meal, effect));
-  await commitWithRetry(() => batch.commit());
+  await commitReservationMeals(participant, mealsToUpdate, effect);
   mealsToUpdate.forEach((meal) => markMealSaved(meal, effect));
   return mealsToUpdate.length;
 }
@@ -1009,11 +1057,8 @@ export async function saveParticipantMonthSelection(participant, days, effect, m
 }
 
 async function saveReservationGroup(participant, meals, effect) {
-  const batch = writeBatch(db);
-  meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect));
-
   try {
-    await commitWithRetry(() => batch.commit());
+    await commitReservationMeals(participant, meals, effect);
     meals.forEach((meal) => markMealSaved(meal, effect));
     return { saved: meals.length, failed: 0 };
   } catch (batchError) {
@@ -1025,28 +1070,67 @@ async function saveReservationGroup(participant, meals, effect) {
   }
 }
 
-function queueReservationWrite(batch, participant, meal, effect) {
+async function commitReservationMeals(participant, meals, effect, options = {}) {
+  const centerId = getActiveCenterId();
+  const actorUid = options.bookingFor ? getCurrentUser()?.uid : null;
+  const writeContext = actorUid ? { centerId, actorUid } : { centerId };
+  if (options.bookingFor && !actorUid) throw new Error('Autenticazione richiesta');
+  try {
+    await commitWithRetry(() => {
+      const batch = writeBatch(db);
+      meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect, writeContext));
+      return batch.commit();
+    });
+  } catch (error) {
+    const code = String(error?.code || '').replace(/^firestore\//, '');
+    if (!['permission-denied', 'not-found'].includes(code)) throw error;
+
+    // Un altro dispositivo può aver creato o eliminato un override dopo la
+    // lettura del calendario. Riconciliamo solo quel conflitto, conservando
+    // identità, dieta e data di creazione degli override già presenti.
+    await runTransaction(db, async (transaction) => {
+      const snapshots = await Promise.all(meals.map((meal) => transaction.get(doc(
+        db, 'centers', centerId, 'reservationOverrides',
+        participant.participantId + '_' + meal.mealWindowId
+      ))));
+      if (!snapshots.some((snapshot, index) => snapshot.exists() !== Boolean(meals[index].createdAt))) {
+        throw error;
+      }
+      snapshots.forEach((snapshot, index) => queueReservationWrite(
+        transaction, participant, meals[index], effect,
+        { ...writeContext, exists: snapshot.exists() }
+      ));
+    });
+  }
+}
+
+function queueReservationWrite(batch, participant, meal, effect, {
+  centerId = getActiveCenterId(),
+  actorUid = null,
+  exists = Boolean(meal.createdAt)
+} = {}) {
   const overrideRef = doc(
     db,
     'centers',
-    getActiveCenterId(),
+    centerId,
     'reservationOverrides',
     participant.participantId + '_' + meal.mealWindowId
   );
   const update = {
     effect,
     requestId: createRequestId(),
-    source: getReservationWriteSource(),
+    source: actorUid ? 'DELEGATED' : getReservationWriteSource(),
+    actorUid: actorUid || getCurrentUser()?.uid || '',
     updatedAt: serverTimestamp()
   };
 
-  if (meal.createdAt) {
+  if (exists) {
     batch.update(overrideRef, update);
     return;
   }
 
   batch.set(overrideRef, {
-    centerId: getActiveCenterId(),
+    centerId,
     participantId: participant.participantId,
     groupId: participant.groupId,
     dietTags: Array.isArray(participant.dietTags) ? participant.dietTags : ['STANDARD'],
@@ -1073,59 +1157,80 @@ function markMealSaved(meal, effect) {
   }
 }
 
-async function getMealTypes(forceRefresh = false) {
-  if (!forceRefresh && isFreshCacheEntry(mealTypesCache)) {
+function calendarValues(snapshot, values, requireServer) {
+  const serverConfirmed = snapshot.metadata?.fromCache === false
+    && snapshot.metadata?.hasPendingWrites === false;
+  if (requireServer && !serverConfirmed) {
+    const error = new Error('Calendario in attesa di conferma dal server');
+    error.code = 'unavailable';
+    throw error;
+  }
+  Object.defineProperty(values, 'serverConfirmed', { value: serverConfirmed });
+  return values;
+}
+
+async function getMealTypes(forceRefresh = false, requireServer = false) {
+  if (!forceRefresh && (!requireServer || mealTypesCache?.value.serverConfirmed === true) && isFreshCacheEntry(mealTypesCache)) {
     return mealTypesCache.value;
   }
   const centerId = getActiveCenterId();
-  return shareStaticQuery(`mealTypes:${centerId}`, async () => {
-    const snapshot = await getDocs(collection(db, 'centers', centerId, 'mealTypes'));
+  return shareStaticQuery(`mealTypes:${centerId}:${requireServer ? 'server' : 'default'}`, async () => {
+    const snapshot = await (requireServer ? getDocsFromServer : getDocs)(collection(db, 'centers', centerId, 'mealTypes'));
     const value = snapshot.docs
       .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
       .filter((meal) => meal.status === 'ACTIVE')
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    calendarValues(snapshot, value, requireServer);
     mealTypesCache = { centerId, loadedAt: Date.now(), value };
     return value;
   });
 }
 
-async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false) {
+async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = false, requireServer = false) {
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid || '';
   const cacheKey = `${startDateId}_${endDateId}`;
   const cached = mealWindowsCache.get(cacheKey);
-  if (!forceRefresh && isFreshCacheEntry(cached)) {
+  if (!forceRefresh && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
     return cached.value;
   }
-  const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'mealWindows'),
-    where('mealDate', '>=', startDateId),
-    where('mealDate', '<=', endDateId)
-  ));
-  const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
-  mealWindowsCache.set(cacheKey, { centerId: getActiveCenterId(), loadedAt: Date.now(), value });
-  return value;
+  const key = JSON.stringify(['mealWindows', centerId, uid, startDateId, endDateId, requireServer, forceRefresh]);
+  return shareStaticQuery(key, async () => {
+    const snapshot = await (requireServer ? getDocsFromServer : getDocs)(query(
+      collection(db, 'centers', centerId, 'mealWindows'),
+      where('mealDate', '>=', startDateId),
+      where('mealDate', '<=', endDateId)
+    ));
+    const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
+    calendarValues(snapshot, value, requireServer);
+    mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
+    return value;
+  });
 }
 
-async function getOwnOverrides(participantId, startDateId, endDateId) {
+async function getOwnOverrides(participantId, startDateId, endDateId, requireServer = false) {
   const overrides = collection(db, 'centers', getActiveCenterId(), 'reservationOverrides');
+  const read = requireServer ? getDocsFromServer : getDocs;
   try {
-    const snapshot = await getDocs(query(
+    const snapshot = await read(query(
       overrides,
       where('participantId', '==', participantId),
       where('mealDate', '>=', startDateId),
       where('mealDate', '<=', endDateId)
     ));
-    return snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }));
+    return calendarValues(snapshot,
+      snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() })), requireServer);
   } catch (error) {
     if (error?.code !== 'failed-precondition') {
       throw error;
     }
-    const snapshot = await getDocs(query(
+    const snapshot = await read(query(
       overrides,
       where('participantId', '==', participantId)
     ));
-    return snapshot.docs
+    return calendarValues(snapshot, snapshot.docs
       .map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }))
-      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId);
+      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId), requireServer);
   }
 }
 
@@ -1158,10 +1263,20 @@ function buildParticipantMealSummary(meal, mealDate, participants, rules, overri
     })
   ]));
 
-  const present = participants
+  const reservationParticipants = participants.map((participant) => ({
+    ...participant,
+    dietTags: resolveEffectiveDietTags(
+      findApplicableRule(
+        rulesByParticipant.get(participant.participantId) || [],
+        participant.participantId, meal.mealTypeId, mealDate
+      ) || participant,
+      overrideByParticipant.get(participant.participantId)
+    )
+  }));
+  const present = reservationParticipants
     .filter((participant) => effects.get(participant.participantId) === 'PRESENT')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-  const absent = participants
+  const absent = reservationParticipants
     .filter((participant) => effects.get(participant.participantId) === 'ABSENT')
     .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
 
@@ -1197,374 +1312,34 @@ function groupRulesByParticipant(rules) {
   return grouped;
 }
 
-export async function saveAdminParticipant(participantId, profile) {
-  const normalizedProfile = validateParticipantProfile(profile);
-  const kitchenDietLegend = profile.kitchenDietLegend === undefined
-    ? null
-    : normalizeKitchenDietLegend(profile.kitchenDietLegend);
-  const { displayName, signature, initials, groupId, dietTags, phone } = normalizedProfile;
-  const expectedRevision = normalizeRevision(profile.expectedRevision);
-
-  const duplicateSnapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'publicParticipants'),
-    where('signature', '==', signature)
-  ));
-  const duplicate = duplicateSnapshot.docs.find((item) => item.id !== participantId);
-  if (duplicate) {
-    throw new Error('Questa sigla è già utilizzata');
-  }
-
-  const resolvedId = participantId || `participant_${crypto.randomUUID?.() || createRequestId()}`;
-  const centerId = getActiveCenterId();
-  const centerRef = doc(db, 'centers', centerId);
-  const participantRef = doc(db, 'centers', centerId, 'participants', resolvedId);
-  const publicParticipantRef = doc(db, 'centers', centerId, 'publicParticipants', resolvedId);
-  const ruleRef = doc(db, 'centers', centerId, 'reservationRules', `rule_${resolvedId}`);
-  const metadataRef = doc(db, 'centers', centerId, 'participantMetadata', 'current');
-  const centerSettings = await loadCenterContactSettings();
-  const status = normalizedProfile.active ? 'ACTIVE' : 'DISABLED';
-  const common = {
-    centerId,
-    signature,
-    displayName,
-    initials,
-    groupId,
-    dietTags,
-    liturgicalRole: normalizedProfile.liturgicalRole,
-    viceAdminRole: normalizedProfile.viceAdminRole,
-    sortOrder: normalizedProfile.sortOrder,
-    status,
-    updatedAt: serverTimestamp()
-  };
-  await runTransaction(db, async (transaction) => {
-    const participantSnapshot = await transaction.get(participantRef);
-    const ruleSnapshot = participantId ? await transaction.get(ruleRef) : null;
-    if (participantId && !participantSnapshot.exists()) {
-      const error = new Error('La persona non esiste più. Aggiorna l’elenco.');
-      error.code = 'aborted';
-      throw error;
-    }
-    const currentRevision = assertCurrentRevision(
-      participantSnapshot.data()?.revision,
-      expectedRevision
-    );
-    const revision = nextRevision(currentRevision);
-    const existingRule = ruleSnapshot?.exists() ? ruleSnapshot.data() : {};
-
-    transaction.set(metadataRef, { centerId, updatedAt: serverTimestamp() }, { merge: true });
-    const centerUpdate = {};
-    if (participantSnapshot.data()?.viceAdminRole === true && normalizedProfile.viceAdminRole !== true) {
-      centerUpdate.adminPasswordRotationRequired = true;
-    }
-    if (kitchenDietLegend !== null) {
-      centerUpdate.kitchenDietLegend = kitchenDietLegend;
-    }
-    if (Object.keys(centerUpdate).length > 0) {
-      transaction.set(centerRef, {
-        ...centerUpdate,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    }
-    transaction.set(participantRef, {
-      ...common,
-      revision,
-      phone,
-      phoneConsent: Boolean(normalizedProfile.phoneConsent && phone),
-      whatsappEnabled: Boolean(normalizedProfile.whatsappEnabled && normalizedProfile.phoneConsent && phone)
-    }, { merge: true });
-    transaction.set(publicParticipantRef, common, { merge: true });
-    transaction.set(ruleRef, {
-      centerId,
-      participantId: resolvedId,
-      groupId,
-      dietTags,
-      mealTypeIds: existingRule.mealTypeIds || ['breakfast', 'lunch', 'dinner'],
-      startsOn: existingRule.startsOn || formatDateId(getDateInTimeZone(centerSettings.timezone)),
-      endsOn: existingRule.endsOn ?? null,
-      status,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    appendAuditEvent(transaction, {
-      action: AUDIT_ACTIONS.UPSERT_PARTICIPANT,
-      targetType: 'PARTICIPANT',
-      targetId: resolvedId,
-      summary: participantId ? `Anagrafica aggiornata: ${displayName}` : `Persona aggiunta: ${displayName}`
-    });
-  });
-  if (status === 'DISABLED') {
-    await deleteParticipantAccessCredentials(centerId, resolvedId);
-  }
-  participantRulesCache.delete(resolvedId);
-  publicParticipantsCache = null;
-  summaryParticipantsCache = null;
-  summaryRulesCache = null;
-  invalidateCenterContactSettingsCache();
-  return resolvedId;
+export async function saveAdminParticipant(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.saveAdminParticipant(...args);
 }
 
-export async function assignCenterAdministratorParticipant(participantId, previousParticipantId = '') {
-  const centerId = getActiveCenterId();
-  const normalizedParticipantId = String(participantId || '').trim();
-  if (!normalizedParticipantId) throw new Error('Seleziona la persona da nominare amministratore');
-
-  const participantRef = doc(db, 'centers', centerId, 'publicParticipants', normalizedParticipantId);
-  const participantSnapshot = await getDoc(participantRef);
-  const participant = participantSnapshot.exists() ? participantSnapshot.data() : {};
-  if (participant.status !== 'ACTIVE') {
-    throw new Error('La persona scelta deve essere attiva');
-  }
-
-  await setDoc(doc(db, 'centers', centerId), {
-    administratorName: String(participant.displayName || '').trim(),
-    administratorSignature: String(participant.signature || '').trim().toUpperCase(),
-    administratorParticipantId: normalizedParticipantId,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-  invalidateCenterContactSettingsCache();
-  return {
-    participantId: normalizedParticipantId,
-    displayName: String(participant.displayName || '').trim(),
-    signature: String(participant.signature || '').trim().toUpperCase()
-  };
+export async function assignCenterAdministratorParticipant(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.assignCenterAdministratorParticipant(...args);
 }
 
-export async function setAdminParticipantActiveStatus(participantId, active, expectedRevision) {
-  const normalizedId = String(participantId || '').trim();
-  if (!normalizedId) {
-    throw new Error('Seleziona una persona');
-  }
-  const centerId = getActiveCenterId();
-  const participantRef = doc(db, 'centers', centerId, 'participants', normalizedId);
-  const publicParticipantRef = doc(db, 'centers', centerId, 'publicParticipants', normalizedId);
-  const ruleRef = doc(db, 'centers', centerId, 'reservationRules', `rule_${normalizedId}`);
-  const status = active === true ? 'ACTIVE' : 'DISABLED';
-  let displayName = normalizedId;
-  let revision = 0;
-
-  await runTransaction(db, async (transaction) => {
-    const participantSnapshot = await transaction.get(participantRef);
-    const publicParticipantSnapshot = await transaction.get(publicParticipantRef);
-    const ruleSnapshot = await transaction.get(ruleRef);
-    if (!participantSnapshot.exists()) {
-      const error = new Error('La persona non esiste più. Aggiorna l’elenco.');
-      error.code = 'aborted';
-      throw error;
-    }
-    const participant = participantSnapshot.data();
-    const currentRevision = assertCurrentRevision(
-      participant.revision,
-      normalizeRevision(expectedRevision)
-    );
-    revision = nextRevision(currentRevision);
-    displayName = String(participant.displayName || normalizedId);
-
-    transaction.set(
-      doc(db, 'centers', centerId, 'participantMetadata', 'current'),
-      { centerId, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
-    if (participant.viceAdminRole === true && status === 'DISABLED') {
-      transaction.set(doc(db, 'centers', centerId), {
-        adminPasswordRotationRequired: true,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    }
-    transaction.update(participantRef, { status, revision, updatedAt: serverTimestamp() });
-    if (publicParticipantSnapshot.exists()) {
-      transaction.update(publicParticipantRef, { status, updatedAt: serverTimestamp() });
-    }
-    if (ruleSnapshot.exists()) {
-      transaction.update(ruleRef, { status, updatedAt: serverTimestamp() });
-    }
-    appendAuditEvent(transaction, {
-      action: AUDIT_ACTIONS.UPSERT_PARTICIPANT,
-      targetType: 'PARTICIPANT',
-      targetId: normalizedId,
-      summary: active === true
-        ? `Persona riattivata: ${displayName}`
-        : `Persona sospesa: ${displayName}`
-    });
-  });
-
-  if (status === 'DISABLED') {
-    // Lo stato DISABLED blocca immediatamente nuove prenotazioni nelle regole.
-    // La revoca fisica delle vecchie sessioni prosegue senza trattenere la UI.
-    void deleteParticipantAccessCredentials(centerId, normalizedId).catch((error) => {
-      console.warn('Pulizia differita delle credenziali non completata', error);
-    });
-  }
-  participantRulesCache.delete(normalizedId);
-  publicParticipantsCache = null;
-  summaryParticipantsCache = null;
-  summaryRulesCache = null;
-  invalidateCenterContactSettingsCache();
-  return { participantId: normalizedId, status, revision };
+export async function setAdminParticipantActiveStatus(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.setAdminParticipantActiveStatus(...args);
 }
 
-export async function deleteAdminParticipant(participantId) {
-  const normalizedId = String(participantId || '').trim();
-  if (!normalizedId) {
-    throw new Error('Seleziona una persona da eliminare');
-  }
-
-  const centerId = getActiveCenterId();
-  const participantRef = doc(db, 'centers', centerId, 'participants', normalizedId);
-  const publicParticipantRef = doc(db, 'centers', centerId, 'publicParticipants', normalizedId);
-  const ruleRef = doc(db, 'centers', centerId, 'reservationRules', `rule_${normalizedId}`);
-  const [participantSnapshot, publicParticipantSnapshot, ruleSnapshot] = await Promise.all([
-    getDoc(participantRef),
-    getDoc(publicParticipantRef),
-    getDoc(ruleRef)
-  ]);
-
-  if (!participantSnapshot.exists()) {
-    throw new Error('La persona non esiste più');
-  }
-
-  const disableBatch = writeBatch(db);
-  disableBatch.update(participantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  if (publicParticipantSnapshot.exists()) {
-    disableBatch.update(publicParticipantRef, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  }
-  if (ruleSnapshot.exists()) {
-    disableBatch.update(ruleSnapshot.ref, { status: 'DISABLED', updatedAt: serverTimestamp() });
-  }
-  await commitWithRetry(() => disableBatch.commit());
-
-  // Le credenziali e le prenotazioni collegate diventano leggibili al vice solo
-  // dopo questo passaggio: le regole verificano che la persona sia DISABLED.
-  const [overrideSnapshot, sessionSnapshot, viceSessionSnapshot] = await Promise.all([
-    ...['reservationOverrides', 'accessSessions', 'viceSessions'].map((collectionName) => (
-      getDocs(query(
-        collection(db, 'centers', centerId, collectionName),
-        where('participantId', '==', normalizedId)
-      ))
-    ))
-  ]);
-  const ruleRefs = ruleSnapshot.exists() ? [ruleSnapshot.ref] : [];
-  const personalTokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
-    String(item.data().tokenId || '').trim()
-  )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
-  const relatedRefs = [
-    ...overrideSnapshot.docs.map((item) => item.ref),
-    ...sessionSnapshot.docs.map((item) => item.ref),
-    ...viceSessionSnapshot.docs.map((item) => item.ref),
-    ...personalTokenRefs
-  ];
-  for (let index = 0; index < relatedRefs.length; index += ADMIN_DELETE_BATCH_SIZE) {
-    const batch = writeBatch(db);
-    relatedRefs.slice(index, index + ADMIN_DELETE_BATCH_SIZE).forEach((ref) => batch.delete(ref));
-    await commitWithRetry(() => batch.commit());
-  }
-
-  const finalBatch = writeBatch(db);
-  ruleRefs.forEach((ref) => finalBatch.delete(ref));
-  finalBatch.delete(participantRef);
-  if (publicParticipantSnapshot.exists()) {
-    finalBatch.delete(publicParticipantRef);
-  }
-  finalBatch.set(
-    doc(db, 'centers', centerId, 'participantMetadata', 'current'),
-    { centerId, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-  if (participantSnapshot.data().viceAdminRole === true) {
-    finalBatch.set(doc(db, 'centers', centerId), {
-      adminPasswordRotationRequired: true,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  }
-  appendAuditEvent(finalBatch, {
-    action: AUDIT_ACTIONS.DELETE_PARTICIPANT,
-    targetType: 'PARTICIPANT',
-    targetId: normalizedId,
-    summary: `Persona eliminata: ${String(participantSnapshot.data().displayName || normalizedId)}`
-  });
-  await commitWithRetry(() => finalBatch.commit());
-
-  participantRulesCache.delete(normalizedId);
-  publicParticipantsCache = null;
-  summaryParticipantsCache = null;
-  summaryRulesCache = null;
-  invalidateCenterContactSettingsCache();
-  return relatedRefs.length + ruleRefs.length;
+export async function deleteAdminParticipant(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.deleteAdminParticipant(...args);
 }
 
-async function deleteParticipantAccessCredentials(centerId, participantId) {
-  const sessionSnapshot = await getDocs(query(
-    collection(db, 'centers', centerId, 'accessSessions'),
-    where('participantId', '==', participantId)
-  ));
-  const tokenRefs = [...new Set(sessionSnapshot.docs.map((item) => (
-    String(item.data().tokenId || '').trim()
-  )).filter(Boolean))].map((tokenId) => doc(db, 'centers', centerId, 'linkTokens', tokenId));
-  const refs = [
-    ...sessionSnapshot.docs.map((item) => item.ref),
-    ...tokenRefs
-  ];
-  for (let index = 0; index < refs.length; index += ADMIN_DELETE_BATCH_SIZE) {
-    const batch = writeBatch(db);
-    refs.slice(index, index + ADMIN_DELETE_BATCH_SIZE).forEach((ref) => batch.delete(ref));
-    await commitWithRetry(() => batch.commit());
-  }
+export async function loadMealWindowCoverage(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.loadMealWindowCoverage(...args);
 }
 
-export async function loadMealWindowCoverage() {
-  const snapshot = await getDocs(query(
-    collection(db, 'centers', getActiveCenterId(), 'mealWindows'),
-    orderBy('mealDate', 'desc'),
-    limit(1)
-  ));
-  if (snapshot.empty) {
-    return { through: null, remainingDays: 0 };
-  }
-
-  const through = snapshot.docs[0].data().mealDate || null;
-  if (!through) {
-    return { through: null, remainingDays: 0 };
-  }
-  const end = new Date(`${through}T12:00:00`);
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  return {
-    through,
-    remainingDays: Math.max(0, Math.round((end.getTime() - today.getTime()) / 86400000))
-  };
-}
-
-export async function exportCenterData() {
-  const user = getCurrentUser();
-  if (!user) {
-    throw new Error('Accesso amministratore richiesto');
-  }
-  const adminSnapshot = await getDoc(doc(db, 'centers', getActiveCenterId(), 'admins', user.uid));
-  const admin = adminSnapshot.exists() ? adminSnapshot.data() : {};
-  const role = normalizeCenterRole(admin.role);
-  if (admin.status !== 'ACTIVE' || !hasCapability(role, CAPABILITIES.EXPORT_CENTER_DATA)) {
-    throw new Error('Esportazione riservata a chi dispone del permesso specifico');
-  }
-  const collections = RESTORABLE_CENTER_COLLECTIONS;
-  const [centerSnapshot, collectionEntries] = await Promise.all([
-    getDoc(doc(db, 'centers', getActiveCenterId())),
-    Promise.all(collections.map(async (collectionName) => [
-      collectionName,
-      await readCollectionInPages(collectionName)
-    ]))
-  ]);
-  const center = centerSnapshot.exists() ? centerSnapshot.data() : {};
-  const documents = Object.fromEntries(collectionEntries);
-  const totalDocuments = collectionEntries.reduce((sum, [, rows]) => sum + rows.length, 0);
-
-  return {
-    schemaVersion: CENTER_BACKUP_SCHEMA_VERSION,
-    projectId: 'tavola-comune',
-    centerId: getActiveCenterId(),
-    center,
-    exportedAt: new Date().toISOString(),
-    totalDocuments,
-    counts: Object.fromEntries(Object.entries(documents).map(([key, value]) => [key, value.length])),
-    documents
-  };
+export async function exportCenterData(...args) {
+  const module = await import('./admin-participant-data.js?v=20261014b');
+  return module.exportCenterData(...args);
 }
 
 function sanitizeCenterBackupDocument(data) {
@@ -1576,26 +1351,6 @@ function sanitizeCenterBackupDocument(data) {
   delete sanitized.adminTechnicalEmail;
   delete sanitized.adminTechnicalUid;
   return sanitized;
-}
-
-async function readCollectionInPages(collectionName) {
-  const rows = [];
-  let cursor = null;
-  while (true) {
-    const constraints = [orderBy('__name__'), limit(1000)];
-    if (cursor) {
-      constraints.push(startAfter(cursor));
-    }
-    const snapshot = await getDocs(query(
-      collection(db, 'centers', getActiveCenterId(), collectionName),
-      ...constraints
-    ));
-    snapshot.docs.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    if (snapshot.size < 1000) {
-      return rows;
-    }
-    cursor = snapshot.docs[snapshot.docs.length - 1];
-  }
 }
 
 async function getRules(options = {}) {
@@ -1612,30 +1367,40 @@ async function getRules(options = {}) {
   });
 }
 
-async function getParticipantRules(participantId, forceRefresh = false) {
+async function getParticipantRules(participantId, forceRefresh = false, requireServer = false) {
+  const centerId = getActiveCenterId();
+  const uid = getCurrentUser()?.uid;
+  const revision = participantRulesRevision;
   const cached = participantRulesCache.get(participantId);
-  if (!forceRefresh && isFreshCacheEntry(cached)) {
+  if (!forceRefresh && cached?.uid === uid
+      && (!requireServer || cached?.value.serverConfirmed === true) && isFreshCacheEntry(cached)) {
     return cached.value;
   }
   // La regola personale ha un identificativo deterministico. La lettura
   // diretta evita che il primo calendario dipenda dalla valutazione di una
   // query protetta (le regole Firestore non funzionano come filtri).
-  const snapshot = await getDoc(doc(
-    db,
-    'centers',
-    getActiveCenterId(),
-    'reservationRules',
-    `rule_${participantId}`
-  ));
-  const value = snapshot.exists()
-    ? [{ ruleId: snapshot.id, ...snapshot.data() }]
-    : [];
-  participantRulesCache.set(participantId, {
-    centerId: getActiveCenterId(),
-    loadedAt: Date.now(),
-    value
+  const key = JSON.stringify(['participantRules', centerId, uid, participantId, requireServer, forceRefresh, revision]);
+  return shareStaticQuery(key, async () => {
+    const snapshot = await (requireServer ? getDocFromServer : getDoc)(doc(
+      db,
+      'centers',
+      centerId,
+      'reservationRules',
+      `rule_${participantId}`
+    ));
+    const value = snapshot.exists()
+      ? [{ ruleId: snapshot.id, ...snapshot.data() }]
+      : [];
+    calendarValues(snapshot, value, requireServer);
+    // Una scrittura amministrativa completata invalida le letture precedenti e la relativa cache.
+    if (revision === participantRulesRevision) participantRulesCache.set(participantId, {
+      centerId,
+      uid,
+      loadedAt: Date.now(),
+      value
+    });
+    return value;
   });
-  return value;
 }
 
 async function getOverrides(mealDate) {
@@ -1646,7 +1411,7 @@ async function getOverrides(mealDate) {
   return snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }));
 }
 
-function createRequestId() {
+export function createRequestId() {
   if (crypto.randomUUID) {
     return crypto.randomUUID();
   }
@@ -1673,7 +1438,7 @@ function assertOnline() {
   }
 }
 
-async function commitWithRetry(operation) {
+export async function commitWithRetry(operation) {
   const retryableCodes = new Set(['unavailable', 'deadline-exceeded', 'aborted']);
   let delay = 250;
 
@@ -1745,12 +1510,18 @@ function clearCurrentSession() {
 }
 
 
+const calendarLabelFormatters = new Map();
+
 function formatLongDate(date, locale = 'it') {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short'
-  }).format(date);
+  let formatter = calendarLabelFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(locale, {
+      weekday: 'short', day: '2-digit', month: 'short'
+    });
+    if (calendarLabelFormatters.size >= 8) calendarLabelFormatters.delete(calendarLabelFormatters.keys().next().value);
+    calendarLabelFormatters.set(locale, formatter);
+  }
+  return formatter.format(date);
 }
 
 function buildDateRange(startDate, days) {
@@ -1785,4 +1556,13 @@ function getPublicTokenId() {
   } catch {
     return '';
   }
+}
+
+// Le scritture amministrative invalidano anche le cache residenti in uso.
+export function invalidateParticipantDataCaches(participantId) {
+  participantRulesRevision++;
+  participantRulesCache.delete(participantId);
+  publicParticipantsCache = null;
+  summaryParticipantsCache = null;
+  summaryRulesCache = null;
 }

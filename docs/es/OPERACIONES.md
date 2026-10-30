@@ -37,6 +37,12 @@ Las vistas operativas se actualizan automáticamente:
 
 El cambio de día, semana o mes vuelve a situar la vista en el periodo corriente cuando corresponde. El usuario puede usar también el mando de actualización manual.
 
+## Totales mensuales de cocina
+
+Desde el 1 de noviembre de 2026, el [workflow](../../.github/workflows/kitchen-monthly-summary.yml) registra los totales diarios a las 23:00 locales y a las 21:00 el último día del mes, comprobando también las ventanas efectivas de comidas. El desayuno se atribuye al día de la comida aunque se haya reservado el día anterior. El resumen más reciente permanece visible hasta que esté listo el siguiente. Los registros diarios y los archivos mensuales se eliminan después de tres meses. La aplicación solo lee un agregado cuando se abre la casilla de Cocina. Consulta [totales mensuales de cocina](../kitchen-monthly-totals.md) para la ejecución gratuita y la recuperación.
+
+El job está programado a las 19:05, 20:05, 21:05, 22:05 y 23:05 UTC para cubrir los cuatro husos horarios admitidos y los cambios de horario estacional. GitHub aún puede retrasar las ejecuciones. Revisa **Actions > Kitchen monthly totals** y usa `workflow_dispatch` para recuperarlo. Los registros existentes no se sobrescriben y el proceso vuelve a intentar las últimas siete fechas.
+
 ## Preparación de una publicación
 
 1. Comprueba `git status` y no mezcles cambios no relacionados.

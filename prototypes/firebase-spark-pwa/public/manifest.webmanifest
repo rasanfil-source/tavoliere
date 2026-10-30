@@ -2,7 +2,6 @@
   "name": "Oggi a tavola",
   "short_name": "Oggi a tavola",
   "description": "Prenotazioni pasti per piccoli gruppi.",
-  "start_url": "/?access=friendly",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

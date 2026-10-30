@@ -4,6 +4,8 @@
 
 ## Requisiti
 
+Le verifiche di ogni modifica comprendono i [percorsi di accesso](SCELTE_ACCESSO_E_SEMPLICITA.md): link Cucina diretto anche su nuovo dispositivo, accesso ordinario, persistenza delle sessioni e tempi di apertura. Queste verifiche si applicano a password, regole Firestore e sessioni.
+
 - Node.js `24.12.0` come indicato in `.nvmrc`;
 - npm;
 - PowerShell 7 su Windows;
@@ -35,11 +37,16 @@ prototypes/firebase-spark-pwa/
 tests/
   firebase-spark/   test applicativi e statici
   firebase-rules/   test delle regole
+  smoke/            smoke test browser post-deploy
 tools/              build, gate, deploy, backup e verifica release
 docs/               documentazione mantenuta
 ```
 
 Non modificare direttamente `dist`: eseguire la build dopo avere cambiato `public`.
+
+La build genera moduli JavaScript e CSS con hash in `dist/assets` e un `build-manifest.json`. Include Firebase completo, mantiene Auth persistente e carica su richiesta le funzioni amministrative. Conservare i moduli immutabili in `dist/assets`: le pagine aperte possono richiederli durante un aggiornamento. Il service worker viene compilato con l'elenco dei moduli necessari ai residenti. `tools/verify-build.mjs` controlla hash, sorgenti, riferimenti e separazione dei moduli; il gate esegue anche `tests/build`.
+
+Per provare il pacchetto di produzione, impostare `TAT_SERVE_ROOT=prototypes/firebase-spark-pwa/dist` prima di avviare `tools/dev-server.mjs`. `TAT_BUILD_OUTPUT` consente soltanto l'output ordinario oppure directory temporanee sotto `.tools/build-tests`, per evitare cancellazioni di altre cartelle.
 
 ## Comandi principali
 
@@ -63,7 +70,31 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run build"
 pwsh.exe -NoLogo -NoProfile -Command "npm run predeploy:gate"
 ```
 
+Il gate esegue anche la suite delle regole Firestore nell'emulatore. `npm run deploy:firebase` interrompe quindi il rilascio prima di pubblicare Hosting o Firestore se una verifica fallisce. `npm run emulate:firebase-rules` resta disponibile per eseguire da sola la suite delle regole.
+
+Gli smoke test Playwright sono separati dal gate pre-deploy: `npm run deploy:hosting` e `npm run deploy:firebase` li eseguono dopo la pubblicazione e la verifica degli hash. Verificano l’avvio della shell e il caricamento degli asset su due viewport, oltre al 404 per un asset inesistente, in un browser temporaneo senza credenziali e senza scritture. Non fanno parte di `public`, della build o dell’avvio dell’app.
+
 ## Criteri minimi di accettazione
+
+### Misure locali dell'avvio
+
+Aggiungere `diagnostics=startup` alla query della pagina (con `&` se contiene già altri parametri).
+Console e User Timing mostrano misure `tat:*`, senza inviare o salvare telemetria:
+
+- `auth-start` e `auth-ready`: inizio Auth e prima notifica del ripristino, anche senza utente;
+- `app-evaluated`: inizio esecuzione di app.js dopo i suoi import statici;
+- `calendar-ready`: primo calendario personale renderizzato dopo le verifiche previste;
+- `startup-gate-released`: prima rimozione del blocco iniziale, anche per login o timeout.
+
+Questi punti sono misurati dall'inizio della navigazione e registrati una sola volta per documento.
+`calendar-ready` indica che il DOM è pronto, non il momento del paint. Non confondere il timeout
+dello splash con un calendario caricato. Le misure già presenti (`auth-restore`, `calendar-settings`,
+`domain:*`) indicano invece la durata della singola operazione e possono ripetersi durante i refresh.
+Per HTML e service worker usare anche la voce Navigation Timing negli strumenti del browser.
+Confrontare separatamente prima visita, riapertura con cache, token da rinnovare e ripresa della PWA.
+Il navigation preload è facoltativo secondo il browser; il fallback HTML dopo 1.200 ms rimane attivo.
+
+### Verifiche funzionali
 
 Per autenticazione e autorizzazione verificare:
 

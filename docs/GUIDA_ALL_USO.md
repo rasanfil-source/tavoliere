@@ -98,13 +98,18 @@ La posizione destra o sinistra scelta in **Aspetto** viene applicata in modo coe
 
 ## Agenda del centro
 
-Compare sotto la settimana per amministratore e vice; la sola Messa è disponibile a chi possiede il ruolo liturgico.
+Compare sotto la settimana per amministratore e vice. Chi possiede soltanto il ruolo liturgico vede nell’Agenda la sola sezione **Benedizione eucaristica**; la Messa resta gestibile nella colonna della settimana. Aprire l’Agenda mostra calendario e intestazioni senza caricare i dati delle sezioni: ogni sezione legge soltanto i dati necessari quando viene aperta. Il messaggio Pronto conferma il caricamento e scompare dopo tre secondi; eventuali errori rimangono visibili.
 
-- **Invitati:** coperti senza nome, distinti per pasto e sommati ai totali.
+**Prenoto per altri**, distinta da un bordo sottile, apre il calendario indipendente di un residente o ospite censito. Le prenotazioni sono attribuite alla persona selezionata e confluiscono normalmente nei riepiloghi. Il pulsante di ritorno chiude questo calendario conservando i salvataggi e l’identità dell’operatore.
+
+Il menu **Giorno per le sezioni seguenti** governa Invitati, Ammalati, Note e Dieta occasionale. Propone oggi e fino a sei giorni successivi già disponibili. Il tocco dell’icona del calendario accanto alla casella apre direttamente il selettore di data, senza una casella aggiuntiva. Sono selezionabili le date da oggi fino all’ultimo giorno generato per il centro; l’estensione del calendario amplia anche questo intervallo. La settimana consultata nel calendario personale e il calendario di Prenoto per altri non modificano questa data.
+
+- **Invitati:** coperti senza nome, distinti per pasto e sommati ai totali. Il menu mostra Oggi e Domani quando la data di riferimento è oggi; per una data futura mostra la data selezionata e quella successiva. Pranzo e cena appartengono al giorno scelto nel menu Invitati, la colazione alla mattina seguente.
 - **Ammalati:** persone spostate dal conteggio in sala al conteggio separato, con le relative diete.
-- **Note cucina:** messaggi fino a 1000 caratteri, aggiungibili ed eliminabili singolarmente. Sono mostrati soltanto nella data a cui appartengono.
-- **Dieta occasionale:** sostituisce la dieta abituale per uno o due giorni senza modificare la scheda della persona.
+- **Note cucina:** messaggi fino a 1000 caratteri, aggiungibili ed eliminabili singolarmente. Se il giorno scelto è domani, la sezione indica Per domani; per altre date future indica Per seguito da giorno e data. Una nota scritta in anticipo rimane associata alla data scelta e compare nei riepiloghi residenti e cucina, inclusa la vista Domani del giorno precedente: una nota del 12 febbraio appare quindi già l’11 febbraio nella vista Domani, anche se inserita a ottobre.
+- **Dieta occasionale:** sostituisce la dieta abituale per uno o due giorni senza modificare la scheda della persona. Se il riferimento è futuro, le durate riportano la data accanto a Solo questo giorno e l’intervallo accanto a Questo giorno e il successivo, anche a cavallo di mese o anno.
 - **Messa:** indicazione unica per la giornata, gestita soltanto da chi ha il ruolo liturgico.
+- **Benedizione eucaristica:** amministratori, vice autorizzati e liturgista possono indicarla per il giorno scelto nel calendario dell’Agenda. Attivare “Benedizione prevista”, inserire l’ora e salvare; togliere la spunta e salvare per annullarla. L’orario è obbligatorio e la benedizione è indipendente dalla Messa. Riepilogo e Cucina mostrano nella casella Messa il segno **+** accanto al simbolo e sotto l’ora fra parentesi, centrati. Non si possono inserire date o orari già trascorsi nel fuso del centro. Prima del limite pranzo sono consentiti inserimento, modifica e cancellazione. Raggiunto il limite pranzo, si possono inserire, modificare o cancellare soltanto benedizioni successive al limite cena: quelle già fissate entro il limite cena non possono essere spostate né cancellate. Raggiunto il limite cena, la giornata non è più modificabile. Per esempio, con limiti alle 10 e alle 17, alle 12 non si può inserire una benedizione delle 15; una benedizione delle 18 può ancora essere spostata alle 19 o cancellata. Quelle già salvate restano visibili e passano da Domani a Oggi con l’aggiornamento della vista. Fra salvataggi concorrenti validi prevale l’ultima scrittura completata. Se un termine è scaduto, il messaggio indica il limite orario, senza attribuire il rifiuto al ruolo.
 
 Ogni sezione viene salvata separatamente.
 
@@ -112,7 +117,7 @@ Ogni sezione viene salvata separatamente.
 
 ### Riepilogo
 
-Mostra **Oggi** e **Domani**, anche tramite scorrimento orizzontale. **Originale** usa una tabella compatta, **Internazionale** una scheda per pasto e **Futura** schede scorrevoli alternative. Comprende coperti, invitati, diete, ammalati, Messa e nominativi.
+Mostra **Oggi** e **Domani**, anche tramite scorrimento orizzontale. **Originale** usa una tabella compatta, **Internazionale** una scheda per pasto e **Futura** schede scorrevoli alternative. Comprende coperti, invitati, diete, ammalati, Messa, nominativi e note, raggruppate per data.
 
 I nomi possono essere visualizzati come nome, sigla o iniziali. Quando la condivisione dei contatti è attiva e la persona ha dato il consenso, toccandone il nome si può telefonare o aprire WhatsApp. Il suggerimento di contatto scompare dopo trenta aperture sul dispositivo.
 
@@ -120,13 +125,15 @@ I nomi possono essere visualizzati come nome, sigla o iniziali. Quando la condiv
 
 Il link dedicato crea un accesso tecnico revocabile legato al centro e mostra per Oggi e Domani coperti, diete, ammalati, invitati, note della data, Messa e legenda diete. Si aggiorna automaticamente, più spesso vicino agli orari operativi e meno di notte. Non mostra l’anagrafica completa e non richiede sigla personale.
 
+Dal primo riepilogo mensile completo compare **Media cucina**. Aprendo la casella si leggono i totali del mese per colazione, pranzo e cena; il totale comprende prenotazioni effettive e invitati, mentre gli ammalati restano separati. La colazione viene conteggiata nella data del pasto anche se prenotata il giorno prima. La giornata termina alle 23:00 locali, tranne l’ultimo giorno del mese, quando la chiusura è alle 21:00. Il conteggio corrente resta disponibile fino a quello successivo. I dati si caricano solo quando si apre la casella, non all’apertura della Cucina. I registri aggregati vengono cancellati dopo tre mesi. Il calcolo gira sul repository GitHub senza attivare un piano Firebase a pagamento.
+
 ## Diete, Messa e promemoria
 
 La dieta di base è `STANDARD` oppure un codice numerico mostrato come `D1`, `D2`, `D3` e così via. L’amministratore può associare al codice un’etichetta cucina di una o due parole. Riepilogo e anagrafica mostrano il codice; Cucina mostra anche la legenda. La molteplicità compare soltanto quando supera uno (`D3 × 2`, non `D3 × 1`).
 
 La **Messa** è un incarico personale separato: amministratore, vice o residente possono gestirla soltanto se la relativa spunta è assegnata alla loro Persona.
 
-I **promemoria** sono locali al dispositivo e disattivati per impostazione predefinita. Se autorizzati, avvisano dieci minuti prima della chiusura di pranzo o cena non ancora prenotati. Si disattivano da Aspetto o dalla notifica.
+I **promemoria** sono locali al dispositivo e disattivati per impostazione predefinita. Se autorizzati, avvisano dieci minuti prima della chiusura di pranzo o cena non ancora prenotati, anche nella vista Riepilogo. Funzionano mentre l’app è aperta: con l’app sospesa o chiusa gli avvisi non sono garantiti, anche su iPhone. Si disattivano da Aspetto o dalla notifica.
 
 ## Pannello di controllo
 
@@ -172,7 +179,7 @@ Un account amministrativo può appartenere a più centri e scegliere quello atti
 
 ## Problemi comuni
 
-- **Versione vecchia:** chiudere completamente app e schede del sito, quindi riaprire. L’aggiornamento diventa attivo alla successiva apertura senza riavvio forzato.
+- **Aggiornamento dell’app:** chiudere completamente app e schede del sito, quindi riaprire. L’aggiornamento diventa attivo alla successiva apertura senza riavvio forzato.
 - **Vista iniziale errata:** salvare Aspetto; una riapertura usa la preferenza, un refresh conserva la vista corrente.
 - **Sessione non ripristinata:** controllare che il browser non cancelli i dati del sito.
 - **Cucina o Riepilogo senza dati:** usare il collegamento completo e aggiornato del centro.
@@ -180,3 +187,7 @@ Un account amministrativo può appartenere a più centri e scegliere quello atti
 - **Promemoria assenti:** controllare preferenza e permesso notifiche.
 - **Pasto non modificabile:** l’orario limite è trascorso.
 - **Connessione assente:** gli ultimi dati possono restare consultabili, ma le modifiche attendono la rete.
+
+## Lingua dell’interfaccia
+
+In **Aspetto → Lingua dell’app** puoi scegliere italiano, inglese, francese, spagnolo, tedesco o catalano. La preferenza personale resta sul dispositivo; l’amministratore può impostare la lingua proposta dal centro. Anche date, giorni e messaggi seguono la lingua scelta.

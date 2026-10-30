@@ -6,7 +6,7 @@
 
 ## Goals and components
 
-Oggi a tavola is a static Firebase Spark PWA: no Cloud Functions and no custom server. Logic runs in the browser, while Firestore rules always provide final authorisation.
+Oggi a tavola is a static Firebase Spark PWA: it uses no Cloud Functions or always-on application server. A scheduled GitHub Actions workflow records aggregate kitchen totals and removes expired logs; Firestore rules remain the app's final authorisation layer.
 
 `index.html` and CSS provide the accessible shell; `app.js` orchestrates state and rendering; `core/auth-state-machine.mjs` owns Auth transitions; `role-policy.mjs` is the capability matrix; domain modules isolate participants, kitchen, daily operations, administration, calendar and summaries; `i18n` provides catalogues; `refresh-schedule.js` controls adaptive refresh; `firestore.rules` protects data; `sw.js` manages the offline shell; `build-public.mjs` produces `dist`.
 
@@ -29,11 +29,11 @@ Personal code plus common password creates a resident session. A deputy code plu
 
 `accessSessions` supports `PUBLIC`, `PERSONAL` and `KITCHEN`. A personal session lasts up to 30 days and renews during use; it is bound to a revocable personal token with a maximum life of 9,000 days. Links and tokens are centre-bound credentials.
 
-Shared passwords are checked through a secondary Firebase Auth instance using technical identities. Rotating the administrators password changes its version and invalidates previous deputy sessions without replacing the primary administrator account.
+Shared passwords are checked through a secondary Firebase Auth instance using technical identities. Deputy sessions use the technical credential for the active rotation; renewing that credential updates the technical identity without replacing the administrator's Firebase account.
 
 ## Firestore model
 
-Data lives under `centers/{centerId}`: groups and meal types; private and public participant projections; reservation rules and overrides; precalculated meal windows; daily Mass and health operations; date-specific kitchen notes; admins and invitations; access, deputy sessions and link tokens; presentation and avatar; audit events. Date and centre isolation is enforced by rules and query shape.
+Data lives under `centers/{centerId}`: groups and meal types; private and public participant projections; reservation rules and overrides; precalculated meal windows; daily Mass and health operations; date-specific kitchen notes; admins and invitations; access, deputy sessions and link tokens; presentation and avatar; audit events. `kitchenDailyTotals/{dateId}` and `kitchenMonthlySummaries/{YYYY-MM}` contain aggregate counts and are inaccessible to the app client. GitHub Actions deletes them after three months. `kitchenTotalsMetadata/currentSummary` holds the latest published count and is readable only by Kitchen sessions and administrators; the app reads it only when the Kitchen monthly-summary disclosure is opened. The current aggregate remains available until the next monthly count replaces it. Collection begins on 1 November 2026, with accounting close at 23:00 local time and 21:00 on the last day of a month, subject to actual meal cut-offs. Date and centre isolation is enforced by rules and query shape.
 
 The canonical handover is invitation → explicit Accept/Reject → strong identification → `ACTIVE` to `USED` → confirmed transfer. The transaction updates centre, roles, Person/email binding and audit. The outgoing administrator is revoked administratively but retains their Person. Deputies never use Firebase administrator invitations.
 
@@ -43,10 +43,10 @@ Base diets use `STANDARD` or numeric tags displayed with `D`; daily health may o
 
 CSS attributes apply palette and interface style. Local resident preferences win on that device; centre settings remain authoritative in the strong administrative panel. Language catalogues fall back from the selected language to Italian and then embedded minimum strings.
 
-The service worker uses network-first HTML, cache-first versioned assets and stale-while-revalidate app resources. It does not cache Firestore data independently. Updates wait for the next full close/reopen; there is no `skipWaiting` or forced reload.
+The service worker uses network-first HTML, cache-first content-fingerprinted assets and stale-while-revalidate app resources. It does not cache Firestore data independently. Updates wait for the next full close/reopen; there is no `skipWaiting` or forced reload.
 
 ## Backups and defences
 
 Backups include centre configuration, people, public projections, meals/windows, reservations, notes, daily operations, presentation, avatar and audit. They exclude passwords, Firebase users, `admins` memberships, sessions and tokens/links. Panel upload restores only approved configuration fields.
 
-Defences include verified email, persistence configured before Auth observation, least-privilege rules, expiry/revocation, schema limits, defensive Hosting headers, centre isolation, no secrets in Git and emulator tests for rule changes. Spark’s lack of server functions means calendar recalculation, backups and handover are protected client transactions/batches with revision and resume controls.
+Defences include verified email, persistence configured before Auth observation, least-privilege rules, expiry/revocation, schema limits, defensive Hosting headers, centre isolation, no secrets in Git and emulator tests for rule changes. Spark’s lack of server functions means calendar recalculation, backups and handover are protected client transactions/batches with revision and resume controls. The monthly aggregate uses GitHub Actions and keyless workload identity; it does not enable Firebase billing.

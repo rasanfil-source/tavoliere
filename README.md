@@ -12,11 +12,15 @@
 - applicare selezioni multiple a un giorno, un pasto, una settimana o all’intero mese;
 - consultare un riepilogo operativo senza modificare le prenotazioni;
 - mostrare alla cucina coperti, diete, celebrazioni e note del giorno;
+- programmare le benedizioni eucaristiche con i limiti pranzo e cena del centro;
+- consultare in Cucina i totali mensili di colazione, pranzo e cena, caricati solo su richiesta;
 - gestire persone, ruoli, orari limite, calendario e link operativi;
 - installare la PWA su Android e Windows senza pubblicarla in uno store;
 - continuare a usare sessioni residenti persistenti senza confonderle con l’autenticazione amministrativa.
 
 L’app è progettata per più centri, ma ogni dato e ogni sessione restano associati al proprio centro.
+
+La Cucina si consulta direttamente dal link ricevuto, anche se inoltrato, senza login o conferme. Semplicità, rapidità e persistenza dell'accesso sono [caratteristiche centrali del prodotto](docs/SCELTE_ACCESSO_E_SEMPLICITA.md).
 
 ## L’app in immagini
 
@@ -71,11 +75,12 @@ Le preferenze personali sono salvate sul dispositivo; le impostazioni del centro
 
 ## Architettura in breve
 
-La soluzione usa esclusivamente servizi compatibili con il piano gratuito Firebase Spark:
+La PWA usa servizi compatibili con il piano gratuito Firebase Spark; il riepilogo mensile viene calcolato con GitHub Actions:
 
 - Firebase Hosting per la PWA statica;
 - Cloud Firestore per configurazione e dati operativi;
 - Firebase Authentication per amministratori e identità tecniche;
+- GitHub Actions per i conteggi cucina pianificati, senza servizi cloud a pagamento;
 - service worker con rete come fonte primaria e cache dell’app come ripiego;
 - nessuna Cloud Function e nessun Cloud Storage.
 

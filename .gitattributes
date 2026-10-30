@@ -1,0 +1,4 @@
+# Generated SDK bundles contain significant whitespace inside template strings.
+# Keep their bytes intact and review the maintained sources instead.
+prototypes/firebase-spark-pwa/dist/assets/* -text -whitespace linguist-generated=true
+prototypes/firebase-spark-pwa/dist/build-manifest.json -text linguist-generated=true

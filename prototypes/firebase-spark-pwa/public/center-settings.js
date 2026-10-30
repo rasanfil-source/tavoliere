@@ -1,14 +1,16 @@
 import {
   doc,
   getDoc,
+  getDocFromServer,
+  runTransaction,
   serverTimestamp,
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
-import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20260816g';
-import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20260823c';
-import { buildCenterConfigurationRestore } from './domain/center-restore.mjs?v=20260823b';
+import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
+import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
+import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261014b';
+import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
 export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
@@ -35,7 +37,50 @@ const ALLOWED_THEME_PALETTES = new Set([
 const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban-plus', 'future']);
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
+let centerContactSettingsLoadCenterId = '';
 let centerContactSettingsRevision = 0;
+let calendarSettingsLoad = null;
+let calendarSettingsCache = null;
+
+// Date e orari limite richiedono soltanto il documento centro. Presentazione, dati del partecipante e icona si caricano dopo i pasti.
+export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) {
+  const centerId = getActiveCenterId();
+  const revision = centerContactSettingsRevision;
+  if (!forceRefresh && calendarSettingsCache?.centerId === centerId
+      && Date.now() - calendarSettingsCache.cachedAt < CENTER_SETTINGS_CACHE_MS) {
+    return calendarSettingsCache.value;
+  }
+  if (calendarSettingsLoad?.centerId === centerId && calendarSettingsLoad.revision === revision) {
+    return calendarSettingsLoad.promise;
+  }
+  const pending = { centerId, revision };
+  pending.promise = measureStartupStep('calendar-settings', async () => {
+    const snapshot = await getDocFromServer(doc(db, 'centers', centerId));
+    if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) {
+      const error = new Error('Impostazioni in attesa di conferma');
+      error.code = 'unavailable';
+      throw error;
+    }
+    const data = snapshot.exists() ? snapshot.data() : {};
+    const value = {
+      timezone: typeof data.timezone === 'string' ? data.timezone : 'Europe/Rome',
+      reservationCutoffs: normalizeReservationCutoffs(data.reservationCutoffs),
+      adminPasswordVersion: Number(data.adminPasswordVersion || 0)
+    };
+    if (centerId === getActiveCenterId() && revision !== centerContactSettingsRevision) {
+      if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
+      return loadCenterCalendarSettings({ forceRefresh: true });
+    }
+    if (getActiveCenterId() === centerId && revision === centerContactSettingsRevision) {
+      calendarSettingsCache = { centerId, value, snapshot, cachedAt: Date.now() };
+    }
+    return value;
+  }).finally(() => {
+    if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
+  });
+  calendarSettingsLoad = pending;
+  return pending.promise;
+}
 
 export function loadCachedCenterContactSettings() {
   try {
@@ -67,7 +112,6 @@ export function loadCachedCenterContactSettings() {
       administratorProfileRequired: cached.administratorProfileRequired === true,
       administratorProfileComplete: cached.administratorProfileComplete !== false,
       administratorPasswordRequired: cached.administratorPasswordRequired === true,
-      adminPasswordSet: cached.adminPasswordSet === true,
       commonPasswordSet: cached.commonPasswordSet === true,
       adminSharedPasswordSet: cached.adminSharedPasswordSet === true,
       adminPasswordVersion: Number(cached.adminPasswordVersion || 0),
@@ -121,9 +165,10 @@ export function cacheDefaultView(value) {
 export function invalidateCenterContactSettingsCache() {
   centerContactSettingsRevision += 1;
   centerContactSettingsCache = null;
-  // Do not let a read started before a save remain the shared promise for a
-  // later caller. Its completion is guarded by the revision below.
+  // Il salvataggio invalida la promessa di lettura condivisa; la revisione controlla anche il completamento delle richieste pendenti.
   centerContactSettingsLoad = null;
+  calendarSettingsLoad = null;
+  calendarSettingsCache = null;
 }
 
 export async function synchronizeCenterOwnerEmail(email) {
@@ -146,6 +191,7 @@ export async function synchronizeCenterOwnerEmail(email) {
   }
   if (centerContactSettingsCache) {
     centerContactSettingsCache = {
+      ...centerContactSettingsCache,
       value: { ...centerContactSettingsCache.value, adminEmail: normalizedEmail },
       cachedAt: Date.now()
     };
@@ -154,13 +200,44 @@ export async function synchronizeCenterOwnerEmail(email) {
 }
 
 export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
-  if (!forceRefresh && centerContactSettingsCache) {
+  if (!forceRefresh && centerContactSettingsCache?.centerId === getActiveCenterId()) {
     if (Date.now() - centerContactSettingsCache.cachedAt >= CENTER_SETTINGS_CACHE_MS) {
       refreshCenterContactSettings().catch(() => undefined);
     }
     return centerContactSettingsCache.value;
   }
-  return refreshCenterContactSettings();
+  return measureStartupStep('center-settings', refreshCenterContactSettings);
+}
+
+export async function updateKitchenLayout(layout) {
+  if (!ALLOWED_KITCHEN_LAYOUT_VALUES.has(layout)) throw new Error('Layout cucina non valido');
+  const centerId = getActiveCenterId();
+  const ref = doc(db, 'centers', centerId, 'presentationSettings', 'current');
+  await runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    if (snapshot.exists()) {
+      transaction.update(ref, { kitchenLayout: layout, updatedAt: serverTimestamp() });
+    } else {
+      const center = await transaction.get(doc(db, 'centers', centerId));
+      const data = center.exists() ? center.data() : {};
+      transaction.set(ref, {
+        centerId, kitchenLayout: layout,
+        participantContactSharingEnabled: data.participantContactSharingEnabled !== false,
+        themePalette: normalizeThemePalette(data.themePalette),
+        interfaceStyle: normalizeInterfaceStyle(data.interfaceStyle),
+        defaultView: ALLOWED_VIEW_VALUES.has(data.defaultView) ? data.defaultView : DEFAULT_OPENING_VIEW,
+        summaryLayout: normalizeLayout(data.summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
+        monthControlsSide: normalizeLayout(data.monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+        summaryResidentLabel: normalizeResidentLabel(data.summaryResidentLabel, 'name'),
+        language: normalizeCenterLanguage(data.language), updatedAt: serverTimestamp()
+      });
+    }
+  });
+  if (centerId === getActiveCenterId()) {
+    storeCachedCenterContactSettings({ ...(loadCachedCenterContactSettings() || {}), kitchenLayout: layout });
+  }
+  invalidateCenterContactSettingsCache();
+  return layout;
 }
 
 export async function updateCenterSettings({
@@ -185,6 +262,8 @@ export async function updateCenterSettings({
   administratorName,
   administratorSignature,
   adminEmail,
+  administratorSave,
+  preserveAdministratorProfile = false,
   adaptationsOnly = false,
   onProgress
 }) {
@@ -202,14 +281,14 @@ export async function updateCenterSettings({
     .replace(/\s+/g, '')
     .toUpperCase();
   const normalizedAdministratorEmail = String(adminEmail || '').trim().toLowerCase();
-  if (!normalizedAdministratorName || normalizedAdministratorName.length > 120) {
+  if (!preserveAdministratorProfile && (!normalizedAdministratorName || normalizedAdministratorName.length > 120)) {
     throw new Error('Inserisci il nome del responsabile');
   }
-  if (!/^[A-Z0-9]{2,12}$/.test(normalizedAdministratorSignature)) {
+  if (!preserveAdministratorProfile && !/^[A-Z0-9]{2,12}$/.test(normalizedAdministratorSignature)) {
     throw new Error('La sigla deve contenere da 2 a 12 lettere o numeri');
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedAdministratorEmail)
-      || normalizedAdministratorEmail.length > 254) {
+  if (!preserveAdministratorProfile && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedAdministratorEmail)
+      || normalizedAdministratorEmail.length > 254)) {
     throw new Error('Inserisci un indirizzo email valido');
   }
   // Password comune: campo vuoto = mantieni esistente; non vuoto = sostituisci.
@@ -226,7 +305,7 @@ export async function updateCenterSettings({
     throw new Error('La password amministratori deve avere tra 6 e 64 caratteri');
   }
   const normalizedCutoffs = normalizeReservationCutoffs(reservationCutoffs);
-  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20260825a');
+  const { saveCenterConfiguration } = await import('./calendar-configuration.js?v=20261014b');
   const settings = await saveCenterConfiguration({
     name: normalizedName,
     ...(appDisplayName === undefined
@@ -241,13 +320,13 @@ export async function updateCenterSettings({
     timezone,
     reservationCutoffs: normalizedCutoffs,
     participantContactSharingEnabled: Boolean(participantContactSharingEnabled),
-    themePalette: normalizeThemePalette(themePalette),
-    interfaceStyle: normalizeInterfaceStyle(interfaceStyle),
-    defaultView: ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : DEFAULT_OPENING_VIEW,
-    summaryLayout: normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
-    kitchenLayout: normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
-    monthControlsSide: normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
-    summaryResidentLabel: normalizeResidentLabel(summaryResidentLabel, 'name'),
+    themePalette: themePalette === undefined ? undefined : normalizeThemePalette(themePalette),
+    interfaceStyle: interfaceStyle === undefined ? undefined : normalizeInterfaceStyle(interfaceStyle),
+    defaultView: defaultView === undefined ? undefined : (ALLOWED_VIEW_VALUES.has(defaultView) ? defaultView : DEFAULT_OPENING_VIEW),
+    summaryLayout: summaryLayout === undefined ? undefined : normalizeLayout(summaryLayout, 'classic', ALLOWED_SUMMARY_LAYOUT_VALUES),
+    kitchenLayout: kitchenLayout === undefined ? undefined : normalizeLayout(kitchenLayout, 'classic', ALLOWED_KITCHEN_LAYOUT_VALUES),
+    monthControlsSide: monthControlsSide === undefined ? undefined : normalizeLayout(monthControlsSide, 'right', ALLOWED_MONTH_CONTROLS_SIDE_VALUES),
+    summaryResidentLabel: summaryResidentLabel === undefined ? undefined : normalizeResidentLabel(summaryResidentLabel, 'name'),
     language: typeof language === 'string' && language.trim() ? language : undefined,
     commonPassword: trimmedPassword || null,
     administratorSharedPassword: trimmedAdministratorSharedPassword,
@@ -257,6 +336,8 @@ export async function updateCenterSettings({
     administratorName: normalizedAdministratorName,
     administratorSignature: normalizedAdministratorSignature,
     adminEmail: normalizedAdministratorEmail,
+    administratorSave,
+    preserveAdministratorProfile,
     adaptationsOnly: adaptationsOnly === true,
     onProgress
   });
@@ -281,11 +362,13 @@ export async function restoreCenterConfiguration(backup) {
     throw new Error('Solo il responsabile può ripristinare la configurazione');
   }
 
+  const { buildCenterConfigurationRestore } = await import('./domain/center-restore.mjs?v=20261014b');
   const restore = buildCenterConfigurationRestore(backup, { expectedCenterId: centerId });
   const current = await loadCenterContactSettings({ forceRefresh: true });
   await updateCenterSettings({
     ...current,
     ...restore.settings,
+    preserveAdministratorProfile: true,
     commonPassword: '',
     administratorSharedPassword: '',
     currentAdministratorSharedPassword: '',
@@ -350,29 +433,30 @@ export async function removeCenterAvatar() {
   return { avatarVersion: '', avatarDataUrl: '' };
 }
 
-const SUPPORTED_CENTER_LOCALES = new Set(['it', 'en', 'fr', 'es', 'de']);
+const SUPPORTED_CENTER_LOCALES = new Set(['it', 'en', 'fr', 'es', 'de', 'ca']);
 
 function normalizeCenterLanguage(value) {
   return typeof value === 'string' && SUPPORTED_CENTER_LOCALES.has(value) ? value : 'it';
 }
 
 function refreshCenterContactSettings() {
-  if (centerContactSettingsLoad) {
+  const centerId = getActiveCenterId();
+  if (centerContactSettingsLoad && centerContactSettingsLoadCenterId === centerId) {
     return centerContactSettingsLoad;
   }
   const requestRevision = centerContactSettingsRevision;
   let request;
-  const centerId = getActiveCenterId();
   request = Promise.all([
-    getDoc(doc(db, 'centers', centerId)),
+    calendarSettingsCache?.centerId === centerId
+      && Date.now() - calendarSettingsCache.cachedAt < CENTER_SETTINGS_CACHE_MS
+      ? Promise.resolve(calendarSettingsCache.snapshot)
+      : getDoc(doc(db, 'centers', centerId)),
     getDoc(doc(db, 'centers', centerId, 'presentationSettings', 'current')).catch(() => null),
     getDoc(doc(db, 'centers', centerId, 'participantMetadata', 'current')).catch(() => null)
   ])
     .then(async ([snapshot, presentationSnapshot, participantMetadataSnapshot]) => {
-      // A save may have invalidated this request while Firestore was still
-      // resolving. Re-read authoritative settings instead of publishing the
-      // stale snapshot into memory or localStorage.
-      if (requestRevision !== centerContactSettingsRevision) {
+      // Se un salvataggio invalida la richiesta, le impostazioni vengono rilette dalla fonte autorevole prima di aggiornare memoria e localStorage.
+      if (requestRevision !== centerContactSettingsRevision || centerId !== getActiveCenterId()) {
         if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
         return refreshCenterContactSettings();
       }
@@ -385,6 +469,10 @@ function refreshCenterContactSettings() {
       const avatarVersion = typeof data.avatarVersion === 'string' ? data.avatarVersion : '';
       const avatarDataUrl = await resolveCenterAvatar(avatarVersion)
         .catch(() => loadCachedCenterAvatar());
+      if (requestRevision !== centerContactSettingsRevision || centerId !== getActiveCenterId()) {
+        if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
+        return refreshCenterContactSettings();
+      }
       const value = {
         name: normalizeCenterName(data.name),
         appDisplayName: normalizeAppDisplayName(data.appDisplayName),
@@ -410,8 +498,8 @@ function refreshCenterContactSettings() {
         administratorProfileComplete: data.administratorProfileRequired !== true
           || data.administratorProfileComplete === true,
         administratorPasswordRequired: data.administratorPasswordRequired === true,
-        adminPasswordSet: data.administratorPasswordRequired === true,
-        commonPasswordSet: typeof data.commonPassword === 'string' && data.commonPassword.length >= 4,
+        commonPasswordSet: data.commonPasswordSet === true
+          || typeof data.commonPassword === 'string' && data.commonPassword.length >= 4,
         adminSharedPasswordSet: data.adminSharedPasswordSet === true,
         adminPasswordVersion: Number(data.adminPasswordVersion || 0),
         adminTechnicalEmail: typeof data.adminTechnicalEmail === 'string' ? data.adminTechnicalEmail : '',
@@ -425,13 +513,14 @@ function refreshCenterContactSettings() {
       };
       cacheDefaultView(value.defaultView);
       storeCachedCenterContactSettings(value);
-      centerContactSettingsCache = { value, cachedAt: Date.now() };
+      centerContactSettingsCache = { centerId, value, cachedAt: Date.now() };
       return value;
     })
     .finally(() => {
       if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
     });
   centerContactSettingsLoad = request;
+  centerContactSettingsLoadCenterId = centerId;
   return request;
 }
 
@@ -464,7 +553,7 @@ function normalizeAppDisplaySubtitle(value) {
 
 function normalizeInterfaceStyle(value) {
   const migratedValue = value === 'urban' ? 'urban-plus' : value;
-  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'urban-plus';
+  return ALLOWED_INTERFACE_STYLES.has(migratedValue) ? migratedValue : 'cool';
 }
 
 function normalizeLayout(value, fallback, allowedValues) {

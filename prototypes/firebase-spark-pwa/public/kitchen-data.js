@@ -9,17 +9,17 @@ import {
   setDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId } from './center-context.js?v=20260816h';
+import { db, getCurrentUser, signInAnonymousUser, signOutCurrentUser, waitForAuthReady } from './firebase-client.js?v=20261014b';
+import { getActiveCenterId } from './center-context.js?v=20261014b';
 import {
   findApplicableRule,
   resolveEffectiveDietTags,
   resolveEffectiveEffect
-} from './reservation-state.mjs?v=20260823b';
-import { formatDateId } from './date-utils.mjs?v=20260816g';
-import { formatDietLabel } from './diet-utils.mjs?v=20260823c';
-import { t } from './i18n/i18n.mjs?v=20260823g';
-import { isConnectionAvailable } from './core/connectivity.mjs?v=20260816g';
+} from './reservation-state.mjs?v=20261014b';
+import { formatDateId } from './date-utils.mjs?v=20261014b';
+import { formatDietLabel } from './diet-utils.mjs?v=20261014b';
+import { t } from './i18n/i18n.mjs?v=20261014b';
+import { isConnectionAvailable } from './core/connectivity.mjs?v=20261014b';
 
 const SESSION_LIFETIME_DAYS = 30;
 const SESSION_RECHECK_MS = 5 * 60 * 1000;
@@ -57,7 +57,7 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
   const [mealTypes, windows, overrides, rules] = await Promise.all([
     getActiveMealTypes(forceStaticRefresh),
     getMealWindows(mealDate, forceStaticRefresh),
-    getOverrides(mealDate),
+    getOverrides(mealDate, forceStaticRefresh),
     getRules(forceStaticRefresh, options.staticVersion)
   ]);
   const windowByMeal = new Map(windows.map((item) => [item.mealTypeId, item]));
@@ -73,6 +73,7 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
       count: counts.total,
       diets: formatDietCounts(counts.diets),
       dietParticipants: counts.participants,
+      participantDiets: counts.participantDiets,
       status: window ? window.status : 'MISSING',
       closesAt: window ? window.closesAt : null
     };
@@ -253,11 +254,11 @@ async function getMealWindows(mealDate, forceRefresh = false) {
   return value;
 }
 
-async function getOverrides(mealDate) {
+async function getOverrides(mealDate, forceRefresh = false) {
   const centerId = getActiveCenterId();
   const cacheKey = `${centerId}:${mealDate}`;
   const cached = overridesCache.get(cacheKey);
-  if (cached && Date.now() - cached.loadedAt < OVERRIDE_CACHE_MS) {
+  if (!forceRefresh && cached && Date.now() - cached.loadedAt < OVERRIDE_CACHE_MS) {
     return cached.value;
   }
   const snapshot = await getDocs(query(
@@ -304,11 +305,16 @@ function countEffectiveReservations(rulesByParticipant, overrides, mealTypeId, m
     ...rulesByParticipant.keys(),
     ...relevantOverrides.map((override) => override.participantId)
   ]);
-  const counts = { total: 0, diets: new Map(), participants: [] };
+  const counts = { total: 0, diets: new Map(), participants: [], participantDiets: [] };
 
   participantIds.forEach((participantId) => {
     const override = overrideByParticipant.get(participantId);
     const participantRules = rulesByParticipant.get(participantId) || [];
+    const rule = findApplicableRule(participantRules, participantId, mealTypeId, mealDate);
+    const dietTags = resolveEffectiveDietTags(rule, override);
+    // Ammalati senza prenotazione: conservare la dieta del pasto corrente
+    // senza aggiungerli ai commensali e senza caricare dati anagrafici.
+    counts.participantDiets.push({ participantId, dietTags });
     const effect = resolveEffectiveEffect({
       participantId,
       mealTypeId,
@@ -320,8 +326,6 @@ function countEffectiveReservations(rulesByParticipant, overrides, mealTypeId, m
       return;
     }
 
-    const rule = findApplicableRule(participantRules, participantId, mealTypeId, mealDate);
-    const dietTags = resolveEffectiveDietTags(rule, override);
     counts.total += 1;
     counts.participants.push({ participantId, dietTags });
     addDietCounts(counts.diets, dietTags);

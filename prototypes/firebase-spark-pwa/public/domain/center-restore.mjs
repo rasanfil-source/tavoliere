@@ -1,7 +1,7 @@
 import {
   RESTORABLE_CENTER_COLLECTIONS,
   inspectCenterBackup
-} from './center-backup.mjs?v=20260823a';
+} from './center-backup.mjs?v=20261014b';
 
 const RESTORABLE_CENTER_FIELDS = Object.freeze([
   'name',

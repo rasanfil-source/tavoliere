@@ -1,4 +1,4 @@
-import { t } from '../i18n/i18n.mjs?v=20260823g';
+import { t } from '../i18n/i18n.mjs?v=20261014b';
 
 const AUTH_MESSAGES = Object.freeze({
   'auth/invalid-credential': 'errors.auth.invalidCredentials',
@@ -46,6 +46,9 @@ export function isRecoverableSessionError(error) {
   const message = normalizedMessage(error);
   return RECOVERABLE_SESSION_CODES.has(code)
     || message.includes('failed to fetch')
+    || message.includes('load failed')
+    || message.includes('fetch failed')
+    || message.includes('networkerror')
     || message.includes('network')
     || message.includes('offline')
     || message.includes('timeout')
@@ -72,6 +75,10 @@ export function classifyApplicationError(error) {
     || code === 'firestore/unavailable'
     || message.includes('offline')
     || message.includes('network')
+    || message.includes('load failed')
+    || message.includes('fetch failed')
+    || message.includes('networkerror')
+    || message.includes('connection')
     || message.includes('rete')
   ) return 'offline';
   return 'unknown';

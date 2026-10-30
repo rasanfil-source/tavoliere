@@ -10,7 +10,8 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'u
 const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
 const index = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const adminCenter = fs.readFileSync(path.join(publicDir, 'admin-center.js'), 'utf8');
-const participantData = fs.readFileSync(path.join(publicDir, 'participant-data.js'), 'utf8');
+const participantData = fs.readFileSync(path.join(publicDir, 'admin-participant-data.js'), 'utf8')
+  + fs.readFileSync(path.join(publicDir, 'participant-data.js'), 'utf8');
 const kitchenData = fs.readFileSync(path.join(publicDir, 'kitchen-data.js'), 'utf8');
 const bootstrap = fs.readFileSync(path.join(publicDir, 'bootstrap-demo.js'), 'utf8');
 const accessLinks = fs.readFileSync(path.join(publicDir, 'access-links.js'), 'utf8');
@@ -59,11 +60,11 @@ test('il bootstrap revoca gli eventuali token legacy sostituiti', () => {
 });
 
 test('cache busting e chiavi sincrone non caricano copie divergenti dei moduli', () => {
-  assert.match(app, /audit: '\.\/audit-log\.js\?v=20260816g'/);
-  assert.match(adminCenter, /audit-log\.js\?v=20260816g/);
-  assert.match(participantData, /audit-log\.js\?v=20260816g/);
-  assert.match(accessLinks, /audit-log\.js\?v=20260816g/);
-  assert.match(centerRestore, /center-backup\.mjs\?v=20260823a/);
+  assert.match(app, /audit: \(\) => import\('\.\/audit-log\.js\?v=20261014b'\)/);
+  assert.match(adminCenter, /audit-log\.js\?v=20261014b/);
+  assert.match(participantData, /audit-log\.js\?v=20261014b/);
+  assert.match(accessLinks, /audit-log\.js\?v=20261014b/);
+  assert.match(centerRestore, /center-backup\.mjs\?v=20261014b/);
   for (const source of [app, participantData, auditLog]) {
     assert.match(source, /RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune\.residentSignature'/);
   }
@@ -98,7 +99,7 @@ test('la spunta Attiva usa una transazione dedicata e revoca le sessioni senza b
   assert.match(participantData, /runTransaction\(db/);
   assert.match(participantData, /transaction\.update\(participantRef, \{ status, revision/);
   assert.match(participantData, /void deleteParticipantAccessCredentials\(centerId, normalizedId\)\.catch/);
-  assert.doesNotMatch(participantData, /await deleteParticipantAccessCredentials\(centerId, normalizedId\)/);
+  assert.match(participantData, /if \(previous\.data\(\)\?\.status === 'DISABLED'\) await deleteParticipantAccessCredentials\(centerId, normalizedId, normalizeRevision\(expectedRevision\)\)/);
   assert.match(app, /const nextActive = toggle\.checked/);
   assert.match(app, /setAdminParticipantActiveStatus\([\s\S]*participant\.revision/);
 });

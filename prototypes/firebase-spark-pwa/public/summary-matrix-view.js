@@ -1,11 +1,12 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20260823g";
-import { escapeHtml } from "./html-utils.js?v=20260816g";
-import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20260823c";
-import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20260823c";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20261014b";
+import { escapeHtml } from "./html-utils.js?v=20261014b";
+import { renderBlessing } from "./blessing-view.mjs?v=20261014b";
+import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20261014b";
+import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20261014b";
 import {
   buildKitchenMatrixScreens,
   buildSummaryMatrixScreens,
-} from "./summary-matrix-model.js?v=20260820i";
+} from "./summary-matrix-model.js?v=20261014b";
 
 let contactPopupSequence = 0;
 
@@ -20,6 +21,7 @@ export function mountSummaryMatrix(
     dietLegend = [],
     showContactHint = true,
     activeIndex = 0,
+    monthSummary = null,
     onActiveIndexChange = () => {},
   } = {},
 ) {
@@ -44,7 +46,17 @@ export function mountSummaryMatrix(
       ${screens.map((screen) => render(screen, { kitchen, activeIndex, residentLabel, showContactHint, dietLegend })).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${escapeHtml(t("summary.swipeHint"))}</p>
+    ${kitchen ? renderKitchenMonthlySummary(monthSummary) : ""}
   `;
+
+  if (kitchen && monthSummary?.onLoad) {
+    const details = container.querySelector('[data-kitchen-monthly-summary]');
+    details?.addEventListener('toggle', () => {
+      if (details.open && details.dataset.loading !== 'true') {
+        void loadKitchenMonthlySummary(details, monthSummary);
+      }
+    });
+  }
 
   const track = container.querySelector(`[data-${prefix}-matrix-track]`);
   let scrollTimer = 0;
@@ -78,6 +90,7 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
           <div class="summary-future-meals">
             ${screen.columns.map((column) => renderFutureMeal(column, residentLabel, showContactHint)).join("")}
           </div>
+          ${renderNotes(screen)}
         </article>
       `).join("")}
     </div>
@@ -159,14 +172,15 @@ function renderFuturePerson(person, residentLabel) {
 }
 
 function renderFutureMass(screen) {
-  const status = screen.columns.find((column) => column.dayIndex === screen.index)?.dayMassStatus;
+  const column = screen.columns.find((column) => column.dayIndex === screen.index);
+  const status = column?.dayMassStatus;
   if (!status || status === "UNKNOWN") return "";
-  return renderMassMetadata(status);
+  return renderMassMetadata(status, column.blessingTime);
 }
 
-function renderMassMetadata(status) {
+function renderMassMetadata(status, blessingTime = '') {
   const yes = status === "YES";
-  return `<span class="summary-mass-metadata summary-mass-metadata-${yes ? "yes" : "no"}"><span>${escapeHtml(t("summary.mass"))}:</span><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong></span>`;
+  return `<span class="summary-mass-metadata summary-mass-metadata-${yes ? "yes" : "no"}"><span>${escapeHtml(t("summary.mass"))}:</span><span class="mass-status-stack"><span class="summary-mass-metadata-dot" aria-hidden="true"></span><strong>${escapeHtml(t(yes ? "summary.yes" : "summary.no"))}</strong>${renderBlessing(blessingTime)}</span></span>`;
 }
 
 export function scrollSummaryMatrix(
@@ -261,7 +275,7 @@ function renderScreen(screen, { kitchen, activeIndex, residentLabel = "name", sh
         </tbody>
       </table>
       ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
-      ${kitchen ? renderNotes(screen) : ""}
+      ${renderNotes(screen)}
     </section>
   `;
 }
@@ -334,6 +348,51 @@ function hasContactablePerson(column) {
   return Array.isArray(column?.names) && column.names.some((person) =>
     person?.phoneConsent && normalizePhone(person.phone),
   );
+}
+
+function renderKitchenMonthlySummary(monthSummary) {
+  if (typeof monthSummary?.onLoad !== 'function') return '';
+  return `
+    <section class="kitchen-monthly-summary">
+      <details data-kitchen-monthly-summary>
+        <summary>${escapeHtml(t('kitchen.monthly.title'))}</summary>
+        <div class="kitchen-monthly-summary-content" data-kitchen-monthly-summary-content role="status" aria-live="polite"></div>
+      </details>
+    </section>
+  `;
+}
+
+async function loadKitchenMonthlySummary(details, monthSummary) {
+  const content = details.querySelector('[data-kitchen-monthly-summary-content]');
+  if (!content) return;
+  details.dataset.loading = 'true';
+  content.textContent = t('kitchen.monthly.loading');
+  try {
+    const summary = await monthSummary.onLoad(details.dataset.monthId);
+    if (!details.isConnected || !details.open) return;
+    if (!summary) {
+      content.textContent = t('kitchen.monthly.notReady');
+      return;
+    }
+    content.innerHTML = `
+      <p><strong>${escapeHtml(t('kitchen.monthly.period'))}</strong> ${escapeHtml(formatDate(summary.periodStart))} – ${escapeHtml(formatDate(summary.periodEnd))}</p>
+      <dl>
+        ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast)}
+        ${renderKitchenMonthlyCount('lunch', summary.counts.lunch)}
+        ${renderKitchenMonthlyCount('dinner', summary.counts.dinner)}
+      </dl>
+    `;
+  } catch {
+    if (!details.isConnected || !details.open) return;
+    content.textContent = t('kitchen.monthly.unavailable');
+  } finally {
+    delete details.dataset.loading;
+  }
+}
+
+function renderKitchenMonthlyCount(mealTypeId, count) {
+  const label = t(`meal.type.${mealTypeId}`);
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(count)}</dd></div>`;
 }
 
 function renderContactHint(column, showContactHint = true) {
@@ -521,7 +580,7 @@ function renderInternationalScreen(screen, { kitchen, activeIndex, residentLabel
         })).join("")}
       </div>
       ${kitchen ? renderKitchenDietLegend(screen, dietLegend) : ""}
-      ${kitchen ? renderNotes(screen) : ""}
+      ${renderNotes(screen)}
     </section>
   `;
 }
@@ -538,7 +597,7 @@ function hasSpecialOperationalContent(screen) {
 function renderInternationalCard(column, { kitchen, residentLabel = "name", showContactHint = true, showMassMetadata = false }) {
   const diets = kitchen ? renderKitchenDietCell(column) : renderDietCell(column);
   const massMetadata = showMassMetadata && column.dayMassStatus !== "UNKNOWN"
-    ? renderMassMetadata(column.dayMassStatus)
+    ? renderMassMetadata(column.dayMassStatus, column.blessingTime)
     : "";
   const mobileGuests = column.guestCount > 0
     ? `<span class="summary-international-mobile-guests">${escapeHtml(t("summary.guests"))}: <strong>${column.guestCount}</strong></span>`
@@ -573,6 +632,7 @@ function getMassDateGroups(screen) {
     return {
       ...dateGroup,
       massStatus: column?.dayMassStatus || "UNKNOWN",
+      blessingTime: column?.blessingTime || '',
     };
   });
 }
@@ -624,10 +684,21 @@ function nextDateClass(column, screen) {
 }
 
 function renderMassControl(group) {
+  const hasBlessing = /^([01]\d|2[0-3]):[0-5]\d$/.test(group.blessingTime || "");
+  const narrowBlessing = hasBlessing && Number(group.span) < 2;
+  const blessingClass = hasBlessing
+    ? narrowBlessing ? " summary-mass-control-blessing-narrow" : " summary-mass-control-blessing-wide"
+    : "";
+  const statusClass = hasBlessing
+    ? ` mass-status-with-blessing${narrowBlessing ? " mass-status-narrow" : " mass-status-wide-blessing"}`
+    : "";
+  const blessingMarkup = hasBlessing
+    ? renderBlessing(group.blessingTime, narrowBlessing ? { narrow: true } : { compact: true })
+    : "";
   return `
-    <span class="summary-mass-control">
+    <span class="summary-mass-control${blessingClass}">
       <span class="summary-mass-control-day">${escapeHtml(relativeDayLabel(group.dayIndex))}</span>
-      <span class="summary-mass-control-state">${renderMassCell(group)}</span>
+      <span class="summary-mass-control-state mass-status-stack${statusClass}">${renderMassCell(group)}${blessingMarkup}</span>
     </span>`;
 }
 

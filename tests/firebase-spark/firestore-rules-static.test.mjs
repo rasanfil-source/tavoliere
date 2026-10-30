@@ -8,6 +8,8 @@ const rules = readFileSync(
 );
 
 const participantData = readFileSync(
+  new URL('../../prototypes/firebase-spark-pwa/public/admin-participant-data.js', import.meta.url), 'utf8'
+) + readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/participant-data.js', import.meta.url),
   'utf8'
 );
@@ -169,7 +171,7 @@ test('la messa e leggibile nelle viste operative e modificabile solo dai ruoli a
   );
   assert.match(
     rules,
-    /match \/dailyOperations\/\{dateId\}[\s\S]*allow create, update: if canManageMass\(centerId\)[\s\S]*massWindowIsOpen\(centerId, dateId\)[\s\S]*massScheduled is bool/
+    /match \/dailyOperations\/\{dateId\}[\s\S]*massScheduled is bool[\s\S]*allow update: if massWindowIsOpen\(centerId, dateId\)[\s\S]*canWriteDailyOperation\(centerId, request.resource.data.diff\(resource.data\).affectedKeys\(\).hasAny\(\['massScheduled'\]\)\)/
   );
   assert.match(
     rules,
@@ -306,10 +308,17 @@ test('participant overrides are queried by participant and date range', () => {
   );
 });
 
+test('new reservation snapshots match the current participant profile without rewriting history', () => {
+  const overrideRules = rules.match(/match \/reservationOverrides\/\{overrideId\}[\s\S]*?match \/reservationOverrideHistory/)?.[0] || '';
+  assert.match(rules, /function overrideSnapshotMatchesParticipant\(centerId\)[\s\S]*publicParticipants[\s\S]*dietTags/);
+  assert.match(overrideRules, /allow create: if[\s\S]*overrideSnapshotMatchesParticipant\(centerId\)/);
+  assert.doesNotMatch(overrideRules.match(/allow update:[\s\S]*?allow delete:/)?.[0] || '', /overrideSnapshotMatchesParticipant/);
+});
+
 test('static participant calendar data uses a short cache with manual bypass', () => {
   assert.match(participantData, /STATIC_QUERY_CACHE_MS\s*=\s*10 \* 60 \* 1000/);
-  assert.match(participantData, /getMealWindowsInRange\(startDateId, endDateId, options\.forceStaticRefresh\)/);
-  assert.match(participantData, /if \(!forceRefresh && isFreshCacheEntry\(cached\)\)/);
+  assert.match(participantData, /getMealWindowsInRange\(startDateId, endDateId, options\.forceStaticRefresh, options\.requireServer\)/);
+  assert.match(participantData, /if \(!forceRefresh && \(!requireServer \|\| cached\?\.value\.serverConfirmed === true\) && isFreshCacheEntry\(cached\)\)/);
 });
 
 test('summary static data is cached and invalidated by the participant version', () => {
@@ -347,10 +356,10 @@ test('l amministratore puo eliminare una persona e i dati operativi collegati', 
   assert.match(participantData, /\['reservationOverrides', 'accessSessions', 'viceSessions'\]/);
   assert.doesNotMatch(participantData, /collection\(db, 'centers', centerId, 'linkTokens'\)[\s\S]*where\('participantId'/);
   assert.match(participantData, /deleteParticipantAccessCredentials\(centerId, resolvedId\)/);
-  assert.match(participantData, /const personalTokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
-  assert.match(participantData, /const tokenRefs = \[\.\.\.new Set\(sessionSnapshot\.docs\.map/);
+  assert.match(participantData, /credentialDeletionUnits\(centerId, sessionSnapshot.docs\)/);
+  assert.match(participantData, /session.data\(\).scope === 'PERSONAL'/);
   assert.match(participantData, /const \[overrideSnapshot, sessionSnapshot, viceSessionSnapshot\] = await Promise\.all/);
-  assert.match(participantData, /ruleRefs\.forEach\(\(ref\) => finalBatch\.delete\(ref\)\)/);
+  assert.match(participantData, /if \(currentRule\.exists\(\)\) finalBatch\.delete\(ruleRef\)/);
   assert.match(participantData, /participantMetadata', 'current'[\s\S]*updatedAt: serverTimestamp\(\)/);
   assert.match(rules, /match \/reservationOverrides\/\{overrideId\}[\s\S]*viceMayCleanDisabledParticipant/);
   assert.match(rules, /function tokenIsUsable\(centerId, tokenId\)[\s\S]*scope != 'PERSONAL'[\s\S]*participantIsActive/);
@@ -462,8 +471,8 @@ test('gli orari del centro riallineano il calendario senza riaprire i pasti', ()
   assert.match(index, /data-admin-cutoff-lunch/);
   assert.match(index, /data-admin-cutoff-dinner/);
   assert.match(index, /data-admin-cutoff-breakfast/);
-  assert.match(calendarConfiguration, /transaction\.update\(doc\(db, 'centers', centerId, 'mealWindows'/);
-  assert.doesNotMatch(calendarConfiguration, /status:\s*'OPEN'/);
+  assert.match(calendarConfiguration, /if \(windows\[index\]\.exists\(\)\)\s*\{\s*transaction\.update\(ref, \{ closesAt:/);
+  assert.match(calendarConfiguration, /else\s*\{\s*transaction.set\(ref, \{ centerId, mealDate: window.mealDate/);
   assert.match(calendarConfiguration, /status:\s*'ACTIVE'/);
   assert.match(calendarConfiguration, /status:\s*'COMPLETED'/);
 });

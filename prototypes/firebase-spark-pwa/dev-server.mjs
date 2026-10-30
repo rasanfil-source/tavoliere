@@ -26,6 +26,11 @@ const contentTypes = new Map([
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
+  if (url.pathname === '/__local/booking') {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    createReadStream(resolve(import.meta.dirname, '../../tools/local-booking.html')).pipe(response);
+    return;
+  }
   const safePath = decodeURIComponent(url.pathname).replace(/^\/+/, '');
   const candidate = resolve(root, safePath || 'index.html');
   const filePath = candidate === root || candidate.startsWith(root + sep)

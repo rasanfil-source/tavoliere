@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const LOCALES = ['it', 'en', 'fr', 'es', 'de'];
+const LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 const DEFAULT_LOCALE = 'it';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const i18nDir = path.resolve(__dirname, '../public/i18n');
@@ -47,7 +47,7 @@ function validate() {
       console.log(`✅ Lingua ${locale.toUpperCase()}: Tutte le ${italianKeys.length} chiavi sono presenti`);
     }
 
-    // Placeholders check
+    // Verifica delle variabili nei messaggi.
     const placeholderRegex = /\{(\w+)\}/g;
     let placeholderErrors = 0;
     for (const key of italianKeys) {

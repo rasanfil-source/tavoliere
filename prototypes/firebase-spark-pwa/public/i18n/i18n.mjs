@@ -10,9 +10,9 @@
  * - Aggiornamento dinamico DOM con data-i18n
  */
 
-export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de'];
+export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_RELEASE = '20260823f';
+const CATALOG_CACHE_KEY = 'sorgenti';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',
@@ -24,7 +24,148 @@ export const KEY_ALIASES = Object.freeze({
 });
 
 export const CORE_FALLBACKS = Object.freeze({
+  ca: Object.freeze({
+    "common.status.loading": "S’està carregant…",
+    "calendar.loadFailed": "No s’ha pogut carregar el calendari. Torna-ho a provar.",
+    "calendar.retry": "Torna-ho a provar",
+    "admin.invitations.invalidId": "Invitació no vàlida. Obre un enllaç d’invitació vàlid.",
+    "status.monthUpdated": "Mes actualitzat",
+    "bookingFor.title": "Reservar per a altres persones",
+    "bookingFor.person": "Resident o hoste",
+    "bookingFor.personAria": "Persona per a qui reservar",
+    "bookingFor.open": "Obre les reserves de la persona seleccionada",
+    "bookingFor.dialogAria": "Reserves per a una altra persona",
+    "bookingFor.heading": "Estàs reservant per a {name}",
+    "bookingFor.exit": "Surt de {name} i torna a la teva vista",
+    "bookingFor.loading": "S’estan carregant les reserves…",
+    "bookingFor.updated": "Reserves actualitzades",
+    "bookingFor.present": "Present",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "No s’ha desat la reserva",
+    "week.operations.referenceDay": "Data de referència",
+    "week.operations.chooseDate": "Tria una altra data",
+    "week.operations.datePair": "{first} i {second}",
+    "week.operations.note.forTomorrow": "Per demà",
+    "week.operations.note.forDate": "Per al {date}",
+    "admin.access.title": "Administrador",
+    "admin.activity.title": "Manteniment",
+    "admin.adaptations.appDisplayName.help": "Nom que es mostra a la primera línia de la pantalla inicial.",
+    "admin.adaptations.appDisplayName.label": "Nom de presentació",
+    "admin.adaptations.appDisplaySubtitle.help": "Frase que es mostra sota el nom a la pantalla inicial.",
+    "admin.adaptations.appDisplaySubtitle.label": "Segona línia",
+    "admin.adaptations.title": "Aspecte",
+    "resident.preferences.defaultViewAria": "Vista inicial en aquest dispositiu",
+    "resident.preferences.defaultViewHelp": "La vista inicial predeterminada en aquest dispositiu.",
+    "resident.preferences.description": "Personalitza l’aplicació en aquest dispositiu.",
+    "resident.preferences.intro": "Aquestes preferències es desen en aquest dispositiu.",
+    "resident.preferences.layoutsHelp": "Tria l’aspecte de cada funció per separat.",
+    "resident.preferences.save": "Desa les preferències",
+    "resident.preferences.title": "Preferències en aquest dispositiu",
+    "admin.administrator.help": "El nom, la sigla i el correu electrònic són obligatoris.",
+    "admin.administrator.signature.help": "Codi personal per accedir com a resident.",
+    "admin.centerSettings.save": "Desa la configuració",
+    "admin.commonPassword.help": "Deixa-ho buit per mantenir la contrasenya actual. ",
+    "admin.sharedPassword.newLabel": "Contrasenya dels administradors adjunts",
+    "admin.sharedPassword.configurationHelp": "Dona als adjunts accés a les funcions operatives autoritzades; no dona accés al control complet.",
+    "admin.configuration.identity.title": "Identitat del centre",
+    "admin.configuration.password.label": "Contrasenya dels residents",
+    "admin.configuration.schedule.title": "Horaris de les reserves",
+    "admin.configuration.title": "Configuració",
+    "admin.overview.links": "Enllaços operatius",
+    "admin.overview.title": "Visió general",
+    "admin.people.title": "Persones",
+    "app.action.book": "Reserva",
+    "app.header.controlPanel": "Tauler de control",
+    "app.header.bookings": "Reserves",
+    "app.header.pasti": "Àpats",
+    "app.header.verifyingAuth": "S’està verificant l’autorització…",
+    "app.title.compact": "Reserva",
+    "auth.signingOut": "S’està tancant la sessió…",
+    "auth.resident.calendarUnavailable": "No es poden obrir les reserves. Torna-ho a provar d’aquí a un moment.",
+    "auth.resident.title": "Accés dels residents",
+    "common.action.exit": "Surt",
+    "common.actions.cancel": "Cancel·la",
+    "common.actions.close": "Tanca",
+    "common.actions.confirm": "Confirma",
+    "common.actions.copy": "Copia",
+    "common.actions.delete": "Elimina",
+    "common.actions.exit": "Surt",
+    "common.actions.refresh": "Actualitza",
+    "common.actions.save": "Desa",
+    "common.actions.share": "Comparteix",
+    "diet.legend.codeLabel": "Número de dieta",
+    "diet.legend.help": "Tria una etiqueta o escriu-ne una de nova d’una o dues paraules. Només es mostrarà a la cuina.",
+    "diet.legend.labelLabel": "Etiqueta de cuina",
+    "diet.legend.labelPlaceholder": "Etiqueta de cuina",
+    "diet.legend.validation": "Utilitza una o dues paraules, amb un màxim de 32 caràcters.",
+    "kitchen.dietLegend.title": "Recordatori de dietes",
+    "errors.conflict": "Les dades han canviat. Actualitza-les i repeteix el canvi.",
+    "errors.generic": "S’ha produït un error inesperat. Torna-ho a provar.",
+    "errors.offline": "La xarxa no està disponible. Les dades ja carregades continuen visibles.",
+    "errors.permission": "El teu rol no permet aquesta operació.",
+    "errors.timeout": "La resposta està trigant massa. Comprova la connexió i torna-ho a provar.",
+    "kitchen.notes.none": "No hi ha notes per a aquesta data",
+    "kitchen.notes": "Notes per a la cuina",
+    "kitchen.notes.title": "Notes per a la cuina",
+    "admin.sharedPassword.label": "Contrasenya dels administradors adjunts",
+    "summary.breakfastNotPlanned": "No previst",
+    "summary.breakfastPlanned": "Previst",
+    "summary.breakfastTomorrow": "Esmorzar (de demà)",
+    "summary.callPerson": "Truca a {name}",
+    "summary.contactPerson": "Contacta amb {name}",
+    "summary.contactHint": "Toca un comensal per contactar-hi",
+    "summary.cover.one": "cobert",
+    "summary.cover.other": "coberts",
+    "summary.dayAfterTomorrow": "Demà passat",
+    "summary.diningMeals": "Àpats al menjador",
+    "summary.followingDay": "Dia següent",
+    "summary.guests": "Convidats",
+    "summary.includedDiets": "Dietes incloses",
+    "summary.item": "Concepte",
+    "summary.mass": "Missa",
+    "summary.messagePerson": "Escriu a {name} per WhatsApp",
+    "summary.names": "Comensals",
+    "summary.no": "No",
+    "summary.noDiet": "Sense dieta",
+    "summary.noMeal": "No hi ha cap àpat disponible.",
+    "summary.noName": "Sense nom",
+    "summary.notSet": "No establert",
+    "summary.screensLabel": "Resum en dues pantalles",
+    "summary.sickDiets": "Dietes dels malalts",
+    "summary.sickMeals": "Àpats per als malalts",
+    "summary.swipeHint": "Llisca horitzontalment per passar d’avui a demà.",
+    "summary.today": "Avui",
+    "summary.tomorrow": "Demà",
+    "summary.tray.one": "safata",
+    "summary.tray.other": "safates",
+    "summary.view.loading": "S’està carregant el resum…",
+    "summary.view.noData": "No hi ha dades disponibles",
+    "summary.view.title": "Resum",
+    "summary.yes": "Sí"
+}),
   it: Object.freeze({
+    "common.status.loading": "Caricamento…",
+    "calendar.loadFailed": "Non è stato possibile caricare il calendario. Riprova.",
+    "calendar.retry": "Riprova",
+    "admin.invitations.invalidId": "Invito non valido. Apri un collegamento di invito valido.",
+    "status.monthUpdated": "Mese aggiornato",
+    "bookingFor.title": "Prenoto per altri",
+    "bookingFor.person": "Residente o ospite",
+    "bookingFor.personAria": "Persona per cui prenotare",
+    "bookingFor.open": "Apri prenotazioni della persona selezionata",
+    "bookingFor.dialogAria": "Prenotazioni per un’altra persona",
+    "bookingFor.heading": "Stai prenotando per {name}",
+    "bookingFor.exit": "Abbandona {name} e rientra nella tua vista",
+    "bookingFor.loading": "Caricamento prenotazioni…",
+    "bookingFor.updated": "Prenotazioni aggiornate",
+    "bookingFor.present": "Presente",
+    "bookingFor.absent": "Assente",
+    "bookingFor.notSaved": "Prenotazione non salvata",
+    "week.operations.referenceDay": "Data di riferimento",
+    "week.operations.chooseDate": "Scegli un’altra data",
+    "week.operations.datePair": "{first} e {second}",
+    "week.operations.note.forTomorrow": "Per domani",
+    "week.operations.note.forDate": "Per {date}",
     'app.title.compact': 'Prenotarsi',
     'app.header.controlPanel': 'Pannello di controllo',
     'app.header.verifyingAuth': 'Accesso al pannello in corso…',
@@ -122,6 +263,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Link per accedere'
   }),
   en: Object.freeze({
+    "common.status.loading": "Loading…",
+    "calendar.loadFailed": "The calendar could not be loaded. Please try again.",
+    "calendar.retry": "Try again",
+    "admin.invitations.invalidId": "Invalid invitation. Open a valid invitation link.",
+    "status.monthUpdated": "Month updated",
+    "bookingFor.title": "Book for others",
+    "bookingFor.person": "Resident or guest",
+    "bookingFor.personAria": "Person to book for",
+    "bookingFor.open": "Open reservations for the selected person",
+    "bookingFor.dialogAria": "Reservations for another person",
+    "bookingFor.heading": "You are booking for {name}",
+    "bookingFor.exit": "Leave {name} and return to your view",
+    "bookingFor.loading": "Loading reservations…",
+    "bookingFor.updated": "Reservations updated",
+    "bookingFor.present": "Present",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "Reservation not saved",
+    "week.operations.referenceDay": "Reference date",
+    "week.operations.chooseDate": "Choose another date",
+    "week.operations.datePair": "{first} and {second}",
+    "week.operations.note.forTomorrow": "For tomorrow",
+    "week.operations.note.forDate": "For {date}",
     'app.title.compact': 'Book meals',
     'app.header.controlPanel': 'Control panel',
     'app.header.verifyingAuth': 'Opening the control panel…',
@@ -176,6 +339,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Access links'
   }),
   fr: Object.freeze({
+    "common.status.loading": "Chargement…",
+    "calendar.loadFailed": "Le calendrier n’a pas pu être chargé. Réessayez.",
+    "calendar.retry": "Réessayer",
+    "admin.invitations.invalidId": "Invitation non valide. Ouvrez un lien d’invitation valide.",
+    "status.monthUpdated": "Mois mis à jour",
+    "bookingFor.title": "Réserver pour d’autres",
+    "bookingFor.person": "Résident ou invité",
+    "bookingFor.personAria": "Personne pour qui réserver",
+    "bookingFor.open": "Ouvrir les réservations de la personne sélectionnée",
+    "bookingFor.dialogAria": "Réservations pour une autre personne",
+    "bookingFor.heading": "Vous réservez pour {name}",
+    "bookingFor.exit": "Quitter {name} et revenir à votre vue",
+    "bookingFor.loading": "Chargement des réservations…",
+    "bookingFor.updated": "Réservations actualisées",
+    "bookingFor.present": "Présent",
+    "bookingFor.absent": "Absent",
+    "bookingFor.notSaved": "Réservation non enregistrée",
+    "week.operations.referenceDay": "Date de référence",
+    "week.operations.chooseDate": "Choisir une autre date",
+    "week.operations.datePair": "{first} et {second}",
+    "week.operations.note.forTomorrow": "Pour demain",
+    "week.operations.note.forDate": "Pour {date}",
     'app.title.compact': 'Réserver',
     'app.header.controlPanel': 'Panneau de contrôle',
     'app.header.verifyingAuth': 'Ouverture du panneau de contrôle…',
@@ -230,6 +415,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Liens d\'accès'
   }),
   es: Object.freeze({
+    "common.status.loading": "Cargando…",
+    "calendar.loadFailed": "No se ha podido cargar el calendario. Vuelve a intentarlo.",
+    "calendar.retry": "Reintentar",
+    "admin.invitations.invalidId": "Invitación no válida. Abre un enlace de invitación válido.",
+    "status.monthUpdated": "Mes actualizado",
+    "bookingFor.title": "Reservar para otras personas",
+    "bookingFor.person": "Residente o invitado",
+    "bookingFor.personAria": "Persona para quien reservar",
+    "bookingFor.open": "Abrir las reservas de la persona seleccionada",
+    "bookingFor.dialogAria": "Reservas para otra persona",
+    "bookingFor.heading": "Estás reservando para {name}",
+    "bookingFor.exit": "Salir de {name} y volver a tu vista",
+    "bookingFor.loading": "Cargando reservas…",
+    "bookingFor.updated": "Reservas actualizadas",
+    "bookingFor.present": "Presente",
+    "bookingFor.absent": "Ausente",
+    "bookingFor.notSaved": "Reserva no guardada",
+    "week.operations.referenceDay": "Fecha de referencia",
+    "week.operations.chooseDate": "Elige otra fecha",
+    "week.operations.datePair": "{first} y {second}",
+    "week.operations.note.forTomorrow": "Para mañana",
+    "week.operations.note.forDate": "Para el {date}",
     'app.title.compact': 'Reservar',
     'app.header.controlPanel': 'Panel de control',
     'app.header.verifyingAuth': 'Abriendo el panel de control…',
@@ -284,6 +491,28 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Enlaces de acceso'
   }),
   de: Object.freeze({
+    "common.status.loading": "Wird geladen…",
+    "calendar.loadFailed": "Der Kalender konnte nicht geladen werden. Bitte versuche es erneut.",
+    "calendar.retry": "Erneut versuchen",
+    "admin.invitations.invalidId": "Ungültige Einladung. Öffne einen gültigen Einladungslink.",
+    "status.monthUpdated": "Monat aktualisiert",
+    "bookingFor.title": "Für andere buchen",
+    "bookingFor.person": "Bewohner oder Gast",
+    "bookingFor.personAria": "Person, für die gebucht wird",
+    "bookingFor.open": "Buchungen der ausgewählten Person öffnen",
+    "bookingFor.dialogAria": "Buchungen für eine andere Person",
+    "bookingFor.heading": "Sie buchen für {name}",
+    "bookingFor.exit": "{name} verlassen und zur eigenen Ansicht zurückkehren",
+    "bookingFor.loading": "Buchungen werden geladen…",
+    "bookingFor.updated": "Buchungen aktualisiert",
+    "bookingFor.present": "Anwesend",
+    "bookingFor.absent": "Abwesend",
+    "bookingFor.notSaved": "Buchung nicht gespeichert",
+    "week.operations.referenceDay": "Bezugsdatum",
+    "week.operations.chooseDate": "Anderes Datum wählen",
+    "week.operations.datePair": "{first} und {second}",
+    "week.operations.note.forTomorrow": "Für morgen",
+    "week.operations.note.forDate": "Für {date}",
     'app.title.compact': 'Buchen',
     'app.header.controlPanel': 'Systemsteuerung',
     'app.header.verifyingAuth': 'Bedienfeld wird geöffnet…',
@@ -362,7 +591,7 @@ export function saveStoredLocale(locale) {
   try {
     localStorage.setItem('tavolaComune.locale', locale);
   } catch {
-    // Storage non disponibile (es. iframe restrittivo, privacy mode)
+    // Persistenza non disponibile, ad esempio in un iframe con restrizioni o in navigazione privata.
   }
 }
 
@@ -429,9 +658,7 @@ async function loadCatalog(locale) {
 }
 
 async function loadCatalogUncached(locale) {
-  // For a non-Italian locale, start the compact fallback and the selected
-  // catalog together. The previous waterfall delayed Auth on every cold
-  // language switch even though the two files are independent.
+  // Il catalogo italiano di riserva e quello della lingua selezionata si caricano in parallelo perché sono indipendenti.
   const fallbackPromise = locale !== DEFAULT_LOCALE && !catalogs.has(DEFAULT_LOCALE)
     ? loadCatalog(DEFAULT_LOCALE)
     : Promise.resolve();
@@ -442,14 +669,17 @@ async function loadCatalogUncached(locale) {
   }
 
   try {
-    const catalogUrl = new URL(`./${locale}.json`, import.meta.url);
+    // Il modulo compilato risiede in /assets; i cataloghi mantengono il proprio percorso pubblico stabile.
+    const catalogUrl = typeof window !== 'undefined'
+      ? new URL(`/i18n/${locale}.json`, window.location.href)
+      : new URL(`./${locale}.json`, import.meta.url);
     const catalogFetchUrl = new URL(catalogUrl.href);
-    catalogFetchUrl.searchParams.set('v', CATALOG_RELEASE);
+    catalogFetchUrl.searchParams.set('v', CATALOG_CACHE_KEY);
     let catalog = null;
 
     if (typeof fetch === 'function') {
       try {
-        const response = await fetch(catalogFetchUrl.href);
+        const response = await fetch(catalogFetchUrl.href, { cache: 'no-cache' });
         if (response && response.ok) {
           catalog = await response.json();
         }
@@ -574,6 +804,16 @@ export function t(key, variables = {}, options = {}) {
   const alias = KEY_ALIASES[key] || key;
   const catalog = catalogs.get(currentLocale) || getFallbackCatalog(currentLocale);
   const defaultCatalog = catalogs.get(DEFAULT_LOCALE) || getFallbackCatalog(DEFAULT_LOCALE);
+  // Le forme plurali possono esistere senza una chiave base nel catalogo.
+  if (variables.count !== undefined) {
+    const pluralKey = `${alias}.${getPluralRule(currentLocale, variables.count)}`;
+    const otherKey = `${alias}.other`;
+    const pluralMessage = catalog[pluralKey] ?? catalog[otherKey]
+      ?? CORE_FALLBACKS[currentLocale]?.[pluralKey] ?? CORE_FALLBACKS[currentLocale]?.[otherKey]
+      ?? defaultCatalog[pluralKey] ?? defaultCatalog[otherKey]
+      ?? CORE_FALLBACKS[DEFAULT_LOCALE]?.[pluralKey] ?? CORE_FALLBACKS[DEFAULT_LOCALE]?.[otherKey];
+    if (pluralMessage !== undefined) return interpolate(pluralMessage, variables);
+  }
   
   let message = catalog[key] ?? catalog[alias];
   
@@ -668,7 +908,13 @@ export function applyTranslations(root = document) {
           if (label) {
             label.textContent = translated;
           } else {
-            element.textContent = translated;
+            label = element.ownerDocument.createElement('span');
+            label.className = 'btn-label';
+            for (const child of [...element.childNodes]) {
+              if (child.nodeType === 3) child.remove();
+            }
+            label.textContent = translated;
+            element.appendChild(label);
           }
         } else {
           element.textContent = translated;

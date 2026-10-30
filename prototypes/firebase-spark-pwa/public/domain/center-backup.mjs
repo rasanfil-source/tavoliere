@@ -23,6 +23,24 @@ const REQUIRED_COLLECTIONS = Object.freeze([
   'reservationRules'
 ]);
 
+// La copia del centro esporta solo la configurazione consentita. L'elenco esplicito esclude anche eventuali nuovi campi di autenticazione.
+const EXPORTABLE_CENTER_FIELDS = Object.freeze([
+  'name', 'timezone', 'locale', 'status', 'reservationCutoffs',
+  'calendarCoveredFrom', 'calendarCoveredThrough',
+  'participantContactSharingEnabled', 'kitchenDietLegend',
+  'participantDataUpdatedAt', 'avatarVersion', 'createdAt', 'updatedAt',
+  // Le impostazioni di presentazione possono risiedere anche nel documento centro.
+  'appDisplayName', 'appDisplaySubtitle', 'startupPresentationEnabled',
+  'themePalette', 'interfaceStyle', 'defaultView', 'summaryLayout',
+  'kitchenLayout', 'monthLayout', 'monthControlsSide', 'summaryResidentLabel', 'language'
+]);
+
+export function sanitizeCenterBackupDocument(data = {}) {
+  return Object.fromEntries(EXPORTABLE_CENTER_FIELDS
+    .filter((key) => Object.hasOwn(data, key))
+    .map((key) => [key, data[key]]));
+}
+
 export function inspectCenterBackup(backup, { expectedCenterId = '' } = {}) {
   const errors = [];
   const warnings = [];

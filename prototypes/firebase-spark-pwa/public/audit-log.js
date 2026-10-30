@@ -8,8 +8,8 @@ import {
   serverTimestamp,
   startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
-import { db, getCurrentUser } from './firebase-client.js?v=20260822a';
-import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20260816h';
+import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
+import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 
 const RESIDENT_SIGNATURE_STORAGE_KEY = 'tavolaComune.residentSignature';
 const RESIDENT_PARTICIPANT_STORAGE_KEY = 'tavolaComune.residentParticipantId';
@@ -61,22 +61,27 @@ export async function listAuditEvents({ maximum = 20, cursors = {} } = {}) {
     collection(db, 'centers', centerId, collectionName),
     orderBy('createdAt', 'desc'),
     ...(cursor ? [startAfter(cursor)] : []),
-    limit(pageSize)
+    limit(pageSize + 1)
   );
   const [administratorSnapshot, viceSnapshot] = await Promise.all([
     getDocs(buildQuery('auditEvents', cursors.administrator)),
     getDocs(buildQuery('viceAuditEvents', cursors.vice))
   ]);
-  const events = [...administratorSnapshot.docs, ...viceSnapshot.docs]
-    .map((item) => ({ eventId: item.id, ...item.data() }))
-    .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt));
+  // Avanziamo ciascun cursore solo fino all'ultimo evento realmente mostrato.
+  // Gli eventi più vecchi dell'altro registro restano per le pagine successive.
+  const candidates = [
+    ...administratorSnapshot.docs.map(item => ({ item, source: 'administrator' })),
+    ...viceSnapshot.docs.map(item => ({ item, source: 'vice' }))
+  ].sort((left, right) => timestampValue(right.item.data().createdAt) - timestampValue(left.item.data().createdAt)
+    || left.source.localeCompare(right.source));
+  const selected = candidates.slice(0, pageSize);
+  const nextCursors = { administrator: cursors.administrator || null, vice: cursors.vice || null };
+  selected.forEach(({ item, source }) => { nextCursors[source] = item; });
+  const events = selected.map(({ item, source }) => ({ ...item.data(), eventId: `${source}:${item.id}` }));
   return {
     events,
-    cursors: {
-      administrator: administratorSnapshot.docs.at(-1) || cursors.administrator || null,
-      vice: viceSnapshot.docs.at(-1) || cursors.vice || null
-    },
-    hasMore: administratorSnapshot.size === pageSize || viceSnapshot.size === pageSize
+    cursors: nextCursors,
+    hasMore: candidates.length > pageSize
   };
 }
 

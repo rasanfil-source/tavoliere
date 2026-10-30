@@ -6,7 +6,9 @@
 
 ## Obiettivi e componenti
 
-Oggi a tavola è una PWA statica compatibile con Firebase Spark: nessuna Cloud Function e nessun server personalizzato. La logica gira nel browser, ma l’autorizzazione definitiva è sempre imposta dalle regole Firestore.
+Le [caratteristiche di accesso](SCELTE_ACCESSO_E_SEMPLICITA.md) comprendono consultazione Cucina per chi possiede il link, accesso ordinario con sigla e password condivisa, sessioni persistenti e apertura rapida. Le autorizzazioni delle funzioni operative sono definite separatamente da regole Firestore.
+
+Oggi a tavola è una PWA statica compatibile con Firebase Spark: non usa Cloud Functions o un server applicativo permanente. Un workflow pianificato GitHub Actions registra i conteggi cucina aggregati e pulisce i registri scaduti; l’autorizzazione definitiva dell’app resta imposta dalle regole Firestore.
 
 | Componente | Responsabilità |
 | --- | --- |
@@ -18,6 +20,8 @@ Oggi a tavola è una PWA statica compatibile con Firebase Spark: nessuna Cloud F
 | `admin-center.js` | inviti, amministratori e passaggio dell’incarico |
 | `calendar-configuration.js`, `bootstrap-demo.js` | calendario e finestre di prenotazione |
 | `summary-matrix-model.js`, `summary-matrix-view.js` | Riepilogo e Cucina |
+| `kitchen-monthly-summary.js` | lettura su richiesta del conteggio mensile in Cucina |
+| `tools/kitchen-monthly-summary.mjs` e GitHub Actions | registri dopo le chiusure locali, somma mensile e retention |
 | `i18n/i18n.mjs` | cataloghi e fallback linguistici |
 | `refresh-schedule.js` | aggiornamento adattivo |
 | `firestore.rules` | autorizzazione lato server |
@@ -58,6 +62,8 @@ La fonte canonica è `role-policy.mjs`.
 
 `MANAGE_MASS` viene aggiunta soltanto quando la Persona ha il ruolo liturgico. OWNER, ADMIN e MANAGER non la ereditano automaticamente. I controlli frontend migliorano l’interfaccia ma non sostituiscono le regole.
 
+Le benedizioni sono gestibili da chi può gestire le operazioni quotidiane oppure la Messa. `dailyOperations.blessingTime` contiene `HH:mm` oppure una stringa vuota. La scrittura della benedizione conserva `massScheduled`; le regole impediscono agli amministratori privi di incarico liturgico di modificarlo. Il limite `massWindowIsOpen` rimane applicato anche alla benedizione. Quando cambia l’orario, il salvataggio legge in transazione anche la finestra pranzo e la configurazione del centro. Dopo la chiusura del pranzo, sia l’orario precedente sia quello nuovo, se presenti, devono essere successivi al limite cena configurato (`reservationCutoffs.dinner`, predefinito 15:00). Il confronto `HH:mm` usa gli orari locali del centro; le scadenze sono confrontate con i timestamp delle finestre. Client e regole applicano lo stesso vincolo, anche per cancellazioni, rimozione del campo e cancellazione del documento. Un aggiornamento della sola Messa conserva la benedizione e non richiede di riaprire la sua fascia. Fra scritture concorrenti valide prevale l’ultimo commit; non viene imposto un controllo di versione sulla scelta mostrata all’operatore. Al salvataggio il client rifiuta date e orari passati nel fuso del centro; le scadenze pranzo e cena producono messaggi specifici, distinti da un autentico rifiuto dei permessi. Il liturgista non amministratore vede solo Benedizioni nell’Agenda. Le sezioni leggono i propri dati all’apertura, senza letture aggiuntive all’avvio ordinario; Cucina e Riepilogo ricevono l’orario nella lettura giornaliera già esistente. Le benedizioni già salvate restano leggibili dopo le scadenze.
+
 ## Sessioni, token e identità tecniche
 
 In `accessSessions` convivono:
@@ -68,7 +74,7 @@ In `accessSessions` convivono:
 
 Il token non contiene la password. Link e token includono il centro e sono credenziali: non vanno inseriti in documentazione, log o messaggi pubblici.
 
-La verifica delle password condivise usa una seconda istanza Firebase Auth con identità tecniche del tipo `residenti+{centro}@tavola-comune.local` e `amministratori+{centro}[_v{versione}]@tavola-comune.local`. La rotazione della password amministratori incrementa la versione e invalida le precedenti sessioni vice, senza toccare l’account Firebase forte dell’amministratore.
+La verifica delle password condivise usa una seconda istanza Firebase Auth con identità tecniche del tipo `residenti+{centro}@tavola-comune.local` e `amministratori+{centro}[_r{rotazione}]@tavola-comune.local`. Le sessioni vice usano la credenziale tecnica associata alla rotazione attiva; il rinnovo della credenziale aggiorna l'identità tecnica senza sostituire l'account Firebase dell'amministratore.
 
 ## Modello Firestore
 
@@ -77,7 +83,7 @@ Il modello è centrato su `centers/{centerId}`:
 - `groups`, `mealTypes`, `mealWindows`;
 - `participants` privati e `publicParticipants` operativi;
 - `reservationRules` e `reservationOverrides`;
-- `dailyOperations` (Messa) e `dailyHealth` (ammalati, diete occasionali, invitati);
+- `dailyOperations` (Messa e benedizione eucaristica) e `dailyHealth` (ammalati, diete occasionali, invitati);
 - `kitchenNotes`, un documento per data;
 - `admins`, `adminInvitations`, `centerInvitations`;
 - `accessSessions`, `viceSessions`, `linkTokens`;
@@ -85,6 +91,8 @@ Il modello è centrato su `centers/{centerId}`:
 - `auditEvents` e registrazioni operative del vice.
 
 Ogni finestra pasto conserva già la scadenza risolta nel fuso del centro. Le note e le operazioni giornaliere sono indicizzate per data, perciò non devono comparire nei giorni successivi.
+
+I registri `kitchenDailyTotals/{dateId}` conservano solo i tre totali, data, centro, timestamp e scadenza; `kitchenMonthlySummaries/{YYYY-MM}` mantiene le somme per il periodo. Entrambe le raccolte sono inaccessibili dal client e vengono eliminate dopo tre mesi dal workflow. `kitchenTotalsMetadata/currentSummary` contiene l'ultimo riepilogo pubblicato ed è leggibile solo da sessioni Cucina e amministratori; la PWA lo legge soltanto quando viene aperta la casella “Media cucina”. Il riepilogo corrente resta disponibile finché un conteggio successivo non lo sostituisce. Il documento `tracking` fissa l'avvio della raccolta al 1° novembre 2026. La chiusura contabile locale è alle 23:00 nei giorni normali e alle 21:00 nell'ultimo giorno del mese, subordinata alla chiusura effettiva delle finestre pasto.
 
 ## Inviti e passaggio dell’incarico
 
@@ -100,7 +108,7 @@ Palette e stile sono applicati tramite attributi su `<html>`. Le preferenze loca
 
 ## PWA, cache e promemoria
 
-Il service worker usa rete-primaria per HTML, cache-first per risorse versionate e stale-while-revalidate per le altre risorse dell’app. Non memorizza autonomamente dati Firestore. Un aggiornamento viene installato in attesa e diventa attivo alla successiva chiusura/riapertura, senza `skipWaiting` né ricaricamento forzato della pagina.
+Il service worker usa rete-primaria per HTML, cache-first per risorse con impronta del contenuto e stale-while-revalidate per le altre risorse dell’app. Non memorizza autonomamente dati Firestore. Un aggiornamento viene installato in attesa e diventa attivo alla successiva chiusura/riapertura, senza `skipWaiting` né ricaricamento forzato della pagina.
 
 I promemoria sono calcolati sul dispositivo per pranzo e cena non prenotati a dieci minuti dalla scadenza. Preferenza e storico restano in `localStorage`; nessun server invia notifiche push.
 
@@ -112,4 +120,11 @@ Difese principali: email verificata per accesso password, persistenza Auth inizi
 
 ## Limiti accettati
 
-Spark esclude funzioni server personalizzate. Ricalcolo calendario, backup e passaggio dell’incarico sono quindi operazioni client protette da regole, transazioni, batch, revisioni e ripresa dopo interruzione.
+Spark esclude funzioni server personalizzate. Ricalcolo calendario, backup e passaggio dell'incarico sono quindi operazioni client protette da regole, transazioni, batch, revisioni e ripresa dopo interruzione. L'unica elaborazione pianificata fuori dal client è il workflow GitHub Actions per i conteggi mensili; non abilita la fatturazione Firebase.
+
+## Approfondimenti tecnici
+
+- [Avvio, sessioni e lingue](AVVIO_E_SESSIONI.md)
+- [Coerenza dei dati](COERENZA_DATI.md)
+- [Build e cache](BUILD_E_CACHE.md)
+- [Perimetro dell’accesso cucina](PERIMETRO_ACCESSO_CUCINA.md)

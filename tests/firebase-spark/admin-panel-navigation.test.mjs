@@ -17,7 +17,7 @@ const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter,
 ]);
 
 test('il nome Oggi a tavola non incorpora mai il punto esclamativo', async () => {
-  for (const language of ['it', 'en', 'fr', 'es', 'de']) {
+  for (const language of ['it', 'en', 'fr', 'es', 'de', 'ca']) {
     const catalog = await readFile(new URL(`i18n/${language}.json`, projectRoot), 'utf8');
     assert.doesNotMatch(catalog, /Oggi a tavola\s*!/);
   }
@@ -112,8 +112,9 @@ test('agenda centro vive nella vista settimana e sostituisce il vecchio collegam
   assert.doesNotMatch(html, /data-admin-week-link|>Settimana operativa<\/a>/);
   assert.match(html, /<details class="week-operations"[\s\S]*class="agenda-center-toggle"[\s\S]*Agenda centro/);
   assert.match(html, /class="week-operations-grid"[\s\S]*Ammalati[\s\S]*Note[\s\S]*Dieta occasionale/);
-  assert.match(css, /\.week-operations-grid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.week-operations-grid[\s\S]*grid-template-columns: 1fr/);
+  assert.match(css, /\.week-operations-grid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.week-operations\s*\{[^}]*container-type: inline-size/);
+  assert.match(css, /@container \(max-width: 640px\)\s*\{\s*\.week-operations-grid\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
 });
 
 test('la palette colori usa un selettore nativo con anteprima immediata', () => {
@@ -139,7 +140,7 @@ test('la palette colori usa un selettore nativo con anteprima immediata', () => 
   assert.match(html, /Se ti piace, salva questa scelta di colori/);
   assert.match(centerSettings, /const ALLOWED_THEME_PALETTES = new Set/);
   assert.match(centerSettings, /ALLOWED_THEME_PALETTES\.has\(value\) \? value : 'inchiostro'/);
-  assert.match(html, /<html lang="it" data-theme="inchiostro">/);
+  assert.match(html, /<html lang="it" data-theme="inchiostro" data-interface-style="cool"/);
   assert.match(app, /themePalette: 'inchiostro'/);
   assert.match(app, /summaryResidentLabel: 'name'/);
   assert.match(centerSettings, /normalizeResidentLabel\(data\.summaryResidentLabel, 'name'\)/);
@@ -163,10 +164,10 @@ test('Aspetto separa il linguaggio visivo dalla palette e viene salvato per il c
   assert.match(app, /interfaceStyle: interfaceStyleToSave/);
   assert.match(centerSettings, /const ALLOWED_INTERFACE_STYLES = new Set\(\['original', 'cool', 'urban-plus', 'future'\]\)/);
   assert.match(centerSettings, /value === 'urban' \? 'urban-plus' : value/);
-  assert.match(styleSelect, /value="urban-plus"[^>]*selected/);
-  assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
-  assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'urban-plus'/);
-  assert.match(app, /if \(isWeek && !needsResidentLogin && canManageDailyOperations\(\)\) \{[\s\S]*?renderWeekOperations\(\);/);
+  assert.match(styleSelect, /value="cool"[^>]*selected/);
+  assert.match(app, /INTERFACE_STYLE_VALUES\.has\(migratedValue\) \? migratedValue : 'cool'/);
+  assert.match(centerSettings, /ALLOWED_INTERFACE_STYLES\.has\(migratedValue\) \? migratedValue : 'cool'/);
+  assert.match(app, /if \(isWeek && !needsResidentLogin && \(canManageDailyOperations\(\) \|\| canManageMass\(\)\)\) \{[\s\S]*?renderWeekOperations\(\);/);
 });
 
 test('il nuovo amministratore richiede una persona diversa da quello attuale', () => {
@@ -265,11 +266,11 @@ test('Aspetto elimina il falso riferimento a tutte le persone e descrive le vist
   assert.ok(viewPosition >= 0 && stylePosition > viewPosition && stylePosition < layoutsPosition);
 });
 
-test('il salvataggio della configurazione conserva la lingua del centro', () => {
+test('il salvataggio della configurazione non pubblica le preferenze personali', () => {
   const start = app.indexOf('async function performAdminCenterSettingsSave()');
   const end = app.indexOf('async function saveAdministratorAsParticipant', start);
   const handler = app.slice(start, end);
-  assert.match(handler, /language: state\.centerContactSettings\.language \|\| 'it'/);
+  assert.doesNotMatch(handler, /\.\.\.PERSONAL_APPEARANCE_DEFAULTS/);
 });
 
 test('gli elenchi amministrativi vuoti mostrano un solo messaggio', () => {
@@ -362,13 +363,14 @@ test('il residente semplice vede e monta soltanto la scheda Aspetto', () => {
   assert.match(app, /function updateControlPanelEntryHref\(\)[\s\S]*?adminEntryUrl\.searchParams\.set\('access', RESIDENT_SETTINGS_ACCESS\)/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?renderResidentSettingsPanel\(\);[\s\S]*?reconcileAdminAccessWithoutStrongUser\(\);[\s\S]*?return;/);
   assert.match(app, /if \(state\.residentSettingsMode\) \{[\s\S]*?elements\.adminNavConfiguration\.hidden = true;[\s\S]*?elements\.adminNavAdaptations\.hidden = false;[\s\S]*?elements\.adminNavAccess\.hidden = true;[\s\S]*?mountAdminSection\('adaptations'\);[\s\S]*?return;/);
-  assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?if \(state\.residentSettingsMode\) \{[\s\S]*?storeResidentPreferences\(preferences\)/);
+  assert.match(app, /async function handleAdminAdaptationsSave\(\)[\s\S]*?storeResidentPreferences\(preferences\)/);
   assert.match(app, /function syncAdaptationsContextCopy\(\)[\s\S]*?adminSectionNav\.hidden = residentDeviceMode/);
   assert.match(app, /resident\.preferences\.defaultViewHelp/);
   assert.match(app, /resident\.preferences\.layoutsHelp/);
-  assert.match(app, /adminKitchenLayoutPicker\.hidden = residentDeviceMode/);
+  assert.match(app, /adminKitchenLayoutPicker\.hidden = false/);
+  assert.match(app, /adminKitchenLayoutSelect\.disabled = !canEditKitchenLayout\(\)/);
   assert.match(app, /summaryResidentLabel: elements\.adminSummaryResidentLabelSelect\?\.value/);
-  assert.match(app, /preferences\.summaryResidentLabel \? \{ summaryResidentLabel: preferences\.summaryResidentLabel \}/);
+  assert.match(app, /summaryResidentLabel: 'name'/);
 });
 
 test('una sola scheda amministrativa è visibile su tutti gli schermi', () => {
@@ -466,7 +468,7 @@ test('l archivio affianca scarica e carica con un ripristino configurazione prot
 
 test('il salvataggio del responsabile crea o aggiorna automaticamente la Persona', () => {
   assert.match(app, /saveAdministratorAsParticipant\(\{/);
-  assert.match(app, /participantWithPreviousSignature \|\| participantWithNextSignature/);
+  assert.match(app, /configuredParticipant \|\| participantWithPreviousSignature \|\| null/);
   assert.match(app, /groupId: participant\?\.groupId \|\| 'group_residenti'/);
   assert.match(app, /state\.adminParticipants = await listAdminParticipants\(\)/);
   assert.match(app, /state\.adminParticipantId = administratorParticipantId/);
@@ -508,8 +510,8 @@ test('l invito di successione separa decisione e identificazione senza percorsi 
   assert.doesNotMatch(app, /storeImplicitAdministratorInvitationAcceptance/);
   assert.match(app, /storeAdminInvitationDecision\('ACCEPT'\)/);
   assert.match(app, /storeAdminInvitationDecision\('REJECT'\)/);
-  assert.match(app, /reuseAdministratorAccountForInvitation\(email, password\)/);
-  assert.match(app, /Account riconosciuto\. Puoi attivare il nuovo centro\./);
+  assert.match(app, /useExistingAccountForCenterInvitation\(\)/);
+  assert.match(html, /data-admin-existing-account/);
   assert.match(app, /const centerInvitationId = getAdminInvitationId\(\)/);
   assert.match(app, /const roleInvitationId = getAdminRoleInvitationId\(\)/);
   assert.match(app, /else if \(roleInvitationId \|\| !centerInvitationId\)/);
@@ -596,7 +598,7 @@ test('l amministratore forte riapre il calendario dalla vista mese usando il ref
 test('l autenticazione del candidato non accetta automaticamente l invito', () => {
   const pendingBranch = adminCenter.slice(
     adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'),
-    adminCenter.indexOf('const profileSnapshot = await getDoc')
+    adminCenter.indexOf('if (existingAccess.active)', adminCenter.indexOf('const roleInvitationId = getAdminRoleInvitationId()'))
   );
   assert.match(html, /Sì, accetto/);
   assert.match(adminCenter, /invitationPending: true/);
@@ -680,7 +682,6 @@ test('il passaggio revoca il precedente responsabile e lo disconnette senza canc
   assert.match(transfer, /revokePrevious[\s\S]*status: 'REVOKED'[\s\S]*revokedAt: now/);
   assert.match(transfer, /massPermission: false[\s\S]*dailyOperationsPermission: false/);
   assert.doesNotMatch(transfer, /batch\.set\([^\n]*ProfileRef/);
-  assert.match(transfer, /Non va incluso nel batch critico/);
   assert.doesNotMatch(transfer, /batch\.delete\(currentMembershipRef\)/);
   assert.doesNotMatch(transfer, /publicParticipants[\s\S]*batch\.delete/);
   assert.match(app, /friendlyErrorMessage\(error, 'Trasferimento non riuscito'\)[\s\S]*showActionDialog/);
@@ -700,6 +701,7 @@ test('il nuovo responsabile sincronizza la propria email e può ripulire un vecc
   assert.match(app, /account\.adminUid !== currentUid/);
   assert.match(app, /admin\.accounts\.previousOwner/);
   assert.match(adminCenter, /const staleFormerOwner = membership\.role === 'OWNER'/);
-  assert.match(adminCenter, /targetProfileSnapshot\.data\(\)\?\.centerId === centerId/);
+  const revoke = adminCenter.match(/export async function revokeCenterAdministrator\([\s\S]*?\n}\n/)?.[0] || '';
+  assert.doesNotMatch(revoke, /ADMIN_PROFILE_COLLECTION|targetProfile/);
   assert.match(adminCenter, /status: 'REVOKED'[\s\S]*massPermission: false[\s\S]*dailyOperationsPermission: false/);
 });

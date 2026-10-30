@@ -41,7 +41,7 @@ test('il vice usa solo il ruolo esplicito e una sessione aggiornata', () => {
   assert.match(viceRestore, /participant\.viceAdminRole === true/);
   assert.match(viceRestore, /await deleteDoc\(viceSessionRef\)\.catch/);
   assert.doesNotMatch(viceRestore, /administratorSignature/);
-  assert.match(app, /canFallbackFromViceLogin\(error\)/);
+  assert.match(app, /canFallbackFromResidentLogin\(error\)/);
 });
 
 test('le letture opzionali non nascondono i dati principali', () => {
@@ -77,11 +77,11 @@ test('le cache operative restano confinate al centro attivo', () => {
 test('diete e invitati aggiornano soltanto il proprio campo Firestore', () => {
   const diets = dailyOperations.match(/export async function saveDietAssignments[\s\S]*?\n}/)?.[0] || '';
   const invited = dailyOperations.match(/export async function saveInvitedMeals[\s\S]*?\n}/)?.[0] || '';
-  const dietsWrite = diets.match(/await setDoc[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
-  const invitedWrite = invited.match(/await setDoc[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
-  assert.match(dietsWrite, /dietAssignments: normalizedAssignments/);
+  const dietsWrite = diets.match(/transaction.set[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
+  const invitedWrite = invited.match(/transaction.set[\s\S]*?}, \{ merge: true \}\);/)?.[0] || '';
+  assert.match(dietsWrite, /dietAssignments: assignments/);
   assert.doesNotMatch(dietsWrite, /\n\s*sickPeople,/);
-  assert.match(invitedWrite, /invitedMeals: normalizedInvitedMeals/);
+  assert.match(invitedWrite, /invitedMeals: nextMeals/);
   assert.doesNotMatch(invitedWrite, /dietAssignments/);
 });
 

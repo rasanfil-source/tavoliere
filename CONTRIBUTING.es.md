@@ -1,4 +1,4 @@
-# Cómo contribuir a Tutti a tavola
+# Cómo contribuir a Oggi a tavola
 
 🇮🇹 [![Italiano](https://img.shields.io/badge/Italiano-6b7280)](CONTRIBUTING.md) 🇬🇧 [![English](https://img.shields.io/badge/English-6b7280)](CONTRIBUTING.en.md) 🇪🇸 [![Español](https://img.shields.io/badge/Espa%C3%B1ol-16615a)](CONTRIBUTING.es.md)
 
@@ -27,7 +27,7 @@ Los cambios de autenticación deben cubrir al menos acceso, actualización, pers
 
 Utilizar mensajes breves y descriptivos, por ejemplo:
 
-- `fix(auth): restore session after refresh`
+- `test(auth): verify persistent session`
 - `feat(kitchen): add diet legend`
 - `docs: rewrite project documentation`
 
