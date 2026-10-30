@@ -1084,6 +1084,6 @@
     "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "c06b14768c5ce1a5df500a231b2915dd3e37a325d0e1a3cea94466e2c9848384",
     "prototypes/firebase-spark-pwa/public/sw.js": "7c7707317dabff28aef1c32efdafe45c23dd4e895b60533ada383bdade6ac69c",
     "tools/build-public.mjs": "5cba71dfd239c75266d7f0847187ba265357f0a91995364788a8eaf451b5d81f",
-    "package-lock.json": "91185110ae28a84cf5a9c9e13e4050245e0545e254756a77a8dc70ec3e77742f"
+    "package-lock.json": "9ceefe538a435895cfc52b669ad1af7296b9312d248c5ed96303a8779d991171"
   }
 }

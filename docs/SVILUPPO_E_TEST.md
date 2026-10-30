@@ -37,6 +37,7 @@ prototypes/firebase-spark-pwa/
 tests/
   firebase-spark/   test applicativi e statici
   firebase-rules/   test delle regole
+  smoke/            smoke test browser post-deploy
 tools/              build, gate, deploy, backup e verifica release
 docs/               documentazione mantenuta
 ```
@@ -70,6 +71,8 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run predeploy:gate"
 ```
 
 Il gate esegue anche la suite delle regole Firestore nell'emulatore. `npm run deploy:firebase` interrompe quindi il rilascio prima di pubblicare Hosting o Firestore se una verifica fallisce. `npm run emulate:firebase-rules` resta disponibile per eseguire da sola la suite delle regole.
+
+Gli smoke test Playwright sono separati dal gate pre-deploy: `npm run deploy:hosting` e `npm run deploy:firebase` li eseguono dopo la pubblicazione e la verifica degli hash. Verificano l’avvio della shell e il caricamento degli asset su due viewport, oltre al 404 per un asset inesistente, in un browser temporaneo senza credenziali e senza scritture. Non fanno parte di `public`, della build o dell’avvio dell’app.
 
 ## Criteri minimi di accettazione
 

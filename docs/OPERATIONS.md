@@ -42,6 +42,9 @@ La copertura standard è annuale. **Manutenzione > Calendario** mostra la scaden
 5. Creare un commit descrittivo come punto di ritorno.
 6. Pubblicare Hosting; includere regole/indici soltanto se cambiati.
 7. Verificare gli hash della release pubblica.
+8. Eseguire lo smoke test browser post-deploy su desktop e viewport mobile.
+
+Lo smoke test usa un contesto browser temporaneo senza accessi o scritture: controlla l’avvio della shell, gli errori JavaScript non gestiti, la risposta degli asset e il 404 per un asset inesistente. Non è incluso nella build e non sostituisce le prove manuali dei ruoli coinvolti.
 
 ## Deploy
 
@@ -54,14 +57,18 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run deploy:firebase"
 Solo Hosting:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -Command "node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting"
+pwsh.exe -NoLogo -NoProfile -Command "npm run deploy:hosting"
 ```
 
-Il wrapper esegue la build e lancia Firebase dalla cartella del prototipo. Verifica:
+Entrambi i comandi di deploy eseguono il gate prima della pubblicazione, poi verificano gli hash pubblici e avviano lo smoke test browser. Per eseguirlo manualmente o contro un sito di anteprima:
 
 ```powershell
-pwsh.exe -NoLogo -NoProfile -Command "npm run release:verify"
+pwsh.exe -NoLogo -NoProfile -Command "npm run smoke:hosting"
 ```
+
+Su Windows lo smoke usa Microsoft Edge installato. Su altri sistemi installare prima Chromium con `npx playwright install chromium`. `TAT_SMOKE_BASE_URL` seleziona un sito alternativo; `TAT_SMOKE_CHANNEL` seleziona un browser di sistema installato.
+
+Il wrapper Firebase esegue la build e lancia Firebase dalla cartella del prototipo. `npm run release:verify` resta disponibile per controllare separatamente gli hash.
 
 Il service worker non forza più il riavvio della pagina durante un aggiornamento: prepara la nuova cache e la attiva dopo la chiusura di tutte le finestre/schede dell’app e la successiva riapertura.
 

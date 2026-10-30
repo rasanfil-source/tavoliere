@@ -41,6 +41,13 @@ test('HTML e service worker non restano bloccati in cache HTTP', () => {
   }
 });
 
+test('Firebase Hosting non maschera i percorsi sconosciuti come index.html', () => {
+  const catchAllRewrite = (config.hosting.rewrites || []).find(
+    ({ source, destination }) => source === '**' && destination === '/index.html'
+  );
+  assert.equal(catchAllRewrite, undefined);
+});
+
 test('i manifest delle due applicazioni sono serviti con il tipo corretto', () => {
   for (const source of ['/manifest.webmanifest', '/manifest-kitchen.webmanifest']) {
     const rule = config.hosting.headers.find((entry) => entry.source === source);

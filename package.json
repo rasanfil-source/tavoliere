@@ -12,11 +12,13 @@
     "backup:inspect": "node tools/inspect-center-backup.mjs",
     "backup:restore-emulator": "node tools/restore-center-backup-emulator.mjs",
     "release:verify": "node tools/verify-hosting-release.mjs",
+    "smoke:hosting": "playwright test --config=playwright.smoke.config.mjs",
     "predeploy:gate": "node tools/predeploy-gate.mjs",
     "firebase": "node tools/firebase-cli.mjs",
     "emulate:firebase-rules": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-rules emulators:exec --only firestore \"npm --prefix ../.. run test:firebase-rules\"",
     "test:backup-restore-emulator": "node tools/firebase-cli.mjs --config firebase.json --project demo-tavola-comune-restore emulators:exec --only firestore \"node ../../tools/restore-center-backup-emulator.mjs ../../tests/fixtures/center-backup-valid.json center_restore_test --apply-emulator\"",
-    "deploy:firebase": "npm run predeploy:gate && node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting,firestore",
+    "deploy:hosting": "npm run predeploy:gate && node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting && npm run release:verify && npm run smoke:hosting",
+    "deploy:firebase": "npm run predeploy:gate && node tools/firebase-cli.mjs --config firebase.json --project tavola-comune deploy --only hosting,firestore && npm run release:verify && npm run smoke:hosting",
     "test:gate": "npm run predeploy:gate"
   },
   "dependencies": {
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@playwright/test": "^1.64.1",
     "esbuild": "^0.28.2",
     "firebase-tools": "^15.25.1"
   }
