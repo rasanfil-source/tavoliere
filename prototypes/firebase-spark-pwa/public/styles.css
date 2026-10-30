@@ -7350,3 +7350,59 @@ body[data-mode="admin"] .admin-shell-body {
 .blessing-indicator > small { font-size: .78rem; font-weight: 500; }
 .blessing-toggle { display: flex; align-items: center; gap: 8px; margin-block: 12px; }
 .blessing-toggle input { width: auto; margin: 0; flex: 0 0 auto; }
+.kitchen-monthly-summary {
+  margin: 14px 0 20px;
+  padding: 0 12px;
+}
+
+.kitchen-monthly-summary details {
+  border: 1px solid var(--border, #d8e0dc);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.kitchen-monthly-summary summary {
+  padding: 12px 14px;
+  color: var(--ink, #18342a);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.kitchen-monthly-summary-content {
+  padding: 0 14px 14px;
+}
+
+.kitchen-monthly-summary-content > p {
+  margin: 0 0 10px;
+}
+
+.kitchen-monthly-summary-content dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.kitchen-monthly-summary-content dl > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary, #2c7258) 7%, var(--surface, #fff));
+}
+
+.kitchen-monthly-summary-content dt {
+  font-size: .82rem;
+}
+
+.kitchen-monthly-summary-content dd {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .kitchen-monthly-summary-content dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

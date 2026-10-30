@@ -135,9 +135,10 @@ const domainModuleLoaders = {
   bootstrap: () => import('./bootstrap-demo.js?v=20261014b'),
   daily: () => import('./daily-operations.js?v=20261014b'),
   kitchen: () => import('./kitchen-data.js?v=20261014b'),
+  kitchenSummary: () => import('./kitchen-monthly-summary.js?v=20261030a'),
   notes: () => import('./kitchen-notes.js?v=20261014b'),
   participant: () => import('./participant-data.js?v=20261014b'),
-  summaryView: () => import('./summary-matrix-view.js?v=20261014b')
+  summaryView: () => import('./summary-matrix-view.js?v=20261030a')
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -9799,6 +9800,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
       days: state.kitchenDays,
       operationDays: visibleKitchenOperations,
       kitchen: true,
+      monthSummary: getKitchenMonthlySummaryContext(),
       dietLegend: state.centerContactSettings.kitchenDietLegend || [],
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,
@@ -9837,6 +9839,29 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
       </article>
     `;
   }).join('');
+}
+
+function getKitchenMonthlySummaryContext() {
+  const timeZone = state.centerContactSettings.timezone || 'Europe/Rome';
+  const todayId = formatDateId(getCenterToday());
+  const firstSummaryDate = '2026-11-30';
+  const now = new Date();
+  const firstSummaryAvailableAt = zonedLocalDateTimeToDate(
+    firstSummaryDate,
+    '21:00',
+    timeZone
+  );
+  if (todayId < firstSummaryDate
+    || todayId === firstSummaryDate && now < firstSummaryAvailableAt) {
+    return null;
+  }
+
+  return {
+    onLoad: async () => {
+      const module = await loadDomainModule('kitchenSummary');
+      return module.loadKitchenMonthlySummary();
+    }
+  };
 }
 
 function renderKitchenSickPeople() {

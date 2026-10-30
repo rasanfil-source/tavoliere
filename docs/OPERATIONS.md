@@ -29,6 +29,12 @@ La disattivazione di un centro conserva i dati: l'azione non è presentata come 
 
 Le viste anticipano sempre il prossimo confine di fascia. Il ritorno in primo piano dopo inattività e il comando manuale possono forzare una lettura immediata.
 
+## Conteggi mensili della cucina
+
+Dal 1° novembre 2026 il workflow [.github/workflows/kitchen-monthly-summary.yml](../.github/workflows/kitchen-monthly-summary.yml) registra i totali alle 23:00 locali nei giorni normali e alle 21:00 nell'ultimo giorno del mese, verificando anche le finestre effettive dei pasti. Colazione, pranzo e cena sono attribuiti alla data del pasto; la colazione del 1° novembre rientra quindi nel conteggio del 1° novembre anche se prenotata il 31 ottobre. Il riepilogo resta corrente fino al successivo conteggio; i registri giornalieri e gli archivi mensili si eliminano dopo tre mesi. La PWA legge il solo documento aggregato quando la casella viene aperta. La procedura di autenticazione gratuita, le quote e il recupero sono descritti in [riepilogo mensile cucina](kitchen-monthly-totals.md).
+
+Il job pianificato gira alle 19:05, 20:05, 21:05, 22:05 e 23:05 UTC per coprire i quattro fusi supportati e l'ora legale/solare; GitHub può comunque ritardare le esecuzioni. Verificare in **Actions > Kitchen monthly totals** che le esecuzioni siano riuscite. Per un recupero controllato usare `workflow_dispatch`; il job non sovrascrive un registro giornaliero già salvato e ritenta le ultime sette date.
+
 ## Calendario
 
 La copertura standard è annuale. **Manutenzione > Calendario** mostra la scadenza e consente l’estensione. Modificare fuso o orari limite ricalcola le finestre future a lotti, con avanzamento e possibilità di ripresa.

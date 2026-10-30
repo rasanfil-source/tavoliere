@@ -1762,6 +1762,20 @@ service cloud.firestore {
         allow create: if isAdmin(centerId);
         allow update, delete: if false;
       }
+
+      match /kitchenDailyTotals/{dateId} {
+        allow read, write: if false;
+      }
+
+      match /kitchenTotalsMetadata/{metadataId} {
+        allow get: if metadataId == 'currentSummary'
+          && (isAdmin(centerId) || hasSessionScope(centerId, 'KITCHEN'));
+        allow list, write: if false;
+      }
+
+      match /kitchenMonthlySummaries/{monthId} {
+        allow read, write: if false;
+      }
     }
   }
 }

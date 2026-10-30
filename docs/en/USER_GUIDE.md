@@ -88,6 +88,7 @@ Available under Week to administrators and deputies; Mass is available only to p
 - **Kitchen notes:** individual messages up to 1,000 characters. The section shows For tomorrow when tomorrow is selected, or For followed by the day and date for other future dates. Notes entered in advance remain attached to the selected date and appear in Summary and Kitchen, including Tomorrow on the preceding day: a note for 12 February appears in Tomorrow on 11 February, even when entered in October.
 - **Temporary diet:** replaces the usual diet for one or two days. For a future reference date, duration labels include the selected date or the two-day range, including month and year boundaries.
 - **Mass:** one daily value, managed only through the personal liturgical role.
+- **Eucharistic blessing:** administrators, authorised deputies and liturgical operators can schedule or cancel a blessing for the selected day. Enter a future time and save; the blessing is independent of Mass. Summary and Kitchen show a **+** beside the Mass symbol and the time underneath. Before the lunch cut-off, all future times can be changed. From lunch cut-off until dinner cut-off, new or changed blessings must be later than dinner cut-off; an existing blessing at or before the dinner cut-off cannot be moved or deleted. After the dinner cut-off the day is locked. Saved blessings remain visible. The last valid concurrent save wins.
 
 Each section is saved separately.
 
@@ -96,6 +97,8 @@ Each section is saved separately.
 Summary offers **Today** and **Tomorrow**. **Original** is a compact table, **International** uses one card per meal and **Future** uses an alternative card layout. It includes covers, guests, diets, sick people, Mass, names and notes grouped by date. Names may appear as full name, code or initials. With both centre sharing and personal consent, tapping a name offers phone and WhatsApp actions; the contact hint disappears after thirty visits on the device.
 
 The Kitchen link creates a revocable technical session tied to the centre. It shows Today and Tomorrow counts, diets, sick people, guests, date-specific notes, Mass and the kitchen diet legend. It refreshes more frequently around operational hours and less often at night, and never exposes the full private directory.
+
+After the first complete monthly count, Kitchen also offers **Kitchen monthly totals**. Opening the disclosure shows the month's totals for breakfast, lunch and dinner. Counts include effective reservations and guests; sick residents remain separate. Breakfast is counted on the meal date, even if booked the previous day. Daily accounts close at 23:00 local time, except on the last day of the month, when they close at 21:00. The latest count remains available until the next monthly count. The app reads the aggregate only when the disclosure is opened, not when Kitchen loads. Daily logs and archived monthly summaries are deleted after three months. The workflow uses public-repository GitHub Actions and does not require a paid Firebase plan.
 
 ## Diets, Mass and reminders
 

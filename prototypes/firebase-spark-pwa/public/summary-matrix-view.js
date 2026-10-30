@@ -21,6 +21,7 @@ export function mountSummaryMatrix(
     dietLegend = [],
     showContactHint = true,
     activeIndex = 0,
+    monthSummary = null,
     onActiveIndexChange = () => {},
   } = {},
 ) {
@@ -45,7 +46,17 @@ export function mountSummaryMatrix(
       ${screens.map((screen) => render(screen, { kitchen, activeIndex, residentLabel, showContactHint, dietLegend })).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${escapeHtml(t("summary.swipeHint"))}</p>
+    ${kitchen ? renderKitchenMonthlySummary(monthSummary) : ""}
   `;
+
+  if (kitchen && monthSummary?.onLoad) {
+    const details = container.querySelector('[data-kitchen-monthly-summary]');
+    details?.addEventListener('toggle', () => {
+      if (details.open && details.dataset.loading !== 'true') {
+        void loadKitchenMonthlySummary(details, monthSummary);
+      }
+    });
+  }
 
   const track = container.querySelector(`[data-${prefix}-matrix-track]`);
   let scrollTimer = 0;
@@ -337,6 +348,51 @@ function hasContactablePerson(column) {
   return Array.isArray(column?.names) && column.names.some((person) =>
     person?.phoneConsent && normalizePhone(person.phone),
   );
+}
+
+function renderKitchenMonthlySummary(monthSummary) {
+  if (typeof monthSummary?.onLoad !== 'function') return '';
+  return `
+    <section class="kitchen-monthly-summary">
+      <details data-kitchen-monthly-summary>
+        <summary>${escapeHtml(t('kitchen.monthly.title'))}</summary>
+        <div class="kitchen-monthly-summary-content" data-kitchen-monthly-summary-content role="status" aria-live="polite"></div>
+      </details>
+    </section>
+  `;
+}
+
+async function loadKitchenMonthlySummary(details, monthSummary) {
+  const content = details.querySelector('[data-kitchen-monthly-summary-content]');
+  if (!content) return;
+  details.dataset.loading = 'true';
+  content.textContent = t('kitchen.monthly.loading');
+  try {
+    const summary = await monthSummary.onLoad(details.dataset.monthId);
+    if (!details.isConnected || !details.open) return;
+    if (!summary) {
+      content.textContent = t('kitchen.monthly.notReady');
+      return;
+    }
+    content.innerHTML = `
+      <p><strong>${escapeHtml(t('kitchen.monthly.period'))}</strong> ${escapeHtml(formatDate(summary.periodStart))} – ${escapeHtml(formatDate(summary.periodEnd))}</p>
+      <dl>
+        ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast)}
+        ${renderKitchenMonthlyCount('lunch', summary.counts.lunch)}
+        ${renderKitchenMonthlyCount('dinner', summary.counts.dinner)}
+      </dl>
+    `;
+  } catch {
+    if (!details.isConnected || !details.open) return;
+    content.textContent = t('kitchen.monthly.unavailable');
+  } finally {
+    delete details.dataset.loading;
+  }
+}
+
+function renderKitchenMonthlyCount(mealTypeId, count) {
+  const label = t(`meal.type.${mealTypeId}`);
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(count)}</dd></div>`;
 }
 
 function renderContactHint(column, showContactHint = true) {

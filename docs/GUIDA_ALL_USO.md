@@ -125,6 +125,8 @@ I nomi possono essere visualizzati come nome, sigla o iniziali. Quando la condiv
 
 Il link dedicato crea un accesso tecnico revocabile legato al centro e mostra per Oggi e Domani coperti, diete, ammalati, invitati, note della data, Messa e legenda diete. Si aggiorna automaticamente, più spesso vicino agli orari operativi e meno di notte. Non mostra l’anagrafica completa e non richiede sigla personale.
 
+Dal primo riepilogo mensile completo compare **Media cucina**. Aprendo la casella si leggono i totali del mese per colazione, pranzo e cena; il totale comprende prenotazioni effettive e invitati, mentre gli ammalati restano separati. La colazione viene conteggiata nella data del pasto anche se prenotata il giorno prima. La giornata termina alle 23:00 locali, tranne l’ultimo giorno del mese, quando la chiusura è alle 21:00. Il conteggio corrente resta disponibile fino a quello successivo. I dati si caricano solo quando si apre la casella, non all’apertura della Cucina. I registri aggregati vengono cancellati dopo tre mesi. Il calcolo gira sul repository GitHub senza attivare un piano Firebase a pagamento.
+
 ## Diete, Messa e promemoria
 
 La dieta di base è `STANDARD` oppure un codice numerico mostrato come `D1`, `D2`, `D3` e così via. L’amministratore può associare al codice un’etichetta cucina di una o due parole. Riepilogo e anagrafica mostrano il codice; Cucina mostra anche la legenda. La molteplicità compare soltanto quando supera uno (`D3 × 2`, non `D3 × 1`).

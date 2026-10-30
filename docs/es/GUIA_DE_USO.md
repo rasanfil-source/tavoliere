@@ -91,11 +91,15 @@ El mensaje Listo confirma la carga y desaparece tras tres segundos; los errores 
 
 En **Invitados**, el menú muestra Hoy y Mañana si la referencia es hoy; de lo contrario muestra la fecha seleccionada y la siguiente. El almuerzo y la cena corresponden al día elegido en Invitados, y el desayuno a la mañana siguiente. En **Dieta ocasional**, las duraciones incluyen la fecha o el intervalo de dos días cuando la referencia es futura, también al cambiar de mes o año. Cada sección se guarda por separado.
 
+La **bendición eucarística** puede programarse para una fecha futura por administradores, viceadministradores autorizados y responsables litúrgicos. Es independiente de la celebración y requiere una hora. Resumen y Cocina muestran un **+** junto al símbolo de celebración y la hora debajo. Antes del límite del almuerzo se puede modificar libremente; entre los límites de almuerzo y cena solo se admiten nuevas bendiciones posteriores al límite de cena. Las bendiciones ya fijadas antes de ese límite no se pueden mover ni cancelar durante ese intervalo. Tras el límite de cena, el día queda bloqueado. Las bendiciones guardadas siguen visibles.
+
 ## Resumen y cocina
 
 El **Resumen** muestra comensales, dietas, invitados, enfermos, celebración y notas agrupadas por fecha sin permitir modificar reservas. Si están habilitados los contactos, se puede tocar el nombre de una persona para llamarla o escribirle por WhatsApp.
 
 La vista **Cocina** utiliza un enlace operativo específico y presenta solo la información necesaria para el servicio. No concede acceso administrativo ni a los datos privados del centro. El enlace debe considerarse una credencial: hay que compartirlo solo con quien lo necesita y regenerarlo si se difunde por error.
+
+Tras el primer mes completo aparece **Totales mensuales de cocina**. Al abrirlo muestra las sumas de desayuno, almuerzo y cena. Incluye reservas efectivas e invitados; los enfermos se mantienen aparte. El desayuno se cuenta en la fecha de la comida aunque se haya reservado el día anterior. El cierre diario es a las 23:00 locales, salvo el último día del mes, que cierra a las 21:00. El último conteo permanece hasta que esté disponible el siguiente. La aplicación solo lee estos datos al abrir la casilla. Los registros agregados se eliminan después de tres meses y el cálculo usa GitHub Actions sin activar un plan de Firebase de pago.
 
 Colación se refiere al día siguiente cuando aparece junto con el almuerzo y la cena de hoy.
 

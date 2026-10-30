@@ -8,7 +8,7 @@
 
 Le [caratteristiche di accesso](SCELTE_ACCESSO_E_SEMPLICITA.md) comprendono consultazione Cucina per chi possiede il link, accesso ordinario con sigla e password condivisa, sessioni persistenti e apertura rapida. Le autorizzazioni delle funzioni operative sono definite separatamente da regole Firestore.
 
-Oggi a tavola è una PWA statica compatibile con Firebase Spark: nessuna Cloud Function e nessun server personalizzato. La logica gira nel browser, ma l’autorizzazione definitiva è sempre imposta dalle regole Firestore.
+Oggi a tavola è una PWA statica compatibile con Firebase Spark: non usa Cloud Functions o un server applicativo permanente. Un workflow pianificato GitHub Actions registra i conteggi cucina aggregati e pulisce i registri scaduti; l’autorizzazione definitiva dell’app resta imposta dalle regole Firestore.
 
 | Componente | Responsabilità |
 | --- | --- |
@@ -20,6 +20,8 @@ Oggi a tavola è una PWA statica compatibile con Firebase Spark: nessuna Cloud F
 | `admin-center.js` | inviti, amministratori e passaggio dell’incarico |
 | `calendar-configuration.js`, `bootstrap-demo.js` | calendario e finestre di prenotazione |
 | `summary-matrix-model.js`, `summary-matrix-view.js` | Riepilogo e Cucina |
+| `kitchen-monthly-summary.js` | lettura su richiesta del conteggio mensile in Cucina |
+| `tools/kitchen-monthly-summary.mjs` e GitHub Actions | registri dopo le chiusure locali, somma mensile e retention |
 | `i18n/i18n.mjs` | cataloghi e fallback linguistici |
 | `refresh-schedule.js` | aggiornamento adattivo |
 | `firestore.rules` | autorizzazione lato server |
@@ -90,6 +92,8 @@ Il modello è centrato su `centers/{centerId}`:
 
 Ogni finestra pasto conserva già la scadenza risolta nel fuso del centro. Le note e le operazioni giornaliere sono indicizzate per data, perciò non devono comparire nei giorni successivi.
 
+I registri `kitchenDailyTotals/{dateId}` conservano solo i tre totali, data, centro, timestamp e scadenza; `kitchenMonthlySummaries/{YYYY-MM}` mantiene le somme per il periodo. Entrambe le raccolte sono inaccessibili dal client e vengono eliminate dopo tre mesi dal workflow. `kitchenTotalsMetadata/currentSummary` contiene l'ultimo riepilogo pubblicato ed è leggibile solo da sessioni Cucina e amministratori; la PWA lo legge soltanto quando viene aperta la casella “Media cucina”. Il riepilogo corrente resta disponibile finché un conteggio successivo non lo sostituisce. Il documento `tracking` fissa l'avvio della raccolta al 1° novembre 2026. La chiusura contabile locale è alle 23:00 nei giorni normali e alle 21:00 nell'ultimo giorno del mese, subordinata alla chiusura effettiva delle finestre pasto.
+
 ## Inviti e passaggio dell’incarico
 
 Il percorso canonico è unico: l’amministratore responsabile crea un invito collegato a una Persona; il destinatario sceglie **Accetta** o **Rifiuta** e poi si identifica; l’invito passa da `ACTIVE` a `USED`; il responsabile conferma il trasferimento. La transazione aggiorna centro, ruoli, collegamento Persona, email e registro. Il precedente amministratore viene revocato come amministratore ma conserva la Persona per prenotarsi.
@@ -116,7 +120,7 @@ Difese principali: email verificata per accesso password, persistenza Auth inizi
 
 ## Limiti accettati
 
-Spark esclude funzioni server personalizzate. Ricalcolo calendario, backup e passaggio dell’incarico sono quindi operazioni client protette da regole, transazioni, batch, revisioni e ripresa dopo interruzione.
+Spark esclude funzioni server personalizzate. Ricalcolo calendario, backup e passaggio dell'incarico sono quindi operazioni client protette da regole, transazioni, batch, revisioni e ripresa dopo interruzione. L'unica elaborazione pianificata fuori dal client è il workflow GitHub Actions per i conteggi mensili; non abilita la fatturazione Firebase.
 
 ## Approfondimenti tecnici
 

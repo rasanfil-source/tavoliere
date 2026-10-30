@@ -18,6 +18,12 @@ If a device is lost and its token is unavailable, temporarily suspend the Person
 
 Foreground resume and manual refresh may trigger an immediate read. Annual meal-window coverage is extended in **Maintenance > Calendar**; changing timezone or cut-offs recalculates future windows in resumable batches.
 
+## Monthly Kitchen totals
+
+Starting 1 November 2026, the [workflow](../../.github/workflows/kitchen-monthly-summary.yml) records daily totals at 23:00 centre-local time, or 21:00 on the last day of a month. It also verifies the actual meal windows. Breakfast belongs to its meal date, even when booked the previous day. The current report remains visible until the next monthly report is ready. Daily logs and archived monthly totals are deleted after three months. The app reads one aggregate only when the Kitchen disclosure is opened. See [monthly Kitchen totals](../kitchen-monthly-totals.md) for the no-cost runner and recovery details.
+
+The job is scheduled at 19:05, 20:05, 21:05, 22:05 and 23:05 UTC to cover the four supported time zones and daylight-saving changes. GitHub may still delay scheduled runs. Check **Actions > Kitchen monthly totals** for failures; use `workflow_dispatch` for recovery. Existing daily logs are not overwritten, and the worker retries the latest seven dates.
+
 ## Release checklist and deployment
 
 1. Confirm only intended worktree changes.

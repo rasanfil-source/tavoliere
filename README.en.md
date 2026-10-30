@@ -12,6 +12,8 @@
 - apply multiple selections to a day, meal, week or the entire month;
 - consult an operational summary without changing reservations;
 - show the kitchen covers, diets, celebrations and daily notes;
+- schedule Eucharistic blessings with the centre's lunch and dinner cut-offs;
+- view monthly kitchen totals, fetched only when the Kitchen disclosure is opened;
 - manage people, roles, cut-off times, calendar and operational links;
 - install the PWA on Android and Windows without publishing it in an app store;
 - keep resident sessions persistent without confusing them with administrator authentication.
@@ -71,11 +73,12 @@ Personal preferences are stored on the device; centre settings are stored in Fir
 
 ## Architecture at a glance
 
-The solution uses only services compatible with the free Firebase Spark plan:
+The PWA uses services compatible with the free Firebase Spark plan; GitHub Actions calculates monthly totals:
 
 - Firebase Hosting for the static PWA;
 - Cloud Firestore for configuration and operational data;
 - Firebase Authentication for administrators and technical identities;
+- GitHub Actions for scheduled aggregate counts, without paid cloud scheduling;
 - a service worker that uses the network as the primary source and the app cache as fallback;
 - no Cloud Functions and no Cloud Storage.
 
