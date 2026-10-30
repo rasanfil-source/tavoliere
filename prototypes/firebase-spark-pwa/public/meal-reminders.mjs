@@ -1,9 +1,11 @@
+import { serverNow } from './date-utils.mjs?v=20261014b';
+
 export const MEAL_REMINDER_LEAD_MS = 10 * 60 * 1000;
 
 const REMINDER_MEAL_TYPES = new Set(['lunch', 'dinner']);
 
 export function buildMealReminderPlan(days, {
-  now = new Date(),
+  now = new Date(serverNow()),
   sentReminderIds = [],
   leadMs = MEAL_REMINDER_LEAD_MS
 } = {}) {

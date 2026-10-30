@@ -159,8 +159,8 @@ test('mese e settimana si possono cambiare anche con uno swipe orizzontale', () 
 });
 
 test('il selettore Oggi Domani scorre con la stessa animazione nelle due direzioni', () => {
-  assert.match(app, /selectSummaryMatrixDay\(offset, \{ smooth: true \}\)/);
-  assert.match(app, /selectKitchenMatrixDay\(offset, \{ smooth: true \}\)/);
+  assert.match(app, /function handleSummaryDayChange\(offset, options = \{ smooth: true, scroll: true \}\)[\s\S]*selectSummaryMatrixDay\(offset, options\)/);
+  assert.match(app, /function handleKitchenDayChange\(offset, options = \{ smooth: true \}\)[\s\S]*selectKitchenMatrixDay\(offset, options\)/);
   assert.match(app, /function selectSummaryMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
   assert.match(app, /function selectKitchenMatrixDay\(offset, \{ smooth = false, scroll = true \} = \{\}\)/);
   assert.match(app, /scheduleOperationalAutoScroll\(\{ reset: true, delayMs: 220 \}\)/);
@@ -258,7 +258,7 @@ test('il registro mostra Quando Chi Cosa e diventa una lista di schede su mobile
 });
 
 test('le note seguono il giorno del pasto e quelle passate non vengono mostrate', () => {
-  assert.match(app, /const selectedNote = state\.kitchenNotes\[state\.kitchenDayOffset\];[\s\S]*selectedNote\?\.dateId === formatDateId\(getKitchenDate\(\)\)[\s\S]*: null/);
+  assert.match(app, /const selectedNote = state\.kitchenNotes\[state\.kitchenDayOffset\];[\s\S]*selectedNote\?\.ready && selectedNote\.dateId === formatDateId\(getKitchenDate\(\)\)[\s\S]*: null/);
   assert.match(app, /function filterKitchenNoteForToday\(note\)[\s\S]*mealDate < todayId/);
   assert.match(app, /function renderWeekKitchenNotes\(\)[\s\S]*const visibleNote = state\.weekOperationalNote/);
   assert.match(app, /const visibleKitchenOperations = state\.kitchenOperations\.map[\s\S]*filterKitchenNoteForToday\([\s\S]*operationDays: visibleKitchenOperations/);

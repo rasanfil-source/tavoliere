@@ -41,7 +41,8 @@ for (const now of [
     for (const weekStartsOn of ['monday', 'sunday']) {
       const state = { centerContactSettings: { timezone: 'Europe/Rome', weekStartsOn }, summaryDayOffset: 0, kitchenDayOffset: 0 };
       const dateFns = bind(app, ['getCenterToday', 'addCalendarDays', 'getSummaryDate', 'getKitchenDate', 'startOfWeek'], {
-        state, getDateInTimeZone: zone => getDateInTimeZone(zone, new Date(now))
+        state, serverNow: () => Date.parse(now),
+        getDateInTimeZone: zone => getDateInTimeZone(zone, new Date(now))
       });
       state.weekStartDate = dateFns.startOfWeek(dateFns.getCenterToday());
       assert.equal(state.weekStartDate.getDay(), weekStartsOn === 'sunday' ? 0 : 1);

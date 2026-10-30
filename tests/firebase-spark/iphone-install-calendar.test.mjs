@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { setImmediate as turn } from 'node:timers/promises';
 import vm from 'node:vm';
 
 const read = name => readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/' + name, import.meta.url), 'utf8');
@@ -47,10 +48,13 @@ function calendarContext(save) {
   const cache = new Map([['old', {}]]);
   const context = vm.createContext({ state, participantMonthCache: cache, participantCalendarRevision: 0,
     clearPersonalCalendarSnapshots() {}, getActiveCenterId: () => 'one', getCurrentUser: () => ({ uid: 'user' }),
+    serverNow: () => Date.now(),
+    synchronizeServerClock: async () => true,
     scheduleBackgroundRefresh() {},
     saveParticipantMeal: save, getMealPendingKey: (date, type) => date + type,
     setParticipantStatus() {}, scheduleMealRemindersFromCurrentCalendar() {}, friendlyErrorMessage: () => 'error' });
-  vm.runInContext(['invalidateParticipantCalendarCache', 'saveMealOptimistically', 'beginOptimisticBulkSelection'].map(extract).join('\n'), context);
+  vm.runInContext(['toJavaScriptDate', 'isMealWindowOpenAtServerTime', 'invalidateParticipantCalendarCache',
+    'saveMealOptimistically', 'beginOptimisticBulkSelection'].map(extract).join('\n'), context);
   return { context, state, meal, monthMeal, cache };
 }
 
@@ -102,6 +106,7 @@ test('a late single save cannot alter the next resident or clear their pending s
   const oldPending = h.state.pendingMealKeys;
   const saving = h.context.saveMealOptimistically({ meal: h.meal, effect: 'PRESENT',
     sync: () => { synced++; }, onSaved: () => { completed++; } });
+  await turn();
   h.state.selectedParticipant = { participantId: 'different-resident' };
   const nextMeal = { ...h.meal, effect: 'ABSENT' };
   h.state.participantWeek = [{ meals: [nextMeal] }];

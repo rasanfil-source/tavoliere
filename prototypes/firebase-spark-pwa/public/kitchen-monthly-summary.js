@@ -4,6 +4,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db } from './firebase-client.js?v=20261014b';
 import { getActiveCenterId } from './center-context.js?v=20261014b';
+import { serverNow } from './date-utils.mjs?v=20261014b';
 
 const MEAL_TYPE_IDS = ['breakfast', 'lunch', 'dinner'];
 
@@ -22,7 +23,7 @@ export async function loadKitchenMonthlySummary() {
 
   const data = snapshot.data();
   const availableFrom = toDate(data.availableFrom);
-  const now = Date.now();
+  const now = serverNow();
   if (!availableFrom || now < availableFrom.getTime()) return null;
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(data.monthId || '')
     || !/^\d{4}-\d{2}-\d{2}$/.test(data.periodStart || '')

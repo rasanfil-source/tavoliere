@@ -241,38 +241,42 @@ test(`nota scritta a ottobre per ${targetDateId}: visibile nei riepiloghi Domani
   }).map(dateId => ({ dateId,
     meals: ['breakfast', 'lunch', 'dinner'].map(mealTypeId => ({ mealTypeId, label: mealTypeId, present: [] })) }));
   const operations = [{ dateId: note.mealDate, notes: note.messages }];
-  // Esegui il caricamento effettivo dei riepiloghi, senza avviare auth o UI.
-  const refresh = functionSource('refreshParticipant');
-  const summaryLoader = refresh.slice(refresh.indexOf('const summaryDates ='), refresh.indexOf('recordSummaryContactHintVisit();'));
-  const summaryState = { centerContactSettings: {}, summaryDayOffset: 1,
-    operationalDataDateByMode: { summary: '', kitchen: '' } };
-  const dependencies = {
-    state: summaryState, source: 'manuale', request: {}, formatDateId,
-    getCenterToday: () => new Date(days[0].dateId + 'T12:00:00'),
-    addCalendarDays: (date, amount) => { const value = new Date(date); value.setDate(value.getDate() + amount); return value; },
+  const dates = days.map(day => new Date(day.dateId + 'T12:00:00'));
+  const summaryState = { centerContactSettings: {}, summaryDayOffset: 1, summaryPayloadCenterId: '',
+    summaryDays: [], summaryOperations: [] };
+  const kitchenState = { mode: 'kitchen', centerContactSettings: {}, kitchenDayOffset: 1,
+    kitchenPayloadCenterId: '', kitchenDays: [], kitchenOperations: [], kitchenNotes: [], meals: [] };
+  const payloadDependencies = {
+    OPTIONAL_OPERATIONAL_READ_TIMEOUT_MS: 4000, window: { setTimeout, clearTimeout }, console,
+    state: summaryState, formatDateId, getCenterToday: () => dates[0],
+    loadDailyOperation: async () => null,
+    loadDailyHealth: async () => ({ dietAssignments: [], sickPeople: [] }),
+    loadKitchenNote: notes.loadKitchenNote,
     loadParticipantDaySummaries: async date => days.find(day => day.dateId === formatDateId(date)).meals,
-    loadDailyOperation: async () => null, loadDailyHealth: async () => ({ dietAssignments: [] }),
-    loadKitchenNote: notes.loadKitchenNote, applyDailyDietsToSummary: meals => meals,
-    isCurrentParticipantRequest: () => true, reportOptionalOperationalRead: () => { throw new Error('Unexpected read failure'); }
+    loadKitchenCounts: async date => days.find(day => day.dateId === formatDateId(date)).meals,
+    applyDailyDietsToSummary: meals => meals, applyDailyDietsToKitchenMeals: meals => meals,
+    reportOptionalOperationalRead: () => { throw new Error('Unexpected read failure'); }
   };
-  await new Function(...Object.keys(dependencies), `return (async () => { ${summaryLoader} })();`)(...Object.values(dependencies));
+  const payloads = functions(['startOptionalOperationalRead', 'loadSummaryDayPayload', 'loadKitchenDayPayload',
+    'alignSummaryPayloadState', 'storeSummaryDayPayload', 'alignKitchenPayloadState', 'storeKitchenDayPayload'], payloadDependencies);
+  const kitchenPayloads = functions(['startOptionalOperationalRead', 'loadKitchenDayPayload',
+    'alignKitchenPayloadState', 'storeKitchenDayPayload'], { ...payloadDependencies, state: kitchenState });
+  payloads.alignSummaryPayloadState(dates, 'center');
+  const summaryPayload = await payloads.loadSummaryDayPayload(dates[1], { source: 'manuale' });
+  payloads.storeSummaryDayPayload(1, summaryPayload);
   assert.deepEqual(summaryState.summaryOperations[1].notes, note.messages);
-  const kitchenState = { mode: 'kitchen', centerContactSettings: {}, kitchenRequestVersion: 1, kitchenDayOffset: 1,
-    operationalDataDateByMode: { summary: '', kitchen: '' } };
-  const refreshKitchen = functionSource('performRefresh');
-  const kitchenStart = refreshKitchen.indexOf('const kitchenDates =');
-  const kitchenLoader = refreshKitchen.slice(kitchenStart, refreshKitchen.indexOf('state.meals =', kitchenStart));
-  assert.ok(kitchenStart >= 0 && kitchenLoader.includes('state.kitchenDays ='), 'il segmento deve contenere il caricamento cucina');
-  const kitchenDependencies = {
-    ...dependencies, state: kitchenState, kitchenRequestVersion: 1, kitchenDayOffset: 1,
-    loadKitchenCounts: dependencies.loadParticipantDaySummaries, applyDailyDietsToKitchenMeals: meals => meals
-  };
-  await new Function(...Object.keys(kitchenDependencies), `return (async () => { ${kitchenLoader} })();`)(...Object.values(kitchenDependencies));
+  kitchenPayloads.alignKitchenPayloadState(dates, 'center');
+  const kitchenPayload = await kitchenPayloads.loadKitchenDayPayload(dates[1], { source: 'manuale' });
+  kitchenPayloads.storeKitchenDayPayload(1, kitchenPayload);
+  const followingKitchenPayload = await kitchenPayloads.loadKitchenDayPayload(dates[2], { source: 'manuale' });
+  kitchenPayloads.storeKitchenDayPayload(2, followingKitchenPayload);
   let kitchenView;
   const kitchenUI = functions(['renderMeals', 'filterKitchenNoteForToday'], {
-    state: kitchenState, formatDateId, getCenterToday: dependencies.getCenterToday,
+    state: kitchenState, formatDateId, escapeHtml: value => value, getCenterToday: () => dates[0], isKitchenScreenReady: () => true,
     elements: { kitchenNote: {}, kitchenSick: {}, kitchenPanel: { querySelector: () => null }, cards: {} },
-    renderKitchenHeading: () => {}, scheduleOperationalAutoScroll: () => {},
+    renderKitchenHeading: () => {}, renderKitchenNote: () => {}, renderKitchenMass: () => {},
+    renderKitchenSickPeople: () => {}, scheduleOperationalAutoScroll: () => {},
+    getKitchenMonthlySummaryContext: () => null,
     mountSummaryMatrix: (_, options) => { kitchenView = options; }
   });
   kitchenUI.renderMeals();

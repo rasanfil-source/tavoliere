@@ -15,6 +15,7 @@ export function mountSummaryMatrix(
   {
     days = [],
     operationDays = [],
+    screenReady = () => true,
     kitchen = false,
     layout = "classic",
     residentLabel = "name",
@@ -30,7 +31,7 @@ export function mountSummaryMatrix(
     : buildSummaryMatrixScreens(days, [], operationDays);
 
   if (layout === "future" && !kitchen) {
-    renderFutureSummary(container, screens, residentLabel, activeIndex, onActiveIndexChange, showContactHint);
+    renderFutureSummary(container, screens, residentLabel, activeIndex, onActiveIndexChange, showContactHint, screenReady);
     return;
   }
 
@@ -43,7 +44,9 @@ export function mountSummaryMatrix(
   const render = layout === "international" ? renderInternationalScreen : renderScreen;
   container.innerHTML = `
     <div class="summary-matrix-track summary-layout-${layout}${kitchen ? " summary-layout-kitchen" : " summary-layout-diners"}" data-${prefix}-matrix-track aria-label="${escapeHtml(t("summary.screensLabel"))}">
-      ${screens.map((screen) => render(screen, { kitchen, activeIndex, residentLabel, showContactHint, dietLegend })).join("")}
+      ${screens.map((screen) => screenReady(screen.index)
+        ? render(screen, { kitchen, activeIndex, residentLabel, showContactHint, dietLegend })
+        : renderLoadingScreen(screen, { kitchen, activeIndex, layout })).join("")}
     </div>
     <p class="summary-matrix-swipe-hint" aria-hidden="true">${escapeHtml(t("summary.swipeHint"))}</p>
     ${kitchen ? renderKitchenMonthlySummary(monthSummary) : ""}
@@ -78,10 +81,10 @@ export function mountSummaryMatrix(
   });
 }
 
-function renderFutureSummary(container, screens, residentLabel, activeIndex = 0, onActiveIndexChange = () => {}, showContactHint = true) {
+function renderFutureSummary(container, screens, residentLabel = "name", activeIndex = 0, onActiveIndexChange = () => {}, showContactHint = true, screenReady = () => true) {
   container.innerHTML = `
     <div class="summary-future-grid" data-summary-future-track>
-      ${screens.map((screen) => `
+      ${screens.map((screen) => screenReady(screen.index) ? `
         <article class="summary-future-card" data-summary-future-screen="${screen.index}" aria-hidden="${screen.index !== activeIndex}">
           <header class="summary-future-card-head">
             <div><strong>${escapeHtml(t(screen.labelKey))}</strong><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></div>
@@ -91,6 +94,11 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
             ${screen.columns.map((column) => renderFutureMeal(column, residentLabel, showContactHint)).join("")}
           </div>
           ${renderNotes(screen)}
+        </article>
+      ` : `
+        <article class="summary-future-card" data-summary-future-screen="${screen.index}" aria-hidden="${screen.index !== activeIndex}" aria-busy="true">
+          <header class="summary-future-card-head"><div><strong>${escapeHtml(t(screen.labelKey))}</strong><time datetime="${escapeHtml(screen.dateId)}">${escapeHtml(formatLongDate(screen.dateId))}</time></div></header>
+          <p class="empty-state" role="status">${escapeHtml(t("common.status.loading"))}</p>
         </article>
       `).join("")}
     </div>
@@ -110,6 +118,16 @@ function renderFutureSummary(container, screens, residentLabel, activeIndex = 0,
   window.requestAnimationFrame(() => {
     if (track) track.scrollTo({ left: Math.max(0, activeIndex) * (track.clientWidth + 14), behavior: 'auto' });
   });
+}
+
+function renderLoadingScreen(screen, { kitchen, activeIndex, layout }) {
+  const prefix = kitchen ? "kitchen" : "summary";
+  const international = layout === "international";
+  return `
+    <section class="summary-matrix-screen${international ? " summary-international-screen summary-screen-ordinary" : ""}" data-${prefix}-screen="${screen.index}" role="tabpanel" aria-hidden="${screen.index !== activeIndex}" aria-busy="true">
+      <p class="empty-state" role="status">${escapeHtml(t("common.status.loading"))}</p>
+    </section>
+  `;
 }
 
 function renderFutureMeal(column, residentLabel, showContactHint = true) {

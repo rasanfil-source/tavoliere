@@ -3,9 +3,6 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { setImmediate as turn } from 'node:timers/promises';
-import { loadPersonalCalendarSnapshot, savePersonalCalendarSnapshot, clearPersonalCalendarSnapshots }
-  from '../../prototypes/firebase-spark-pwa/public/core/personal-calendar-cache.mjs';
-
 const read = (file) => readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/' + file, import.meta.url), 'utf8');
 const app = read('app.js');
 const extract = (source, name) => {
@@ -21,42 +18,6 @@ const deferred = () => {
 const scope = { centerId: 'one', uid: 'resolved-user', participantId: 'person', view: 'week', start: '2026-10-12', end: '2026-10-18' };
 const days = Array.from({ length: 7 }, (_, index) => ({ date: `2026-10-${12 + index}`, displayName: 'must not be stored',
   meals: [{ mealTypeId: 'lunch', label: 'Pranzo', effect: index % 2 ? 'PRESENT' : 'ABSENT', isOpen: true, health: 'private' }] }));
-function memoryStorage() {
-  const values = new Map();
-  return { values, get length() { return values.size; }, key: (index) => [...values.keys()][index],
-    getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
-}
-
-test('personal snapshot needs server confirmation, isolates identity/center/period and restores read-only', () => {
-  const storage = memoryStorage();
-  assert.equal(savePersonalCalendarSnapshot(scope, days, { storage, now: 100 }), false);
-  assert.equal(savePersonalCalendarSnapshot(scope, days, { storage, now: 100, serverConfirmed: true }), true);
-  const cached = loadPersonalCalendarSnapshot(scope, { storage, now: 110 });
-  assert.equal(cached.savedAt, 100);
-  assert.equal(cached.days[1].meals[0].effect, 'PRESENT');
-  assert.equal(cached.days[1].meals[0].isOpen, false);
-  assert.doesNotMatch([...storage.values.values()][0], /displayName|private|health|must not be stored/);
-  for (const field of ['uid', 'centerId', 'participantId', 'view', 'start']) {
-    assert.equal(loadPersonalCalendarSnapshot({ ...scope, [field]: 'different' }, { storage, now: 110 }), null);
-  }
-});
-
-test('snapshot cache is bounded, expires and tolerates corrupt/unavailable storage', () => {
-  const storage = memoryStorage();
-  for (let index = 0; index < 9; index++) savePersonalCalendarSnapshot({ ...scope, participantId: `p${index}` }, days,
-    { storage, now: 100 + index, serverConfirmed: true });
-  assert.equal(storage.length, 4);
-  assert.equal(loadPersonalCalendarSnapshot({ ...scope, participantId: 'p8' }, { storage, now: 108 + 73 * 3600000 }), null);
-  const key = storage.key(0);
-  storage.setItem(key, '{broken');
-  clearPersonalCalendarSnapshots({ centerId: 'one' }, storage);
-  assert.equal(storage.length, 0);
-  const unavailable = { get length() { throw Error('blocked'); }, getItem() { throw Error('blocked'); } };
-  assert.equal(loadPersonalCalendarSnapshot(scope, { storage: unavailable }), null);
-  assert.equal(savePersonalCalendarSnapshot(scope, days, { storage: unavailable, serverConfirmed: true }), false);
-  assert.equal(savePersonalCalendarSnapshot(scope, days.slice(1), { storage, serverConfirmed: true }), false);
-});
-
 test('week and month loading show a status without a reduced grid or cached selections', () => {
   for (const mode of ['week', 'participant']) {
     const target = { dataset: { renderKey: 'old-grid' }, innerHTML: '' };
@@ -205,7 +166,10 @@ test('meals become usable while roles, presentation and accessory continuation r
   const state = { mode: 'week', friendlyAccess: true, residentReady: true, residentAuthTransition: '',
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
   const context = vm.createContext({ state, console, participantCalendarRevision: 0,
+    serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
+    isCenterAccessRevokedError: error => error?.code === 'permission-denied',
+    shouldPreserveResidentViewAfterRefreshError: () => true,
     preparePersonalCalendarRead: () => null, getActiveCenterId: () => 'center',
     getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => calls.push('session'),
@@ -348,7 +312,10 @@ test('essential meal reads start while current center settings are still pending
     participantWeek: [], participantMonth: [], selectedParticipant: { participantId: 'person' },
     centerContactSettings: { timezone: 'Europe/Rome' }, weekStartDate: new Date(2026, 9, 12) };
   const context = vm.createContext({ state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
+    serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
+    isCenterAccessRevokedError: error => error?.code === 'permission-denied',
+    shouldPreserveResidentViewAfterRefreshError: () => true,
     getCurrentUser: () => ({ uid: scope.uid }), getLocale: () => 'it', renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => {},
     loadParticipantWeek: () => { calls.push('meals-start'); return meals.promise; },
@@ -374,18 +341,18 @@ test('essential meal reads start while current center settings are still pending
   assert.equal(calls.at(-1), 'usable');
 });
 
-test('date/timezone changes discard a speculative calendar; obsolete requests cannot publish or persist', async () => {
+test('date/timezone changes discard a speculative calendar; obsolete requests cannot publish', async () => {
   for (const change of ['timezone', 'period', 'language', 'identity', 'write']) {
-    let persisted = 0, reloads = 0;
+    let reloads = 0;
     let activeScope = { ...scope };
     let user = { uid: scope.uid };
     const pending = deferred();
     const state = { mode: 'week', participantRequestVersion: 1, selectedParticipant: { participantId: 'person' },
       participantWeek: [], participantMonth: [], pendingMealKeys: new Set(), centerContactSettings: { timezone: 'Europe/Rome' } };
     const context = vm.createContext({ state, participantCalendarRevision: 0,
+      serverNow: () => Date.now(), isMealWindowOpenAtServerTime: meal => meal.isOpen,
       currentPersonalCalendarScope: () => activeScope, getActiveCenterId: () => scope.centerId, getCurrentUser: () => user,
       getLocale: () => change === 'language' ? 'en' : 'it',
-      savePersonalCalendarSnapshot: () => { persisted++; },
       loadCurrentParticipantWeek: async (options) => {
         if (!options.calendarRead) reloads++;
         await (options.calendarRead || pending.promise);
@@ -404,7 +371,6 @@ test('date/timezone changes discard a speculative calendar; obsolete requests ca
     await result;
     if (['identity', 'write'].includes(change)) {
       assert.equal(state.participantWeek.length, 0);
-      assert.equal(persisted, 0);
     } else assert.equal(reloads, 1, change);
   }
 });

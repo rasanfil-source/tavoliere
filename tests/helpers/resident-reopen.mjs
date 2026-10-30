@@ -47,6 +47,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
   };
   const dependencies = {
     calendarLoadContextKey: () => `${state.mode}:${user.uid}`,
+    serverNow: () => Date.now(),
     state, console: { error: (...args) => record(`error:${args[1] || ''}`) },
     participantCalendarRevision: 0, getCurrentUser: () => user, getActiveCenterId: () => 'center',
     getLocale: () => 'it', formatDateId, addCalendarDays,
@@ -73,7 +74,6 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     loadParticipantWeek,
     loadParticipantMonthData: (id, date, options) => loadParticipantWeek(id, date, 31, options),
     prefetchNextParticipantMonth: () => record('prefetch-month'),
-    savePersonalCalendarSnapshot: () => record('snapshot'),
     renderParticipantMeals: () => record('usable'), hideStartupSplash: () => record('hide'),
     markStartupStage() {},
     refreshParticipantExtras: async () => { record('extras'); await read('extras'); },
@@ -84,6 +84,9 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     ...overrides
   };
   const code = [extract(sources.participant, 'restoreFriendlyResidentSession'),
+    extract(sources.app, 'isCenterAccessRevokedError'),
+    extract(sources.app, 'toJavaScriptDate'),
+    extract(sources.app, 'isMealWindowOpenAtServerTime'),
     ...['beginParticipantRequest', 'isCurrentParticipantRequest', 'currentPersonalCalendarScope',
       'preparePersonalCalendarRead', 'loadCurrentParticipantWeek', 'loadCurrentParticipantCalendar',
       'refreshParticipant'].map(name => extract(sources.app, name))].join('\n');

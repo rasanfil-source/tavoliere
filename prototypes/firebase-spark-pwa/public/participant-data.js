@@ -33,7 +33,7 @@ import {
   resolveEffectiveDietTags,
   resolveEffectiveEffect
 } from './reservation-state.mjs?v=20261014b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
+import { formatDateId, getDateInTimeZone, serverNow, synchronizeServerClock } from './date-utils.mjs?v=20261014b';
 import { normalizeDietTags } from './diet-utils.mjs?v=20261014b';
 import {
   normalizeResidentSignature
@@ -929,7 +929,7 @@ export async function loadParticipantMeals(participantId, date = new Date(), opt
 
 async function loadParticipantPeriod(participantId, startDate, days, options = {}) {
   const dates = buildDateRange(startDate, days);
-  const centerToday = getDateInTimeZone(options.timezone || 'Europe/Rome');
+  const centerToday = getDateInTimeZone(options.timezone || 'Europe/Rome', new Date(serverNow()));
   const startDateId = formatDateId(dates[0]);
   const endDateId = formatDateId(dates[dates.length - 1]);
   const [mealTypes, windows, overrides, rules] = await Promise.all([
@@ -947,6 +947,7 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
   const overridesByKey = new Map(
     overrides.map((item) => [item.mealDate + '_' + item.mealTypeId, item])
   );
+  const now = serverNow();
 
   const result = dates.map((date) => {
     const mealDate = formatDateId(date);
@@ -959,7 +960,8 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
         label: meal.label,
         mealDate,
         mealWindowId: key,
-        isOpen: Boolean(window && window.status === 'OPEN' && toDate(window.closesAt) > new Date()),
+        windowStatus: String(window?.status || ''),
+        isOpen: Boolean(window && window.status === 'OPEN' && toDate(window.closesAt).getTime() > now),
         closesAt: window?.closesAt ? toDate(window.closesAt).toISOString() : null,
         effect: resolveEffectiveEffect({
           participantId,
@@ -999,13 +1001,21 @@ export async function loadParticipantWeek(participantId, startDate = new Date(),
 
 export async function saveParticipantMeal(participant, meal, effect, options = {}) {
   assertOnline();
+  await synchronizeServerClock();
+  meal.isOpen = isReservationWindowOpen(meal);
+  if (!meal.isOpen) throw new Error('Il termine per modificare questo pasto è scaduto.');
   await commitReservationMeals(participant, [meal], effect, options);
   markMealSaved(meal, effect);
 }
 
 export async function saveParticipantDay(participant, meals, effect) {
   assertOnline();
-  const openMeals = meals.filter((meal) => meal.isOpen);
+  await synchronizeServerClock();
+  const now = serverNow();
+  const openMeals = meals.filter((meal) => {
+    meal.isOpen = isReservationWindowOpen(meal, now);
+    return meal.isOpen;
+  });
   if (openMeals.length === 0) {
     throw new Error('In questa giornata non ci sono pasti modificabili.');
   }
@@ -1022,9 +1032,14 @@ export async function saveParticipantDay(participant, meals, effect) {
 
 export async function saveParticipantMonthSelection(participant, days, effect, mealTypeId = null) {
   assertOnline();
+  await synchronizeServerClock();
+  const now = serverNow();
   const mealsToUpdate = days
     .flatMap((day) => day.meals)
-    .filter((meal) => meal.isOpen && (!mealTypeId || meal.mealTypeId === mealTypeId))
+    .filter((meal) => {
+      meal.isOpen = isReservationWindowOpen(meal, now);
+      return meal.isOpen && (!mealTypeId || meal.mealTypeId === mealTypeId);
+    })
     .filter((meal) => meal.effect !== effect);
 
   if (mealsToUpdate.length === 0) {
@@ -1458,6 +1473,17 @@ export async function commitWithRetry(operation) {
 
 function toDate(value) {
   return value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+}
+
+function isReservationWindowOpen(meal, now = serverNow()) {
+  const closesAtMs = meal?.closesAt ? toDate(meal.closesAt).getTime() : Number.NaN;
+  if (!Number.isFinite(closesAtMs)) {
+    return meal?.windowStatus !== 'OPEN' && meal?.windowStatus !== 'CLOSED'
+      && meal?.isOpen === true;
+  }
+  if (meal?.windowStatus === 'OPEN') return closesAtMs > now;
+  if (meal?.windowStatus === 'CLOSED') return false;
+  return meal?.isOpen === true && closesAtMs > now;
 }
 
 function isFreshCacheEntry(entry) {

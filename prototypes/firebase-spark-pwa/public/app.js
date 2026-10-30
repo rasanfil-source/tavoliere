@@ -48,7 +48,14 @@ import {
   updateKitchenLayout,
   updateCenterSettings
 } from './center-settings.js?v=20261014b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
+import {
+  formatDateId,
+  getDateInTimeZone,
+  serverNow,
+  synchronizeServerClock,
+  startServerClockSync,
+  subscribeServerClockUpdates
+} from './date-utils.mjs?v=20261014b';
 import {
   formatDietLabel,
   normalizeDietCode
@@ -74,9 +81,13 @@ import {
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20261014b';
 import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
-import { markStartupStage, measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 import {
-  savePersonalCalendarSnapshot,
+  markStartupStage,
+  measureStartupStep,
+  observeStartupPaintMetrics
+} from './core/startup-timing.mjs?v=20261014b';
+import {
+  clearLegacyPersonalCalendarSnapshotsOnce,
   clearPersonalCalendarSnapshots
 } from './core/personal-calendar-cache.mjs?v=20261014b';
 import {
@@ -101,6 +112,8 @@ import {
 } from './summary-contact-hint.mjs?v=20261014b';
 
 markStartupStage('app-evaluated');
+observeStartupPaintMetrics();
+clearLegacyPersonalCalendarSnapshotsOnce();
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
 
@@ -665,12 +678,15 @@ const state = {
   calendarAnchoredToCenter: false,
   calendarAnchorDateId: '',
   todayOverview: [],
+  summaryPayloadCenterId: '',
+  summaryLoadError: '',
   summaryDays: [],
   summaryOperations: [],
   summaryDayOffset: 0,
   summaryContactHintVisible: true,
   summaryContactHintVisitRecorded: false,
   kitchenDayOffset: 0,
+  kitchenPayloadCenterId: '',
   kitchenDays: [],
   kitchenOperations: [],
   kitchenNotes: [],
@@ -767,6 +783,22 @@ const state = {
     kitchenCreatedAt: null
   }
 };
+
+subscribeServerClockUpdates(() => {
+  reconcileLoadedParticipantCalendarWindows();
+  scheduleMealRemindersFromCurrentCalendar();
+  const todayId = formatDateId(getCenterToday());
+  const personalCalendarDateIsStale = state.calendarAnchoredToCenter
+    && state.calendarAnchorDateId !== todayId;
+  const displayedOperationalDateId = state.operationalDataDateByMode[state.mode];
+  const operationalDateIsStale = ['summary', 'kitchen'].includes(state.mode)
+    && Boolean(displayedOperationalDateId)
+    && displayedOperationalDateId !== todayId;
+  if (personalCalendarDateIsStale || operationalDateIsStale) {
+    scheduleBackgroundRefresh('orario-server');
+  }
+  scheduleOperationalDayRefresh();
+});
 
 function invalidateViewRequests() {
   state.participantRequestVersion += 1;
@@ -1511,7 +1543,7 @@ function refreshCalendarOnResume() {
     && displayedOperationalDateId !== currentCenterDateId;
   // Una riapertura può trovare il calendario iniziale ancora incompleto,
   // anche se il timer del prossimo aggiornamento è lontano.
-  if (missingCalendar || operationalDataIsStale || Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
+  if (missingCalendar || operationalDataIsStale || serverNow() > state.nextRefreshAt - 2 * 60 * 1000) {
     scheduleBackgroundRefresh(operationalDataIsStale ? 'cambio-giorno' : 'ripresa');
   }
 }
@@ -1784,7 +1816,7 @@ function scheduleOperationalDayRefresh() {
     // I timer possono essere ritardati mentre la PWA è sospesa; il controllo
     // della data al ritorno in primo piano recupera comunque l'aggiornamento.
     scheduleOperationalDayRefresh();
-  }, Math.max(1, refreshAt.getTime() - Date.now()));
+  }, Math.max(1, refreshAt.getTime() - serverNow()));
 }
 
 function prepareMonthAutoScrollEntry(previousMode, nextMode) {
@@ -3650,7 +3682,7 @@ async function showMealReminder(item) {
         || Notification.permission !== 'granted'
         || item.meal.effect === 'PRESENT'
         || item.meal.isOpen !== true
-        || Date.now() >= item.closesAtMs) return;
+        || serverNow() >= item.closesAtMs) return;
 
     const mealLabel = t(`meal.type.${item.meal.mealTypeId}`);
     const registration = await navigator.serviceWorker.ready;
@@ -3980,6 +4012,354 @@ async function refreshNow(source) {
   }
 }
 
+const OPTIONAL_OPERATIONAL_READ_TIMEOUT_MS = 4000;
+
+function startOptionalOperationalRead(promise, {
+  label,
+  dateId,
+  fallback,
+  onLateSettlement
+} = {}) {
+  const status = { value: fallback, settled: false, timedOut: false, failed: false };
+  let initialSettled = false;
+  let resolveInitial;
+  let timeoutId;
+  const initial = new Promise((resolve) => {
+    resolveInitial = resolve;
+  });
+  const settleInitial = () => {
+    if (initialSettled) return false;
+    initialSettled = true;
+    window.clearTimeout(timeoutId);
+    resolveInitial(status);
+    return true;
+  };
+
+  timeoutId = window.setTimeout(() => {
+    if (!settleInitial()) return;
+    status.timedOut = true;
+  }, OPTIONAL_OPERATIONAL_READ_TIMEOUT_MS);
+
+  Promise.resolve(promise).then((value) => {
+    const arrivedAfterTimeout = initialSettled && status.timedOut;
+    status.value = value;
+    status.settled = true;
+    status.failed = false;
+    if (!initialSettled) settleInitial();
+    else if (arrivedAfterTimeout) {
+      status.timedOut = false;
+      onLateSettlement?.(status);
+    }
+  }).catch((error) => {
+    const arrivedAfterTimeout = initialSettled && status.timedOut;
+    status.value = fallback;
+    status.settled = true;
+    status.failed = true;
+    if (!initialSettled) {
+      reportOptionalOperationalRead(label, dateId, error, fallback, []);
+      settleInitial();
+    } else if (arrivedAfterTimeout) {
+      status.timedOut = false;
+      console.warn(`Dato accessorio non disponibile (${label}, ${dateId})`, error?.code || '', error?.message || '');
+      onLateSettlement?.(status);
+    }
+  });
+
+  return { initial, status };
+}
+
+async function loadKitchenDayPayload(date, { source, staticVersion, onLateUpdate } = {}) {
+  const dateId = formatDateId(date);
+  const forceRefresh = source === 'manuale';
+  let payload;
+  let payloadReady = false;
+  let noteRead;
+  let operationRead;
+  const updateLatePayload = () => {
+    if (!payloadReady) return;
+    payload.kitchenNote = noteRead.status.value;
+    payload.dailyOperation = operationRead.status.value;
+    payload.degraded = [noteRead.status, operationRead.status]
+      .some((read) => read.failed || read.timedOut);
+    onLateUpdate?.(payload);
+  };
+  noteRead = startOptionalOperationalRead(loadKitchenNote(date, { forceRefresh }), {
+    label: 'nota cucina', dateId, fallback: null, onLateSettlement: updateLatePayload
+  });
+  operationRead = startOptionalOperationalRead(loadDailyOperation(date, { forceRefresh }), {
+    label: 'Messa', dateId, fallback: null, onLateSettlement: updateLatePayload
+  });
+  const [meals, dailyHealth] = await Promise.all([
+    loadKitchenCounts(date, {
+      forceStaticRefresh: forceRefresh,
+      sessionReady: true,
+      staticVersion
+    }),
+    loadDailyHealth(date, { forceRefresh })
+  ]);
+  await Promise.all([noteRead.initial, operationRead.initial]);
+  payload = {
+    dateId,
+    meals: applyDailyDietsToKitchenMeals(meals, dailyHealth.dietAssignments)
+      .map((meal) => ({
+        ...meal,
+        mealTypeId: meal.mealTypeId || meal.key,
+        present: meal.present || meal.dietParticipants || []
+      })),
+    kitchenNote: noteRead.status.value,
+    dailyOperation: operationRead.status.value,
+    dailyHealth,
+    degraded: [noteRead.status, operationRead.status]
+      .some((read) => read.failed || read.timedOut)
+  };
+  payloadReady = true;
+  return payload;
+}
+
+async function loadSummaryDayPayload(date, {
+  source,
+  staticVersion,
+  includeContacts,
+  onLateUpdate
+} = {}) {
+  const dateId = formatDateId(date);
+  const forceRefresh = source === 'manuale';
+  let payload;
+  let payloadReady = false;
+  let operationRead;
+  let noteRead;
+  const updateLatePayload = () => {
+    if (!payloadReady) return;
+    payload.dailyOperation = operationRead.status.value;
+    payload.notes = Array.isArray(noteRead.status.value?.messages) && noteRead.status.value.messages.length > 0
+      ? noteRead.status.value.messages
+      : noteRead.status.value?.text
+        ? [noteRead.status.value]
+        : [];
+    payload.degraded = [operationRead.status, noteRead.status]
+      .some((read) => read.failed || read.timedOut);
+    onLateUpdate?.(payload);
+  };
+  operationRead = startOptionalOperationalRead(loadDailyOperation(date, { forceRefresh }), {
+    label: 'Messa', dateId, fallback: null, onLateSettlement: updateLatePayload
+  });
+  noteRead = startOptionalOperationalRead(loadKitchenNote(date, { forceRefresh }), {
+    label: 'nota cucina', dateId, fallback: null, onLateSettlement: updateLatePayload
+  });
+  const [meals, dailyHealth] = await Promise.all([
+    loadParticipantDaySummaries(date, {
+      forceStaticRefresh: forceRefresh,
+      staticVersion,
+      includeContacts
+    }),
+    loadDailyHealth(date, { forceRefresh })
+  ]);
+  await Promise.all([operationRead.initial, noteRead.initial]);
+  payload = {
+    dateId,
+    meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
+    dailyOperation: operationRead.status.value,
+    dailyHealth,
+    notes: Array.isArray(noteRead.status.value?.messages) && noteRead.status.value.messages.length > 0
+      ? noteRead.status.value.messages
+      : noteRead.status.value?.text
+        ? [noteRead.status.value]
+        : [],
+    degraded: [operationRead.status, noteRead.status]
+      .some((read) => read.failed || read.timedOut)
+  };
+  payloadReady = true;
+  return payload;
+}
+
+function alignKitchenPayloadState(dates, centerId) {
+  const sameCenter = state.kitchenPayloadCenterId === centerId;
+  const previousDays = sameCenter ? state.kitchenDays : [];
+  const previousOperations = sameCenter ? state.kitchenOperations : [];
+  const previousNotes = sameCenter ? state.kitchenNotes : [];
+  const existingForDate = (items, dateId) => items.find((item) => item.dateId === dateId);
+
+  if (!sameCenter) {
+    state.meals = [];
+    state.kitchenNote = null;
+    state.kitchenDailyOperation = null;
+    state.kitchenDailyHealth = null;
+    state.kitchenUpdatedAt = null;
+  }
+
+  state.kitchenDays = dates.map((date) => {
+    const dateId = formatDateId(date);
+    return existingForDate(previousDays, dateId) || { dateId, meals: [], ready: false };
+  });
+  state.kitchenOperations = dates.map((date) => {
+    const dateId = formatDateId(date);
+    return existingForDate(previousOperations, dateId)
+      || { dateId, notes: [], dailyOperation: null, dailyHealth: null, ready: false, degraded: false };
+  });
+  state.kitchenNotes = dates.map((date) => {
+    const dateId = formatDateId(date);
+    return existingForDate(previousNotes, dateId) || { dateId, note: null, ready: false };
+  });
+  state.kitchenPayloadCenterId = centerId;
+}
+
+function storeKitchenDayPayload(index, payload) {
+  state.kitchenDays[index] = {
+    dateId: payload.dateId,
+    meals: payload.meals,
+    ready: true,
+    requestVersion: payload.requestVersion
+  };
+  state.kitchenOperations[index] = {
+    dateId: payload.dateId,
+    notes: Array.isArray(payload.kitchenNote?.messages) && payload.kitchenNote.messages.length > 0
+      ? payload.kitchenNote.messages
+      : payload.kitchenNote?.text
+        ? [payload.kitchenNote]
+        : [],
+    dailyOperation: payload.dailyOperation,
+    dailyHealth: payload.dailyHealth,
+    ready: true,
+    degraded: payload.degraded === true,
+    requestVersion: payload.requestVersion
+  };
+  state.kitchenNotes[index] = {
+    dateId: payload.dateId,
+    note: payload.kitchenNote,
+    ready: true,
+    requestVersion: payload.requestVersion
+  };
+}
+
+function alignSummaryPayloadState(dates, centerId) {
+  const sameCenter = state.summaryPayloadCenterId === centerId;
+  const previousDays = sameCenter ? state.summaryDays : [];
+  const previousOperations = sameCenter ? state.summaryOperations : [];
+  const existingForDate = (items, dateId) => items.find((item) => item.dateId === dateId);
+
+  if (!sameCenter) {
+    state.todayOverview = [];
+    state.summaryDailyOperation = null;
+    state.summaryDailyHealth = null;
+  }
+  state.summaryDays = dates.map((date) => {
+    const dateId = formatDateId(date);
+    return existingForDate(previousDays, dateId) || { dateId, meals: [], ready: false };
+  });
+  state.summaryOperations = dates.map((date) => {
+    const dateId = formatDateId(date);
+    return existingForDate(previousOperations, dateId)
+      || { dateId, dailyOperation: null, dailyHealth: null, notes: [], ready: false, degraded: false };
+  });
+  state.summaryPayloadCenterId = centerId;
+  state.summaryLoadError = '';
+}
+
+function storeSummaryDayPayload(index, payload) {
+  state.summaryDays[index] = {
+    dateId: payload.dateId,
+    meals: payload.meals,
+    ready: true,
+    requestVersion: payload.requestVersion
+  };
+  state.summaryOperations[index] = {
+    dateId: payload.dateId,
+    dailyOperation: payload.dailyOperation,
+    dailyHealth: payload.dailyHealth,
+    notes: payload.notes,
+    ready: true,
+    degraded: payload.degraded === true,
+    requestVersion: payload.requestVersion
+  };
+}
+
+function isSummaryScreenReady(offset = state.summaryDayOffset) {
+  const screenOffset = offset === 1 ? 1 : 0;
+  return state.summaryDays[screenOffset]?.ready === true
+    && state.summaryDays[screenOffset + 1]?.ready === true;
+}
+
+function isSummaryScreenDegraded(offset = state.summaryDayOffset) {
+  const screenOffset = offset === 1 ? 1 : 0;
+  const screenDates = new Set(state.summaryDays
+    .slice(screenOffset, screenOffset + 2)
+    .map((day) => day.dateId));
+  return state.summaryOperations.some((operation) => (
+    screenDates.has(operation.dateId) && operation.degraded === true
+  ));
+}
+
+function setSummaryScreenFreshnessStatus(source) {
+  if (!state.lastSuccessfulRefreshAt || !isSummaryScreenReady(state.summaryDayOffset)) return;
+  const degraded = isSummaryScreenDegraded(state.summaryDayOffset);
+  setParticipantStatus(
+    degraded
+      ? t('calendar.status.extrasUnavailable')
+      : formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
+    degraded ? 'degraded' : 'current'
+  );
+}
+
+function applyLateSummaryPayload(index, payload, request, source) {
+  if (!isCurrentParticipantRequest(request)
+      || request.mode !== 'summary'
+      || state.summaryDays[index]?.requestVersion !== request.version
+      || state.summaryDays[index]?.dateId !== payload.dateId) return;
+  payload.requestVersion = request.version;
+  storeSummaryDayPayload(index, payload);
+  if (isSummaryScreenReady(state.summaryDayOffset)) {
+    renderTodayOverview();
+    setSummaryScreenFreshnessStatus(source);
+  }
+}
+
+function isKitchenScreenReady(offset = state.kitchenDayOffset) {
+  const screenOffset = offset === 1 ? 1 : 0;
+  return state.kitchenDays[screenOffset]?.ready === true
+    && state.kitchenDays[screenOffset + 1]?.ready === true;
+}
+
+function isKitchenScreenDegraded(offset = state.kitchenDayOffset) {
+  const screenOffset = offset === 1 ? 1 : 0;
+  const screenDates = new Set(state.kitchenDays
+    .slice(screenOffset, screenOffset + 2)
+    .map((day) => day.dateId));
+  return state.kitchenOperations.some((operation) => (
+    screenDates.has(operation.dateId) && operation.degraded === true
+  ));
+}
+
+function setKitchenScreenFreshnessStatus(offset = state.kitchenDayOffset) {
+  if (!state.kitchenUpdatedAt || !isKitchenScreenReady(offset)) return;
+  const degraded = isKitchenScreenDegraded(offset);
+  setFreshnessStatus(
+    elements.status,
+    degraded
+      ? t('calendar.status.extrasUnavailable')
+      : formatKitchenRefreshLabel(state.kitchenUpdatedAt),
+    degraded ? 'degraded' : 'current'
+  );
+}
+
+function applyLateKitchenPayload(index, payload, version, centerId, dayOffset) {
+  if (!isCurrentKitchenRequest(version, centerId, dayOffset)
+      || state.kitchenDays[index]?.requestVersion !== version
+      || state.kitchenDays[index]?.dateId !== payload.dateId) return;
+  payload.requestVersion = version;
+  storeKitchenDayPayload(index, payload);
+  if (isKitchenScreenReady(state.kitchenDayOffset)) {
+    renderMeals();
+    setKitchenScreenFreshnessStatus(state.kitchenDayOffset);
+  }
+}
+
+function isCurrentKitchenRequest(version, centerId, dayOffset) {
+  return version === state.kitchenRequestVersion
+    && state.mode === 'kitchen'
+    && dayOffset === state.kitchenDayOffset
+    && centerId === getActiveCenterId();
+}
+
 function buildRefreshContextKey() {
   return [
     getActiveCenterId(),
@@ -3994,13 +4374,14 @@ function buildRefreshContextKey() {
 
 async function performRefresh(source) {
   state.refreshCount += 1;
-  const now = new Date();
+  if (['participant', 'week', 'summary', 'kitchen'].includes(state.mode)) startServerClockSync();
+  const now = new Date(serverNow());
   const delayMs = getRecommendedRefreshDelayMs(
     now,
     state.centerContactSettings.timezone || 'Europe/Rome'
   );
 
-  state.nextRefreshAt = Date.now() + delayMs;
+  state.nextRefreshAt = serverNow() + delayMs;
   window.clearTimeout(state.timerId);
   state.timerId = window.setTimeout(() => refreshNow('timer'), delayMs);
   scheduleOperationalDayRefresh();
@@ -4021,12 +4402,14 @@ async function performRefresh(source) {
   elements.status.textContent = 'Aggiorno...';
   const kitchenRequestVersion = ++state.kitchenRequestVersion;
   const kitchenDayOffset = state.kitchenDayOffset;
+  const kitchenCenterId = getActiveCenterId();
 
   try {
     await ensureKitchenDemoSession().catch((error) => {
       error.refreshStage = 'sessione';
       throw error;
     });
+    if (kitchenCenterId !== getActiveCenterId()) return;
     // Le impostazioni del centro sono protette dalla sessione Cucina e vengono lette dopo la sua creazione.
     const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
@@ -4034,87 +4417,74 @@ async function performRefresh(source) {
       error.refreshStage = 'impostazioni';
       throw error;
     });
+    if (kitchenCenterId !== getActiveCenterId()) return;
     state.centerContactSettings = applyResidentPreferences(centerSettings);
     scheduleOperationalDayRefresh();
     await applyCenterDefaultLanguage(state.centerContactSettings);
     renderMode();
     const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
-    const optionalOperationalReadFailures = [];
-    const kitchenPayloads = await Promise.all(kitchenDates.map(async (date) => {
-      const dateId = formatDateId(date);
-      const [meals, kitchenNote, dailyOperation, dailyHealth] = await Promise.all([
-        loadKitchenCounts(date, {
-          forceStaticRefresh: source === 'manuale',
-          sessionReady: true,
-          staticVersion: state.centerContactSettings.participantDataVersion || '0'
-        }),
-        loadKitchenNote(date, { forceRefresh: source === 'manuale' })
-          .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null, optionalOperationalReadFailures)),
-        loadDailyOperation(date, { forceRefresh: source === 'manuale' })
-          .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null, optionalOperationalReadFailures)),
-        loadDailyHealth(date, { forceRefresh: source === 'manuale' })
-          .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
-            dateId,
-            sickPeople: [],
-            dietAssignments: [],
-            invitedMeals: []
-          }, optionalOperationalReadFailures))
-      ]);
-      return {
-        dateId,
-        meals: applyDailyDietsToKitchenMeals(meals, dailyHealth.dietAssignments)
-          .map((meal) => ({
-            ...meal,
-            mealTypeId: meal.mealTypeId || meal.key,
-            present: meal.present || meal.dietParticipants || []
-          })),
-        kitchenNote,
-        dailyOperation,
-        dailyHealth
-      };
-    })).catch((error) => {
+    alignKitchenPayloadState(kitchenDates, kitchenCenterId);
+    if (!isKitchenScreenReady(kitchenDayOffset)) renderMeals('Caricamento riepilogo…');
+    const screenIndexes = [kitchenDayOffset, kitchenDayOffset + 1];
+    const screenPayloads = await Promise.all(screenIndexes.map(async (index) => ({
+      index,
+      payload: await loadKitchenDayPayload(kitchenDates[index], {
+        source,
+        staticVersion: state.centerContactSettings.participantDataVersion || '0',
+        onLateUpdate: (payload) => applyLateKitchenPayload(
+          index, payload, kitchenRequestVersion, kitchenCenterId, kitchenDayOffset
+        )
+      })
+    }))).catch((error) => {
       error.refreshStage = 'dati';
       throw error;
     });
-    if (kitchenRequestVersion !== state.kitchenRequestVersion
-      || state.mode !== 'kitchen'
-      || kitchenDayOffset !== state.kitchenDayOffset) {
-      return;
-    }
-    state.kitchenDays = kitchenPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
-    state.operationalDataDateByMode.kitchen = kitchenPayloads[0]?.dateId || '';
-    state.kitchenOperations = kitchenPayloads.map(({ dateId, kitchenNote, dailyOperation, dailyHealth }) => ({
-      dateId,
-      notes: Array.isArray(kitchenNote?.messages) && kitchenNote.messages.length > 0
-        ? kitchenNote.messages
-        : kitchenNote?.text
-          ? [kitchenNote]
-          : [],
-      dailyOperation,
-      dailyHealth
-    }));
-    state.kitchenNotes = kitchenPayloads.map(({ dateId, kitchenNote }) => ({ dateId, note: kitchenNote }));
-    state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || [];
-    state.kitchenNote = state.kitchenNotes[state.kitchenDayOffset]?.note || null;
-    state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || null;
-    state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || null;
-    selectKitchenMatrixDay(state.kitchenDayOffset);
-    state.kitchenUpdatedAt = new Date();
+    if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
+    screenPayloads.forEach(({ index, payload }) => {
+      payload.requestVersion = kitchenRequestVersion;
+      storeKitchenDayPayload(index, payload);
+    });
+    state.operationalDataDateByMode.kitchen = kitchenDates[0] ? formatDateId(kitchenDates[0]) : '';
+    selectKitchenMatrixDay(kitchenDayOffset, { scroll: false });
+    state.kitchenUpdatedAt = new Date(serverNow());
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
     renderMeals();
-    setFreshnessStatus(
-      elements.status,
-      optionalOperationalReadFailures.length
-        ? t('calendar.status.extrasUnavailable')
-        : formatKitchenRefreshLabel(state.kitchenUpdatedAt),
-      optionalOperationalReadFailures.length ? 'degraded' : 'current'
-    );
-  } catch (error) {
-    if (kitchenRequestVersion !== state.kitchenRequestVersion
-      || state.mode !== 'kitchen'
-      || kitchenDayOffset !== state.kitchenDayOffset) {
-      return;
+    markStartupStage('kitchen-ready');
+    setKitchenScreenFreshnessStatus(kitchenDayOffset);
+
+    // Lo schermo di oggi usa oggi e domani (per la colazione); quello di domani
+    // usa domani e dopodomani. Completa il terzo giorno in background così non
+    // ritarda il primo riepilogo visibile.
+    const backgroundIndex = kitchenDates.findIndex((_, index) => !screenIndexes.includes(index));
+    if (backgroundIndex >= 0) {
+      void loadKitchenDayPayload(kitchenDates[backgroundIndex], {
+        source,
+        staticVersion: state.centerContactSettings.participantDataVersion || '0',
+        onLateUpdate: (payload) => applyLateKitchenPayload(
+          backgroundIndex, payload, kitchenRequestVersion, kitchenCenterId, kitchenDayOffset
+        )
+      }).then((payload) => {
+        if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)
+            || state.kitchenDays[backgroundIndex]?.dateId !== payload.dateId) return;
+        payload.requestVersion = kitchenRequestVersion;
+        storeKitchenDayPayload(backgroundIndex, payload);
+        renderMeals();
+      }).catch((error) => {
+        if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
+        if (isCenterAccessRevokedError(error)) {
+          clearKitchenDataAfterAccessRevocation();
+          renderMeals(getKitchenErrorMessage(error));
+          elements.status.textContent = 'Centro non disponibile';
+          return;
+        }
+        const day = state.kitchenDays[backgroundIndex];
+        if (day?.dateId === formatDateId(kitchenDates[backgroundIndex])) {
+          state.kitchenDays[backgroundIndex] = { ...day, ready: false };
+        }
+      });
     }
+  } catch (error) {
+    if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
     console.warn('Aggiornamento cucina non riuscito', error?.refreshStage || '', error?.code || '', error?.message || '');
     if (isCenterAccessRevokedError(error)) {
       clearKitchenDataAfterAccessRevocation();
@@ -4122,7 +4492,8 @@ async function performRefresh(source) {
       elements.status.textContent = 'Centro non disponibile';
       return;
     }
-    if (state.meals.length > 0) {
+    if (isKitchenScreenReady(kitchenDayOffset)) {
+      selectKitchenMatrixDay(kitchenDayOffset, { scroll: false });
       renderMeals();
       setFreshnessStatus(
         elements.status,
@@ -4130,12 +4501,6 @@ async function performRefresh(source) {
         'previous'
       );
     } else {
-      state.kitchenDays = [];
-      state.kitchenOperations = [];
-      state.kitchenNotes = [];
-      state.kitchenNote = null;
-      state.kitchenDailyOperation = null;
-      state.kitchenDailyHealth = null;
       renderMeals(getKitchenErrorMessage(error));
       elements.status.textContent = friendlyErrorMessage(error, 'Dati non disponibili');
     }
@@ -4238,6 +4603,7 @@ async function refreshParticipant(source, options = {}) {
   let request = beginParticipantRequest();
   const initialCalendarRevision = participantCalendarRevision;
   state.calendarLoadErrorKey = '';
+  if (state.mode === 'summary') state.summaryLoadError = '';
   const scope = currentPersonalCalendarScope();
   if (state.personalCalendarScope && JSON.stringify(scope) !== JSON.stringify(state.personalCalendarScope)) {
     state.participantWeek = [];
@@ -4247,12 +4613,13 @@ async function refreshParticipant(source, options = {}) {
     state.weekExtrasReady = false;
   }
   const hadVisibleData = state.mode === 'summary'
-    ? state.todayOverview.length > 0
+    ? isSummaryScreenReady(state.summaryDayOffset)
     : state.mode === 'week'
       ? state.participantWeek.length > 0
       : state.participantMonth.length > 0;
   setParticipantStatus('Aggiorno...');
   if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
+  if (!hadVisibleData && state.mode === 'summary') renderTodayOverview();
   let preparedCalendar = null;
   const optionalOperationalReadFailures = [];
 
@@ -4357,53 +4724,62 @@ async function refreshParticipant(source, options = {}) {
     }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
-      const summaryPayloads = await Promise.all(summaryDates.map(async (date) => {
-        const dateId = formatDateId(date);
-        const [meals, dailyOperation, dailyHealth, kitchenNote] = await Promise.all([
-          loadParticipantDaySummaries(date, {
-            forceStaticRefresh: source === 'manuale',
-            staticVersion: state.centerContactSettings.participantDataVersion || '0',
-            includeContacts: state.centerContactSettings.participantContactSharingEnabled
-          }),
-          loadDailyOperation(date, { forceRefresh: source === 'manuale' })
-            .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null, optionalOperationalReadFailures)),
-          loadDailyHealth(date, { forceRefresh: source === 'manuale' })
-            .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
-              dateId,
-              sickPeople: [],
-              dietAssignments: [],
-              invitedMeals: []
-            }, optionalOperationalReadFailures)),
-          loadKitchenNote(date, { forceRefresh: source === 'manuale' })
-            .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null, optionalOperationalReadFailures))
-        ]);
-        return {
-          dateId,
-          meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
-          dailyOperation,
-          dailyHealth,
-          notes: Array.isArray(kitchenNote?.messages) && kitchenNote.messages.length > 0
-            ? kitchenNote.messages : kitchenNote?.text ? [kitchenNote] : []
-        };
-      }));
+      const summaryDayOffset = request.summaryDayOffset === 1 ? 1 : 0;
+      const summaryScreenIndexes = [summaryDayOffset, summaryDayOffset + 1];
+      const summaryStaticVersion = state.centerContactSettings.participantDataVersion || '0';
+      const includeContacts = state.centerContactSettings.participantContactSharingEnabled;
+      alignSummaryPayloadState(summaryDates, request.centerId);
+      if (!isSummaryScreenReady(summaryDayOffset)) renderTodayOverview();
+      const summaryPayloads = await Promise.all(summaryScreenIndexes.map(async (index) => ({
+        index,
+        payload: await loadSummaryDayPayload(summaryDates[index], {
+          source,
+          staticVersion: summaryStaticVersion,
+          includeContacts,
+          onLateUpdate: (payload) => applyLateSummaryPayload(index, payload, request, source)
+        })
+      })));
       if (!isCurrentParticipantRequest(request)) return;
-      state.summaryDays = summaryPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
-      state.summaryOperations = summaryPayloads.map(({ dateId, dailyOperation, dailyHealth, notes }) => ({
-        dateId,
-        dailyOperation,
-        dailyHealth,
-        notes
-      }));
-      state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || [];
-      state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || null;
-      state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || null;
-      state.operationalDataDateByMode.summary = summaryPayloads[0]?.dateId || '';
+      summaryPayloads.forEach(({ index, payload }) => {
+        payload.requestVersion = request.version;
+        storeSummaryDayPayload(index, payload);
+      });
+      state.todayOverview = state.summaryDays[summaryDayOffset]?.meals || [];
+      state.summaryDailyOperation = state.summaryOperations[summaryDayOffset]?.dailyOperation || null;
+      state.summaryDailyHealth = state.summaryOperations[summaryDayOffset]?.dailyHealth || null;
+      state.operationalDataDateByMode.summary = formatDateId(summaryDates[summaryDayOffset]);
       recordSummaryContactHintVisit();
-      selectSummaryMatrixDay(state.summaryDayOffset);
+      selectSummaryMatrixDay(summaryDayOffset, { scroll: false });
+
+      const backgroundIndex = summaryDates.findIndex((_, index) => !summaryScreenIndexes.includes(index));
+      if (backgroundIndex >= 0) {
+        void loadSummaryDayPayload(summaryDates[backgroundIndex], {
+          source,
+          staticVersion: summaryStaticVersion,
+          includeContacts,
+          onLateUpdate: (payload) => applyLateSummaryPayload(backgroundIndex, payload, request, source)
+        }).then((payload) => {
+          if (!isCurrentParticipantRequest(request)
+              || state.summaryDays[backgroundIndex]?.dateId !== payload.dateId) return;
+          payload.requestVersion = request.version;
+          storeSummaryDayPayload(backgroundIndex, payload);
+          renderTodayOverview();
+        }).catch((error) => {
+          if (!isCurrentParticipantRequest(request)) return;
+          console.warn('Lettura riepilogo del giorno successivo non riuscita', error?.code || '', error?.message || '');
+          if (isCenterAccessRevokedError(error)) {
+            clearParticipantDataAfterAccessRevocation();
+            renderResidentAccess(true);
+            setParticipantStatus('Centro non disponibile');
+          }
+        });
+      }
     } else {
       state.todayOverview = [];
       state.summaryDays = [];
       state.summaryOperations = [];
+      state.summaryPayloadCenterId = '';
+      state.summaryLoadError = '';
       state.summaryDailyOperation = null;
       state.summaryDailyHealth = null;
     }
@@ -4425,6 +4801,7 @@ async function refreshParticipant(source, options = {}) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
+    if (state.mode === 'summary') markStartupStage('summary-ready');
     if (personalRoute) {
       markStartupStage('calendar-ready');
       // Questa continuazione è indipendente dalla promessa di caricamento del calendario e di accesso.
@@ -4433,13 +4810,17 @@ async function refreshParticipant(source, options = {}) {
     // Il calendario pronto può apparire mentre le letture facoltative dei promemoria proseguono separatamente.
     hideStartupSplash();
     void refreshMealRemindersAfterCalendar(() => isCurrentParticipantRequest(request));
-    state.lastSuccessfulRefreshAt = new Date();
-    setParticipantStatus(
-      optionalOperationalReadFailures.length
-        ? t('calendar.status.extrasUnavailable')
-        : formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
-      optionalOperationalReadFailures.length ? 'degraded' : 'current'
-    );
+    state.lastSuccessfulRefreshAt = new Date(serverNow());
+    if (state.mode === 'summary') {
+      setSummaryScreenFreshnessStatus(source);
+    } else {
+      setParticipantStatus(
+        optionalOperationalReadFailures.length
+          ? t('calendar.status.extrasUnavailable')
+          : formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
+        optionalOperationalReadFailures.length ? 'degraded' : 'current'
+      );
+    }
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
     if (retryPermission
@@ -4492,7 +4873,12 @@ async function refreshParticipant(source, options = {}) {
       setParticipantStatus('Centro non disponibile');
       return;
     }
-    if (hadVisibleData) {
+    if (state.mode === 'summary' && !isSummaryScreenReady(state.summaryDayOffset)) {
+      state.summaryLoadError = message;
+      renderMode();
+      renderTodayOverview();
+      setParticipantStatus(message);
+    } else if (hadVisibleData) {
       renderMode();
       renderParticipantMeals();
       setParticipantStatus(formatPreviousDataMessage(message), 'previous');
@@ -4532,6 +4918,7 @@ function isCenterAccessRevokedError(error) {
 }
 
 function clearParticipantDataAfterAccessRevocation() {
+  state.participantRequestVersion += 1;
   clearPersonalCalendarSnapshots({ centerId: getActiveCenterId() });
   state.personalCalendarScope = null;
   state.residentReady = false;
@@ -4543,14 +4930,20 @@ function clearParticipantDataAfterAccessRevocation() {
   state.participantWeek = [];
   state.participantMonth = [];
   state.todayOverview = [];
+  state.summaryPayloadCenterId = '';
+  state.summaryLoadError = '';
   state.summaryDays = [];
   state.summaryOperations = [];
+  state.summaryDailyOperation = null;
+  state.summaryDailyHealth = null;
   state.participantSummary = null;
   renderParticipantMeals();
 }
 
 function clearKitchenDataAfterAccessRevocation() {
+  state.kitchenRequestVersion += 1;
   state.meals = [];
+  state.kitchenPayloadCenterId = '';
   state.kitchenDays = [];
   state.kitchenOperations = [];
   state.kitchenNotes = [];
@@ -4726,8 +5119,12 @@ async function handleForgetDevice() {
     state.participantWeek = [];
     state.participantMonth = [];
     state.todayOverview = [];
+    state.summaryPayloadCenterId = '';
+    state.summaryLoadError = '';
     state.summaryDays = [];
     state.summaryOperations = [];
+    state.summaryDailyOperation = null;
+    state.summaryDailyHealth = null;
     const residentUrl = new URL(window.location.href);
     residentUrl.searchParams.set('view', 'participant');
     residentUrl.searchParams.set('access', 'friendly');
@@ -4780,8 +5177,12 @@ async function handleForgetDevice() {
   state.participantWeek = [];
   state.participantMonth = [];
   state.todayOverview = [];
+  state.summaryPayloadCenterId = '';
+  state.summaryLoadError = '';
   state.summaryDays = [];
   state.summaryOperations = [];
+  state.summaryDailyOperation = null;
+  state.summaryDailyHealth = null;
   renderResidentAccess(true);
   renderMode();
   elements.residentLoginStatus.textContent = 'Sei uscito.';
@@ -5406,7 +5807,7 @@ function resolveAuditActorLabel(event) {
 
 function formatAuditDateTime(date) {
   const timeZone = state.centerContactSettings.timezone || 'Europe/Rome';
-  const now = getDateInTimeZone(timeZone);
+  const now = getDateInTimeZone(timeZone, new Date(serverNow()));
   const zonedDate = getDateInTimeZone(timeZone, date);
   const todayId = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const dateId = Date.UTC(zonedDate.getFullYear(), zonedDate.getMonth(), zonedDate.getDate());
@@ -6581,28 +6982,38 @@ function renderCenterAvatar(showInCurrentMode, centerName) {
   elements.centerAvatar.alt = centerName ? t('admin.avatar.altOf', { name: centerName }) : t('admin.avatar.altCenter');
 }
 
-function handleSummaryDayChange(offset) {
-  selectSummaryMatrixDay(offset, { smooth: true });
+function handleSummaryDayChange(offset, options = { smooth: true, scroll: true }) {
+  const nextOffset = offset === 1 ? 1 : 0;
+  if (nextOffset !== state.summaryDayOffset) state.summaryLoadError = '';
+  selectSummaryMatrixDay(offset, options);
   renderMode();
-  if (state.summaryDays.length === 0) {
-    refreshNow('riepilogo');
-  }
+  if (!isSummaryScreenReady(state.summaryDayOffset)) void refreshNow('riepilogo');
+  else setSummaryScreenFreshnessStatus('automatico');
 }
 
-function handleKitchenDayChange(offset) {
-  selectKitchenMatrixDay(offset, { smooth: true });
+function handleKitchenDayChange(offset, options = { smooth: true }) {
+  selectKitchenMatrixDay(offset, options);
   renderKitchenHeading();
-  if (state.kitchenDays.length === 0) {
-    refreshNow('giorno');
-  }
+  if (!isKitchenScreenReady(state.kitchenDayOffset)) {
+    renderMeals('Caricamento riepilogo…');
+    void refreshNow('giorno');
+  } else setKitchenScreenFreshnessStatus(state.kitchenDayOffset);
 }
 
 function selectSummaryMatrixDay(offset, { smooth = false, scroll = true } = {}) {
   const previousOffset = state.summaryDayOffset;
   state.summaryDayOffset = offset === 1 ? 1 : 0;
-  state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || state.todayOverview;
-  state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || state.summaryDailyOperation;
-  state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || state.summaryDailyHealth;
+  const selectedDay = state.summaryDays[state.summaryDayOffset];
+  const selectedOperation = state.summaryOperations[state.summaryDayOffset];
+  state.todayOverview = selectedDay?.ready ? selectedDay.meals : [];
+  state.summaryDailyOperation = selectedOperation?.ready
+    && selectedOperation.dateId === selectedDay?.dateId
+    ? selectedOperation.dailyOperation
+    : null;
+  state.summaryDailyHealth = selectedOperation?.ready
+    && selectedOperation.dateId === selectedDay?.dateId
+    ? selectedOperation.dailyHealth
+    : null;
   elements.summaryDayButtons.forEach((button) => {
     const isSelected = Number(button.dataset.summaryDay) === state.summaryDayOffset;
     button.classList.toggle('week-pill-active', isSelected);
@@ -6619,13 +7030,15 @@ function selectSummaryMatrixDay(offset, { smooth = false, scroll = true } = {}) 
 function selectKitchenMatrixDay(offset, { smooth = false, scroll = true } = {}) {
   const previousOffset = state.kitchenDayOffset;
   state.kitchenDayOffset = offset === 1 ? 1 : 0;
-  state.meals = state.kitchenDays[state.kitchenDayOffset]?.meals || state.meals;
+  const selectedDay = state.kitchenDays[state.kitchenDayOffset];
+  state.meals = selectedDay?.ready ? selectedDay.meals : [];
   const selectedNote = state.kitchenNotes[state.kitchenDayOffset];
-  state.kitchenNote = selectedNote?.dateId === formatDateId(getKitchenDate())
+  state.kitchenNote = selectedNote?.ready && selectedNote.dateId === formatDateId(getKitchenDate())
     ? selectedNote.note
     : null;
-  state.kitchenDailyOperation = state.kitchenOperations[state.kitchenDayOffset]?.dailyOperation || state.kitchenDailyOperation;
-  state.kitchenDailyHealth = state.kitchenOperations[state.kitchenDayOffset]?.dailyHealth || state.kitchenDailyHealth;
+  const selectedOperation = state.kitchenOperations[state.kitchenDayOffset];
+  state.kitchenDailyOperation = selectedOperation?.ready ? selectedOperation.dailyOperation : null;
+  state.kitchenDailyHealth = selectedOperation?.ready ? selectedOperation.dailyHealth : null;
   elements.kitchenDayButtons.forEach((button) => {
     const isSelected = Number(button.dataset.kitchenDay) === state.kitchenDayOffset;
     button.classList.toggle('week-pill-active', isSelected);
@@ -6654,7 +7067,7 @@ function getSummaryDate() {
 }
 
 function getCenterToday() {
-  return getDateInTimeZone(state.centerContactSettings.timezone || 'Europe/Rome');
+  return getDateInTimeZone(state.centerContactSettings.timezone || 'Europe/Rome', new Date(serverNow()));
 }
 
 function anchorCalendarToCenterToday() {
@@ -7495,7 +7908,7 @@ function renderWeekMassButton(day, operation) {
 function getMassWindowState(day) {
   const dinner = day?.meals?.find((meal) => meal.mealTypeId === 'dinner');
   if (dinner?.closesAt) {
-    return { isOpen: dinner.isOpen === true, closesAt: dinner.closesAt };
+    return { isOpen: isMealWindowOpenAtServerTime(dinner), closesAt: dinner.closesAt };
   }
   const closesAt = getMealCutoffDate(
     day.date,
@@ -7503,7 +7916,37 @@ function getMassWindowState(day) {
     state.centerContactSettings.reservationCutoffs,
     state.centerContactSettings.timezone || 'Europe/Rome'
   );
-  return { isOpen: closesAt.getTime() > Date.now(), closesAt: closesAt.toISOString() };
+  return { isOpen: closesAt.getTime() > serverNow(), closesAt: closesAt.toISOString() };
+}
+
+function isMealWindowOpenAtServerTime(meal, now = serverNow()) {
+  const closesAt = toJavaScriptDate(meal?.closesAt)?.getTime();
+  if (!Number.isFinite(closesAt)) {
+    return meal?.windowStatus !== 'OPEN' && meal?.windowStatus !== 'CLOSED'
+      && meal?.isOpen === true;
+  }
+  if (meal?.windowStatus === 'OPEN') return closesAt > now;
+  if (meal?.windowStatus === 'CLOSED') return false;
+  return meal?.isOpen === true && closesAt > now;
+}
+
+function reconcileLoadedParticipantCalendarWindows() {
+  const now = serverNow();
+  let changed = false;
+  [state.participantWeek, state.participantMonth, state.mealReminderDays]
+    .flatMap((days) => days || [])
+    .flatMap((day) => day?.meals || [])
+    .forEach((meal) => {
+      if (meal.windowStatus !== 'OPEN' && meal.windowStatus !== 'CLOSED') return;
+      const nextIsOpen = isMealWindowOpenAtServerTime(meal, now);
+      if (meal.isOpen !== nextIsOpen) {
+        meal.isOpen = nextIsOpen;
+        changed = true;
+      }
+    });
+  if (changed && !state.pendingMealKeys.size && ['participant', 'week'].includes(state.mode)) {
+    renderParticipantMeals();
+  }
 }
 
 function getBulkSelectionEffect(meals) {
@@ -7562,17 +8005,34 @@ function getCalendarSelectionLabel(scope, effect, mealTypeId = '') {
 }
 
 function renderTodayOverview() {
+  if (!isSummaryScreenReady(state.summaryDayOffset)) {
+    delete elements.todayOverview.dataset.renderKey;
+    const error = String(state.summaryLoadError || '').trim();
+    elements.todayOverview.innerHTML = error
+      ? `<p class="empty-state" role="status">${escapeHtml(error)}</p><button type="button" class="tertiary-action" data-summary-retry>${escapeHtml(t('calendar.retry'))}</button>`
+      : `<p class="empty-state" role="status" aria-busy="true">${escapeHtml(t('common.status.loading'))}</p>`;
+    const retryButton = elements.todayOverview.querySelector('[data-summary-retry]');
+    retryButton?.addEventListener('click', () => {
+      state.summaryLoadError = '';
+      renderTodayOverview();
+      void refreshNow('riepilogo');
+    });
+    return;
+  }
+
   if (state.summaryDays.length > 0) {
     mountSummaryMatrix(elements.todayOverview, {
       days: state.summaryDays,
       operationDays: state.summaryOperations,
+      screenReady: isSummaryScreenReady,
       layout: state.centerContactSettings.summaryLayout || 'classic',
       residentLabel: state.centerContactSettings.summaryResidentLabel || 'name',
       showContactHint: state.summaryContactHintVisible,
       activeIndex: state.summaryDayOffset,
       onActiveIndexChange: (index) => {
-        selectSummaryMatrixDay(index, { scroll: false });
-        renderMode();
+        if (index !== state.summaryDayOffset) {
+          handleSummaryDayChange(index, { smooth: false, scroll: false });
+        }
       }
     });
     scheduleOperationalAutoScroll();
@@ -8035,8 +8495,10 @@ async function handleMealButton(button) {
     meal,
     effect,
     sync: () => {
-      syncWeekMealButton(button, meal);
-      syncWeekSelectionControls();
+      if (button.isConnected) {
+        syncWeekMealButton(button, meal);
+        syncWeekSelectionControls();
+      } else syncWeekGridFromState();
     },
     onSaved: () => {
       state.selectedSummaryDate = button.dataset.mealDate;
@@ -8085,6 +8547,15 @@ async function handleWeekMassButton(button) {
     return;
   }
 
+  const centerId = getActiveCenterId();
+  const weekStart = state.weekStartDate.getTime();
+  const participantId = state.selectedParticipant?.participantId || '';
+  const uid = getCurrentUser()?.uid;
+  await synchronizeServerClock();
+  if (state.mode !== 'week' || centerId !== getActiveCenterId()
+      || weekStart !== state.weekStartDate.getTime()
+      || participantId !== (state.selectedParticipant?.participantId || '')
+      || uid !== getCurrentUser()?.uid || state.residentAuthTransition || !canManageMass()) return;
   const dateId = button.dataset.weekMassDate;
   const day = state.participantWeek.find((item) => item.date === dateId);
   const windowState = day ? getMassWindowState(day) : null;
@@ -8127,6 +8598,15 @@ async function handleWeekMassButton(button) {
 
 async function handleWeekMassBulkButton(button) {
   if (!canManageMass()) return;
+  const centerId = getActiveCenterId();
+  const weekStart = state.weekStartDate.getTime();
+  const participantId = state.selectedParticipant?.participantId || '';
+  const uid = getCurrentUser()?.uid;
+  await synchronizeServerClock();
+  if (state.mode !== 'week' || centerId !== getActiveCenterId()
+      || weekStart !== state.weekStartDate.getTime()
+      || participantId !== (state.selectedParticipant?.participantId || '')
+      || uid !== getCurrentUser()?.uid || state.residentAuthTransition || !canManageMass()) return;
   const openDays = state.participantWeek.filter((day) => getMassWindowState(day).isOpen);
   if (openDays.length === 0) {
     setParticipantStatus('Le Messe della settimana non sono più modificabili');
@@ -8295,8 +8775,10 @@ async function handleMonthMealButton(event, button) {
     meal,
     effect,
     sync: () => {
-      syncMonthMealButton(button, meal);
-      syncMonthSelectionControls();
+      if (button.isConnected) {
+        syncMonthMealButton(button, meal);
+        syncMonthSelectionControls();
+      } else syncMonthGridFromState();
     }
   });
 }
@@ -9781,6 +10263,13 @@ function renderDietNameList(participants) {
 function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
   renderKitchenHeading();
   if (state.kitchenDays.length > 0) {
+    if (!isKitchenScreenReady(state.kitchenDayOffset)) {
+      const message = emptyMessage === 'Nessun dato cucina disponibile.'
+        ? 'Caricamento riepilogo…'
+        : emptyMessage;
+      elements.cards.innerHTML = `<p class="empty-state" role="status">${escapeHtml(message)}</p>`;
+      return;
+    }
     const todayId = formatDateId(getCenterToday());
     const visibleKitchenOperations = state.kitchenOperations.map((operation) => {
       if (operation.dateId < todayId) return { ...operation, notes: [] };
@@ -9799,14 +10288,16 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
     mountSummaryMatrix(elements.cards, {
       days: state.kitchenDays,
       operationDays: visibleKitchenOperations,
+      screenReady: isKitchenScreenReady,
       kitchen: true,
       monthSummary: getKitchenMonthlySummaryContext(),
       dietLegend: state.centerContactSettings.kitchenDietLegend || [],
       layout: state.centerContactSettings.kitchenLayout || 'classic',
       activeIndex: state.kitchenDayOffset,
       onActiveIndexChange: (index) => {
-        selectKitchenMatrixDay(index, { scroll: false });
-        renderKitchenHeading();
+        if (index !== state.kitchenDayOffset) {
+          handleKitchenDayChange(index, { smooth: false, scroll: false });
+        }
       }
     });
     scheduleOperationalAutoScroll();
@@ -9845,7 +10336,7 @@ function getKitchenMonthlySummaryContext() {
   const timeZone = state.centerContactSettings.timezone || 'Europe/Rome';
   const todayId = formatDateId(getCenterToday());
   const firstSummaryDate = '2026-11-30';
-  const now = new Date();
+  const now = new Date(serverNow());
   const firstSummaryAvailableAt = zonedLocalDateTimeToDate(
     firstSummaryDate,
     '21:00',
@@ -9938,7 +10429,7 @@ function formatKitchenWindowLabel(meal) {
     hour12: false,
     timeZone: state.centerContactSettings.timezone || 'Europe/Rome'
   });
-  return meal.status === 'OPEN' && closesAt.getTime() > Date.now()
+  return meal.status === 'OPEN' && closesAt.getTime() > serverNow()
     ? t('meal.cutoff', { time })
     : `${t('meal.status.closed')} (${time})`;
 }
@@ -10175,14 +10666,11 @@ async function loadCurrentParticipantCalendar(options = {}) {
   state.personalCalendarScope = scope;
   const days = state.mode === 'week' ? state.participantWeek : state.participantMonth;
   // Le scadenze vengono rivalutate alla pubblicazione del calendario anticipato o in cache. Un pasto chiuso dal server rimane chiuso.
-  const now = Date.now();
+  const now = serverNow();
   for (const day of days) {
     for (const meal of day.meals) {
-      meal.isOpen = meal.isOpen === true && new Date(meal.closesAt).getTime() > now;
+      meal.isOpen = isMealWindowOpenAtServerTime(meal, now);
     }
-  }
-  if (!state.pendingMealKeys.size && days.serverConfirmed === true) {
-    savePersonalCalendarSnapshot(scope, days, { serverConfirmed: true });
   }
   return true;
 }
@@ -10482,7 +10970,6 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
 }
 
 async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
-  if (!meal.isOpen) return;
   const participant = state.selectedParticipant;
   const uid = getCurrentUser()?.uid;
   const centerId = getActiveCenterId();
@@ -10490,6 +10977,14 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
   const isCurrent = () => participant?.participantId === state.selectedParticipant?.participantId
     && uid === getCurrentUser()?.uid && centerId === getActiveCenterId()
     && pendingKeys === state.pendingMealKeys && !state.residentAuthTransition;
+  await synchronizeServerClock();
+  if (!isCurrent()) return;
+  meal.isOpen = isMealWindowOpenAtServerTime(meal);
+  if (!meal.isOpen) {
+    sync();
+    setParticipantStatus('Il termine per modificare questo pasto è scaduto.');
+    return;
+  }
   const pendingKey = getMealPendingKey(meal.mealDate, meal.mealTypeId);
   if (state.pendingMealKeys.has(pendingKey)) return;
   invalidateParticipantCalendarCache();

@@ -274,7 +274,7 @@ test('nel riepilogo mobile il nome del centro occupa una riga sotto il titolo', 
 });
 
 test('le viste personali non caricano il riepilogo completo del centro', () => {
-  assert.match(app, /if \(state\.mode === 'summary'\) \{[\s\S]*loadParticipantDaySummaries/);
+  assert.match(app, /if \(state\.mode === 'summary'\) \{[\s\S]*loadSummaryDayPayload/);
   assert.match(app, /state\.selectedParticipant && state\.mode !== 'summary'/);
   assert.doesNotMatch(app, /listPublicParticipants\(\),\s*loadParticipantDaySummaries/);
 });
@@ -795,7 +795,9 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(app, /loadCachedCenterAvatar\(\)/);
   assert.match(app, /renderCenterAvatar\(isParticipant \|\| isWeek \|\| isSummary \|\| isKitchen, centerName\)/);
   assert.match(app, /!state\.adminCenterDirty[\s\S]*?!state\.pendingCenterAvatarDataUrl[\s\S]*?!hasPendingAdminAdaptationChanges\(\)/);
-  assert.match(app, /await ensureKitchenDemoSession\(\)[\s\S]*?const centerSettings = await loadCenterContactSettings[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenCounts/);
+  const refresh = app.match(/async function performRefresh\(source\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(refresh, /await ensureKitchenDemoSession\(\)[\s\S]*?const centerSettings = await loadCenterContactSettings[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenDayPayload/);
+  assert.match(app, /async function loadKitchenDayPayload\([\s\S]*?loadKitchenCounts/);
   assert.match(centerSettings, /CENTER_AVATAR_STORAGE_KEY/);
   assert.match(centerSettings, /cached\?\.version === avatarVersion/);
   assert.match(app, /admin\.avatar\.readyNeedsPassword/);
@@ -940,7 +942,8 @@ test('la scheda Aspetto usa tutta la larghezza disponibile sul tablet', () => {
 });
 
 test('il riepilogo mostra telefono e WhatsApp soltanto con consenso', () => {
-  assert.match(app, /includeContacts: state\.centerContactSettings\.participantContactSharingEnabled/);
+  assert.match(app, /const includeContacts = state\.centerContactSettings\.participantContactSharingEnabled/);
+  assert.match(app, /loadSummaryDayPayload\(summaryDates\[index\], \{[\s\S]*includeContacts,/);
   assert.match(participantData, /async function listSummaryParticipants/);
   assert.match(participantData, /const phoneConsent = Boolean\(data\.phoneConsent && phone\)/);
   assert.match(participantData, /whatsappEnabled: Boolean\(data\.whatsappEnabled && phoneConsent\)/);

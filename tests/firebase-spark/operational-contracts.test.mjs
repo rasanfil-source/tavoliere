@@ -46,9 +46,12 @@ test('il vice usa solo il ruolo esplicito e una sessione aggiornata', () => {
 
 test('le letture opzionali non nascondono i dati principali', () => {
   assert.match(app, /function reportOptionalOperationalRead/);
-  assert.match(app, /loadKitchenNote[\s\S]*reportOptionalOperationalRead\('nota cucina'/);
-  assert.match(app, /loadDailyOperation[\s\S]*reportOptionalOperationalRead\('Messa'/);
-  assert.match(app, /loadDailyHealth[\s\S]*reportOptionalOperationalRead\('dati giornalieri'/);
+  assert.match(app, /const OPTIONAL_OPERATIONAL_READ_TIMEOUT_MS = 4000/);
+  assert.match(app, /function startOptionalOperationalRead[\s\S]*reportOptionalOperationalRead\(label, dateId, error, fallback, \[\]\)/);
+  assert.match(app, /function loadKitchenDayPayload[\s\S]*startOptionalOperationalRead\(loadKitchenNote\(date/);
+  assert.match(app, /function loadSummaryDayPayload[\s\S]*startOptionalOperationalRead\(loadKitchenNote\(date/);
+  assert.match(app, /function loadKitchenDayPayload[\s\S]*loadDailyHealth\(date[\s\S]*Promise\.all/);
+  assert.match(app, /function loadSummaryDayPayload[\s\S]*loadDailyHealth\(date[\s\S]*Promise\.all/);
   assert.match(app, /operationalLinksError[\s\S]*Link operativi temporaneamente non disponibili/);
 });
 

@@ -9,6 +9,10 @@ export function functionSource(name) {
   return appSource.slice(match.index, end + 2);
 }
 export function functions(names, dependencies = {}) {
-  return new Function(...Object.keys(dependencies), names.map(functionSource).join('\n')
-    + '\nreturn {' + names.join(',') + '};')(...Object.values(dependencies));
+  const runtime = { ...dependencies };
+  runtime.serverNow ??= () => (runtime.Date || Date).now();
+  runtime.synchronizeServerClock ??= async () => true;
+  runtime.startServerClockSync ??= () => {};
+  return new Function(...Object.keys(runtime), names.map(functionSource).join('\n')
+    + '\nreturn {' + names.join(',') + '};')(...Object.values(runtime));
 }

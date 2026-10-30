@@ -253,7 +253,8 @@ test('le risposte tardive non sostituiscono una vista o una data piu recenti', (
   assert.match(app, /if \(!isCurrentParticipantRequest\(request\)\) return;/);
   assert.match(app, /weekOperationsRequestVersion: 0/);
   assert.match(app, /kitchenRequestVersion: 0/);
-  assert.match(app, /kitchenDayOffset !== state\.kitchenDayOffset/);
+  assert.match(app, /function isCurrentKitchenRequest\(version, centerId, dayOffset\)[\s\S]*dayOffset === state\.kitchenDayOffset/);
+  assert.match(app, /function applyLateKitchenPayload\([\s\S]*isCurrentKitchenRequest\(version, centerId, dayOffset\)/);
 });
 
 test('l esportazione legge le collezioni in parallelo e usa pagine ampie', async () => {
