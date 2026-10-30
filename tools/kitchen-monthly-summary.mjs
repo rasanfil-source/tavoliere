@@ -17,6 +17,9 @@ const retentionMonths = 3;
 const firstTrackedDate = '2026-11-01';
 const dailyCloseTime = '23:00';
 const monthEndCloseTime = '21:00';
+const resourceRoot = projectId
+  ? `projects/${encodeURIComponent(projectId)}/databases/(default)/documents`
+  : '';
 const apiRoot = projectId
   ? `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents`
   : '';
@@ -328,7 +331,7 @@ async function getDocument(documentPath) {
 }
 
 async function createDocument(documentPath, data) {
-  const name = `${apiRoot}/${encodePath(documentPath)}`;
+  const name = `${resourceRoot}/${encodePath(documentPath)}`;
   await commitWrites([{
     update: { name, fields: encodeFields(data) },
     currentDocument: { exists: false }
@@ -336,7 +339,7 @@ async function createDocument(documentPath, data) {
 }
 
 async function upsertDocument(documentPath, data) {
-  const name = `${apiRoot}/${encodePath(documentPath)}`;
+  const name = `${resourceRoot}/${encodePath(documentPath)}`;
   await commitWrites([{ update: { name, fields: encodeFields(data) } }]);
 }
 
