@@ -30,15 +30,23 @@ if (!projectId || !accessToken) {
 
 const now = new Date();
 const centers = await listDocuments('centers');
-let processedCenters = 0;
+let activeCentersProcessed = 0;
+let centerDocumentsFound = 0;
+let deletedCenterDocuments = 0;
+let otherNonActiveCenterDocuments = 0;
 let writtenDailyTotals = 0;
 let writtenMonthlySummaries = 0;
 let deletedDocuments = 0;
 
 for (const centerDocument of centers) {
+  centerDocumentsFound += 1;
   const center = decodeFields(centerDocument.fields || {});
   const centerId = documentId(centerDocument.name);
   if (!centerId) continue;
+
+  if (center.status === 'ACTIVE') activeCentersProcessed += 1;
+  else if (center.status === 'DELETED') deletedCenterDocuments += 1;
+  else otherNonActiveCenterDocuments += 1;
 
   const timeZone = typeof center.timezone === 'string' ? center.timezone : 'Europe/Rome';
   const localToday = localDateId(now, timeZone);
@@ -105,11 +113,13 @@ for (const centerDocument of centers) {
   }
 
   deletedDocuments += await purgeExpiredDocuments(centerId, now);
-  processedCenters += 1;
 }
 
 console.log(JSON.stringify({
-  processedCenters,
+  centerDocumentsFound,
+  activeCentersProcessed,
+  deletedCenterDocuments,
+  otherNonActiveCenterDocuments,
   writtenDailyTotals,
   writtenMonthlySummaries,
   deletedDocuments
