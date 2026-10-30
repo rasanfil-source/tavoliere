@@ -29,9 +29,9 @@ Il workflow è `.github/workflows/kitchen-monthly-summary.yml`. Servono queste v
 | Variabile | Valore |
 | --- | --- |
 | `GCP_PROJECT_ID` | `tavola-comune` |
-| `GCP_SERVICE_ACCOUNT` | email dell'account `kitchen-totals-worker` creato in Google Cloud |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | nome completo del provider OIDC GitHub creato in Google Cloud |
+| `GCP_SERVICE_ACCOUNT` | `kitchen-totals-worker@tavola-comune.iam.gserviceaccount.com` |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/116770230630/locations/global/workloadIdentityPools/tavoliere-github/providers/github-actions` |
 
-In Google Cloud va creato un workload identity pool/provider con issuer `https://token.actions.githubusercontent.com`, mappando `google.subject=assertion.sub` e `attribute.repository=assertion.repository`. La condizione del provider deve accettare soltanto `rasanfil-source/tavoliere` sul branch predefinito `main`. All'account di servizio va assegnato `roles/datastore.user` nel progetto Firestore; al principal GitHub del repository va assegnato `roles/iam.workloadIdentityUser` soltanto su quell'account.
+L'attivazione per `tavola-comune` è completata il **30 ottobre 2026**. Il pool `tavoliere-github` accetta token dell'issuer `https://token.actions.githubusercontent.com`; il provider mappa `google.subject=assertion.sub`, `attribute.repository=assertion.repository` e `attribute.ref=assertion.ref`, con la condizione `assertion.repository == 'rasanfil-source/tavoliere' && assertion.ref == 'refs/heads/main'`. Il service account riceve `roles/datastore.user` sul progetto Firestore. Il principal del repository riceve `roles/iam.workloadIdentityUser` soltanto su questo service account. Non è stata creata una chiave privata e Cloud Billing non è attivo né collegato.
 
-Il workflow deve essere presente nel branch predefinito perché GitHub esegua la pianificazione. In un repository pubblico, GitHub può disattivare i workflow pianificati se il repository resta inattivo per 60 giorni: verificare periodicamente che il workflow non sia disabilitato. Le esecuzioni pubbliche standard di Actions non consumano minuti a pagamento.
+Per replicare il setup, creare un workload identity pool/provider con gli stessi mapping e la stessa condizione, assegnare soltanto i due ruoli descritti e impostare le tre variabili di repository qui sopra. Il workflow deve essere presente nel branch predefinito perché GitHub esegua la pianificazione. In un repository pubblico, GitHub può disattivare i workflow pianificati se il repository resta inattivo per 60 giorni: verificare periodicamente che il workflow non sia disabilitato. Le esecuzioni pubbliche standard di Actions non consumano minuti a pagamento.
