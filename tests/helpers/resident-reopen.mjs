@@ -24,6 +24,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
   const weekStart = new Date(2026, 9, 12, 12);
   const state = { mode, friendlyAccess: true, residentReady: false, residentRestorePending: true,
     participantRequestVersion: 0, summaryDayOffset: 0, pendingMealKeys: new Set(),
+    operationalDataDateByMode: { summary: '', kitchen: '' },
     participantWeek: [], participantMonth: [], centerContactSettings: { timezone: 'Europe/Rome' },
     weekStartDate: weekStart, monthDate: monthStart };
   const addCalendarDays = (date, n) => { const value = new Date(date); value.setDate(value.getDate() + n); return value; };
@@ -66,6 +67,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     hasStrongAdministratorIdentity: () => false, canUseWeekWithoutParticipant: () => false,
     renderResidentAccess() {}, renderMode() {}, renderCalendarPlaceholder() {},
     loadCenterCalendarSettings: () => settingsReady ||= io('settings', { timezone: 'Europe/Rome' }),
+    scheduleOperationalDayRefresh() {},
     applyResidentPreferences: value => value, anchorCalendarToCenterToday: () => false,
     isInstalledPersonalAppLaunch: () => false,
     loadParticipantWeek,

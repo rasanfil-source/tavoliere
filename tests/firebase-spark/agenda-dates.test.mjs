@@ -244,7 +244,8 @@ test(`nota scritta a ottobre per ${targetDateId}: visibile nei riepiloghi Domani
   // Esegui il caricamento effettivo dei riepiloghi, senza avviare auth o UI.
   const refresh = functionSource('refreshParticipant');
   const summaryLoader = refresh.slice(refresh.indexOf('const summaryDates ='), refresh.indexOf('recordSummaryContactHintVisit();'));
-  const summaryState = { centerContactSettings: {}, summaryDayOffset: 1 };
+  const summaryState = { centerContactSettings: {}, summaryDayOffset: 1,
+    operationalDataDateByMode: { summary: '', kitchen: '' } };
   const dependencies = {
     state: summaryState, source: 'manuale', request: {}, formatDateId,
     getCenterToday: () => new Date(days[0].dateId + 'T12:00:00'),
@@ -256,7 +257,8 @@ test(`nota scritta a ottobre per ${targetDateId}: visibile nei riepiloghi Domani
   };
   await new Function(...Object.keys(dependencies), `return (async () => { ${summaryLoader} })();`)(...Object.values(dependencies));
   assert.deepEqual(summaryState.summaryOperations[1].notes, note.messages);
-  const kitchenState = { mode: 'kitchen', centerContactSettings: {}, kitchenRequestVersion: 1, kitchenDayOffset: 1 };
+  const kitchenState = { mode: 'kitchen', centerContactSettings: {}, kitchenRequestVersion: 1, kitchenDayOffset: 1,
+    operationalDataDateByMode: { summary: '', kitchen: '' } };
   const refreshKitchen = functionSource('performRefresh');
   const kitchenStart = refreshKitchen.indexOf('const kitchenDates =');
   const kitchenLoader = refreshKitchen.slice(kitchenStart, refreshKitchen.indexOf('state.meals =', kitchenStart));

@@ -69,6 +69,8 @@ pwsh.exe -NoLogo -NoProfile -Command "npm run build"
 pwsh.exe -NoLogo -NoProfile -Command "npm run predeploy:gate"
 ```
 
+Il gate esegue anche la suite delle regole Firestore nell'emulatore. `npm run deploy:firebase` interrompe quindi il rilascio prima di pubblicare Hosting o Firestore se una verifica fallisce. `npm run emulate:firebase-rules` resta disponibile per eseguire da sola la suite delle regole.
+
 ## Criteri minimi di accettazione
 
 ### Misure locali dell'avvio

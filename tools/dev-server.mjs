@@ -35,6 +35,14 @@ const server = createServer(async (request, response) => {
 
     const fileStat = await stat(filePath).catch(() => null);
     if (!fileStat?.isFile()) {
+      const acceptsHtml = request.method === 'GET'
+        && String(request.headers.accept || '').split(',')
+          .some((contentType) => contentType.trim().startsWith('text/html'));
+      if (!acceptsHtml) {
+        response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        response.end('Not found');
+        return;
+      }
       filePath = resolve(publicRoot, 'index.html');
     }
     const body = await readFile(filePath);

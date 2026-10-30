@@ -34,7 +34,7 @@ Le lingue disponibili sono italiano, inglese, francese, spagnolo, tedesco e cata
 
 L'app usa Firestore completo con cache in memoria. Su iPhone, iPad e Safari macOS la politica di trasporto usa long polling senza flussi fetch, considerando il buffering del motore WebKit. Non vengono aggiunti ritardi artificiali per liberare connessioni.
 
-La ripresa di una pagina in memoria usa gli eventi di visibilità e i timer di aggiornamento; una nuova pagina esegue invece l'intero ripristino. I formattatori sono memorizzati in cache limitate, mentre il giorno corrente viene sempre ricalcolato.
+La ripresa di una pagina in memoria usa gli eventi di visibilità e i timer di aggiornamento; una nuova pagina esegue invece l'intero ripristino. Riepilogo e Cucina programmano un aggiornamento alle 00:01 nel fuso del centro. Al ritorno in primo piano confrontano inoltre la data dei dati mostrati con quella corrente, così recuperano un timer sospeso dal sistema operativo. I formattatori sono memorizzati in cache limitate, mentre il giorno corrente viene sempre ricalcolato.
 
 La query delle prenotazioni personali è limitata al periodo e usa l'indice `reservationOverrides(participantId ASC, mealDate ASC)`. In caso di `failed-precondition` il percorso alternativo filtra in memoria le prenotazioni della persona. L'emulatore non dimostra disponibilità o costo dell'indice in produzione.
 

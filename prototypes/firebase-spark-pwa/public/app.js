@@ -59,7 +59,11 @@ import {
   normalizeKitchenDietLabel,
   updateKitchenDietLegendEntry
 } from './diet-legend.mjs?v=20261014b';
-import { getMealCutoffDate } from './schedule-utils.mjs?v=20261014b';
+import {
+  addDaysToDateId,
+  getMealCutoffDate,
+  zonedLocalDateTimeToDate
+} from './schedule-utils.mjs?v=20261014b';
 import { buildMealReminderPlan } from './meal-reminders.mjs?v=20261014b';
 import { CAPABILITIES, hasCapability } from './role-policy.mjs?v=20261014b';
 import { createOperationGuard } from './core/operation-guard.mjs?v=20261014b';
@@ -615,6 +619,8 @@ let weekInvitedTodayId = null;
 
 const state = {
   timerId: 0,
+  operationalDayTimerId: 0,
+  operationalDataDateByMode: { summary: '', kitchen: '' },
   backgroundRefreshTimerId: 0,
   monthAutoScrollTimerId: 0,
   monthAutoScrollCleanup: null,
@@ -1497,10 +1503,15 @@ function refreshCalendarOnResume() {
   const missingCalendar = ['week', 'participant'].includes(state.mode)
     && (state.residentReady || state.residentRestorePending || state.selectedParticipant)
     && !(state.mode === 'week' ? state.participantWeek : state.participantMonth).length;
+  const currentCenterDateId = formatDateId(getCenterToday());
+  const displayedOperationalDateId = state.operationalDataDateByMode[state.mode];
+  const operationalDataIsStale = ['summary', 'kitchen'].includes(state.mode)
+    && Boolean(displayedOperationalDateId)
+    && displayedOperationalDateId !== currentCenterDateId;
   // Una riapertura può trovare il calendario iniziale ancora incompleto,
   // anche se il timer del prossimo aggiornamento è lontano.
-  if (missingCalendar || Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
-    scheduleBackgroundRefresh('ripresa');
+  if (missingCalendar || operationalDataIsStale || Date.now() > state.nextRefreshAt - 2 * 60 * 1000) {
+    scheduleBackgroundRefresh(operationalDataIsStale ? 'cambio-giorno' : 'ripresa');
   }
 }
 // I timer delle PWA possono essere sospesi dal sistema operativo. Quando la
@@ -1744,6 +1755,35 @@ function blockOfflineAction(statusElement) {
 function scheduleBackgroundRefresh(source) {
   window.clearTimeout(state.backgroundRefreshTimerId);
   state.backgroundRefreshTimerId = window.setTimeout(() => refreshNow(source), 180);
+}
+
+function scheduleOperationalDayRefresh() {
+  window.clearTimeout(state.operationalDayTimerId);
+  state.operationalDayTimerId = 0;
+  if (!['summary', 'kitchen'].includes(state.mode)) return;
+
+  const timezone = state.centerContactSettings.timezone || 'Europe/Rome';
+  const targetDateId = addDaysToDateId(formatDateId(getCenterToday()), 1);
+  let refreshAt;
+  try {
+    refreshAt = zonedLocalDateTimeToDate(targetDateId, '00:01', timezone);
+  } catch (error) {
+    console.warn('Pianificazione aggiornamento giornaliero non riuscita', error?.message || '');
+    return;
+  }
+
+  state.operationalDayTimerId = window.setTimeout(() => {
+    state.operationalDayTimerId = 0;
+    const currentCenterDateId = formatDateId(getCenterToday());
+    if (!document.hidden
+        && ['summary', 'kitchen'].includes(state.mode)
+        && currentCenterDateId >= targetDateId) {
+      scheduleBackgroundRefresh('cambio-giorno');
+    }
+    // I timer possono essere ritardati mentre la PWA è sospesa; il controllo
+    // della data al ritorno in primo piano recupera comunque l'aggiornamento.
+    scheduleOperationalDayRefresh();
+  }, Math.max(1, refreshAt.getTime() - Date.now()));
 }
 
 function prepareMonthAutoScrollEntry(previousMode, nextMode) {
@@ -3910,10 +3950,14 @@ async function refreshNow(source) {
   const refreshKey = buildRefreshContextKey();
   if (state.refreshInFlight) {
     // Gli eventi ravvicinati di timer, visibilità e rete condividono le letture del periodo corrente. Un aggiornamento manuale o un cambio di vista o data viene accodato una sola volta.
-    if (source === 'manuale' || refreshKey !== state.activeRefreshKey) {
-      state.pendingRefreshSource = source === 'manuale'
-        ? 'manuale'
-        : state.pendingRefreshSource || source;
+    if (source === 'manuale' || source === 'cambio-giorno' || refreshKey !== state.activeRefreshKey) {
+      if (source === 'manuale') {
+        state.pendingRefreshSource = 'manuale';
+      } else if (source === 'cambio-giorno') {
+        state.pendingRefreshSource = state.pendingRefreshSource === 'manuale' ? 'manuale' : 'cambio-giorno';
+      } else {
+        state.pendingRefreshSource = state.pendingRefreshSource || source;
+      }
       state.pendingRefreshKey = refreshKey;
     }
     return;
@@ -3958,6 +4002,7 @@ async function performRefresh(source) {
   state.nextRefreshAt = Date.now() + delayMs;
   window.clearTimeout(state.timerId);
   state.timerId = window.setTimeout(() => refreshNow('timer'), delayMs);
+  scheduleOperationalDayRefresh();
 
   if (state.mode === 'admin') {
     // Il refresh amministrativo non decide quando mostrare la pagina. Auth,
@@ -3989,9 +4034,11 @@ async function performRefresh(source) {
       throw error;
     });
     state.centerContactSettings = applyResidentPreferences(centerSettings);
+    scheduleOperationalDayRefresh();
     await applyCenterDefaultLanguage(state.centerContactSettings);
     renderMode();
     const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
+    const optionalOperationalReadFailures = [];
     const kitchenPayloads = await Promise.all(kitchenDates.map(async (date) => {
       const dateId = formatDateId(date);
       const [meals, kitchenNote, dailyOperation, dailyHealth] = await Promise.all([
@@ -4001,16 +4048,16 @@ async function performRefresh(source) {
           staticVersion: state.centerContactSettings.participantDataVersion || '0'
         }),
         loadKitchenNote(date, { forceRefresh: source === 'manuale' })
-          .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null)),
+          .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null, optionalOperationalReadFailures)),
         loadDailyOperation(date, { forceRefresh: source === 'manuale' })
-          .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null)),
+          .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null, optionalOperationalReadFailures)),
         loadDailyHealth(date, { forceRefresh: source === 'manuale' })
           .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
             dateId,
             sickPeople: [],
             dietAssignments: [],
             invitedMeals: []
-          }))
+          }, optionalOperationalReadFailures))
       ]);
       return {
         dateId,
@@ -4034,6 +4081,7 @@ async function performRefresh(source) {
       return;
     }
     state.kitchenDays = kitchenPayloads.map(({ dateId, meals }) => ({ dateId, meals }));
+    state.operationalDataDateByMode.kitchen = kitchenPayloads[0]?.dateId || '';
     state.kitchenOperations = kitchenPayloads.map(({ dateId, kitchenNote, dailyOperation, dailyHealth }) => ({
       dateId,
       notes: Array.isArray(kitchenNote?.messages) && kitchenNote.messages.length > 0
@@ -4053,7 +4101,13 @@ async function performRefresh(source) {
     state.kitchenUpdatedAt = new Date();
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
     renderMeals();
-    setFreshnessStatus(elements.status, formatKitchenRefreshLabel(state.kitchenUpdatedAt), 'current');
+    setFreshnessStatus(
+      elements.status,
+      optionalOperationalReadFailures.length
+        ? t('calendar.status.extrasUnavailable')
+        : formatKitchenRefreshLabel(state.kitchenUpdatedAt),
+      optionalOperationalReadFailures.length ? 'degraded' : 'current'
+    );
   } catch (error) {
     if (kitchenRequestVersion !== state.kitchenRequestVersion
       || state.mode !== 'kitchen'
@@ -4199,6 +4253,7 @@ async function refreshParticipant(source, options = {}) {
   setParticipantStatus('Aggiorno...');
   if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
   let preparedCalendar = null;
+  const optionalOperationalReadFailures = [];
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
@@ -4289,6 +4344,7 @@ async function refreshParticipant(source, options = {}) {
     });
     if (!isCurrentParticipantRequest(request)) return;
     state.centerContactSettings = applyResidentPreferences({ ...state.centerContactSettings, ...centerSettings });
+    scheduleOperationalDayRefresh();
     if (!personalRoute) {
       await applyCenterDefaultLanguage(state.centerContactSettings);
       await refreshResidentAdministratorAuthorization(() => isCurrentParticipantRequest(request));
@@ -4309,16 +4365,16 @@ async function refreshParticipant(source, options = {}) {
             includeContacts: state.centerContactSettings.participantContactSharingEnabled
           }),
           loadDailyOperation(date, { forceRefresh: source === 'manuale' })
-            .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null)),
+            .catch((error) => reportOptionalOperationalRead('Messa', dateId, error, null, optionalOperationalReadFailures)),
           loadDailyHealth(date, { forceRefresh: source === 'manuale' })
             .catch((error) => reportOptionalOperationalRead('dati giornalieri', dateId, error, {
               dateId,
               sickPeople: [],
               dietAssignments: [],
               invitedMeals: []
-            })),
+            }, optionalOperationalReadFailures)),
           loadKitchenNote(date, { forceRefresh: source === 'manuale' })
-            .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null))
+            .catch((error) => reportOptionalOperationalRead('nota cucina', dateId, error, null, optionalOperationalReadFailures))
         ]);
         return {
           dateId,
@@ -4340,6 +4396,7 @@ async function refreshParticipant(source, options = {}) {
       state.todayOverview = state.summaryDays[state.summaryDayOffset]?.meals || [];
       state.summaryDailyOperation = state.summaryOperations[state.summaryDayOffset]?.dailyOperation || null;
       state.summaryDailyHealth = state.summaryOperations[state.summaryDayOffset]?.dailyHealth || null;
+      state.operationalDataDateByMode.summary = summaryPayloads[0]?.dateId || '';
       recordSummaryContactHintVisit();
       selectSummaryMatrixDay(state.summaryDayOffset);
     } else {
@@ -4376,7 +4433,12 @@ async function refreshParticipant(source, options = {}) {
     hideStartupSplash();
     void refreshMealRemindersAfterCalendar(() => isCurrentParticipantRequest(request));
     state.lastSuccessfulRefreshAt = new Date();
-    setParticipantStatus(formatRefreshLabel(source, state.lastSuccessfulRefreshAt), 'current');
+    setParticipantStatus(
+      optionalOperationalReadFailures.length
+        ? t('calendar.status.extrasUnavailable')
+        : formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
+      optionalOperationalReadFailures.length ? 'degraded' : 'current'
+    );
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
     if (retryPermission
@@ -4497,12 +4559,13 @@ function clearKitchenDataAfterAccessRevocation() {
   state.kitchenUpdatedAt = null;
 }
 
-function reportOptionalOperationalRead(label, dateId, error, fallback) {
+function reportOptionalOperationalRead(label, dateId, error, fallback, failures) {
   console.warn(
     `Dato accessorio non disponibile (${label}, ${dateId})`,
     error?.code || '',
     error?.message || ''
   );
+  failures.push({ label, dateId });
   return fallback;
 }
 

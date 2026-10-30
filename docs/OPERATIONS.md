@@ -36,8 +36,8 @@ La copertura standard è annuale. **Manutenzione > Calendario** mostra la scaden
 ## Controlli prima del rilascio
 
 1. Verificare il worktree e preservare modifiche estranee.
-2. Eseguire test applicativi, i18n e regole Firestore.
-3. Eseguire build e `git diff --check`.
+2. Eseguire `npm run predeploy:gate`: include test applicativi, i18n, regole Firestore nell'emulatore e build.
+3. Eseguire `git diff --check`.
 4. Provare nel browser mobile e desktop i ruoli coinvolti.
 5. Creare un commit descrittivo come punto di ritorno.
 6. Pubblicare Hosting; includere regole/indici soltanto se cambiati.

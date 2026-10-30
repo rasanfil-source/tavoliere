@@ -210,6 +210,7 @@ test('meals become usable while roles, presentation and accessory continuation r
     getCurrentUser: () => ({ uid: scope.uid }), renderCalendarPlaceholder() {},
     setParticipantStatus() {}, ensureStoredResidentSession: async () => calls.push('session'),
     loadCenterCalendarSettings: async () => { calls.push('critical-settings'); return {}; },
+    scheduleOperationalDayRefresh() {},
     loadCenterContactSettings: () => { throw Error('presentation must not block'); },
     applyResidentPreferences: (value) => value, anchorCalendarToCenterToday: () => false,
     loadCurrentParticipantCalendar: async () => { calls.push('meals'); await meals.promise; return true; },
@@ -352,6 +353,7 @@ test('essential meal reads start while current center settings are still pending
     setParticipantStatus() {}, ensureStoredResidentSession: async () => {},
     loadParticipantWeek: () => { calls.push('meals-start'); return meals.promise; },
     loadCenterCalendarSettings: () => { calls.push('settings-start'); return settings.promise; },
+    scheduleOperationalDayRefresh() {},
     applyResidentPreferences: (value) => value, anchorCalendarToCenterToday: () => false,
     loadCurrentParticipantCalendar: async ({ preparedCalendar }) => {
       const result = await preparedCalendar.result;
