@@ -61,10 +61,17 @@ function loadStoredCenterId() {
 
 function storeCenterId(centerId) {
   try {
-    document.cookie = `${CENTER_STORAGE_KEY}=${centerId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+    const cookieValue = document.cookie.split(';').map((item) => item.trim())
+      .find((item) => item.startsWith(CENTER_STORAGE_KEY + '='))
+      ?.slice(CENTER_STORAGE_KEY.length + 1) || '';
+    if (cookieValue !== centerId) {
+      document.cookie = `${CENTER_STORAGE_KEY}=${centerId}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+    }
   } catch {}
   try {
-    window.localStorage.setItem(CENTER_STORAGE_KEY, centerId);
+    if (window.localStorage.getItem(CENTER_STORAGE_KEY) !== centerId) {
+      window.localStorage.setItem(CENTER_STORAGE_KEY, centerId);
+    }
   } catch {
     // L'URL resta la fonte autorevole anche quando la persistenza locale non è disponibile.
   }

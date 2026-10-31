@@ -9,6 +9,7 @@ import {
 } from "./summary-matrix-model.js?v=20261014b";
 
 let contactPopupSequence = 0;
+const kitchenMonthlyStates = new WeakMap();
 
 export function mountSummaryMatrix(
   container,
@@ -57,13 +58,26 @@ export function mountSummaryMatrix(
     const details = container.querySelector('[data-kitchen-monthly-summary]');
     const content = details?.querySelector('[data-kitchen-monthly-summary-content]');
     if (details && content) {
-      const monthlyState = {
-        latestMonthId: null,
-        earliestMonthId: null,
-        selectedMonthId: null,
-        latestSummary: null,
-        summaries: new Map()
-      };
+      const centerId = monthSummary.centerId || '';
+      let monthlyState = kitchenMonthlyStates.get(container);
+      if (!monthlyState || monthlyState.centerId !== centerId) {
+        monthlyState = {
+          centerId,
+          open: false,
+          latestMonthId: null,
+          earliestMonthId: null,
+          selectedMonthId: null,
+          latestSummary: null,
+          summaries: new Map()
+        };
+        kitchenMonthlyStates.set(container, monthlyState);
+      } else {
+        monthlyState.latestMonthId = null;
+        monthlyState.earliestMonthId = null;
+        monthlyState.latestSummary = null;
+        monthlyState.summaries = new Map();
+      }
+      details.open = monthlyState.open;
 
       content.addEventListener('click', (event) => {
         const button = event.target?.closest?.('[data-kitchen-month-step]');
@@ -80,10 +94,14 @@ export function mountSummaryMatrix(
       });
 
       details.addEventListener('toggle', () => {
+        monthlyState.open = details.open;
         if (details.open && details.dataset.loading !== 'true') {
           void loadKitchenMonthlySummary(details, monthSummary, monthlyState);
         }
       });
+      if (monthlyState.open) {
+        void loadKitchenMonthlySummary(details, monthSummary, monthlyState, monthlyState.selectedMonthId);
+      }
     }
   }
 
@@ -426,9 +444,18 @@ async function loadKitchenMonthlySummary(details, monthSummary, monthlyState, re
       if (summary?.monthId) {
         monthlyState.latestMonthId = summary.monthId;
         monthlyState.earliestMonthId = summary.earliestMonthId || summary.monthId;
-        monthlyState.selectedMonthId = summary.monthId;
         monthlyState.latestSummary = summary;
         monthlyState.summaries.set(summary.monthId, summary);
+        const preferredMonthId = requestedMonthId || monthlyState.selectedMonthId;
+        monthlyState.selectedMonthId = preferredMonthId
+          && preferredMonthId >= monthlyState.earliestMonthId
+          && preferredMonthId <= monthlyState.latestMonthId
+          ? preferredMonthId
+          : summary.monthId;
+        if (monthlyState.selectedMonthId !== summary.monthId) {
+          summary = await monthSummary.onLoad(monthlyState.selectedMonthId);
+          if (summary) monthlyState.summaries.set(monthlyState.selectedMonthId, summary);
+        }
       }
     } else {
       const monthId = requestedMonthId

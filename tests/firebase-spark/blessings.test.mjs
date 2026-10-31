@@ -22,6 +22,7 @@ async function dataHarness({ failCommit = null, clock = null } = {}) {
   const merge = (ref, value) => documents.set(ref, { ...documents.get(ref), ...value });
   const module = await loadBrowserModule('daily-operations.js', {
     Date: ClockDate,
+    serverNow: () => ClockDate.now(),
     db: {}, getActiveCenterId: () => 'test', doc: (_, ...parts) => parts.join('/'),
     formatDateId, zonedLocalDateTimeToDate, serverTimestamp: () => 'timestamp', getDoc: async ref => snapshot(ref),
     runTransaction: async (_, callback) => {

@@ -12,6 +12,7 @@ import 'firebase/compat/firestore';
 import * as firestore from 'firebase/firestore';
 import { loadBrowserModule } from '../helpers/browser-module.mjs';
 import * as revision from '../../prototypes/firebase-spark-pwa/public/core/revision.mjs';
+import { serverNow } from '../../prototypes/firebase-spark-pwa/public/date-utils.mjs';
 import { zonedLocalDateTimeToDate } from '../../prototypes/firebase-spark-pwa/public/schedule-utils.mjs';
 
 const PROJECT_ID = 'demo-tavola-comune-rules';
@@ -2285,7 +2286,7 @@ for (const [identity, uid, token] of [
     });
     const db = testEnv.authenticatedContext(uid, token()).firestore();
     const module = await loadBrowserModule('daily-operations.js', { ...firestore, db,
-      zonedLocalDateTimeToDate, getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
+      zonedLocalDateTimeToDate, serverNow, getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
     await assert.rejects(module.saveBlessing(date, '18:30'), { code: 'blessing/cutoff' });
     await assertFails(db.doc(dailyOperationPath(dateId)).set({ centerId: CENTER_ID, dateId,
       massScheduled: false, blessingTime: '18:30', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
@@ -2329,7 +2330,7 @@ for (const [identity, uid, token] of [
     const write = blessingTime => ref.set({ centerId: CENTER_ID, dateId, massScheduled: false, blessingTime, updatedAt: stamp() });
     const change = blessingTime => ref.update({ blessingTime, updatedAt: stamp() });
     const module = await loadBrowserModule('daily-operations.js', { ...firestore, db, zonedLocalDateTimeToDate,
-      getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
+      serverNow, getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing']);
 
     // Prima del pranzo: inserimento, modifica, cancellazione e rimozione documento.
     await assertSucceeds(write('15:00'));
@@ -2389,7 +2390,7 @@ test('benedizione: ultima scrittura valida prevale e le modifiche concorrenti al
   const dbA = testEnv.authenticatedContext(ADMIN_UID, adminToken()).firestore();
   const dbB = testEnv.authenticatedContext(PERSONAL_UID, residentTechnicalToken()).firestore();
   const load = db => loadBrowserModule('daily-operations.js', { ...firestore, db, zonedLocalDateTimeToDate,
-    getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing', 'loadDailyOperation', 'saveMassStatus']);
+    serverNow, getActiveCenterId: () => CENTER_ID, formatDateId: () => dateId }, ['saveBlessing', 'loadDailyOperation', 'saveMassStatus']);
   const a = await load(dbA), b = await load(dbB);
   await a.saveBlessing(date, '18:00');
   await b.loadDailyOperation(date);

@@ -2594,7 +2594,7 @@ html[data-theme="neutro"] {
   padding: 16px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  border-radius: var(--radius-small);
+  border-radius: var(--radius-small, 6px);
   background: color-mix(in srgb, var(--surface) 94%, var(--primary));
 }
 
@@ -6419,7 +6419,7 @@ html[data-interface-style="future"] .week-matrix-row-today .week-day-button {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--surface-soft);
+  background: var(--surface-soft, var(--surface, #ffffff));
 }
 
 .admin-audit-table td:nth-child(1),
