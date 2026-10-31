@@ -550,7 +550,7 @@
   "kitchen.empty": "No hay datos de cocina disponibles.",
   "kitchen.mass.celebrated": "Se celebra",
   "kitchen.mass.notCelebrated": "No se celebra",
-  "kitchen.monthly.title": "Totales mensuales de cocina",
+  "kitchen.monthly.title": "Resumen mensual",
   "kitchen.monthly.period": "Periodo:",
   "kitchen.monthly.previous": "Mes anterior",
   "kitchen.monthly.next": "Mes siguiente",
