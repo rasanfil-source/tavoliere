@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
 const CACHE_NAME = CACHE_PREFIX + 'v460';
-const SHELL_ENTRY = '/app.js?v=20261014b';
+const SHELL_ENTRY = '/app.js?v=20261031b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Solo file SDK pubblici e immutabili: sono escluse risposte Auth e dati di sessione.
 const FIREBASE_SDK = ['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js']
@@ -84,7 +84,7 @@ async function precacheInstalledShell() {
   }
   const cache = await caches.open(CACHE_NAME);
   const resources = APP_SHELL.filter((path) => path !== '/' && path !== '/index.html')
-    .map((path) => /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261014b` : path);
+    .map((path) => /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261031b` : path);
   await cache.addAll(resources);
   // L'HTML viene pubblicato in cache quando tutte le risorse necessarie sono disponibili.
   await cache.put('/index.html', response);

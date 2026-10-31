@@ -1774,7 +1774,8 @@ service cloud.firestore {
       }
 
       match /kitchenMonthlySummaries/{monthId} {
-        allow read, write: if false;
+        allow get: if isAdmin(centerId) || hasSessionScope(centerId, 'KITCHEN');
+        allow list, write: if false;
       }
     }
   }

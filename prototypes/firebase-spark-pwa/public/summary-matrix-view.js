@@ -1,6 +1,6 @@
-import { t, getLocale } from "./i18n/i18n.mjs?v=20261014b";
+import { t, getLocale } from "./i18n/i18n.mjs?v=20261031b";
 import { escapeHtml } from "./html-utils.js?v=20261014b";
-import { renderBlessing } from "./blessing-view.mjs?v=20261014b";
+import { renderBlessing } from "./blessing-view.mjs?v=20261031b";
 import { formatDietLabel, getDietBadgeTone, normalizeDietCode } from "./diet-utils.mjs?v=20261014b";
 import { normalizeKitchenDietLegend } from "./diet-legend.mjs?v=20261014b";
 import {
@@ -35,7 +35,8 @@ export function mountSummaryMatrix(
     return;
   }
 
-  if (screens.every((screen) => screen.columns.length === 0)) {
+  if (screens.every((screen) => screen.columns.length === 0)
+    && !(kitchen && monthSummary?.onLoad)) {
     container.innerHTML = `<p class="empty-state">${escapeHtml(t("summary.noMeal"))}</p>`;
     return;
   }
@@ -54,11 +55,36 @@ export function mountSummaryMatrix(
 
   if (kitchen && monthSummary?.onLoad) {
     const details = container.querySelector('[data-kitchen-monthly-summary]');
-    details?.addEventListener('toggle', () => {
-      if (details.open && details.dataset.loading !== 'true') {
-        void loadKitchenMonthlySummary(details, monthSummary);
-      }
-    });
+    const content = details?.querySelector('[data-kitchen-monthly-summary-content]');
+    if (details && content) {
+      const monthlyState = {
+        latestMonthId: null,
+        earliestMonthId: null,
+        selectedMonthId: null,
+        latestSummary: null,
+        summaries: new Map()
+      };
+
+      content.addEventListener('click', (event) => {
+        const button = event.target?.closest?.('[data-kitchen-month-step]');
+        if (!button || button.disabled || !details.open || details.dataset.loading === 'true') return;
+        const nextMonthId = shiftKitchenMonthId(
+          monthlyState.selectedMonthId,
+          Number(button.dataset.kitchenMonthStep)
+        );
+        if (!nextMonthId
+          || nextMonthId < monthlyState.earliestMonthId
+          || nextMonthId > monthlyState.latestMonthId) return;
+        monthlyState.selectedMonthId = nextMonthId;
+        void loadKitchenMonthlySummary(details, monthSummary, monthlyState, nextMonthId);
+      });
+
+      details.addEventListener('toggle', () => {
+        if (details.open && details.dataset.loading !== 'true') {
+          void loadKitchenMonthlySummary(details, monthSummary, monthlyState);
+        }
+      });
+    }
   }
 
   const track = container.querySelector(`[data-${prefix}-matrix-track]`);
@@ -380,32 +406,132 @@ function renderKitchenMonthlySummary(monthSummary) {
   `;
 }
 
-async function loadKitchenMonthlySummary(details, monthSummary) {
+async function loadKitchenMonthlySummary(details, monthSummary, monthlyState, requestedMonthId = null) {
   const content = details.querySelector('[data-kitchen-monthly-summary-content]');
-  if (!content) return;
+  if (!content || details.dataset.loading === 'true') return;
   details.dataset.loading = 'true';
-  content.textContent = t('kitchen.monthly.loading');
+  if (monthlyState.latestMonthId === null) {
+    content.textContent = t('kitchen.monthly.loading');
+  } else {
+    renderKitchenMonthlySummaryContent(content, monthlyState, {
+      message: t('kitchen.monthly.loading'),
+      loading: true
+    });
+  }
+
   try {
-    const summary = await monthSummary.onLoad(details.dataset.monthId);
+    let summary = null;
+    if (monthlyState.latestMonthId === null) {
+      summary = await monthSummary.onLoad();
+      if (summary?.monthId) {
+        monthlyState.latestMonthId = summary.monthId;
+        monthlyState.earliestMonthId = summary.earliestMonthId || summary.monthId;
+        monthlyState.selectedMonthId = summary.monthId;
+        monthlyState.latestSummary = summary;
+        monthlyState.summaries.set(summary.monthId, summary);
+      }
+    } else {
+      const monthId = requestedMonthId
+        || monthlyState.selectedMonthId
+        || monthlyState.latestMonthId;
+      monthlyState.selectedMonthId = monthId;
+      if (monthId === monthlyState.latestMonthId) {
+        summary = monthlyState.latestSummary;
+      } else if (monthlyState.summaries.has(monthId)) {
+        summary = monthlyState.summaries.get(monthId);
+      } else {
+        summary = await monthSummary.onLoad(monthId);
+        if (summary) monthlyState.summaries.set(monthId, summary);
+      }
+    }
+
     if (!details.isConnected || !details.open) return;
     if (!summary) {
-      content.textContent = t('kitchen.monthly.notReady');
+      renderKitchenMonthlySummaryContent(content, monthlyState, {
+        message: t(monthlyState.latestMonthId === null
+          ? 'kitchen.monthly.firstAvailable'
+          : 'kitchen.monthly.notReady')
+      });
       return;
     }
-    content.innerHTML = `
-      <p><strong>${escapeHtml(t('kitchen.monthly.period'))}</strong> ${escapeHtml(formatDate(summary.periodStart))} – ${escapeHtml(formatDate(summary.periodEnd))}</p>
-      <dl>
+    renderKitchenMonthlySummaryContent(content, monthlyState, { summary });
+  } catch {
+    if (!details.isConnected || !details.open) return;
+    renderKitchenMonthlySummaryContent(content, monthlyState, {
+      message: t('kitchen.monthly.unavailable')
+    });
+  } finally {
+    delete details.dataset.loading;
+  }
+}
+
+function renderKitchenMonthlySummaryContent(content, monthlyState, {
+  summary = null,
+  message = '',
+  loading = false
+} = {}) {
+  const monthId = monthlyState.selectedMonthId;
+  if (!monthId) {
+    content.textContent = message;
+    return;
+  }
+
+  const periodStart = summary?.periodStart || `${monthId}-01`;
+  const periodEnd = summary?.periodEnd || kitchenMonthEndDateId(monthId);
+  const previousDisabled = loading
+    || !monthlyState.earliestMonthId
+    || monthId <= monthlyState.earliestMonthId;
+  const nextDisabled = loading
+    || !monthlyState.latestMonthId
+    || monthId >= monthlyState.latestMonthId;
+  const result = message
+    ? escapeHtml(message)
+    : `<dl>
         ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast)}
         ${renderKitchenMonthlyCount('lunch', summary.counts.lunch)}
         ${renderKitchenMonthlyCount('dinner', summary.counts.dinner)}
       </dl>
-    `;
-  } catch {
-    if (!details.isConnected || !details.open) return;
-    content.textContent = t('kitchen.monthly.unavailable');
-  } finally {
-    delete details.dataset.loading;
+      <div class="kitchen-monthly-guest-total">
+        <span>${escapeHtml(t('kitchen.monthly.guests'))}</span>
+        <strong>${escapeHtml(summary.invitedTotal)}</strong>
+      </div>`;
+
+  content.innerHTML = `
+    <div class="kitchen-monthly-period">
+      <button class="kitchen-monthly-nav-button" type="button"
+        data-kitchen-month-step="-1"
+        aria-label="${escapeHtml(t('kitchen.monthly.previous'))}"
+        ${previousDisabled ? 'disabled' : ''}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 6 12l9 8z"></path></svg>
+      </button>
+      <p><strong>${escapeHtml(t('kitchen.monthly.period'))}</strong> ${escapeHtml(formatDate(periodStart))} – ${escapeHtml(formatDate(periodEnd))}</p>
+      <button class="kitchen-monthly-nav-button" type="button"
+        data-kitchen-month-step="1"
+        aria-label="${escapeHtml(t('kitchen.monthly.next'))}"
+        ${nextDisabled ? 'disabled' : ''}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 9 8-9 8z"></path></svg>
+      </button>
+    </div>
+    <div class="kitchen-monthly-summary-status" role="status" aria-live="polite">${result}</div>
+  `;
+}
+
+function shiftKitchenMonthId(monthId, offset) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthId || '') || !Number.isInteger(offset)) {
+    return null;
   }
+  const [year, month] = monthId.split('-').map(Number);
+  const absoluteMonth = year * 12 + month - 1 + offset;
+  if (absoluteMonth < 0) return null;
+  const nextYear = Math.floor(absoluteMonth / 12);
+  const nextMonth = absoluteMonth % 12 + 1;
+  return `${String(nextYear).padStart(4, '0')}-${String(nextMonth).padStart(2, '0')}`;
+}
+
+function kitchenMonthEndDateId(monthId) {
+  const [year, month] = monthId.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${monthId}-${String(lastDay).padStart(2, '0')}`;
 }
 
 function renderKitchenMonthlyCount(mealTypeId, count) {

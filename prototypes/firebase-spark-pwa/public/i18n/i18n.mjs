@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_CACHE_KEY = 'sorgenti';
+const CATALOG_CACHE_KEY = '20261031b';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.exit': 'common.actions.exit',

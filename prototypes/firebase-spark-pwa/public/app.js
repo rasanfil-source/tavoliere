@@ -1,4 +1,4 @@
-import { renderBlessing } from './blessing-view.mjs?v=20261014b';
+import { renderBlessing } from './blessing-view.mjs?v=20261031b';
 import {
   initI18n,
   t,
@@ -9,7 +9,7 @@ import {
   formatTime,
   applyTranslations,
   SUPPORTED_LOCALES
-} from './i18n/i18n.mjs?v=20261014b';
+} from './i18n/i18n.mjs?v=20261031b';
 import {
   getRecommendedRefreshDelayMs
 } from './refresh-schedule.js?v=20261014b';
@@ -80,7 +80,7 @@ import {
   reduceAuthState,
   selectAuthSurface
 } from './core/auth-state-machine.mjs?v=20261014b';
-import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
+import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261031b';
 import {
   markStartupStage,
   measureStartupStep,
@@ -143,15 +143,15 @@ const ADMIN_INVITATION_DECISIONS = new Set(['ACCEPT', 'REJECT']);
 // Gli import con percorsi letterali consentono alla build di separare le funzionalità facoltative.
 const domainModuleLoaders = {
   accessLinks: () => import('./access-links.js?v=20261014b'),
-  admin: () => import('./admin-center.js?v=20261014b'),
+  admin: () => import('./admin-center.js?v=20261031b'),
   audit: () => import('./audit-log.js?v=20261014b'),
   bootstrap: () => import('./bootstrap-demo.js?v=20261014b'),
   daily: () => import('./daily-operations.js?v=20261014b'),
-  kitchen: () => import('./kitchen-data.js?v=20261014b'),
-  kitchenSummary: () => import('./kitchen-monthly-summary.js?v=20261030a'),
+  kitchen: () => import('./kitchen-data.js?v=20261031b'),
+  kitchenSummary: () => import('./kitchen-monthly-summary.js?v=20261031b'),
   notes: () => import('./kitchen-notes.js?v=20261014b'),
-  participant: () => import('./participant-data.js?v=20261014b'),
-  summaryView: () => import('./summary-matrix-view.js?v=20261030a')
+  participant: () => import('./participant-data.js?v=20261031b'),
+  summaryView: () => import('./summary-matrix-view.js?v=20261031b')
 };
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
@@ -1469,7 +1469,7 @@ let bookingForView;
 document.querySelector('[data-booking-open]').addEventListener('click', async () => {
   if (!canManageDailyOperations() || state.pendingMealKeys?.size) return;
   const participantId = document.querySelector('[data-booking-person]').value;
-  const { createBookingFor } = await import('./booking-for.mjs?v=20261014b');
+  const { createBookingFor } = await import('./booking-for.mjs?v=20261031b');
   bookingForView ||= createBookingFor({
     dialog: document.querySelector('[data-booking-dialog]'),
     canBook: () => canManageDailyOperations() && state.mode === 'week',
@@ -10333,24 +10333,10 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
 }
 
 function getKitchenMonthlySummaryContext() {
-  const timeZone = state.centerContactSettings.timezone || 'Europe/Rome';
-  const todayId = formatDateId(getCenterToday());
-  const firstSummaryDate = '2026-11-30';
-  const now = new Date(serverNow());
-  const firstSummaryAvailableAt = zonedLocalDateTimeToDate(
-    firstSummaryDate,
-    '21:00',
-    timeZone
-  );
-  if (todayId < firstSummaryDate
-    || todayId === firstSummaryDate && now < firstSummaryAvailableAt) {
-    return null;
-  }
-
   return {
-    onLoad: async () => {
+    onLoad: async (monthId) => {
       const module = await loadDomainModule('kitchenSummary');
-      return module.loadKitchenMonthlySummary();
+      return module.loadKitchenMonthlySummary(monthId);
     }
   };
 }

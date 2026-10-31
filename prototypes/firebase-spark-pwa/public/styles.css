@@ -7376,6 +7376,65 @@ body[data-mode="admin"] .admin-shell-body {
   margin: 0 0 10px;
 }
 
+.kitchen-monthly-period {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.kitchen-monthly-period > p {
+  min-width: 0;
+  margin: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.kitchen-monthly-nav-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink, #18342a);
+  background: transparent;
+  cursor: pointer;
+}
+
+.kitchen-monthly-nav-button svg {
+  width: 12px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.kitchen-monthly-nav-button:focus-visible {
+  outline: 2px solid var(--primary, #2c7258);
+  outline-offset: 1px;
+}
+
+.kitchen-monthly-nav-button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.kitchen-monthly-guest-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary, #2c7258) 7%, var(--surface, #fff));
+}
+
+.kitchen-monthly-guest-total strong {
+  font-size: 1.05rem;
+}
+
 .kitchen-monthly-summary-content dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

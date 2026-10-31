@@ -1,5 +1,5 @@
 import { escapeHtml } from './html-utils.js?v=20261014b';
-import { t, getLocale } from './i18n/i18n.mjs?v=20261014b';
+import { t, getLocale } from './i18n/i18n.mjs?v=20261031b';
 
 // Il calendario della vista è indipendente dall’identità e dai token dell’operatore.
 export function createBookingFor({ dialog, canBook, identity, listPeople, loadWeek, saveMeal, today, translate = t, locale = getLocale }) {

@@ -39,7 +39,7 @@ import {
   normalizeResidentSignature
 } from './domain/participant-profile.mjs?v=20261014b';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
-import { isRecoverableSessionError } from './core/user-error.mjs?v=20261014b';
+import { isRecoverableSessionError } from './core/user-error.mjs?v=20261031b';
 import { isConnectionAvailable } from './core/connectivity.mjs?v=20261014b';
 import { clearPersonalCalendarSnapshots } from './core/personal-calendar-cache.mjs?v=20261014b';
 import {

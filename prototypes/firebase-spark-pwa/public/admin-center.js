@@ -23,7 +23,7 @@ import {
 import { DEFAULT_RESERVATION_CUTOFFS } from './schedule-utils.mjs?v=20261014b';
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
-import { t } from './i18n/i18n.mjs?v=20261014b';
+import { t } from './i18n/i18n.mjs?v=20261031b';
 import { writeAdministratorDeletionProtection, synchronizeAdministratorDeletionProtection } from './administrator-deletion-protection.js?v=20261014b';
 
 const ADMIN_PROFILE_COLLECTION = 'adminProfiles';

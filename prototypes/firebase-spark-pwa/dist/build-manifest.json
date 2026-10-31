@@ -1,56 +1,56 @@
 {
   "schema": 1,
-  "release": "0394184fd10a7f03",
+  "release": "e82784eda8467fe0",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
-  "entry": "/assets/app-FUUM5Z2Y.js",
+  "entry": "/assets/app-YRN5RD6Z.js",
   "styles": [
-    "/assets/styles-ZRPWUYF6.css",
+    "/assets/styles-QWHLGULI.css",
     "/assets/summary-matrix-refinements-FITSPIOY.css"
   ],
   "initial": [
-    "/assets/app-FUUM5Z2Y.js",
+    "/assets/app-YRN5RD6Z.js",
+    "/assets/chunk-3RSZ4VP5.js",
+    "/assets/chunk-7FY4MGIF.js",
     "/assets/chunk-7ZENLLVJ.js",
     "/assets/chunk-AMWAMAH2.js",
-    "/assets/chunk-D6K33BE5.js",
     "/assets/chunk-DIDIBDG3.js",
     "/assets/chunk-DZJEM4PC.js",
     "/assets/chunk-IMMYBHEU.js",
     "/assets/chunk-JUUUUMHC.js",
     "/assets/chunk-LYSTTI3X.js",
     "/assets/chunk-O2XFH626.js",
-    "/assets/chunk-Q7MC3TGE.js",
     "/assets/chunk-T63ZSDGB.js",
-    "/assets/chunk-XP5SQWO6.js",
+    "/assets/chunk-VIZ4VPBU.js",
     "/assets/chunk-YIHLCK35.js"
   ],
   "resident": [
-    "/assets/app-FUUM5Z2Y.js",
-    "/assets/chunk-53NVJUSW.js",
+    "/assets/app-YRN5RD6Z.js",
+    "/assets/chunk-3RSZ4VP5.js",
+    "/assets/chunk-7FY4MGIF.js",
     "/assets/chunk-7ZENLLVJ.js",
+    "/assets/chunk-AEA7NVS5.js",
     "/assets/chunk-AMWAMAH2.js",
-    "/assets/chunk-AXGYVH5N.js",
-    "/assets/chunk-D6K33BE5.js",
     "/assets/chunk-DEFXUQHB.js",
     "/assets/chunk-DIDIBDG3.js",
     "/assets/chunk-DZJEM4PC.js",
+    "/assets/chunk-H3EOSHG2.js",
     "/assets/chunk-IMMYBHEU.js",
     "/assets/chunk-JUUUUMHC.js",
     "/assets/chunk-LYSTTI3X.js",
     "/assets/chunk-O2XFH626.js",
-    "/assets/chunk-Q7MC3TGE.js",
     "/assets/chunk-T63ZSDGB.js",
-    "/assets/chunk-XP5SQWO6.js",
+    "/assets/chunk-VIZ4VPBU.js",
     "/assets/chunk-YIHLCK35.js"
   ],
   "residentPreloads": [
-    "/assets/chunk-53NVJUSW.js",
-    "/assets/chunk-AXGYVH5N.js",
-    "/assets/chunk-DEFXUQHB.js"
+    "/assets/chunk-AEA7NVS5.js",
+    "/assets/chunk-DEFXUQHB.js",
+    "/assets/chunk-H3EOSHG2.js"
   ],
   "outputs": {
-    "/assets/chunk-TBPI3GCN.js": {
-      "bytes": 28650,
+    "/assets/chunk-HT4JTQKO.js": {
+      "bytes": 31236,
       "source": "summary-matrix-view.js",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/summary-matrix-model.js",
@@ -58,7 +58,7 @@
       ],
       "imports": [
         {
-          "path": "/assets/chunk-D6K33BE5.js",
+          "path": "/assets/chunk-VIZ4VPBU.js",
           "kind": "import-statement"
         },
         {
@@ -70,7 +70,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -83,7 +83,7 @@
         }
       ]
     },
-    "/assets/chunk-4JA32T3R.js": {
+    "/assets/chunk-AUISNOKY.js": {
       "bytes": 2890,
       "source": "booking-for.mjs",
       "inputs": [
@@ -95,7 +95,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -104,7 +104,7 @@
         }
       ]
     },
-    "/assets/chunk-V5S53ZYK.js": {
+    "/assets/chunk-4RKGNOQX.js": {
       "bytes": 21339,
       "source": "admin-center.js",
       "inputs": [
@@ -124,7 +124,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -203,7 +203,7 @@
         }
       ]
     },
-    "/assets/chunk-RJ4BDVL3.js": {
+    "/assets/chunk-GE5W6MFE.js": {
       "bytes": 5354,
       "source": "kitchen-data.js",
       "inputs": [
@@ -219,7 +219,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -240,8 +240,8 @@
         }
       ]
     },
-    "/assets/chunk-3XB2AMJC.js": {
-      "bytes": 812,
+    "/assets/chunk-BCIQVDJK.js": {
+      "bytes": 1627,
       "source": "kitchen-monthly-summary.js",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js"
@@ -282,7 +282,7 @@
         }
       ]
     },
-    "/assets/chunk-ATRJS3MD.js": {
+    "/assets/chunk-W6F5JMOL.js": {
       "bytes": 12540,
       "source": "admin-participant-data.js",
       "inputs": [
@@ -295,7 +295,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-53NVJUSW.js",
+          "path": "/assets/chunk-H3EOSHG2.js",
           "kind": "import-statement"
         },
         {
@@ -303,7 +303,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-Q7MC3TGE.js",
+          "path": "/assets/chunk-3RSZ4VP5.js",
           "kind": "import-statement"
         },
         {
@@ -319,7 +319,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -365,13 +365,13 @@
         }
       ]
     },
-    "/assets/chunk-AXGYVH5N.js": {
+    "/assets/chunk-AEA7NVS5.js": {
       "bytes": 1987,
       "source": "participant-data.js",
       "inputs": [],
       "imports": [
         {
-          "path": "/assets/chunk-53NVJUSW.js",
+          "path": "/assets/chunk-H3EOSHG2.js",
           "kind": "import-statement"
         },
         {
@@ -379,7 +379,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-Q7MC3TGE.js",
+          "path": "/assets/chunk-3RSZ4VP5.js",
           "kind": "import-statement"
         },
         {
@@ -395,7 +395,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -420,7 +420,7 @@
         }
       ]
     },
-    "/assets/chunk-53NVJUSW.js": {
+    "/assets/chunk-H3EOSHG2.js": {
       "bytes": 22990,
       "source": null,
       "inputs": [
@@ -432,7 +432,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-Q7MC3TGE.js",
+          "path": "/assets/chunk-3RSZ4VP5.js",
           "kind": "import-statement"
         },
         {
@@ -456,27 +456,27 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-ATRJS3MD.js",
+          "path": "/assets/chunk-W6F5JMOL.js",
           "kind": "dynamic-import"
         }
       ]
@@ -494,8 +494,8 @@
         }
       ]
     },
-    "/assets/app-FUUM5Z2Y.js": {
-      "bytes": 278249,
+    "/assets/app-YRN5RD6Z.js": {
+      "bytes": 278116,
       "source": "app.js",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/refresh-schedule.js",
@@ -510,7 +510,7 @@
       ],
       "imports": [
         {
-          "path": "/assets/chunk-D6K33BE5.js",
+          "path": "/assets/chunk-VIZ4VPBU.js",
           "kind": "import-statement"
         },
         {
@@ -522,7 +522,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-Q7MC3TGE.js",
+          "path": "/assets/chunk-3RSZ4VP5.js",
           "kind": "import-statement"
         },
         {
@@ -538,7 +538,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -566,7 +566,7 @@
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-V5S53ZYK.js",
+          "path": "/assets/chunk-4RKGNOQX.js",
           "kind": "dynamic-import"
         },
         {
@@ -582,11 +582,11 @@
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-RJ4BDVL3.js",
+          "path": "/assets/chunk-GE5W6MFE.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-3XB2AMJC.js",
+          "path": "/assets/chunk-BCIQVDJK.js",
           "kind": "dynamic-import"
         },
         {
@@ -594,15 +594,15 @@
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-AXGYVH5N.js",
+          "path": "/assets/chunk-AEA7NVS5.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-TBPI3GCN.js",
+          "path": "/assets/chunk-HT4JTQKO.js",
           "kind": "dynamic-import"
         },
         {
-          "path": "/assets/chunk-4JA32T3R.js",
+          "path": "/assets/chunk-AUISNOKY.js",
           "kind": "dynamic-import"
         },
         {
@@ -611,7 +611,7 @@
         }
       ]
     },
-    "/assets/chunk-D6K33BE5.js": {
+    "/assets/chunk-VIZ4VPBU.js": {
       "bytes": 1331,
       "source": null,
       "inputs": [
@@ -623,7 +623,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         }
       ]
@@ -644,7 +644,7 @@
       ],
       "imports": []
     },
-    "/assets/chunk-Q7MC3TGE.js": {
+    "/assets/chunk-3RSZ4VP5.js": {
       "bytes": 18041,
       "source": null,
       "inputs": [
@@ -659,7 +659,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "/assets/chunk-XP5SQWO6.js",
+          "path": "/assets/chunk-7FY4MGIF.js",
           "kind": "import-statement"
         },
         {
@@ -713,7 +713,7 @@
       ],
       "imports": []
     },
-    "/assets/chunk-XP5SQWO6.js": {
+    "/assets/chunk-7FY4MGIF.js": {
       "bytes": 33746,
       "source": null,
       "inputs": [
@@ -917,8 +917,8 @@
       "inputs": [],
       "imports": []
     },
-    "/assets/styles-ZRPWUYF6.css": {
-      "bytes": 111628,
+    "/assets/styles-QWHLGULI.css": {
+      "bytes": 112551,
       "source": "styles.css",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/styles.css"
@@ -936,49 +936,49 @@
   },
   "files": {
     "/access-links.js": "bbaf581bf9cc896f8c00d1c5757919788d85647eaeba867a8b31133f176ce0d1",
-    "/admin-center.js": "fc93e0e63c1df537c9c3c241b4127e10bad1178ceb6e796b99218da01dda07ae",
+    "/admin-center.js": "b2063e5acc54d785abddacb8b3d289129b0827cd805671a89b9a1c37f56daa26",
     "/admin-participant-data.js": "3dedf6e9cd62e432446c988e0497a522dc5727954c8db197e577fef61108886e",
     "/administrator-deletion-protection.js": "74c324fad5aeab5474b261ab807a0d6ba59e10a2a62fddc11c9f31783edbf6cd",
-    "/app.js": "fd0c858ad8159df31510c01654ff9e202757ea9cef3f407f6906eec97bcd99e3",
-    "/assets/app-FUUM5Z2Y.js": "fe57390fd935ed39fba75b52157a14a05a50ad71563aaadb60ab7577b3921785",
-    "/assets/chunk-3XB2AMJC.js": "7f907b314d2def69d44e19dd9b9ae33a98d422cdffd4fbbbf0e5a741b007a74b",
+    "/app.js": "c173cf79ba05b97028120f48b62903c019688d5b667dc1bd21bf6a688d1dba33",
+    "/assets/app-YRN5RD6Z.js": "f953e328bbe69f965dffdd1cddc55e0e9f3d7830cf3f0c4a8d386b742d847bbe",
+    "/assets/chunk-3RSZ4VP5.js": "81683a5e249b19d7fba6fa39fb4a4ee50893f4d47236136f88fc699ea4e57c00",
     "/assets/chunk-3YUO2CDK.js": "13e7d13c855ddc1a8c075b6b72ed04cda1fe6cc8024b05c7c9e4721109fa76bf",
-    "/assets/chunk-4JA32T3R.js": "f5a994aca2c2887d50860a74d95cc2f1cac4c650f726a336f743bd2e7fe46195",
-    "/assets/chunk-53NVJUSW.js": "bbe5e8484264f87a06da57be00e2f9f43dc1dbc8bad07c0a85e2a3f776fbfeaf",
+    "/assets/chunk-4RKGNOQX.js": "40c6c5483a6db017098e1485f34c32a3e15b0cf6cd6a3d6c4029d10e32e0354a",
+    "/assets/chunk-7FY4MGIF.js": "fa57f36600cf883a706a2f3750d8df833a1285c84e77774075e6695a79fd9797",
     "/assets/chunk-7ZENLLVJ.js": "577dc7acbf02547c5b3382b4eb6f0c11a659bf60d64762598b967b239a286d0a",
+    "/assets/chunk-AEA7NVS5.js": "daa9e9800c2554a9d50f790f8692cae769d4a8aa4592dcc99567c768c570cf44",
     "/assets/chunk-AEBO42EE.js": "04beea27a84b1d250057d424d21da7e2c102e0b7fccecf020f67539e79617e3a",
     "/assets/chunk-AMWAMAH2.js": "c91eb57256a562efb1ff631b305b83fd9b695f1a6f4f1f1f3ea9d424ade9a0a0",
-    "/assets/chunk-ATRJS3MD.js": "7b3ba7df4e9a3eed379d7334f3fc99a6d0ac96d60856df14a27c4227f6938516",
-    "/assets/chunk-AXGYVH5N.js": "6332c7f5da150951045e97cdf4b7568a4117980c5b6504c58f9bd089ba0cda78",
+    "/assets/chunk-AUISNOKY.js": "ebd01d3809b294a11596f3ba985182b2a5e74bf1831c58a77f1945452bde4bc6",
+    "/assets/chunk-BCIQVDJK.js": "8e214a18e4aa7f735ae5be8fc2dbe06f2de807b251419c7e8b7ed726080714f8",
     "/assets/chunk-BSNX3JTE.js": "013d6f9ba847838ccb271dc51629cbab7403193c381fffebe637e975cce20410",
-    "/assets/chunk-D6K33BE5.js": "8c39ae84b93ed8aa99182b785199a618095f8b8a3bd73384f910aeb08cd72698",
     "/assets/chunk-DEFXUQHB.js": "ebcd8a9aac252508e6e0217697b2007d948a6b54065061e8829d72dbf594d394",
     "/assets/chunk-DIDIBDG3.js": "ec7648a51df15f353a8e31123c103ca025fb7dacc6898c51fd9ee80edd4b8bd9",
     "/assets/chunk-DZJEM4PC.js": "b52ecc8f77cb79c1f1242a2f5a3dbec86e0fc5e013fb374030522fffb022fc3d",
     "/assets/chunk-EFRV2Q3C.js": "bcffbe223f39ce6fdd8c6d2e56c6389d8e629a5ab885cfd90b149f01db254d1d",
     "/assets/chunk-FDNLUCR6.js": "597e0b18868b41cc2f1595a1d36f276518638a1eb77b25b4d2602d5b31c78821",
+    "/assets/chunk-GE5W6MFE.js": "b6cd8659d2ee5c8aa0c16e51d24f7dcc26b1bdc294e5d6740465210bc1eee011",
     "/assets/chunk-GRDUZTR3.js": "12c62428b82b867b0766cfe8767677c8da1a17f5d2aa0304f8d1349b60c22171",
+    "/assets/chunk-H3EOSHG2.js": "8cc2e485ff5b026c151590bf479db47a86b0a44229604b82a8e20a21436a0853",
+    "/assets/chunk-HT4JTQKO.js": "b877fc24b1168e5ef7662ace1244e107e2a5e7f0769c6d687ac7a4f1c59ee85d",
     "/assets/chunk-IMMYBHEU.js": "0edc0050ce4ea5829924c51823a384a9a1880a4d3800d735523c5ff40ae69a90",
     "/assets/chunk-JUUUUMHC.js": "af40e302eed6a3d763db4270ea97cfabb31fd3a26c74c24532cd50a9fae6b32c",
     "/assets/chunk-KH5RE3M5.js": "1f77c26efa060e250e6d898ae8c4e39f732ab9c51d465ef14e9fece7d6226f2c",
     "/assets/chunk-LYSTTI3X.js": "6dc9a614d8a6584c440f8bfe92782d606ac28296edc9c5deb3364ff98e47e581",
     "/assets/chunk-O2XFH626.js": "d9cad469beb0997cded3780659461d023f24353d6a947fe77434f079536af5f9",
-    "/assets/chunk-Q7MC3TGE.js": "bbc36dc56a3e88d0d57e6fadbc4c182a081bb6cb163eb605f0924be3b60c10f8",
-    "/assets/chunk-RJ4BDVL3.js": "249a38a1bb21c58a24db03b421ab3233771a9cd6cd5227ccc847c971ace3505f",
     "/assets/chunk-S2G74JWC.js": "0d3fa0c200bae1bc3d6b27a14a7b6fd40447ab59fbb375a25f0da23f22c5f975",
     "/assets/chunk-T63ZSDGB.js": "bc2e8a6bdc97fa6fccb5de860735e864a8e8d7e69737e9570ce342e9ed78153e",
-    "/assets/chunk-TBPI3GCN.js": "c0837950fe7d96f8d2e207102996556e8c86225dbebeb5fa0e8999234c6c57de",
     "/assets/chunk-ULX7YR76.js": "2f7d3c1a8a1a960eda31a40fba03f1a2b99deb1767ad4e48a89d1ed6ddd996a2",
-    "/assets/chunk-V5S53ZYK.js": "6bb3a87378c33f6e39d7f9cedf82f23f0f753a2607db0b413b55c9446bbad1e4",
     "/assets/chunk-V675H2SI.js": "674e5420a49f47cb62fd7a12b36370b4dab94911cd82b7dc5eb2f2e8d10866b6",
-    "/assets/chunk-XP5SQWO6.js": "7e890b4484cc61abe86334cc40326d025223bb95577088fe4317f4687cba5499",
+    "/assets/chunk-VIZ4VPBU.js": "c473c64e8359a541497c6bb3a795db598c7479dffca277903dc7b82bd4e31c13",
+    "/assets/chunk-W6F5JMOL.js": "1ff4092c9976df0ede8f45da626508382ec79d7f1e35ce974d345496a43ac216",
     "/assets/chunk-YIHLCK35.js": "be6678c4f4a7b96b50f432f35a33927c7a4955b106b9b5da450872d6657fa919",
     "/assets/chunk-YZVUQEOU.js": "a328b55bbb224bcda9447ea7caba6bfa43858a90f30e4a043e4a028e822a8e0f",
-    "/assets/styles-ZRPWUYF6.css": "587ce0ebcd9cf1f355c887169b02e189eb0698a33d401d9d3efe80369a7ec8af",
+    "/assets/styles-QWHLGULI.css": "5327e7de77cee390e15b38aa0fb4ed9c16aa6dfecc2f61ae6e14b7e3c199caff",
     "/assets/summary-matrix-refinements-FITSPIOY.css": "339727bca64889364d97ddb90f268d0c1c97252c13e5a650be1684c228f9c257",
     "/audit-log.js": "3b3b79532fe853ee17c1f2bc70d4e363e6ca4d702240d55f8f6ba54b90cc9854",
-    "/blessing-view.mjs": "6575c6a6b539853700d30b5027308bb541bd8daaa250ee5213c11ef4b06e64cd",
-    "/booking-for.mjs": "f52df8b024984891500bf8c1522bf2c141effb01d2b4810839306ab849884e6d",
+    "/blessing-view.mjs": "7f2939097503bc51a7327cfce4fb9272000b747fab5645404c52863e04553f60",
+    "/booking-for.mjs": "edcb9781825461c37bd7c4ce0a3f7c0f8c8f214394b606adcee232b54384b518",
     "/bootstrap-demo.js": "879d363b94651bdeadd74755354e20c77e92b29069b20654cc56a013119b46b9",
     "/calendar-configuration.js": "67e88077f2d6961fc96a32e69114bbe08653bf028df155118a182a2a1fc5203b",
     "/center-context.js": "cfc81beaa73b2d9bf8d7cac4353323c98cb0affae4c635ef3b1bc32cb633029a",
@@ -992,7 +992,7 @@
     "/core/revision.mjs": "1bfe2944166fd47847433dc4652a20c7266f5ad73d9fb2ff6106b5ff87d339fb",
     "/core/startup-timing.mjs": "3fe91928ffe98d77b65ba1e3c521667096d4074865c61b489107f6e6caa1783f",
     "/core/state-store.mjs": "2f25d952df4f5ec5f21fad061b25290e600d58dd615300e039f71c1a9611f5b4",
-    "/core/user-error.mjs": "d449212a60ce3401b6f38cd540055a66d9462846cc7afd9d54eb8ba34ff9c453",
+    "/core/user-error.mjs": "3fac2dcadeb7da40cddedb023738b68436b2fc1bc07c7ee518ebdebdf9c660af",
     "/daily-operations.js": "16498ba4ca2e1215b8e8b54a02de7b6684d82178687cb913d192aa9cf71ee6c5",
     "/date-utils.mjs": "068b1dee8e2f0e8b9268f45cda55ed6422b746f07f0448f75966f6deb18c8f20",
     "/diet-legend.mjs": "529468d44c98639091949a9e406f5efec6ca21f041bf6fb493ba3c6df383f491",
@@ -1004,13 +1004,13 @@
     "/domain/participant-profile.mjs": "2b3b3677220b49a8fc972c1c64f1b7f5e3a9c6fd9c6a9eac554321e795b79766",
     "/firebase-client.js": "490f9e575833013fb4ce2667e967761c041a19770a882065845974ebe3bb08c1",
     "/html-utils.js": "8d6d010d753e969f0c3e7a3aa12ffdecb4935e1a000636c6ec66aebe569ab79e",
-    "/i18n/ca.json": "649840a047e0b04669f937c7ae7239f7f0b39c7e396a1d6e544bb1140c3fedd2",
-    "/i18n/de.json": "4eaea8b58bce54655c24dbc84b3fa8dfe099f1f40a9410638e4e9cd44957f2dd",
-    "/i18n/en.json": "1c7a235811fa21964c494e6834e46514894189c4419275e617f000c19599e35c",
-    "/i18n/es.json": "7168cc6028ee245d9431de3527d6ed75f9317820696c9303ba645a5b52dddfab",
-    "/i18n/fr.json": "5fa7337980a830c665c99818d5b36f0dd0a88cabb2bbd5d7638c64289ea0f754",
-    "/i18n/i18n.mjs": "2df5c324416376301c40eb290faa4de24762d7d24632aac45f0576fc883b67fa",
-    "/i18n/it.json": "4687268d16476adfe3e58953dca39d03a98773b051e690cf708a0bd2a75202c0",
+    "/i18n/ca.json": "ce1068109e12224f18eb05a0409d7458d986eb4ff7d1c2cde15e23d4a216350e",
+    "/i18n/de.json": "3b906c2c060347dde6fc920ba50fc171a0a47b261cb7237a58578178c70196a9",
+    "/i18n/en.json": "03ab4e3f4d5f6994103d3193fdc0c8c7f7fc2f9b7e6372a1ceebec15d5d8d9ba",
+    "/i18n/es.json": "3b44149d2b1058a24ed2721b9bd1316279e14302f619c4786e9bf49e7481bb4b",
+    "/i18n/fr.json": "317dac7168de7d9d06006bdb003d8548f8bb0dd8bf2ba4e4e3bafd5825cf3eae",
+    "/i18n/i18n.mjs": "d209d91955d991d1a9c09c0abe28c3c5420042d16c897a7445377c47de80646f",
+    "/i18n/it.json": "29bd22870651b64452b0709701286d781fda175417db5d6f12ed1456aa214ca3",
     "/icons/eucharistic-benediction.png": "633884d3ca4f82f9c935771e7e32923ca8657e6178385460cae31af53233c5ff",
     "/icons/happyduck-badge.png": "762307a286de4d970390a1ac5311386f945f349fbf0a1eb3762d17bdd4d645d2",
     "/icons/happyduck.png": "77138134e9beb5583c46d1db294f459d06c2561867578e9d99c8b0ee418b39c9",
@@ -1022,34 +1022,34 @@
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "989eb462ca4fc303fcfe246a85b5b37759b61a881cb4b9267764eab1faa7f80e",
-    "/kitchen-data.js": "9a33833a7310ae2190df4f1fb55ef79ac79c251e6498e6f08d662b1e95b97e89",
-    "/kitchen-monthly-summary.js": "3f6144d2ad3b7ff1a5f73ad1457361fafc123fe172c06da8e3aaa52202c19f6f",
+    "/index.html": "a251cf51ab6109b00ed3eac4e81be775f0e71b665ce4837229e66404be28f1ec",
+    "/kitchen-data.js": "005c7820eeb2253d3dc20b332420f299fe7a10887b2bfa770f0afc48dcf0289c",
+    "/kitchen-monthly-summary.js": "c52409d9e4bdd365e5396ba44e00d149e642992fb4da27578d3c9d89f8ce5db8",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
     "/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "/meal-reminders.mjs": "2d7517e62ede5681c8ce2213249e2a2bd491677212343602d1bc811c9abe67f2",
-    "/participant-data.js": "12826dba37b937a7b5b78e4ff42a2c1c76b1a06859a338ab28be4ba741a665d8",
+    "/participant-data.js": "c1c47a5b333f7536ae14e26b89d6998988cc3dbcfd3c3c7a767dae6ce9325f17",
     "/refresh-schedule.js": "058add219342e7764c6c27e9e1df8604f6fdf1227d2daf58f2dd5714e282ab12",
     "/reservation-state.mjs": "76e500d451a2c7aa7b35bf3821e7ed302c9af540f6f1eab5486c513f362cf75c",
     "/role-policy.mjs": "3e1fa257bbaf4a021b237d6e6f41ea62d66075dd55cfbc6b39dd3fd14a095813",
     "/schedule-utils.mjs": "4064129a2d2f5ffd8ef77936b6590b266af7ba80626dee8f082fb42b23c4ffd3",
-    "/styles.css": "587ce0ebcd9cf1f355c887169b02e189eb0698a33d401d9d3efe80369a7ec8af",
+    "/styles.css": "5327e7de77cee390e15b38aa0fb4ed9c16aa6dfecc2f61ae6e14b7e3c199caff",
     "/summary-contact-hint.mjs": "c8d9e1d48ae5277610754c3ebfffe625edba30d0eb3d3c85f8c5b7519717e2ab",
     "/summary-matrix-model.js": "27680bd862b3b52fd120f7fc4a4850e0f07e4fa45a47e5435560c5235e5d13c7",
     "/summary-matrix-refinements.css": "339727bca64889364d97ddb90f268d0c1c97252c13e5a650be1684c228f9c257",
-    "/summary-matrix-view.js": "0379fcb777453f59fd0a9b367b96bb4666d90fa19d5990acdf510590adc8f457",
-    "/sw.js": "d2e7e6fd1edbb032657f2495ca9312c7c57ad9f68ff31ccc5d08437f434c4e5b"
+    "/summary-matrix-view.js": "f6383ce77bd2951377f0fd7d8ea30fef0de8253968b438e87cd1edbfadcae90a",
+    "/sw.js": "20568805403375e24c3da93cdf56b686e1086a84b14e463579c77122096bd2a8"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "b61a956eaa2e06632632a249401aa3f3eb77b5dc188d7921b5bfbd44c09d3225",
-    "prototypes/firebase-spark-pwa/public/admin-center.js": "a27b652c76e4af873d297abfa785f6e9e66c6f290acd828725f0f7288e2f8785",
+    "prototypes/firebase-spark-pwa/public/admin-center.js": "ae14d5817a91f5d4e575d9444d2e4f9370428b8eb349ea9fbc0a4cfc4e8cf12c",
     "prototypes/firebase-spark-pwa/public/admin-participant-data.js": "e82a7b6a3d9647a980574d6673596fbfad1757beae9a030d89fb2cc728246664",
     "prototypes/firebase-spark-pwa/public/administrator-deletion-protection.js": "ae467f5ac9dcf69ffdd220c3d4e4bd9e3552b9ce95e611636e6f8818ab42ef4a",
-    "prototypes/firebase-spark-pwa/public/app.js": "20ec090eb56212024427fec4b225c349b1ef54613d157c34a9b2068b0896b060",
+    "prototypes/firebase-spark-pwa/public/app.js": "0814e4ce9d8b635a925385260d985f12b88dcbe93f98225e88618665b7651320",
     "prototypes/firebase-spark-pwa/public/audit-log.js": "bc3a14c50aacdf7d08e5f24f845d86013617987ddae2f0a4516bb1b4d08af9fe",
-    "prototypes/firebase-spark-pwa/public/blessing-view.mjs": "81aa97f08fd38ec4cb770569b08c4dbcf22573c71df0c51f8a21ce03166d0fc3",
-    "prototypes/firebase-spark-pwa/public/booking-for.mjs": "9bf1d51d8087561f7ef824ba600cae1f0c1535222350bb4bf1ab5ee4c3a02ac0",
+    "prototypes/firebase-spark-pwa/public/blessing-view.mjs": "6fca97d0d28aee8067b311a145974c92f29c83f4883c207ac10615c447307b6b",
+    "prototypes/firebase-spark-pwa/public/booking-for.mjs": "74efcc3cdb502ab491810caa50b26bb03d2306b3e19baf1964fc34e4b46a82ea",
     "prototypes/firebase-spark-pwa/public/bootstrap-demo.js": "7e774fb21aff315a576acc922781a963a676f0bf1edb2c7cf351be91c12fcad3",
     "prototypes/firebase-spark-pwa/public/calendar-configuration.js": "8fd267d7c1d2394255e8d9ef0b820f2f78b5539dee0f19cb56e6085e1b3599ab",
     "prototypes/firebase-spark-pwa/public/center-context.js": "ddddaa90bcf0950aa944d7a56bcfb1008a77267f3913156aee8181cb3c0e5810",
@@ -1063,7 +1063,7 @@
     "prototypes/firebase-spark-pwa/public/core/revision.mjs": "ce671780ac3ad0974b32562fd7153e7f936047b36567351ee1de4686321c4d37",
     "prototypes/firebase-spark-pwa/public/core/startup-timing.mjs": "83b323a041a63fc69c4d15b577b2c419fffdb465ed741751c828091fe59b0810",
     "prototypes/firebase-spark-pwa/public/core/state-store.mjs": "5d1d0edfb34f6b471ef84ff9c0d0ee34916117b68a118e0717d5206c18467adf",
-    "prototypes/firebase-spark-pwa/public/core/user-error.mjs": "1e0bfcdd97d094c35054c69517fb0934ef571264d7fd41ca268db7111167d1c7",
+    "prototypes/firebase-spark-pwa/public/core/user-error.mjs": "225ee78f6c43d113a19a150d763d4a741459ad61e34f8f6d7251e72f7a53a4d6",
     "prototypes/firebase-spark-pwa/public/daily-operations.js": "be5307c6d75a2a63170baa47bc53d3eea905ca188bf966d4a2cbc31309d3f26b",
     "prototypes/firebase-spark-pwa/public/date-utils.mjs": "1fd46e14ed5edd7b81fe6b784e01a96f1c6a2181154ffd7919ee018448aa1aab",
     "prototypes/firebase-spark-pwa/public/diet-legend.mjs": "7853009037b04b82fea5907580594332c2b4af794de86637bb294ac12bb2ebb2",
@@ -1075,13 +1075,13 @@
     "prototypes/firebase-spark-pwa/public/domain/participant-profile.mjs": "f62c6396434cb0230b8665e9a37432c77cbf3547f214830a7db29e370c09b01c",
     "prototypes/firebase-spark-pwa/public/firebase-client.js": "9fae18cb69d7d34b9f6b1ffd4fa541946a4b010c9c3217bbea436bf893311bbc",
     "prototypes/firebase-spark-pwa/public/html-utils.js": "2aefbb94a60771d863d66b4632eccd553d204b28a977d5a55bc50b0299066fa5",
-    "prototypes/firebase-spark-pwa/public/i18n/ca.json": "649840a047e0b04669f937c7ae7239f7f0b39c7e396a1d6e544bb1140c3fedd2",
-    "prototypes/firebase-spark-pwa/public/i18n/de.json": "4eaea8b58bce54655c24dbc84b3fa8dfe099f1f40a9410638e4e9cd44957f2dd",
-    "prototypes/firebase-spark-pwa/public/i18n/en.json": "1c7a235811fa21964c494e6834e46514894189c4419275e617f000c19599e35c",
-    "prototypes/firebase-spark-pwa/public/i18n/es.json": "7168cc6028ee245d9431de3527d6ed75f9317820696c9303ba645a5b52dddfab",
-    "prototypes/firebase-spark-pwa/public/i18n/fr.json": "5fa7337980a830c665c99818d5b36f0dd0a88cabb2bbd5d7638c64289ea0f754",
-    "prototypes/firebase-spark-pwa/public/i18n/i18n.mjs": "beb4b3da71a3a58b0986f213636416903c68d5cea9ffde4565c647d90a97c724",
-    "prototypes/firebase-spark-pwa/public/i18n/it.json": "4687268d16476adfe3e58953dca39d03a98773b051e690cf708a0bd2a75202c0",
+    "prototypes/firebase-spark-pwa/public/i18n/ca.json": "ce1068109e12224f18eb05a0409d7458d986eb4ff7d1c2cde15e23d4a216350e",
+    "prototypes/firebase-spark-pwa/public/i18n/de.json": "3b906c2c060347dde6fc920ba50fc171a0a47b261cb7237a58578178c70196a9",
+    "prototypes/firebase-spark-pwa/public/i18n/en.json": "03ab4e3f4d5f6994103d3193fdc0c8c7f7fc2f9b7e6372a1ceebec15d5d8d9ba",
+    "prototypes/firebase-spark-pwa/public/i18n/es.json": "3b44149d2b1058a24ed2721b9bd1316279e14302f619c4786e9bf49e7481bb4b",
+    "prototypes/firebase-spark-pwa/public/i18n/fr.json": "317dac7168de7d9d06006bdb003d8548f8bb0dd8bf2ba4e4e3bafd5825cf3eae",
+    "prototypes/firebase-spark-pwa/public/i18n/i18n.mjs": "5818419f2843b8ea764f94e668ee15b3ced90e9b8a644859e6a68128e62a46d3",
+    "prototypes/firebase-spark-pwa/public/i18n/it.json": "29bd22870651b64452b0709701286d781fda175417db5d6f12ed1456aa214ca3",
     "prototypes/firebase-spark-pwa/public/icons/eucharistic-benediction.png": "633884d3ca4f82f9c935771e7e32923ca8657e6178385460cae31af53233c5ff",
     "prototypes/firebase-spark-pwa/public/icons/happyduck-badge.png": "762307a286de4d970390a1ac5311386f945f349fbf0a1eb3762d17bdd4d645d2",
     "prototypes/firebase-spark-pwa/public/icons/happyduck.png": "77138134e9beb5583c46d1db294f459d06c2561867578e9d99c8b0ee418b39c9",
@@ -1093,24 +1093,24 @@
     "prototypes/firebase-spark-pwa/public/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "prototypes/firebase-spark-pwa/public/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "prototypes/firebase-spark-pwa/public/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "prototypes/firebase-spark-pwa/public/index.html": "88723094bd3c2c586f51b3fe8d17daee962f7b022780aeda336e9f644bcf1761",
-    "prototypes/firebase-spark-pwa/public/kitchen-data.js": "4aaa5112272f58d7bd6ea4401e182e6d5b29bee8d73bca491b1c1ae75199795d",
-    "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js": "428728bcd029c436b31b5efd78a8778a387cf2b4518df2b29742a2964e14c03f",
+    "prototypes/firebase-spark-pwa/public/index.html": "9775e3802f87092aa2bec4eb812a09889105514a08d302f53f881fbfb5ec3d84",
+    "prototypes/firebase-spark-pwa/public/kitchen-data.js": "e9a6e30f4f2fe7c429037330871dba9ec29cc12bf4d76d447258b833333bde43",
+    "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js": "4cf1253ed45ad84acf395376a4ed53f276b830cac40074455ba2f7e812ec8a67",
     "prototypes/firebase-spark-pwa/public/kitchen-notes.js": "8d4996bb89628e64b2d78dafdcaf516066f5d6677996d694447aeb6eb8f4aac2",
     "prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "prototypes/firebase-spark-pwa/public/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "prototypes/firebase-spark-pwa/public/meal-reminders.mjs": "34158ebfca4cb3d1e8a40133e7ec6c702926c7547b918910713fbf05abb4572c",
-    "prototypes/firebase-spark-pwa/public/participant-data.js": "57c50f318690fe7ced5af6bcaebb911f77af4419b22de159c441b840807b2f65",
+    "prototypes/firebase-spark-pwa/public/participant-data.js": "b41f1d368b80ee6e8f385404b8b705ef644e50718e7bcf3a756018e372fbee41",
     "prototypes/firebase-spark-pwa/public/refresh-schedule.js": "01eda66aed7534f5ff59e9066cc60f7d81acb437b25b94b8a650c7e980c7bba7",
     "prototypes/firebase-spark-pwa/public/reservation-state.mjs": "5ab9bbf27f0165853aae6e72b7b410070eb6351096a36706244b25d4317a6fd1",
     "prototypes/firebase-spark-pwa/public/role-policy.mjs": "69f512002c63e8b6d3babf9892e851928e13d6e425b3173476de2e728dc2339e",
     "prototypes/firebase-spark-pwa/public/schedule-utils.mjs": "b0b0876949841992a89d79e6edd9b179a4164ad80aa2024e1aea34a196392553",
-    "prototypes/firebase-spark-pwa/public/styles.css": "f7a6077301e7a99dc17c0cecef044968141b6ed6f49c62f4ffefa8ece90490de",
+    "prototypes/firebase-spark-pwa/public/styles.css": "e005985cfd61fc6ae76efe33c910b5aba4cb4eff56b09322f98be33a6b71ed49",
     "prototypes/firebase-spark-pwa/public/summary-contact-hint.mjs": "7ced78dd49f412af720d84f1d03f445d8f32188c33df5915b20a6e8710305cf1",
     "prototypes/firebase-spark-pwa/public/summary-matrix-model.js": "c61438cbffd0e038f21e3a815ccb610386d46dad5065be782d2be70287fc379b",
     "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "129356c60e4b5420fe0541375102333eb3ba490ec0f9fd576d2cfeda261dcf5d",
-    "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "79c3e70f713d80b1da8af111c05e74a7afc4f94f45dcbbad4b30a3001c26b565",
-    "prototypes/firebase-spark-pwa/public/sw.js": "7c7707317dabff28aef1c32efdafe45c23dd4e895b60533ada383bdade6ac69c",
+    "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "90353c0bbd05f4f5d98303303b7018e7330853251bb3a32308e1c4f34977cd0b",
+    "prototypes/firebase-spark-pwa/public/sw.js": "a6df6f5e08a17a80e80fad183dd933e92fb3b49739a64691c1785204f1fe253e",
     "tools/build-public.mjs": "5cba71dfd239c75266d7f0847187ba265357f0a91995364788a8eaf451b5d81f",
     "package-lock.json": "9ceefe538a435895cfc52b669ad1af7296b9312d248c5ed96303a8779d991171"
   }

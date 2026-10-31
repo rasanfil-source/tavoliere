@@ -35,7 +35,7 @@ const summaryStyles = readFileSync(
 const adminCenter = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/admin-center.js', import.meta.url),
   'utf8'
-);
+).replace(/\r\n/g, '\n');
 const centerSettings = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/center-settings.js', import.meta.url),
   'utf8'

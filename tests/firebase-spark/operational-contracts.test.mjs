@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const root = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
-const read = (name) => readFileSync(new URL(name, root), 'utf8');
+const read = (name) => readFileSync(new URL(name, root), 'utf8').replace(/\r\n/g, '\n');
 
 const app = read('app.js');
 const firebaseClient = read('firebase-client.js');

@@ -1,5 +1,5 @@
 import { escapeHtml } from './html-utils.js?v=20261014b';
-import { t } from './i18n/i18n.mjs?v=20261014b';
+import { t } from './i18n/i18n.mjs?v=20261031b';
 
 export function renderBlessing(time, { compact = false, narrow = false } = {}) {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return '';

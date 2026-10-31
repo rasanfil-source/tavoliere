@@ -10,7 +10,7 @@ const [html, css, refinements, app, firebaseClient, centerSettings, adminCenter,
   readFile(new URL('app.js', projectRoot), 'utf8'),
   readFile(new URL('firebase-client.js', projectRoot), 'utf8'),
   readFile(new URL('center-settings.js', projectRoot), 'utf8'),
-  readFile(new URL('admin-center.js', projectRoot), 'utf8'),
+  readFile(new URL('admin-center.js', projectRoot), 'utf8').then((source) => source.replace(/\r\n/g, '\n')),
   import(new URL('domain/administrator-auth.mjs', projectRoot)),
   readFile(new URL('summary-matrix-view.js', projectRoot), 'utf8'),
   readFile(new URL('participant-data.js', projectRoot), 'utf8')

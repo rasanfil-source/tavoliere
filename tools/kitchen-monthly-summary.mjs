@@ -13,7 +13,8 @@ const mealTypeIds = ['breakfast', 'lunch', 'dinner'];
 const dailyCollection = 'kitchenDailyTotals';
 const monthlyCollection = 'kitchenMonthlySummaries';
 const totalsMetadataCollection = 'kitchenTotalsMetadata';
-const retentionMonths = 3;
+const dailyRetentionMonths = 3;
+const monthlyRetentionMonths = 24;
 const firstTrackedDate = '2026-11-01';
 const dailyCloseTime = '23:00';
 const monthEndCloseTime = '21:00';
@@ -92,14 +93,15 @@ for (const centerDocument of centers) {
       const dailyHealth = dailyHealthDocument
         ? decodeFields(dailyHealthDocument.fields || {})
         : {};
-      const counts = countKitchenMeals({ rules, overrides, dailyHealth, dateId });
+      const { counts, invitedCounts } = countKitchenMeals({ rules, overrides, dailyHealth, dateId });
 
       await createDocument(path, {
         centerId,
         dateId,
         counts,
+        invitedCounts,
         recordedAt: new Date(),
-        purgeAfter: localMidnight(addMonthsClamped(dateId, retentionMonths), timeZone)
+        purgeAfter: localMidnight(addMonthsClamped(dateId, dailyRetentionMonths), timeZone)
       });
       writtenDailyTotals += 1;
     }
@@ -138,6 +140,7 @@ function countKitchenMeals({ rules, overrides, dailyHealth, dateId }) {
     .map((person) => String(person?.participantId || '').trim())
     .filter(Boolean));
   const invitedMeals = dailyHealth.invitedMeals || {};
+  const invitedCounts = {};
   const counts = {};
 
   for (const mealTypeId of mealTypeIds) {
@@ -166,10 +169,11 @@ function countKitchenMeals({ rules, overrides, dailyHealth, dateId }) {
     }
 
     const invitedCount = Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[mealTypeId]) || 0)));
+    invitedCounts[mealTypeId] = invitedCount;
     counts[mealTypeId] = presentCount + invitedCount;
   }
 
-  return counts;
+  return { counts, invitedCounts };
 }
 
 function latestCompleteCutoff(windowDocuments) {
@@ -244,12 +248,24 @@ async function calculateMonthlySummary({
   if (dailyByDate.size !== expectedDayCount) return null;
 
   const counts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
+  let invitedTotal = 0;
   for (let offset = 0; offset < expectedDayCount; offset += 1) {
     const dateId = addDaysToDateId(periodStart, offset);
-    const dailyCounts = dailyByDate.get(dateId)?.counts;
+    const dailyRecord = dailyByDate.get(dateId);
+    const dailyCounts = dailyRecord?.counts;
     if (!dailyCounts || mealTypeIds.some((mealTypeId) => !validCount(dailyCounts[mealTypeId]))) {
       return null;
     }
+    let invitedCounts = dailyRecord.invitedCounts;
+    if (!invitedCounts) {
+      const dailyHealthDocument = await getDocument('centers/' + centerId + '/dailyHealth/' + dateId);
+      const dailyHealth = dailyHealthDocument
+        ? decodeFields(dailyHealthDocument.fields || {})
+        : {};
+      invitedCounts = normalizeInvitedCounts(dailyHealth.invitedMeals || {});
+    }
+    if (!invitedCounts || mealTypeIds.some((mealTypeId) => !validCount(invitedCounts[mealTypeId]))) return null;
+    invitedTotal += mealTypeIds.reduce((total, mealTypeId) => total + invitedCounts[mealTypeId], 0);
     mealTypeIds.forEach((mealTypeId) => { counts[mealTypeId] += dailyCounts[mealTypeId]; });
   }
 
@@ -259,9 +275,10 @@ async function calculateMonthlySummary({
     periodStart,
     periodEnd,
     counts,
+    invitedTotal,
     availableFrom,
     recordedAt: currentTime,
-    purgeAfter: localMidnight(addMonthsClamped(periodEnd, retentionMonths), timeZone)
+    purgeAfter: localMidnight(addMonthsClamped(periodEnd, monthlyRetentionMonths), timeZone)
   };
 }
 
@@ -277,14 +294,16 @@ async function advanceCurrentSummary(centerId, summary) {
     periodStart: summary.periodStart,
     periodEnd: summary.periodEnd,
     counts: summary.counts,
+    invitedTotal: summary.invitedTotal,
     availableFrom: summary.availableFrom,
+    purgeAfter: summary.purgeAfter,
     updatedAt: new Date()
   });
 }
 
 async function purgeExpiredDocuments(centerId, currentTime) {
   let deleted = 0;
-  for (const collectionId of [dailyCollection, monthlyCollection]) {
+  for (const collectionId of [dailyCollection, monthlyCollection, totalsMetadataCollection]) {
     const expired = await queryDocuments(`centers/${centerId}`, collectionId, [
       { field: 'purgeAfter', op: 'LESS_THAN_OR_EQUAL', value: currentTime }
     ]);
@@ -468,6 +487,13 @@ function previousMonthId(dateId) {
   const [year, month] = dateId.split('-').map(Number);
   const previous = new Date(Date.UTC(year, month - 2, 1));
   return `${previous.getUTCFullYear()}-${String(previous.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function normalizeInvitedCounts(invitedMeals = {}) {
+  return Object.fromEntries(mealTypeIds.map((mealTypeId) => [
+    mealTypeId,
+    Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[mealTypeId]) || 0)))
+  ]));
 }
 
 function validCount(value) {
