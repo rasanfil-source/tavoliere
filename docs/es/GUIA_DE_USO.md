@@ -99,7 +99,7 @@ El **Resumen** muestra comensales, dietas, invitados, enfermos, celebración y n
 
 La vista **Cocina** utiliza un enlace operativo específico y presenta solo la información necesaria para el servicio. No concede acceso administrativo ni a los datos privados del centro. El enlace debe considerarse una credencial: hay que compartirlo solo con quien lo necesita y regenerarlo si se difunde por error.
 
-Tras el primer mes completo aparece **Totales mensuales de cocina**. Al abrirlo muestra las sumas de desayuno, almuerzo y cena. Incluye reservas efectivas e invitados; los enfermos se mantienen aparte. El desayuno se cuenta en la fecha de la comida aunque se haya reservado el día anterior. El cierre diario es a las 23:00 locales, salvo el último día del mes, que cierra a las 21:00. El último conteo permanece hasta que esté disponible el siguiente. La aplicación solo lee estos datos al abrir la casilla. Los registros agregados se eliminan después de tres meses y el cálculo usa GitHub Actions sin activar un plan de Firebase de pago.
+Tras el primer mes completo aparece **Resumen mensual**. Al abrirlo muestra las sumas de desayuno, almuerzo y cena. Incluye reservas efectivas e invitados; los enfermos se mantienen aparte. El desayuno se cuenta en la fecha de la comida aunque se haya reservado el día anterior. El cierre diario es a las 23:00 locales, salvo el último día del mes, que cierra a las 21:00. El último conteo permanece hasta que esté disponible el siguiente. La aplicación solo lee estos datos al abrir la casilla. Los registros agregados se eliminan después de tres meses y el cálculo usa GitHub Actions sin activar un plan de Firebase de pago.
 
 Colación se refiere al día siguiente cuando aparece junto con el almuerzo y la cena de hoy.
 

@@ -21,6 +21,10 @@ function normalizedMessage(error) {
   return String(error?.message || '').trim().toLowerCase();
 }
 
+function hasNetworkMessage(message) {
+  return /\b(?:failed to fetch|load failed|fetch failed|networkerror|network|offline|timeout|timed out|connessione|rete)\b/u.test(message);
+}
+
 const RECOVERABLE_SESSION_CODES = new Set([
   'aborted',
   'auth/internal-error',
@@ -45,16 +49,7 @@ export function isRecoverableSessionError(error) {
   const code = normalizedCode(error);
   const message = normalizedMessage(error);
   return RECOVERABLE_SESSION_CODES.has(code)
-    || message.includes('failed to fetch')
-    || message.includes('load failed')
-    || message.includes('fetch failed')
-    || message.includes('networkerror')
-    || message.includes('network')
-    || message.includes('offline')
-    || message.includes('timeout')
-    || message.includes('timed out')
-    || message.includes('connessione')
-    || message.includes('rete');
+    || hasNetworkMessage(message);
 }
 
 function withActionFallback(message, fallback) {
@@ -74,12 +69,12 @@ export function classifyApplicationError(error) {
     code === 'unavailable'
     || code === 'firestore/unavailable'
     || message.includes('offline')
-    || message.includes('network')
+    || /\bnetwork\b/u.test(message)
     || message.includes('load failed')
     || message.includes('fetch failed')
     || message.includes('networkerror')
-    || message.includes('connection')
-    || message.includes('rete')
+    || /\bconnection\b/u.test(message)
+    || /\brete\b/u.test(message)
   ) return 'offline';
   return 'unknown';
 }

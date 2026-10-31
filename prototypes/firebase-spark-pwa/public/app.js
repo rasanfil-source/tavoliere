@@ -10334,6 +10334,7 @@ function renderMeals(emptyMessage = 'Nessun dato cucina disponibile.') {
 
 function getKitchenMonthlySummaryContext() {
   return {
+    centerId: getActiveCenterId(),
     onLoad: async (monthId) => {
       const module = await loadDomainModule('kitchenSummary');
       return module.loadKitchenMonthlySummary(monthId);

@@ -7,7 +7,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db } from './firebase-client.js?v=20261014b';
 import { getActiveCenterId } from './center-context.js?v=20261014b';
-import { formatDateId } from './date-utils.mjs?v=20261014b';
+import { formatDateId, serverNow } from './date-utils.mjs?v=20261014b';
 import { normalizeDietCode } from './diet-utils.mjs?v=20261014b';
 import { zonedLocalDateTimeToDate } from './schedule-utils.mjs?v=20261014b';
 
@@ -96,7 +96,7 @@ export async function saveMassStatuses(dates, massScheduled) {
   });
 }
 
-export function validateBlessingTime(dateId, time, timezone = 'Europe/Rome', now = new Date()) {
+export function validateBlessingTime(dateId, time, timezone = 'Europe/Rome', now = new Date(serverNow())) {
   if (time && zonedLocalDateTimeToDate(dateId, time, timezone).getTime() <= now.getTime()) {
     throw Object.assign(new Error('La data o l’ora della benedizione è già trascorsa.'), { code: 'blessing/past-time' });
   }
@@ -108,7 +108,7 @@ function validateBlessingWindow(snapshot) {
   }
   const window = snapshot.data();
   const closesAt = window.closesAt?.toDate ? window.closesAt.toDate() : new Date(window.closesAt);
-  if (window.status !== 'OPEN' || !Number.isFinite(closesAt.getTime()) || closesAt.getTime() <= Date.now()) {
+  if (window.status !== 'OPEN' || !Number.isFinite(closesAt.getTime()) || closesAt.getTime() <= serverNow()) {
     throw Object.assign(new Error('Il termine per le modifiche di questa giornata è scaduto.'), { code: 'blessing/cutoff' });
   }
 }
@@ -125,7 +125,7 @@ function validateBlessingChange(lunchSnapshot, centerSnapshot, previousTime, tim
   }
   // HH:mm usa il fuso del centro, come gli orari configurati e le regole Firestore.
   const dinnerTime = centerSnapshot.data().reservationCutoffs?.dinner || '15:00';
-  if ((lunch.status !== 'OPEN' || closesAt.getTime() <= Date.now())
+  if ((lunch.status !== 'OPEN' || closesAt.getTime() <= serverNow())
     && ((previousTime && previousTime <= dinnerTime) || (time && time <= dinnerTime))) {
     throw Object.assign(new Error('Il limite del pranzo è scaduto: sono modificabili solo benedizioni successive al limite della cena.'),
       { code: 'blessing/lunch-cutoff' });
