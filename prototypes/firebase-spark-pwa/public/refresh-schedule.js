@@ -42,10 +42,6 @@ export function getKitchenRefreshPolicyForMinutes(minutesOfDay) {
   return KITCHEN_REFRESH_POLICIES.NORMAL;
 }
 
-export function getKitchenRefreshPolicy(date = new Date(), timeZone = 'Europe/Rome') {
-  return getKitchenRefreshPolicyForMinutes(getMinutesOfDay(date, timeZone));
-}
-
 export function getRecommendedRefreshDelayMs(date = new Date(), timeZone = 'Europe/Rome') {
   const minutes = getMinutesOfDay(date, timeZone);
   const policy = getKitchenRefreshPolicyForMinutes(minutes);

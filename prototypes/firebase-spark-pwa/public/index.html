@@ -98,7 +98,6 @@
             <p class="session-role" data-session-role hidden></p>
           </div>
         </div>
-        <p class="admin-role-chip" data-admin-role-chip hidden></p>
         <nav class="topbar-context-nav" data-topbar-context-nav aria-label="Navigazione area personale">
           <a class="topbar-context-action" data-control-panel-entry href="/?view=admin" hidden
             aria-label="Pannello di controllo" data-i18n-aria-label="app.header.controlPanel"
@@ -429,7 +428,6 @@
           <span class="admin-shell-caret" aria-hidden="true">▾</span>
         </summary>
          <div class="admin-shell-body">
-           <code data-auth-uid hidden></code>
            <label class="admin-center-switcher field-label" data-admin-center-switcher hidden>
              <span data-i18n="admin.centerSwitcher.label">Centro amministrato</span>
              <select data-admin-center-select data-i18n-aria-label="admin.centerSwitcher.label" aria-label="Centro amministrato"></select>
@@ -754,24 +752,6 @@
                     <p class="admin-option-help" data-admin-adaptations-description data-i18n="admin.adaptations.description">Personalizzazioni dell'aspetto e del comportamento dell'app.</p>
                   </div>
                   <p class="admin-option-help resident-device-preferences-intro" data-resident-device-preferences-intro hidden>Queste preferenze restano su questo dispositivo.</p>
-                  <aside class="admin-password-rotation-warning" data-admin-password-rotation-warning hidden role="status">
-                    <strong data-i18n="admin.sharedPassword.warningTitle">Password amministratori da cambiare</strong>
-                    <span data-i18n="admin.sharedPassword.warning">Hai revocato il ruolo di vice amministratore. Per favore cambia la password amministratori.</span>
-                  </aside>
-                  <section class="resident-admin-unlock" data-resident-admin-unlock hidden>
-                    <p data-i18n="admin.sharedPassword.unlockHelp">Inserisci la password amministratori per aprire le funzioni autorizzate.</p>
-                    <div class="resident-admin-password-form">
-                      <label class="field-label">
-                        <span data-i18n="admin.sharedPassword.label">Password amministratori</span>
-                        <span class="password-field">
-                          <input type="password" data-resident-admin-password minlength="6" maxlength="64" autocomplete="current-password">
-                          <button type="button" class="password-toggle tertiary-action" data-password-toggle="resident-admin" aria-pressed="false" data-i18n="auth.resident.password.show">Mostra</button>
-                        </span>
-                      </label>
-                      <button type="button" class="primary-action" data-resident-admin-unlock-button data-i18n="admin.sharedPassword.unlock">Apri il pannello</button>
-                    </div>
-                    <p data-resident-admin-unlock-status aria-live="polite"></p>
-                  </section>
 
                   <label class="field-label admin-default-view-picker" data-admin-default-view-picker>
                     <span data-i18n="viewPreference.label">Vista di apertura preferita</span>

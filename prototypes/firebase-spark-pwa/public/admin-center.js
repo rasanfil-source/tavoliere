@@ -782,10 +782,6 @@ export async function transferCenterOwnership(successorUid, options = {}, user =
   };
 }
 
-export function activateAdminCenter(centerId) {
-  return setActiveCenterId(centerId);
-}
-
 async function readCenterAdmin(user, centerId) {
   try {
     const snapshot = await getDoc(doc(db, 'centers', centerId, 'admins', user.uid));

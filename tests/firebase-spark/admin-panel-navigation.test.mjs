@@ -673,9 +673,8 @@ test('i controlli amministrativi riconoscono entrambe le forme di permission den
 test('il passaggio revoca il precedente responsabile e lo disconnette senza cancellare la Persona', () => {
   const transfer = adminCenter.match(/export async function transferCenterOwnership\([\s\S]*?\n}\n/)?.[0] || '';
   assert.match(app, /dialog\.transferOwnership\.finalMessage/);
-  assert.match(app, /const revokePrevious = true/);
-  assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious \}\)/);
-  assert.match(app, /if \(revokePrevious\) \{[\s\S]*await signOutCurrentUser\(\)/);
+  assert.match(app, /transferCenterOwnership\(successorUid, \{ revokePrevious: true \}\)/);
+  assert.match(app, /async function performOwnershipTransfer[\s\S]*await signOutCurrentUser\(\)/);
   assert.match(app, /admin\.succession\.outgoingCompletedMessage[\s\S]*await signOutCurrentUser\(\)/);
   assert.match(app, /classList\.remove\('admin-nav-attention'\)/);
   assert.match(transfer, /const revokePrevious = options\?\.revokePrevious === true/);

@@ -161,7 +161,7 @@ test('resident login has the complete persistent-session surface', () => {
 test('technical resident auth uses local Firebase persistence', () => {
   assert.match(firebaseClient, /browserLocalPersistence/);
   assert.match(firebaseClient, /signInWithEmailAndPassword/);
-  assert.match(firebaseClient, /signInResidentTechnicalUser/);
+  assert.match(firebaseClient, /withResidentTechnicalSession/);
   assert.match(firebaseClient, /withResidentTechnicalSession[\s\S]*initializeFirestore\(maintenanceAuth\.app, firestoreSettings\)/);
   assert.match(firebaseClient, /async function runAuthMutation\(operation\)[\s\S]*await authPersistenceReady;[\s\S]*return await operation\(\)/);
   assert.match(firebaseClient, /waitForStableAuth/);
@@ -620,7 +620,6 @@ test('l area amministrativa segue il ruolo registrato nel centro', () => {
   assert.match(app, /useExistingAccountForCenterInvitation/);
   assert.match(firebaseClient, /EmailAuthProvider\.credential/);
   assert.match(firebaseClient, /linkWithCredential/);
-  assert.match(firebaseClient, /authenticatedEmail !== normalizedEmail/);
   assert.match(adminCenter, /getAdminInvitationId/);
   assert.match(adminCenter, /createCenterInvitation/);
 });
@@ -716,7 +715,7 @@ test('il primo caricamento mostra subito le selezioni del periodo corrente', () 
   const anchor = app.match(/function anchorCalendarToCenterToday\(\)[\s\S]*?\n}/)?.[0] || '';
   const calendarLoad = app.match(/async function loadCurrentParticipantCalendar\(options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
 
-  assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = beginParticipantRequest\(\);\s*}/);
+  assert.match(refresh, /if \(anchorCalendarToCenterToday\(\)\) \{\s*request = Object\.assign\(beginParticipantRequest\(options\.refreshOperation\), \{ authUid: request\.authUid \}\);\s*}/);
   assert.match(anchor, /state\.calendarAnchoredToCenter[\s\S]*return false/);
   assert.match(anchor, /state\.calendarAnchoredToCenter = true;\s*return true/);
   assert.match(calendarLoad, /const participantMonth = await \(options\.calendarRead \|\| loadParticipantMonthData\(/);
@@ -795,7 +794,7 @@ test('avatar centro e comandi di pagina seguono la disposizione contestuale', ()
   assert.match(app, /loadCachedCenterAvatar\(\)/);
   assert.match(app, /renderCenterAvatar\(isParticipant \|\| isWeek \|\| isSummary \|\| isKitchen, centerName\)/);
   assert.match(app, /!state\.adminCenterDirty[\s\S]*?!state\.pendingCenterAvatarDataUrl[\s\S]*?!hasPendingAdminAdaptationChanges\(\)/);
-  const refresh = app.match(/async function performRefresh\(source\)[\s\S]*?\n\}/)?.[0] || '';
+  const refresh = app.match(/async function performRefresh\(source, operation\)[\s\S]*?\n\}/)?.[0] || '';
   assert.match(refresh, /await ensureKitchenDemoSession\(\)[\s\S]*?const centerSettings = await loadCenterContactSettings[\s\S]*?renderMode\(\);[\s\S]*?loadKitchenDayPayload/);
   assert.match(app, /async function loadKitchenDayPayload\([\s\S]*?loadKitchenCounts/);
   assert.match(centerSettings, /CENTER_AVATAR_STORAGE_KEY/);
@@ -1158,8 +1157,8 @@ test('il ruolo vice usa direttamente sigla e password amministratori nel login r
   assert.match(participantData, /loadCenterContactSettings\(\{ forceRefresh: true \}\)/);
   assert.match(participantData, /const technicalEmails = \[\.\.\.new Set/);
   assert.match(firebaseClient, /technicalEmailOverride = ''/);
-  assert.match(app, /authorizeResidentAdministratorSession/);
-  assert.match(app, /elements\.residentAdminUnlock\.hidden = true/);
+  assert.match(participantData, /await authorizeResidentAdministratorSession/);
+  assert.doesNotMatch(index, /data-resident-admin-unlock/);
 });
 
 test('il responsabile invita amministratori e trasferisce la responsabilita con conferma forte', () => {

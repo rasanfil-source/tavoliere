@@ -985,52 +985,6 @@ export function formatDate(value, options = {}) {
 }
 
 /**
- * Formatta un numero secondo la lingua corrente
- * @param {number} value - Numero da formattare
- * @param {Object} options - Opzioni Intl.NumberFormat
- * @returns {string} Numero formattato
- */
-export function formatNumber(value, options = {}) {
-  if (typeof value !== 'number' || isNaN(value)) {
-    return String(value);
-  }
-
-  const defaultOptions = {};
-  const mergedOptions = { ...defaultOptions, ...options };
-  
-  try {
-    return new Intl.NumberFormat(currentLocale, mergedOptions).format(value);
-  } catch {
-    return String(value);
-  }
-}
-
-/**
- * Formatta una lista di valori secondo la lingua corrente
- * @param {Array<string>} values - Lista di valori
- * @param {Object} options - Opzioni Intl.ListFormat
- * @returns {string} Lista formattata
- */
-export function formatList(values, options = {}) {
-  if (!Array.isArray(values)) {
-    return String(values);
-  }
-
-  const defaultOptions = {
-    type: 'conjunction',
-    style: 'long',
-  };
-
-  const mergedOptions = { ...defaultOptions, ...options };
-  
-  try {
-    return new Intl.ListFormat(currentLocale, mergedOptions).format(values);
-  } catch {
-    return values.join(', ');
-  }
-}
-
-/**
  * Formatta un orario secondo la lingua corrente
  * @param {Date|string|number} value - Orario da formattare
  * @param {Object} options - Opzioni Intl.DateTimeFormat
@@ -1057,66 +1011,4 @@ export function formatTime(value, options = {}) {
   } catch {
     return date.toLocaleTimeString(currentLocale);
   }
-}
-
-/**
- * Localizza un valore enum (es. codice dieta, ruolo)
- * @param {string} namespace - Namespace dell'enum (es. 'diet.option', 'role')
- * @param {string} value - Valore da localizzare
- * @returns {string} Etichetta localizzata
- */
-export function localizeEnum(namespace, value) {
-  const key = `${namespace}.${value}`;
-  return t(key) || value;
-}
-
-/**
- * Pulisce la cache dei cataloghi
- */
-export function clearCatalogCache() {
-  catalogs.clear();
-}
-
-/**
- * Verifica che tutti i cataloghi abbiano le stesse chiavi del catalogo italiano
- * @returns {Object} Report di validazione
- */
-export function validateCatalogs() {
-  const italianCatalog = catalogs.get(DEFAULT_LOCALE) || {};
-  const italianKeys = new Set(Object.keys(italianCatalog).filter(k => !k.startsWith('_meta.')));
-  
-  const report = {
-    valid: true,
-    missingKeys: {},
-    extraKeys: {},
-  };
-
-  for (const locale of SUPPORTED_LOCALES) {
-    if (locale === DEFAULT_LOCALE) continue;
-    
-    const catalog = catalogs.get(locale) || {};
-    const catalogKeys = new Set(Object.keys(catalog).filter(k => !k.startsWith('_meta.')));
-    
-    const missing = [];
-    for (const key of italianKeys) {
-      if (!catalogKeys.has(key)) {
-        missing.push(key);
-      }
-    }
-    
-    const extra = [];
-    for (const key of catalogKeys) {
-      if (!italianKeys.has(key)) {
-        extra.push(key);
-      }
-    }
-    
-    if (missing.length > 0 || extra.length > 0) {
-      report.valid = false;
-      report.missingKeys[locale] = missing;
-      report.extraKeys[locale] = extra;
-    }
-  }
-
-  return report;
 }

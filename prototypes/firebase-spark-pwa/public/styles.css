@@ -252,25 +252,8 @@
   content: "- ";
 }
 
-.admin-role-chip,
 .session-role {
   display: none !important;
-}
-
-.admin-role-chip {
-  margin-left: auto;
-  padding: 2px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--line));
-  font-size: 0.85rem;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
-}
-
-@media (max-width: 620px) {
-  .admin-role-chip {
-    font-size: 0.8rem;
-  }
 }
 
 .field-label-compact {
@@ -2688,11 +2671,6 @@ html[data-theme="neutro"] {
 
 .admin-shell code {
   margin-top: 0;
-}
-
-.admin-shell-body > [data-auth-uid]:not([hidden]) {
-  display: block;
-  margin: 8px 0 12px;
 }
 
 .checkbox-row {
@@ -5989,23 +5967,6 @@ html[data-interface-style="original"] .month-day-number-today .month-day-number-
 .admin-shared-password-fields .password-field input {
   width: auto;
   max-width: 100%;
-}
-
-.admin-password-rotation-warning,
-.resident-admin-unlock {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 14px;
-  border: 1px solid var(--warn, #a15c00);
-  border-radius: var(--radius-md, 10px);
-  background: color-mix(in srgb, var(--warn, #a15c00) 10%, var(--surface));
-  color: var(--ink);
-}
-
-.admin-password-rotation-warning strong,
-.admin-password-rotation-warning span {
-  display: block;
 }
 
 .admin-succession-notice {

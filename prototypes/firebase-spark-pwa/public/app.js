@@ -5,7 +5,6 @@ import {
   setLocale,
   getLocale,
   resolveLocale,
-  formatDate,
   formatTime,
   applyTranslations,
   SUPPORTED_LOCALES
@@ -16,7 +15,6 @@ import {
 import { escapeHtml } from './html-utils.js?v=20261014b';
 import {
   getCurrentUser,
-  authorizeResidentAdministratorSession,
   isFirebaseConfigured,
   isResidentTechnicalEmail,
   missingFirebaseConfigValues,
@@ -82,11 +80,6 @@ import {
 } from './core/auth-state-machine.mjs?v=20261014b';
 import { toUserMessage, isRecoverableSessionError } from './core/user-error.mjs?v=20261031b';
 import {
-  markStartupStage,
-  measureStartupStep,
-  observeStartupPaintMetrics
-} from './core/startup-timing.mjs?v=20261014b';
-import {
   clearLegacyPersonalCalendarSnapshotsOnce,
   clearPersonalCalendarSnapshots
 } from './core/personal-calendar-cache.mjs?v=20261014b';
@@ -111,8 +104,6 @@ import {
   shouldShowSummaryContactHint
 } from './summary-contact-hint.mjs?v=20261014b';
 
-markStartupStage('app-evaluated');
-observeStartupPaintMetrics();
 clearLegacyPersonalCalendarSnapshotsOnce();
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -188,10 +179,10 @@ function loadDomainModule(name) {
 }
 
 function callDomain(name, exportName) {
-  return (...args) => measureStartupStep(`domain:${exportName}`, async () => {
+  return async (...args) => {
     const module = await loadDomainModule(name);
     return module[exportName](...args);
-  });
+  };
 }
 
 function preloadActiveViewModules() {
@@ -214,9 +205,24 @@ function preloadActiveViewModules() {
 
 function mountSummaryMatrix(container, options) {
   const requestedMode = state.mode;
+  const requestVersion = requestedMode === 'kitchen' ? state.kitchenRequestVersion : state.participantRequestVersion;
+  const mount = {};
+  container.summaryMount = mount;
+  const isCurrent = () => container?.isConnected && state.mode === requestedMode
+    && container.summaryMount === mount
+    && requestVersion === (requestedMode === 'kitchen' ? state.kitchenRequestVersion : state.participantRequestVersion);
   void loadDomainModule('summaryView').then((module) => {
-    if (!container?.isConnected || state.mode !== requestedMode) return;
+    if (!isCurrent()) return;
     module.mountSummaryMatrix(container, options);
+  }).catch(() => {
+    if (!isCurrent()) return;
+    delete container.dataset.renderKey;
+    container.innerHTML = `<p class="empty-state" role="status">${escapeHtml(t('calendar.loadFailed'))}</p><button type="button" class="tertiary-action" data-matrix-retry>${escapeHtml(t('calendar.retry'))}</button>`;
+    container.querySelector('[data-matrix-retry]')?.addEventListener('click', () => {
+      if (!isCurrent()) return;
+      container.innerHTML = `<p class="empty-state" role="status" aria-busy="true">${escapeHtml(t('common.status.loading'))}</p>`;
+      mountSummaryMatrix(container, options);
+    }, { once: true });
   });
 }
 
@@ -224,7 +230,7 @@ function scrollSummaryMatrix(container, offset, options) {
   void loadDomainModule('summaryView').then((module) => {
     if (!container?.isConnected) return;
     module.scrollSummaryMatrix(container, offset, options);
-  });
+  }).catch(() => undefined);
 }
 
 const bootstrapCenterData = callDomain('bootstrap', 'bootstrapCenterData');
@@ -645,7 +651,6 @@ const state = {
   refreshInFlight: false,
   pendingRefreshSource: '',
   activeRefreshKey: '',
-  pendingRefreshKey: '',
   participantRequestVersion: 0,
   personalCalendarScope: null,
   weekMassReady: false,
@@ -659,8 +664,7 @@ const state = {
   mode: initialMode,
   participants: [],
   selectedParticipant: null,
-  friendlyAccess: ['participant', 'week'].includes(initialMode)
-    || new URLSearchParams(window.location.search).get('access') === 'friendly',
+  friendlyAccess: isFriendlyResidentRoute(initialMode, window.location.search),
   residentReady: false,
   residentAuthTransition: '',
   residentSettingsMode: new URLSearchParams(window.location.search).get('access')
@@ -670,11 +674,9 @@ const state = {
   residentRestorePending: Boolean(loadStoredResidentSignature())
     && !isResidentEntryGateClosed(),
   residentSettingsRestorePending: false,
-  participantMeals: [],
   participantWeek: [],
   participantMonth: [],
   mealReminderDays: [],
-  participantSummary: null,
   calendarAnchoredToCenter: false,
   calendarAnchorDateId: '',
   todayOverview: [],
@@ -811,9 +813,16 @@ function invalidateViewRequests() {
   state.weekAgendaContext = '';
 }
 
-function beginParticipantRequest() {
+function isFriendlyResidentRoute(mode, search) {
+  const params = new URLSearchParams(search);
+  return ['participant', 'week'].includes(mode) || params.get('access') === 'friendly'
+    || mode === 'summary' && !params.get('t');
+}
+
+function beginParticipantRequest(operation) {
   state.participantRequestVersion += 1;
-  return {
+  const request = {
+    operation,
     version: state.participantRequestVersion,
     centerId: getActiveCenterId(),
     mode: state.mode,
@@ -821,16 +830,19 @@ function beginParticipantRequest() {
     weekStartDate: state.weekStartDate.getTime(),
     summaryDayOffset: state.summaryDayOffset
   };
+  if (operation) operation.request = request;
+  return request;
 }
 
 function isCurrentParticipantRequest(request) {
-  return request.version === state.participantRequestVersion
+  return !request.operation?.cancelled
+    && request.version === state.participantRequestVersion
     && request.centerId === getActiveCenterId()
     && (request.authUid === undefined || request.authUid === getCurrentUser()?.uid)
     && request.mode === state.mode
-    && request.monthDate === state.monthDate.getTime()
-    && request.weekStartDate === state.weekStartDate.getTime()
-    && request.summaryDayOffset === state.summaryDayOffset;
+    && (request.mode !== 'participant' || request.monthDate === state.monthDate.getTime())
+    && (request.mode !== 'week' || request.weekStartDate === state.weekStartDate.getTime())
+    && (request.mode !== 'summary' || request.summaryDayOffset === state.summaryDayOffset);
 }
 
 const elements = {
@@ -889,7 +901,6 @@ const elements = {
   initializerPassword: document.querySelector('[data-initializer-password]'),
   initializerPasswordToggle: document.querySelector('[data-password-toggle="initializer"]'),
   authStatus: document.querySelector('[data-auth-status]'),
-  authUid: document.querySelector('[data-auth-uid]'),
   adminCenterSwitcher: document.querySelector('[data-admin-center-switcher]'),
   adminCenterSelect: document.querySelector('[data-admin-center-select]'),
   adminPanel: document.querySelector('[data-admin-panel]'),
@@ -1082,12 +1093,6 @@ const elements = {
   adminSharedPasswordStatus: document.querySelector('[data-admin-shared-password-status]'),
   adminSharedPasswordCurrentToggle: document.querySelector('[data-password-toggle="admin-shared-current"]'),
   adminSharedPasswordNewToggle: document.querySelector('[data-password-toggle="admin-shared-new"]'),
-  adminPasswordRotationWarning: document.querySelector('[data-admin-password-rotation-warning]'),
-  residentAdminUnlock: document.querySelector('[data-resident-admin-unlock]'),
-  residentAdminPassword: document.querySelector('[data-resident-admin-password]'),
-  residentAdminPasswordToggle: document.querySelector('[data-password-toggle="resident-admin"]'),
-  residentAdminUnlockButton: document.querySelector('[data-resident-admin-unlock-button]'),
-  residentAdminUnlockStatus: document.querySelector('[data-resident-admin-unlock-status]'),
   adminCommonPasswordStatus: document.querySelector('[data-admin-common-password-status]'),
   adminCommonPasswordToggle: document.querySelector('[data-password-toggle="common-password"]'),
   adminAdministratorName: document.querySelector('[data-admin-administrator-name]'),
@@ -1101,7 +1106,6 @@ const elements = {
   startupSplashCopy: document.querySelector('[data-startup-splash-copy]'),
   title: document.querySelector('[data-title]'),
   titleCenter: document.querySelector('[data-title-center]'),
-  adminRoleChip: document.querySelector('[data-admin-role-chip]'),
   sessionRole: document.querySelector('[data-session-role]'),
   centerAvatar: document.querySelector('[data-center-avatar]'),
   kitchenPanel: document.querySelector('[data-kitchen-panel]'),
@@ -1417,12 +1421,6 @@ if (elements.adminSharedPasswordCurrentToggle) {
 if (elements.adminSharedPasswordNewToggle) {
   elements.adminSharedPasswordNewToggle.addEventListener('click', () => togglePasswordVisibility(elements.adminSharedPasswordNew, elements.adminSharedPasswordNewToggle));
 }
-if (elements.residentAdminPasswordToggle) {
-  elements.residentAdminPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.residentAdminPassword, elements.residentAdminPasswordToggle));
-}
-if (elements.residentAdminUnlockButton) {
-  elements.residentAdminUnlockButton.addEventListener('click', handleResidentAdministratorUnlock);
-}
 if (elements.initializerPasswordToggle) {
   elements.initializerPasswordToggle.addEventListener('click', () => togglePasswordVisibility(elements.initializerPassword, elements.initializerPasswordToggle));
 }
@@ -1519,8 +1517,7 @@ window.addEventListener('popstate', async () => {
   prepareMonthAutoScrollEntry(state.mode, nextMode);
   state.mode = nextMode;
   invalidateViewRequests();
-  state.friendlyAccess = ['participant', 'week', 'summary'].includes(state.mode)
-    || new URLSearchParams(window.location.search).get('access') === 'friendly';
+  state.friendlyAccess = isFriendlyResidentRoute(state.mode, window.location.search);
   renderMode();
   refreshNow('navigazione');
 });
@@ -1638,7 +1635,7 @@ async function bootstrapApp() {
   if (hasAdminInterface) initializeAuthPanel();
 
   // La vista Cucina crea la propria sessione prima di leggere le impostazioni protette.
-  const settingsPromise = ['kitchen', 'participant', 'week'].includes(state.mode)
+  const settingsPromise = ['kitchen', 'participant', 'week', 'summary'].includes(state.mode)
     ? Promise.resolve(null)
     : loadCenterContactSettings().catch(() => null);
   window.setTimeout(hideStartupSplash, 8000);
@@ -1747,7 +1744,6 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
-  markStartupStage('startup-gate-released');
   const appShell = document.querySelector('[data-app-shell]');
   if (appShell) {
     appShell.inert = false;
@@ -2854,22 +2850,6 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   if (requiresDifferentAdminIdentity) {
     elements.adminEmailStatus.textContent = t('admin.succession.identityMismatch');
   }
-  const roleLabels = {
-    OWNER: t('role.owner'),
-    ADMIN: t('role.admin'),
-    MANAGER: t('role.vice'),
-    RESIDENT: t('role.resident')
-  };
-  const roleLabel = state.platformOwner
-    ? t('role.platformOwner')
-    : isAdmin
-      ? roleLabels[access.role] || t('role.admin')
-      : '';
-  elements.adminRoleChip.hidden = true;
-  elements.adminRoleChip.textContent = '';
-  elements.authUid.hidden = true;
-  elements.authUid.textContent = '';
-  elements.centerInitializer.hidden = !access.needsInitialization;
   elements.bootstrapButton.hidden = !hasCurrentCapability(CAPABILITIES.MANAGE_CALENDAR);
   if (isPlatformOwner) {
     elements.bootstrapButton.hidden = true;
@@ -3041,10 +3021,6 @@ function setSignedOutState() {
       : t('auth.email.noGoogleNeeded'));
   elements.authStatus.textContent = t('app.header.accessRequired', {}, { fallback: 'Accesso richiesto' });
   elements.ownerExitButton.hidden = state.mode !== 'admin' || Boolean(getAdminInvitationId());
-  elements.adminRoleChip.hidden = true;
-  elements.adminRoleChip.textContent = '';
-  elements.authUid.hidden = true;
-  elements.authUid.textContent = '';
   elements.adminCenterSwitcher.hidden = true;
   elements.adminCenterSelect.replaceChildren();
   elements.bootstrapButton.hidden = true;
@@ -3979,6 +3955,8 @@ async function handleCenterInitialization() {
   }
 }
 
+const SUMMARY_STARTUP_LOAD_TIMEOUT_MS = 5_000;
+
 async function refreshNow(source) {
   const refreshKey = buildRefreshContextKey();
   if (state.refreshInFlight) {
@@ -3991,21 +3969,73 @@ async function refreshNow(source) {
       } else {
         state.pendingRefreshSource = state.pendingRefreshSource || source;
       }
-      state.pendingRefreshKey = refreshKey;
     }
     return;
   }
 
   state.refreshInFlight = true;
   state.activeRefreshKey = refreshKey;
+  const refreshMode = state.mode;
+  const operation = { cancelled: false };
   try {
-    await performRefresh(source);
+    const guardParticipantRefresh = ['summary', 'participant', 'week'].includes(refreshMode);
+    if (!guardParticipantRefresh) {
+      await performRefresh(source);
+      return;
+    }
+
+    let timeoutId = 0;
+    const outcome = await Promise.race([
+      performRefresh(source, operation).then(
+        () => ({ status: 'complete' }),
+        (error) => ({ status: 'error', error })
+      ),
+      new Promise((resolve) => {
+        timeoutId = window.setTimeout(
+          () => resolve({ status: 'timeout' }),
+          refreshMode === 'summary' ? SUMMARY_STARTUP_LOAD_TIMEOUT_MS : 15_000
+        );
+      })
+    ]);
+    if (timeoutId) window.clearTimeout(timeoutId);
+    if (outcome.status === 'error') throw outcome.error;
+    if (outcome.status !== 'timeout') return;
+
+    // Invalida il lavoro ancora pendente prima di sbloccare refreshInFlight:
+    // un completamento tardivo non deve sovrascrivere il nuovo tentativo.
+    const request = operation.request;
+    const current = request && isCurrentParticipantRequest(request);
+    operation.cancelled = true;
+    if (!current) {
+      // Se è cambiato soltanto il periodo della stessa richiesta, riparti una
+      // volta dal contesto corrente. Non riavviare accessi chiusi o superati.
+      if (request && request.version === state.participantRequestVersion
+          && request.centerId === getActiveCenterId() && request.mode === state.mode
+          && !state.residentAuthTransition && getCurrentUser()?.uid
+          && request.authUid === getCurrentUser()?.uid) {
+        state.participantRequestVersion += 1;
+        state.pendingRefreshSource ||= 'contesto-calendario';
+      }
+      return;
+    }
+    state.participantRequestVersion += 1;
+    hideStartupSplash();
+    const message = t('errors.timeout');
+    if (request.mode === 'summary') {
+      state.summaryLoadError = message;
+      renderMode();
+      renderTodayOverview();
+    } else {
+      state.calendarLoadErrorKey = calendarLoadContextKey();
+      const visibleDays = request.mode === 'week' ? state.participantWeek : state.participantMonth;
+      if (!visibleDays.length) renderCalendarPlaceholder();
+    }
+    setParticipantStatus(message, 'previous');
   } finally {
     state.refreshInFlight = false;
     state.activeRefreshKey = '';
     const pendingSource = state.pendingRefreshSource;
     state.pendingRefreshSource = '';
-    state.pendingRefreshKey = '';
     if (pendingSource) {
       refreshNow(pendingSource);
     }
@@ -4018,7 +4048,8 @@ function startOptionalOperationalRead(promise, {
   label,
   dateId,
   fallback,
-  onLateSettlement
+  onLateSettlement,
+  onSettlement
 } = {}) {
   const status = { value: fallback, settled: false, timedOut: false, failed: false };
   let initialSettled = false;
@@ -4050,19 +4081,21 @@ function startOptionalOperationalRead(promise, {
       status.timedOut = false;
       onLateSettlement?.(status);
     }
+    onSettlement?.(status);
   }).catch((error) => {
     const arrivedAfterTimeout = initialSettled && status.timedOut;
     status.value = fallback;
     status.settled = true;
     status.failed = true;
     if (!initialSettled) {
-      reportOptionalOperationalRead(label, dateId, error, fallback, []);
+      reportOptionalOperationalRead(label, dateId, error);
       settleInitial();
     } else if (arrivedAfterTimeout) {
       status.timedOut = false;
       console.warn(`Dato accessorio non disponibile (${label}, ${dateId})`, error?.code || '', error?.message || '');
       onLateSettlement?.(status);
     }
+    onSettlement?.(status);
   });
 
   return { initial, status };
@@ -4137,14 +4170,14 @@ async function loadSummaryDayPayload(date, {
         ? [noteRead.status.value]
         : [];
     payload.degraded = [operationRead.status, noteRead.status]
-      .some((read) => read.failed || read.timedOut);
+      .some((read) => !read.settled || read.failed);
     onLateUpdate?.(payload);
   };
   operationRead = startOptionalOperationalRead(loadDailyOperation(date, { forceRefresh }), {
-    label: 'Messa', dateId, fallback: null, onLateSettlement: updateLatePayload
+    label: 'Messa', dateId, fallback: null, onSettlement: updateLatePayload
   });
   noteRead = startOptionalOperationalRead(loadKitchenNote(date, { forceRefresh }), {
-    label: 'nota cucina', dateId, fallback: null, onLateSettlement: updateLatePayload
+    label: 'nota cucina', dateId, fallback: null, onSettlement: updateLatePayload
   });
   const [meals, dailyHealth] = await Promise.all([
     loadParticipantDaySummaries(date, {
@@ -4154,7 +4187,6 @@ async function loadSummaryDayPayload(date, {
     }),
     loadDailyHealth(date, { forceRefresh })
   ]);
-  await Promise.all([operationRead.initial, noteRead.initial]);
   payload = {
     dateId,
     meals: applyDailyDietsToSummary(meals, dailyHealth.dietAssignments),
@@ -4166,7 +4198,7 @@ async function loadSummaryDayPayload(date, {
         ? [noteRead.status.value]
         : [],
     degraded: [operationRead.status, noteRead.status]
-      .some((read) => read.failed || read.timedOut)
+      .some((read) => !read.settled || read.failed)
   };
   payloadReady = true;
   return payload;
@@ -4361,18 +4393,17 @@ function isCurrentKitchenRequest(version, centerId, dayOffset) {
 }
 
 function buildRefreshContextKey() {
-  return [
-    getActiveCenterId(),
-    state.mode,
-    state.selectedParticipant?.participantId || '',
-    formatDateId(state.weekStartDate),
-    formatMonthId(state.monthDate),
-    state.summaryDayOffset,
-    state.kitchenDayOffset
-  ].join(':');
+  const key = [getActiveCenterId(), state.mode];
+  if (state.mode === 'summary') key.push(state.summaryDayOffset);
+  else if (state.mode === 'kitchen') key.push(state.kitchenDayOffset);
+  else if (['week', 'participant'].includes(state.mode)) {
+    key.push(state.selectedParticipant?.participantId || '', state.mode === 'week'
+      ? formatDateId(state.weekStartDate) : formatMonthId(state.monthDate));
+  }
+  return key.join(':');
 }
 
-async function performRefresh(source) {
+async function performRefresh(source, operation) {
   state.refreshCount += 1;
   if (['participant', 'week', 'summary', 'kitchen'].includes(state.mode)) startServerClockSync();
   const now = new Date(serverNow());
@@ -4394,7 +4425,7 @@ async function performRefresh(source) {
   }
 
   if (state.mode === 'participant' || state.mode === 'week' || state.mode === 'summary') {
-    await refreshParticipant(source);
+    await refreshParticipant(source, { refreshOperation: operation });
     hideStartupSplash();
     return;
   }
@@ -4449,7 +4480,6 @@ async function performRefresh(source) {
     state.kitchenUpdatedAt = new Date(serverNow());
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
     renderMeals();
-    markStartupStage('kitchen-ready');
     setKitchenScreenFreshnessStatus(kitchenDayOffset);
 
     // Lo schermo di oggi usa oggi e domani (per la colazione); quello di domani
@@ -4600,7 +4630,7 @@ async function refreshParticipant(source, options = {}) {
   const retryPermission = !String(source || '').endsWith(':auth-retry');
   // L'aggiornamento viene programmato al completamento della scrittura per mantenere visibile la selezione ottimistica ancora in attesa.
   if (state.residentAuthTransition || state.pendingMealKeys?.size) return;
-  let request = beginParticipantRequest();
+  let request = beginParticipantRequest(options.refreshOperation);
   const initialCalendarRevision = participantCalendarRevision;
   state.calendarLoadErrorKey = '';
   if (state.mode === 'summary') state.summaryLoadError = '';
@@ -4621,7 +4651,6 @@ async function refreshParticipant(source, options = {}) {
   if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
   if (!hadVisibleData && state.mode === 'summary') renderTodayOverview();
   let preparedCalendar = null;
-  const optionalOperationalReadFailures = [];
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
@@ -4669,7 +4698,7 @@ async function refreshParticipant(source, options = {}) {
         const useOpeningPreference = options.loginHandshake
           || source === 'avvio' && isInstalledPersonalAppLaunch();
         if (useOpeningPreference && applyResidentEntryView()) {
-          request = beginParticipantRequest();
+          request = Object.assign(beginParticipantRequest(options.refreshOperation), { authUid: request.authUid });
         }
       } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
         state.residentRestorePending = false;
@@ -4683,7 +4712,7 @@ async function refreshParticipant(source, options = {}) {
       // L'identificazione applica le preferenze personali e renderMode allinea le date. La richiesta attiva segue il periodo così selezionato.
       if (request.weekStartDate !== state.weekStartDate.getTime()
           || request.monthDate !== state.monthDate.getTime()) {
-        request = { ...beginParticipantRequest(), authUid: getCurrentUser()?.uid };
+        request = Object.assign(beginParticipantRequest(options.refreshOperation), { authUid: getCurrentUser()?.uid });
       }
     }
     if (!isCurrentParticipantRequest(request)) return;
@@ -4698,7 +4727,12 @@ async function refreshParticipant(source, options = {}) {
       error.refreshStage = 'sessione';
       throw error;
     });
-    await sessionPromise;
+    const sessionUser = await sessionPromise;
+    // Il rinnovo può sostituire una sessione anonima scaduta. Accettiamo solo
+    // l'identità restituita dall'operazione, senza recuperare richieste superate.
+    if (sessionUser?.uid && sessionUser.uid === getCurrentUser()?.uid) {
+      request.authUid = sessionUser.uid;
+    }
     if (!isCurrentParticipantRequest(request)) return;
     // Il calendario personale richiede date e orari limite. Icona, presentazione e dati privilegiati si caricano separatamente.
     const personalRoute = ['participant', 'week'].includes(state.mode);
@@ -4715,12 +4749,11 @@ async function refreshParticipant(source, options = {}) {
     scheduleOperationalDayRefresh();
     if (!personalRoute) {
       await applyCenterDefaultLanguage(state.centerContactSettings);
-      await refreshResidentAdministratorAuthorization(() => isCurrentParticipantRequest(request));
-      await refreshStrongAdministratorOperationalAuthorization(() => isCurrentParticipantRequest(request));
     }
     // L'allineamento al fuso orario del centro può cambiare il periodo attivo. La richiesta viene associata alle date effettive prima di pubblicarne i dati.
+    if (!isCurrentParticipantRequest(request)) return;
     if (anchorCalendarToCenterToday()) {
-      request = beginParticipantRequest();
+      request = Object.assign(beginParticipantRequest(options.refreshOperation), { authUid: request.authUid });
     }
     if (state.mode === 'summary') {
       const summaryDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
@@ -4801,9 +4834,21 @@ async function refreshParticipant(source, options = {}) {
     if (!isCurrentParticipantRequest(request)) return;
     renderMode();
     renderParticipantMeals();
-    if (state.mode === 'summary') markStartupStage('summary-ready');
+    if (state.mode === 'summary') {
+      const authorizationRequest = request;
+      void refreshResidentAdministratorAuthorization(
+        () => isCurrentParticipantRequest(authorizationRequest)
+      ).then(() => refreshStrongAdministratorOperationalAuthorization(
+        () => isCurrentParticipantRequest(authorizationRequest)
+      )).then(() => {
+        if (isCurrentParticipantRequest(authorizationRequest)) renderMode();
+      }).catch((error) => {
+        if (isCurrentParticipantRequest(authorizationRequest)) {
+          console.warn('Verifica dei privilegi residente non riuscita', error?.code || '', error?.message || '');
+        }
+      });
+    }
     if (personalRoute) {
-      markStartupStage('calendar-ready');
       // Questa continuazione è indipendente dalla promessa di caricamento del calendario e di accesso.
       void refreshParticipantExtras(source, request);
     }
@@ -4815,10 +4860,8 @@ async function refreshParticipant(source, options = {}) {
       setSummaryScreenFreshnessStatus(source);
     } else {
       setParticipantStatus(
-        optionalOperationalReadFailures.length
-          ? t('calendar.status.extrasUnavailable')
-          : formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
-        optionalOperationalReadFailures.length ? 'degraded' : 'current'
+        formatRefreshLabel(source, state.lastSuccessfulRefreshAt),
+        'current'
       );
     }
   } catch (error) {
@@ -4892,7 +4935,8 @@ async function refreshParticipant(source, options = {}) {
   } finally {
     hideStartupSplash();
     // Un allineamento tardivo delle date richiede un nuovo caricamento del periodo. Il recupero riguarda soltanto la richiesta ancora attiva; navigazione e autenticazione mantengono la precedenza.
-    if (!state.residentAuthTransition
+    if (!options.refreshOperation?.cancelled
+        && !state.residentAuthTransition
         && ['week', 'participant'].includes(state.mode)
         && request.version === state.participantRequestVersion
         && request.centerId === getActiveCenterId()
@@ -4926,7 +4970,6 @@ function clearParticipantDataAfterAccessRevocation() {
   state.residentEntryKind = '';
   state.selectedParticipant = null;
   state.participants = [];
-  state.participantMeals = [];
   state.participantWeek = [];
   state.participantMonth = [];
   state.todayOverview = [];
@@ -4936,7 +4979,6 @@ function clearParticipantDataAfterAccessRevocation() {
   state.summaryOperations = [];
   state.summaryDailyOperation = null;
   state.summaryDailyHealth = null;
-  state.participantSummary = null;
   renderParticipantMeals();
 }
 
@@ -4953,14 +4995,12 @@ function clearKitchenDataAfterAccessRevocation() {
   state.kitchenUpdatedAt = null;
 }
 
-function reportOptionalOperationalRead(label, dateId, error, fallback, failures) {
+function reportOptionalOperationalRead(label, dateId, error) {
   console.warn(
     `Dato accessorio non disponibile (${label}, ${dateId})`,
     error?.code || '',
     error?.message || ''
   );
-  failures.push({ label, dateId });
-  return fallback;
 }
 
 function initializeResidentAccess() {
@@ -5115,7 +5155,6 @@ async function handleForgetDevice() {
     state.mode = 'participant';
     state.friendlyAccess = true;
     state.participants = [];
-    state.participantMeals = [];
     state.participantWeek = [];
     state.participantMonth = [];
     state.todayOverview = [];
@@ -5138,7 +5177,6 @@ async function handleForgetDevice() {
     renderResidentAccess(true);
     renderMode();
     elements.residentSignatureInput.focus();
-    if (leavingPrivilegedControlPanel) transitionAuthLifecycle('SIGN_OUT_COMPLETE');
     return;
   }
   try {
@@ -5156,37 +5194,13 @@ async function handleForgetDevice() {
   state.residentAuthTransition = '';
   invalidateViewRequests();
   if (!state.adminRole) state.adminParticipants = [];
-  if (leavingAdminPanel) {
-    // L'uscita dal pannello conduce al percorso di accesso residente, che mostra il modulo con sigla e password.
-    const residentUrl = new URL(window.location.href);
-    residentUrl.searchParams.set('view', 'participant');
-    residentUrl.searchParams.set('access', 'friendly');
-    residentUrl.searchParams.delete('invite');
-    residentUrl.searchParams.delete('adminInvite');
-    window.location.assign(residentUrl.pathname + residentUrl.search);
-    return;
-  }
-  // L'uscita dalle viste residenti azzera anche il percorso operativo e prepara un unico punto di accesso per la sessione successiva.
+  // Solo l'uscita dal pannello privilegiato raggiunge questo punto.
   const residentUrl = new URL(window.location.href);
   residentUrl.searchParams.set('view', 'participant');
   residentUrl.searchParams.set('access', 'friendly');
-  window.history.replaceState({}, '', residentUrl.pathname + residentUrl.search);
-  state.mode = 'participant';
-  invalidateViewRequests();
-  state.participants = [];
-  state.participantWeek = [];
-  state.participantMonth = [];
-  state.todayOverview = [];
-  state.summaryPayloadCenterId = '';
-  state.summaryLoadError = '';
-  state.summaryDays = [];
-  state.summaryOperations = [];
-  state.summaryDailyOperation = null;
-  state.summaryDailyHealth = null;
-  renderResidentAccess(true);
-  renderMode();
-  elements.residentLoginStatus.textContent = 'Sei uscito.';
-  transitionAuthLifecycle('SIGN_OUT_COMPLETE');
+  residentUrl.searchParams.delete('invite');
+  residentUrl.searchParams.delete('adminInvite');
+  window.location.assign(residentUrl.pathname + residentUrl.search);
 }
 
 const adminLoadedResources = new Set();
@@ -5638,12 +5652,11 @@ async function performOwnershipTransfer() {
     elements.adminLeadershipStatus.textContent = 'Trasferimento annullato';
     return;
   }
-  const revokePrevious = true;
 
   elements.adminTransferOwnership.disabled = true;
   elements.adminLeadershipStatus.textContent = 'Trasferisco la responsabilità...';
   try {
-    const result = await transferCenterOwnership(successorUid, { revokePrevious });
+    const result = await transferCenterOwnership(successorUid, { revokePrevious: true });
     state.adminInvitations = state.adminInvitations.map((invitation) => (
       invitation.invitationId === result.invitationId
         ? { ...invitation, status: 'TRANSFERRED', transferredTo: result.ownerUid }
@@ -5659,11 +5672,7 @@ async function performOwnershipTransfer() {
       confirmLabel: t('common.actions.exit'),
       hideCancel: true
     });
-    if (revokePrevious) {
-      await signOutCurrentUser();
-    } else {
-      await applyAdminAuthState(getCurrentUser());
-    }
+    await signOutCurrentUser();
   } catch (error) {
     const message = friendlyErrorMessage(error, 'Trasferimento non riuscito');
     elements.adminLeadershipStatus.textContent = message;
@@ -6518,13 +6527,6 @@ function syncAdminAdaptationsForm() {
     elements.adminLanguageSelect.value = getLocale();
   }
   syncMealReminderControl();
-  if (elements.residentAdminUnlock) {
-    // Il vice accede dal modulo iniziale con sigla e password amministratori. Il residente ordinario vede soltanto le funzioni del proprio perimetro.
-    elements.residentAdminUnlock.hidden = true;
-  }
-  if (elements.adminPasswordRotationWarning) {
-    elements.adminPasswordRotationWarning.hidden = true;
-  }
 }
 
 function invitationPrompt() {
@@ -6848,17 +6850,6 @@ function renderMode() {
   const appDisplayName = state.centerContactSettings.appDisplayName
     || DEFAULT_APP_DISPLAY_NAME;
   document.body.dataset.residentLoginVisible = showResidentLogin ? 'true' : 'false';
-  const sessionRole = state.platformOwner
-    ? t('role.platformOwner')
-    : state.adminRole === 'OWNER'
-      ? t('role.owner')
-      : state.adminRole === 'ADMIN'
-      ? t('role.admin')
-      : state.adminRole === 'MANAGER'
-        ? t('role.vice')
-        : state.residentReady
-          ? t('role.resident')
-          : '';
   [elements.participantStatusName, elements.weekStatusName].forEach((element) => {
     if (!element) return;
     element.textContent = participantName;
@@ -9523,7 +9514,6 @@ async function restoreResidentSettingsPanel() {
     state.residentSettingsRestorePending = false;
   }
   if (elements.adminSharedPasswordRow) elements.adminSharedPasswordRow.hidden = true;
-  if (elements.adminPasswordRotationWarning) elements.adminPasswordRotationWarning.hidden = true;
 }
 
 function renderResidentSettingsPanel() {
@@ -9609,33 +9599,6 @@ async function refreshStrongAdministratorOperationalAuthorization(isCurrent = ()
   state.adminCanManageDailyOperations = membership.canManageDailyOperations === true;
   state.residentAdministratorAuthorized = false;
   return state.adminCanManageDailyOperations;
-}
-
-async function handleResidentAdministratorUnlock() {
-  if (!state.selectedParticipant || !elements.residentAdminPassword?.value) return;
-  elements.residentAdminUnlockButton.disabled = true;
-  elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.checking');
-  try {
-    await authorizeResidentAdministratorSession({
-      centerId: getActiveCenterId(),
-      participantId: state.selectedParticipant.participantId,
-      password: elements.residentAdminPassword.value,
-      passwordVersion: state.centerContactSettings.adminPasswordVersion,
-      technicalEmail: state.centerContactSettings.adminTechnicalEmail
-    });
-    state.residentAdministratorAuthorized = true;
-    state.residentEntryKind = 'shared-admin';
-    elements.residentAdminPassword.value = '';
-    elements.residentAdminUnlockStatus.textContent = t('admin.sharedPassword.unlocked');
-    await activateResidentAdministratorPanel();
-  } catch (error) {
-    elements.residentAdminUnlockStatus.textContent = friendlyErrorMessage(
-      error,
-      t('admin.sharedPassword.unlockFailed')
-    );
-  } finally {
-    elements.residentAdminUnlockButton.disabled = false;
-  }
 }
 
 function getResidentAuthorizedRole() {
@@ -10395,15 +10358,6 @@ function filterKitchenNoteForToday(note) {
   };
 }
 
-function kitchenNoteTimestampDateId(value) {
-  const date = toJavaScriptDate(value);
-  if (!date || Number.isNaN(date.getTime())) return '';
-  return formatDateId(getDateInTimeZone(
-    state.centerContactSettings.timezone || 'Europe/Rome',
-    date
-  ));
-}
-
 function formatKitchenWindowLabel(meal) {
   const closesAt = toJavaScriptDate(meal.closesAt);
   if (!closesAt || Number.isNaN(closesAt.getTime())) {
@@ -10527,7 +10481,6 @@ async function loadCurrentParticipantWeek(options = {}) {
   if (selectedDay) {
     state.selectedSummaryDate = selectedDay.date;
   }
-  state.participantSummary = null;
 }
 
 const PARTICIPANT_MONTH_CACHE_MS = 60 * 1000;
@@ -10623,7 +10576,6 @@ async function loadCurrentParticipantCalendar(options = {}) {
   if (!state.selectedParticipant && !(state.mode === 'week' && canUseWeekWithoutParticipant())) {
     state.participantWeek = [];
     state.participantMonth = [];
-    state.participantSummary = null;
     return;
   }
 
@@ -10644,7 +10596,6 @@ async function loadCurrentParticipantCalendar(options = {}) {
     if (options.isCurrentRequest && !options.isCurrentRequest()) return false;
     state.participantMonth = participantMonth;
     state.participantWeek = [];
-    state.participantSummary = null;
     prefetchNextParticipantMonth(state.selectedParticipant.participantId, monthStart, {
       ...options,
       timezone: state.centerContactSettings.timezone
@@ -11026,10 +10977,6 @@ function formatCutoffLabel(meal) {
   return t('meal.status.closedAt', { time });
 }
 
-function formatWeekRange() {
-  return formatWeekRangeFrom(state.weekStartDate);
-}
-
 function formatWeekRangeFrom(startDate) {
   const start = startDate;
   const end = new Date(start);
@@ -11144,11 +11091,15 @@ function registerServiceWorker() {
     return;
   }
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+  const register = () => {
+    // Anche un rifiuto sincrono del browser non deve interrompere l'avvio.
+    Promise.resolve().then(() => navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }))
       .then((registration) => registration.update())
       .catch(() => undefined);
-  }, { once: true });
+  };
+  // Il caricamento dei moduli può concludersi dopo load, anche alla riapertura.
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
 }
 
 async function handleAccessLinkCopy(event) {

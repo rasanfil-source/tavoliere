@@ -180,7 +180,7 @@ test('meals become usable while roles, presentation and accessory continuation r
     loadCurrentParticipantCalendar: async () => { calls.push('meals'); await meals.promise; return true; },
     renderMode() {}, renderParticipantMeals: () => calls.push('render'),
     hideStartupSplash: () => { assert.ok(calls.includes('render')); splashHidden = true; },
-    markStartupStage: (name) => calls.push(name), refreshParticipantExtras: () => { calls.push('extras'); return new Promise(() => {}); },
+    refreshParticipantExtras: () => { calls.push('extras'); return new Promise(() => {}); },
     refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => 'updated'
   });
   vm.runInContext(extract(app, 'refreshParticipant'), context);
@@ -191,7 +191,7 @@ test('meals become usable while roles, presentation and accessory continuation r
   meals.resolve();
   assert.equal(await refresh, true);
   assert.equal(splashHidden, true);
-  assert.deepEqual(calls, ['session', 'critical-settings', 'meals', 'render', 'calendar-ready', 'extras']);
+  assert.deepEqual(calls, ['session', 'critical-settings', 'meals', 'render', 'extras']);
 });
 
 test('a refresh during a pending selection does not start reads that can replace optimistic state', async () => {
@@ -326,7 +326,7 @@ test('essential meal reads start while current center settings are still pending
       const result = await preparedCalendar.result;
       assert.equal(result.value, days);
       calls.push('usable');
-    }, renderMode() {}, renderParticipantMeals() {}, hideStartupSplash() {}, markStartupStage() {},
+    }, renderMode() {}, renderParticipantMeals() {}, hideStartupSplash() {},
     refreshParticipantExtras: async () => {}, refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => ''
   });
   vm.runInContext(extract(app, 'preparePersonalCalendarRead') + extract(app, 'refreshParticipant'), context);

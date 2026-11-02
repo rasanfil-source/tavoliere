@@ -183,11 +183,6 @@ export async function ensureOperationalLinks(user = getCurrentUser()) {
   return result;
 }
 
-export function invalidateOperationalLinksCache() {
-  cachedLinksByCenter.clear();
-  cachedLinksReadAt.clear();
-}
-
 async function resolveOperationalLinkStatuses(centerId, links) {
   const [publicSnapshot, kitchenSnapshot] = await Promise.all([
     links.publicTokenId ? getDoc(tokenRef(centerId, links.publicTokenId)) : Promise.resolve(null),
