@@ -26,7 +26,6 @@ import {
   setDoc
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { firestoreSettingsForBrowser } from './core/firebase-runtime-policy.mjs?v=20261014b';
-import { markStartupStage, measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 
 export const firebaseConfig = {
   apiKey: 'AIzaSyCpU6mbE1vUtFfhnQUULkjuvzPGhIv3ZTY',
@@ -46,7 +45,6 @@ export const missingFirebaseConfigValues = missingConfigValues;
 
 export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 // Auth usa localStorage fin dalla creazione, senza interrogare IndexedDB né caricare anticipatamente la finestra Google. Il supporto ai popup viene fornito al momento dell'uso.
-markStartupStage('auth-start');
 export const auth = app ? initializeAuth(app, { persistence: browserLocalPersistence }) : null;
 const firestoreSettings = firestoreSettingsForBrowser(globalThis.navigator);
 export const db = app ? initializeFirestore(app, firestoreSettings) : null;
@@ -55,7 +53,6 @@ const initialAuthReadyPromise = auth
   ? new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
-      markStartupStage('auth-ready');
       resolve(user);
     });
   })
@@ -174,41 +171,6 @@ export async function createAdministratorWithEmail(email, password) {
   });
 }
 
-export async function reuseAdministratorAccountForInvitation(email, password) {
-  if (!auth) {
-    throw new Error('Firebase non configurato');
-  }
-  return runAuthMutation(async () => {
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    const normalizedPassword = String(password || '');
-    const credential = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
-    const authenticatedEmail = String(credential.user.email || '').trim().toLowerCase();
-
-    if (!normalizedEmail || authenticatedEmail !== normalizedEmail) {
-      await signOut(auth);
-      const error = new Error('Accedi con lo stesso indirizzo indicato nell invito');
-      error.code = 'auth/invitation-email-mismatch';
-      throw error;
-    }
-
-    if (normalizedPassword.length >= 6) {
-      const hasPasswordAccess = credential.user.providerData.some(
-        (provider) => provider.providerId === 'password'
-      );
-      if (hasPasswordAccess) {
-        await updatePassword(credential.user, normalizedPassword);
-      } else {
-        await linkWithCredential(
-          credential.user,
-          EmailAuthProvider.credential(normalizedEmail, normalizedPassword)
-        );
-      }
-    }
-
-    return credential;
-  });
-}
-
 export function signOutCurrentUser() {
   if (!auth) {
     return Promise.resolve();
@@ -222,7 +184,7 @@ export function getCurrentUser() {
 }
 
 export function waitForAuthReady() {
-  return measureStartupStep('auth-restore', waitForStableAuth);
+  return waitForStableAuth();
 }
 
 export function signInAnonymousUser() {
@@ -251,20 +213,10 @@ export function formatTechnicalAuthPassword(password) {
   return raw;
 }
 
-export function signInResidentTechnicalUser(email, password) {
-  if (!auth) {
-    return Promise.reject(new Error('Firebase non configurato'));
-  }
-
-  const technicalPassword = formatTechnicalAuthPassword(password);
-  return runAuthMutation(() => signInWithEmailAndPassword(auth, email, technicalPassword));
-}
-
 const RESIDENT_TECHNICAL_EMAIL_DOMAIN = '@tavola-comune.local';
 const RESIDENT_TECHNICAL_EMAIL_PREFIX = 'residenti+';
 const ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX = 'amministratori+';
 const residentTechnicalEmailPattern = /^residenti\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
-const administratorTechnicalEmailPattern = /^amministratori\+[A-Za-z0-9_-]{1,120}@tavola-comune\.local$/i;
 let residentMaintenanceAuth = null;
 let residentMaintenanceAuthTail = Promise.resolve();
 
@@ -290,10 +242,6 @@ export function getAdministratorTechnicalEmail(centerId, passwordVersion = 0) {
     ? `_v${normalizedVersion}`
     : '';
   return `${ADMINISTRATOR_TECHNICAL_EMAIL_PREFIX}${normalizedCenterId}${versionSuffix}${RESIDENT_TECHNICAL_EMAIL_DOMAIN}`;
-}
-
-export function isAdministratorTechnicalEmail(email) {
-  return administratorTechnicalEmailPattern.test(String(email || '').trim());
 }
 
 async function getResidentMaintenanceAuth() {

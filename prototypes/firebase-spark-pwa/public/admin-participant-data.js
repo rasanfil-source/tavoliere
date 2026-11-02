@@ -1,6 +1,6 @@
 import {
-  arrayUnion, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc,
-  writeBatch, where, limit, orderBy, runTransaction, startAfter
+  arrayUnion, collection, doc, getDoc, getDocs, query, serverTimestamp,
+  where, limit, orderBy, runTransaction, startAfter
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
 import { getActiveCenterId } from './center-context.js?v=20261014b';
@@ -12,7 +12,7 @@ import { assertCurrentRevision, nextRevision, normalizeRevision } from './core/r
 import { CAPABILITIES, hasCapability, normalizeCenterRole } from './role-policy.mjs?v=20261014b';
 import { CENTER_BACKUP_SCHEMA_VERSION, RESTORABLE_CENTER_COLLECTIONS, sanitizeCenterBackupDocument } from './domain/center-backup.mjs?v=20261014b';
 import { invalidateCenterContactSettingsCache, loadCenterContactSettings } from './center-settings.js?v=20261014b';
-import { invalidateParticipantDataCaches, commitWithRetry, createRequestId } from './participant-data.js?v=20261014b';
+import { invalidateParticipantDataCaches, createRequestId } from './participant-data.js?v=20261014b';
 import { writeAdministratorDeletionProtection } from './administrator-deletion-protection.js?v=20261014b';
 
 const ADMIN_DELETE_BATCH_SIZE = 400;

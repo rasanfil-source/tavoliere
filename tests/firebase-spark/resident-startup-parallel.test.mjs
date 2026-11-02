@@ -138,7 +138,7 @@ test('preparation and calendar share one server-confirmed settings read', async 
   const { loadCenterCalendarSettings } = await loadBrowserModule('center-settings.js', {
     db: {}, getActiveCenterId: () => 'center', doc: (...parts) => parts,
     getDocFromServer: () => { count++; return read.promise; },
-    measureStartupStep: (_, operation) => operation(), normalizeReservationCutoffs: value => value
+    normalizeReservationCutoffs: value => value
   }, ['loadCenterCalendarSettings']);
   const preparation = loadCenterCalendarSettings();
   const calendar = loadCenterCalendarSettings();

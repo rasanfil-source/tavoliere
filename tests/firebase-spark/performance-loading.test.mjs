@@ -44,7 +44,7 @@ test('la schermata iniziale avvia Auth prima delle lingue e attende il calendari
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
   assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
   assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
-  assert.match(bootstrap, /\['kitchen', 'participant', 'week'\]\.includes\(state\.mode\)[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
+  assert.match(bootstrap, /\['kitchen', 'participant', 'week', 'summary'\]\.includes\(state\.mode\)[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
   assert.match(bootstrap, /initializeAuthPanel\(\);[\s\S]*const i18nPromise = initI18n[\s\S]*void i18nPromise\.then/);
   assert.doesNotMatch(bootstrap, /await i18nPromise/);
@@ -247,7 +247,7 @@ test('i selettori di riepilogo e cucina usano delega degli eventi', () => {
 
 test('le risposte tardive non sostituiscono una vista o una data piu recenti', () => {
   assert.match(app, /participantRequestVersion: 0/);
-  assert.match(app, /function beginParticipantRequest\(\)/);
+  assert.match(app, /function beginParticipantRequest\(operation\)/);
   assert.match(app, /function isCurrentParticipantRequest\(request\)/);
   assert.match(app, /isCurrentRequest: \(\) => isCurrentParticipantRequest\(request\)/);
   assert.match(app, /if \(!isCurrentParticipantRequest\(request\)\) return;/);

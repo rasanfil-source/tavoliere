@@ -1,7 +1,4 @@
-import {
-  PRESENT,
-  resolveEffectiveEffect
-} from '../prototypes/firebase-spark-pwa/public/reservation-state.mjs?v=20261014b';
+import { countKitchenMeals } from './lib/kitchen-accounting.mjs';
 import {
   addDaysToDateId,
   zonedLocalDateTimeToDate
@@ -67,7 +64,6 @@ for (const centerDocument of centers) {
       .map((daysBack) => addDaysToDateId(localToday, -daysBack))
       .reverse()
       .filter((dateId) => dateId >= trackingStartedOn);
-    let rules = null;
 
     for (const dateId of targetDates) {
       const path = `centers/${centerId}/${dailyCollection}/${dateId}`;
@@ -81,11 +77,6 @@ for (const centerDocument of centers) {
       const closesAt = mealCutoff && mealCutoff > booksClose ? mealCutoff : booksClose;
       if (!closesAt || closesAt > now) continue;
 
-      if (!rules) {
-        rules = (await listDocuments(`centers/${centerId}/reservationRules`))
-          .map((document) => decodeFields(document.fields || {}));
-      }
-
       const overrides = (await queryDocuments(`centers/${centerId}`, 'reservationOverrides', [
         { field: 'mealDate', op: 'EQUAL', value: dateId }
       ])).map((document) => decodeFields(document.fields || {}));
@@ -93,7 +84,7 @@ for (const centerDocument of centers) {
       const dailyHealth = dailyHealthDocument
         ? decodeFields(dailyHealthDocument.fields || {})
         : {};
-      const { counts, invitedCounts } = countKitchenMeals({ rules, overrides, dailyHealth, dateId });
+      const { counts, invitedCounts } = countKitchenMeals({ overrides, dailyHealth, dateId });
 
       await createDocument(path, {
         centerId,
@@ -126,55 +117,6 @@ console.log(JSON.stringify({
   writtenMonthlySummaries,
   deletedDocuments
 }));
-
-function countKitchenMeals({ rules, overrides, dailyHealth, dateId }) {
-  const rulesByParticipant = new Map();
-  rules.forEach((rule) => {
-    if (typeof rule.participantId !== 'string' || !rule.participantId) return;
-    const participantRules = rulesByParticipant.get(rule.participantId) || [];
-    participantRules.push(rule);
-    rulesByParticipant.set(rule.participantId, participantRules);
-  });
-
-  const sickIds = new Set((Array.isArray(dailyHealth.sickPeople) ? dailyHealth.sickPeople : [])
-    .map((person) => String(person?.participantId || '').trim())
-    .filter(Boolean));
-  const invitedMeals = dailyHealth.invitedMeals || {};
-  const invitedCounts = {};
-  const counts = {};
-
-  for (const mealTypeId of mealTypeIds) {
-    const mealOverrides = overrides.filter((override) => override.mealTypeId === mealTypeId);
-    const overrideByParticipant = new Map(mealOverrides.map((override) => [
-      override.participantId,
-      override
-    ]));
-    const participantIds = new Set([
-      ...rulesByParticipant.keys(),
-      ...mealOverrides.map((override) => override.participantId)
-    ]);
-    let presentCount = 0;
-
-    for (const participantId of participantIds) {
-      const participantRules = rulesByParticipant.get(participantId) || [];
-      const override = overrideByParticipant.get(participantId);
-      const effect = resolveEffectiveEffect({
-        participantId,
-        mealTypeId,
-        mealDate: dateId,
-        rules: participantRules,
-        override
-      });
-      if (effect === PRESENT && !sickIds.has(participantId)) presentCount += 1;
-    }
-
-    const invitedCount = Math.min(999, Math.max(0, Math.floor(Number(invitedMeals[mealTypeId]) || 0)));
-    invitedCounts[mealTypeId] = invitedCount;
-    counts[mealTypeId] = presentCount + invitedCount;
-  }
-
-  return { counts, invitedCounts };
-}
 
 function latestCompleteCutoff(windowDocuments) {
   const windows = windowDocuments.map((document) => decodeFields(document.fields || {}));

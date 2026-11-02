@@ -239,11 +239,16 @@ export async function saveSickPeople(date, sickPeople, options = {}) {
   return cloneDailyHealth(value);
 }
 
-export async function saveDietAssignments(date, participantId, dietTag) {
+export async function saveDietAssignments(date, participantId, dietTag, { duration = 1 } = {}) {
   if (!db) {
     throw new Error('Firebase non configurato');
   }
-  const dateId = formatDateId(date);
+  if (duration !== 1 && duration !== 2) throw new Error('Seleziona uno o due giorni');
+  const dateIds = Array.from({ length: duration }, (_, index) => {
+    const day = new Date(date);
+    day.setDate(day.getDate() + index);
+    return formatDateId(day);
+  });
   const centerId = getActiveCenterId();
   const normalizedId = String(participantId || '').trim();
   const normalizedTag = normalizeDietCode(dietTag);
@@ -251,32 +256,35 @@ export async function saveDietAssignments(date, participantId, dietTag) {
     && normalizeDietAssignments([{ participantId: normalizedId, dietTag: normalizedTag }]).length !== 1)) {
     throw new Error('Persona o dieta non valida');
   }
-  const reference = doc(db, 'centers', centerId, 'dailyHealth', dateId);
-  const value = await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(reference);
-    const current = snapshot.exists() ? snapshot.data() : {};
-    const assignments = normalizeDietAssignments(current.dietAssignments)
-      .filter((assignment) => assignment.participantId !== normalizedId);
-    if (normalizedTag !== 'STANDARD') {
-      if (assignments.length >= 100) throw new Error('Limite di 100 diete giornaliere raggiunto');
-      assignments.push({ participantId: normalizedId, dietTag: normalizedTag });
-    }
-    transaction.set(reference, {
-      centerId,
-      dateId,
-      dietAssignments: assignments,
+  const references = dateIds.map(dateId => doc(db, 'centers', centerId, 'dailyHealth', dateId));
+  const values = await runTransaction(db, async (transaction) => {
+    // Leggere e validare entrambe le giornate prima di accodare le scritture:
+    // anche un errore di capienza sul secondo giorno annulla l'intera scelta.
+    const snapshots = await Promise.all(references.map(reference => transaction.get(reference)));
+    const nextValues = snapshots.map((snapshot, index) => {
+      const current = snapshot.exists() ? snapshot.data() : {};
+      const assignments = normalizeDietAssignments(current.dietAssignments)
+        .filter((assignment) => assignment.participantId !== normalizedId);
+      if (normalizedTag !== 'STANDARD') {
+        if (assignments.length >= 100) throw new Error('Limite di 100 diete giornaliere raggiunto');
+        assignments.push({ participantId: normalizedId, dietTag: normalizedTag });
+      }
+      return {
+        dateId: dateIds[index],
+        sickPeople: normalizeSickPeople(current.sickPeople),
+        dietAssignments: assignments,
+        invitedMeals: normalizeInvitedMeals(current.invitedMeals),
+        updatedAt: new Date()
+      };
+    });
+    nextValues.forEach((value, index) => transaction.set(references[index], {
+      centerId, dateId: value.dateId, dietAssignments: value.dietAssignments,
       updatedAt: serverTimestamp()
-    }, { merge: true });
-    return {
-      dateId,
-      sickPeople: normalizeSickPeople(current.sickPeople),
-      dietAssignments: assignments,
-      invitedMeals: normalizeInvitedMeals(current.invitedMeals),
-      updatedAt: new Date()
-    };
+    }, { merge: true }));
+    return nextValues;
   });
-  writeCenterCache(dailyHealthCache, dateId, centerId, value);
-  return cloneDailyHealth(value);
+  values.forEach(value => writeCenterCache(dailyHealthCache, value.dateId, centerId, value));
+  return cloneDailyHealth(values[0]);
 }
 
 export async function saveInvitedMeals(date, invitedMeals, options = {}) {

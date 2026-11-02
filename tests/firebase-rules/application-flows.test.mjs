@@ -111,6 +111,48 @@ test('la prima dieta si salva senza inizializzare ammalati o invitati', async ()
   assert.deepEqual(saved.invitedMeals, { breakfast: 0, lunch: 0, dinner: 0 });
 });
 
+test('una dieta di due giorni resta atomica se il secondo giorno è pieno, poi si può riprovare', async () => {
+  const daily = await dailyModule();
+  const tomorrow = new Date(date);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowId = dates.formatDateId(tomorrow);
+  const secondRef = firestore.doc(database(), path('dailyHealth/' + tomorrowId));
+  const assignments = Array.from({ length: 100 }, (_, i) => ({ participantId: 'p' + i, dietTag: '1' }));
+  await firestore.setDoc(secondRef, {
+    centerId: center, dateId: tomorrowId, dietAssignments: assignments,
+    invitedMeals: { lunch: 3 }, updatedAt: firestore.serverTimestamp()
+  });
+  await daily.loadDailyHealth(date);
+  await daily.loadDailyHealth(tomorrow);
+  await assert.rejects(daily.saveDietAssignments(date, person, '7', { duration: 2 }), /100/);
+  assert.equal((await firestore.getDoc(firestore.doc(database(), path('dailyHealth/' + dateId)))).exists(), false);
+  assert.deepEqual((await daily.loadDailyHealth(date)).dietAssignments, []);
+  assert.deepEqual((await daily.loadDailyHealth(tomorrow, { forceRefresh: true })).dietAssignments, assignments);
+  await firestore.updateDoc(secondRef, { dietAssignments: [], updatedAt: firestore.serverTimestamp() });
+  await daily.saveDietAssignments(date, person, '7', { duration: 2 });
+  for (const day of [date, tomorrow]) {
+    assert.deepEqual((await daily.loadDailyHealth(day, { forceRefresh: true })).dietAssignments,
+      [{ participantId: person, dietTag: '7' }]);
+  }
+  assert.equal((await daily.loadDailyHealth(tomorrow)).invitedMeals.lunch, 3);
+});
+
+test('le regole rifiutano entrambe le giornate della dieta se una scrittura non è valida', async () => {
+  const daily = await dailyModule();
+  const tomorrow = new Date(date);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowId = dates.formatDateId(tomorrow);
+  await environment.withSecurityRulesDisabled(async context => {
+    await firestore.setDoc(firestore.doc(context.firestore(), path('dailyHealth/' + tomorrowId)), {
+      centerId: center, dateId: tomorrowId, invitedMeals: { lunch: 1000 },
+      updatedAt: firestore.serverTimestamp()
+    });
+  });
+  await assertFails(daily.saveDietAssignments(date, person, '7', { duration: 2 }));
+  assert.equal((await firestore.getDoc(firestore.doc(database(), path('dailyHealth/' + dateId)))).exists(), false);
+  assert.equal((await firestore.getDoc(firestore.doc(database(), path('dailyHealth/' + tomorrowId)))).data().dietAssignments, undefined);
+});
+
 test('invitati e diete si salvano su giornate nuove e le scritture concorrenti preservano i campi', async () => {
   const [first, second, third] = await Promise.all([dailyModule(), dailyModule(), dailyModule()]);
   await Promise.all([

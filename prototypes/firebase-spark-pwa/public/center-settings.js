@@ -7,13 +7,11 @@ import {
   writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
-import { measureStartupStep } from './core/startup-timing.mjs?v=20261014b';
 import { getActiveCenterId, getCenterScopedStorageKey } from './center-context.js?v=20261014b';
 import { normalizeReservationCutoffs } from './schedule-utils.mjs?v=20261014b';
 import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
 
 export const CENTER_AVATAR_STORAGE_KEY = 'tavolaComune.centerAvatar';
-export const DEFAULT_VIEW_CACHE_KEY = 'tavolaComune.defaultViewCache';
 export const CENTER_PRESENTATION_CACHE_KEY = 'tavolaComune.centerPresentation';
 export const DEFAULT_APP_DISPLAY_NAME = 'Oggi a tavola';
 export const DEFAULT_APP_DISPLAY_SUBTITLE = 'Per prenotarsi sempre in tempo!';
@@ -54,7 +52,7 @@ export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) 
     return calendarSettingsLoad.promise;
   }
   const pending = { centerId, revision };
-  pending.promise = measureStartupStep('calendar-settings', async () => {
+  pending.promise = (async () => {
     const snapshot = await getDocFromServer(doc(db, 'centers', centerId));
     if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) {
       const error = new Error('Impostazioni in attesa di conferma');
@@ -75,7 +73,7 @@ export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) 
       calendarSettingsCache = { centerId, value, snapshot, cachedAt: Date.now() };
     }
     return value;
-  }).finally(() => {
+  })().finally(() => {
     if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
   });
   calendarSettingsLoad = pending;
@@ -144,24 +142,6 @@ export function loadCachedCenterAvatar() {
   return readCenterAvatarCache()?.dataUrl || '';
 }
 
-export function loadCachedDefaultView() {
-  try {
-    const raw = window.localStorage.getItem(getCenterScopedStorageKey(DEFAULT_VIEW_CACHE_KEY));
-    return ALLOWED_VIEW_VALUES.has(raw) ? raw : DEFAULT_OPENING_VIEW;
-  } catch {
-    return DEFAULT_OPENING_VIEW;
-  }
-}
-
-export function cacheDefaultView(value) {
-  const normalized = ALLOWED_VIEW_VALUES.has(value) ? value : DEFAULT_OPENING_VIEW;
-  try {
-    window.localStorage.setItem(getCenterScopedStorageKey(DEFAULT_VIEW_CACHE_KEY), normalized);
-  } catch {
-    // La cache locale evita solo lo sfarfallio al primo render; non è indispensabile.
-  }
-}
-
 export function invalidateCenterContactSettingsCache() {
   centerContactSettingsRevision += 1;
   centerContactSettingsCache = null;
@@ -206,7 +186,7 @@ export async function loadCenterContactSettings({ forceRefresh = false } = {}) {
     }
     return centerContactSettingsCache.value;
   }
-  return measureStartupStep('center-settings', refreshCenterContactSettings);
+  return refreshCenterContactSettings();
 }
 
 export async function updateKitchenLayout(layout) {
@@ -342,7 +322,6 @@ export async function updateCenterSettings({
     onProgress
   });
   invalidateCenterContactSettingsCache();
-  cacheDefaultView(settings.defaultView);
   storeCachedCenterContactSettings({
     ...(loadCachedCenterContactSettings() || {}),
     ...settings
@@ -511,7 +490,6 @@ function refreshCenterContactSettings() {
         avatarVersion,
         avatarDataUrl
       };
-      cacheDefaultView(value.defaultView);
       storeCachedCenterContactSettings(value);
       centerContactSettingsCache = { centerId, value, cachedAt: Date.now() };
       return value;

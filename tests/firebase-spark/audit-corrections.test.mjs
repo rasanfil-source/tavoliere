@@ -194,7 +194,7 @@ test('a wrong administrator password can be corrected without trapping subsequen
 test('administrator Auth retry accepts the password already applied by an interrupted attempt', async () => {
   const signedIn = [];
   const h = await loadBrowserModule('firebase-client.js', {
-    initializeApp: () => null, markStartupStage() {}, firestoreSettingsForBrowser: () => ({}),
+    initializeApp: () => null, firestoreSettingsForBrowser: () => ({}),
     GoogleAuthProvider: class {}, getApps: () => [{ name: 'tavola-comune-resident-maintenance' }],
     initializeAuth: () => ({}), inMemoryPersistence: {}, signOut: async () => {},
     signInWithEmailAndPassword: async (_, email, password) => {

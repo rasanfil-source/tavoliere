@@ -6,6 +6,8 @@ La raccolta inizia il **1° novembre 2026**. Ogni giornata viene registrata quan
 
 La colazione è attribuita alla data del pasto. Quella del 1° novembre, anche se prenotata il 31 ottobre, rientra quindi nei conteggi del **1° novembre**.
 
+La contabilità usa le prenotazioni esplicite (`PRESENT`/`ABSENT`) registrate per quella data, senza dipendere dallo stato attuale della regola anagrafica. Sospendere una persona non deve cancellare dal conteggio un pasto già prenotato. Le viste operative continuano a usare lo stato attuale della persona. L'eliminazione definitiva rimuove invece anche le prenotazioni: quelle eliminate prima della registrazione giornaliera non sono ricostruibili da questo job. I registri contabili già prodotti restano immutati.
+
 Ogni registro giornaliero contiene soltanto il centro, la data, i totali di colazione, pranzo e cena, il conteggio separato dei pasti degli ospiti/invitati, l'ora di registrazione e la scadenza. Il totale dei pasti comprende anche gli invitati; la riga separata del Riepilogo mensile li evidenzia senza aggiungerli una seconda volta. Chi è segnalato come ammalato resta escluso dal totale. Non vengono copiati nomi, identificativi, prenotazioni o dati sanitari.
 
 Il riepilogo mensile viene prodotto solo se esiste un registro per tutti i giorni del mese. La prima mensilità completa sarà novembre, se il job è attivo per l'intero periodo. “Riepilogo mensile” mostra la somma del mese concluso a partire dalle 21:00 locali dell'ultimo giorno. Rimane il riepilogo corrente fino alla disponibilità del conteggio successivo; se un mese non è completo, continua a mostrare l'ultimo conteggio riuscito.

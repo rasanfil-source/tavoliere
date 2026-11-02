@@ -105,10 +105,3 @@ export function getRoleCapabilities(role, options = {}) {
 export function hasCapability(role, capability, options = {}) {
   return getRoleCapabilities(role, options).has(capability);
 }
-
-export function getRolePolicyRows() {
-  return Object.values(CENTER_ROLES).map((role) => ({
-    role,
-    capabilities: [...ROLE_CAPABILITIES[role]]
-  }));
-}

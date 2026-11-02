@@ -92,17 +92,6 @@ function shareStaticQuery(key, loader) {
 
 export { normalizeResidentSignature };
 
-export function findParticipantBySignature(participants, value) {
-  const signature = normalizeResidentSignature(value);
-  if (!signature) {
-    return null;
-  }
-
-  return participants.find((participant) => (
-    normalizeResidentSignature(participant.signature) === signature
-  )) || null;
-}
-
 export function loadStoredResidentSignature() {
   return normalizeResidentSignature(readStoredResidentValue(RESIDENT_SIGNATURE_STORAGE_KEY));
 }
@@ -922,11 +911,6 @@ export async function listCenterAdministrators() {
     .sort((left, right) => left.email.localeCompare(right.email, 'it'));
 }
 
-export async function loadParticipantMeals(participantId, date = new Date(), options = {}) {
-  const [day] = await loadParticipantPeriod(participantId, date, 1, options);
-  return day ? day.meals : [];
-}
-
 async function loadParticipantPeriod(participantId, startDate, days, options = {}) {
   const dates = buildDateRange(startDate, days);
   const centerToday = getDateInTimeZone(options.timezone || 'Europe/Rome', new Date(serverNow()));
@@ -1247,20 +1231,6 @@ async function getOwnOverrides(participantId, startDateId, endDateId, requireSer
       .map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }))
       .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId), requireServer);
   }
-}
-
-export async function loadParticipantMealSummary(meal, date = new Date(), options = {}) {
-  if (!meal) {
-    return null;
-  }
-
-  const mealDate = formatDateId(date);
-  const [participants, rules, overrides] = await Promise.all([
-    listSummaryParticipants(options),
-    getRules(options),
-    getOverrides(mealDate)
-  ]);
-  return buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, groupRulesByParticipant(rules));
 }
 
 function buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, rulesByParticipant = groupRulesByParticipant(rules)) {

@@ -801,7 +801,6 @@ html[data-interface-family="cool"] .meal-view-segment,
 html[data-interface-family="cool"] .summary-day-segment,
 html[data-interface-family="cool"] .today-card,
 html[data-interface-family="cool"] .summary-international-card,
-html[data-interface-family="cool"] .summary-matrix-track,
 html[data-interface-family="cool"] .week-matrix,
 html[data-interface-family="cool"] .admin-layout-settings-card,
 html[data-interface-family="cool"] .admin-theme-picker,
@@ -1064,6 +1063,8 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 .summary-matrix-track {
   display: flex;
   width: 100%;
+  /* Il viewport scorrevole non deve ritagliare i bordi arrotondati delle schede interne. */
+  border-radius: 0;
   align-items: flex-start;
   gap: 24px;
   overflow-x: auto;
@@ -1127,6 +1128,28 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
 
 .summary-layout-classic .summary-matrix caption {
   caption-side: top;
+}
+
+/* Il titolo conserva la superficie della scheda senza arrotondare il viewport scorrevole. */
+html[data-interface-family="cool"] .summary-layout-classic .summary-matrix-caption {
+  background: var(--view-surface);
+  border-radius: 12px 12px 0 0;
+}
+
+html[data-interface-family="cool"] [data-kitchen-panel] .kitchen-date {
+  padding: 10px 8px;
+  background: var(--view-surface);
+  border-radius: 12px;
+}
+
+/* Con caption il clipping della tabella include il titolo: arrotonda anche
+   le celle superiori, così i loro sfondi non coprono gli angoli del bordo. */
+.summary-layout-classic .summary-matrix thead tr:first-child > th:first-child {
+  border-top-left-radius: 9px;
+}
+
+.summary-layout-classic .summary-matrix thead tr:first-child > th:last-child {
+  border-top-right-radius: 9px;
 }
 
 .summary-layout-classic .summary-matrix th,

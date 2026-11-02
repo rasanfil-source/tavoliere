@@ -10,7 +10,7 @@ test('switching centers does not inherit a pending request failure from the old 
   let center = 'A', rejectA;
   const reads = [];
   const h = await loadBrowserModule('center-settings.js', {
-    db: {}, getActiveCenterId: () => center, measureStartupStep: (_, run) => run(),
+    db: {}, getActiveCenterId: () => center,
     doc: (_, ...parts) => parts.join('/'),
     normalizeReservationCutoffs: schedule.normalizeReservationCutoffs,
     normalizeKitchenDietLegend: () => [],
@@ -32,7 +32,7 @@ test('switching centers does not inherit a pending request failure from the old 
 
 test('technical password validation rejects whitespace before accessing Auth', async () => {
   const h = await loadBrowserModule('firebase-client.js', {
-    initializeApp: () => null, markStartupStage() {}, firestoreSettingsForBrowser: () => ({}),
+    initializeApp: () => null, firestoreSettingsForBrowser: () => ({}),
     GoogleAuthProvider: class {}
   }, ['setResidentTechnicalPassword', 'setAdministratorTechnicalPassword']);
   for (const password of ['    ', '  x  ', '  abc  ']) {

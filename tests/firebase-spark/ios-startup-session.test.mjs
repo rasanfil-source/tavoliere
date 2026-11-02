@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { firestoreSettingsForBrowser } from '../../prototypes/firebase-spark-pwa/public/core/firebase-runtime-policy.mjs';
-import { measureStartupStep } from '../../prototypes/firebase-spark-pwa/public/core/startup-timing.mjs';
 
 const read = file => readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/' + file, import.meta.url), 'utf8');
 const app = read('app.js');
@@ -46,7 +45,6 @@ test('Auth retains local persistence and only initializes Google support at expl
     window: { location: { search: '' } }
   });
   vm.runInContext(read('core/firebase-runtime-policy.mjs').replaceAll('export ', '')
-    + read('core/startup-timing.mjs').replaceAll('export ', '')
     + read('firebase-client.js').replace(/import[^;]+;\s*/g, '').replace(/^export /gm, ''), context);
   assert.equal((await context.waitForAuthReady()).uid, 'persisted-device');
   assert.equal(initializations[0].persistence, local);
@@ -202,9 +200,4 @@ test('optional reminder failures never close the calendar and stale failures do 
   isCurrent = true;
   await context.refreshMealRemindersAfterCalendar(() => isCurrent);
   assert.equal(state.mealReminderDays.length, 0); assert.equal(clearCalls, 1);
-});
-
-test('startup timing works without diagnostics or browser APIs', async () => {
-  assert.equal(await measureStartupStep('calendar', async () => 'ready'), 'ready');
-  await assert.rejects(measureStartupStep('calendar', async () => { throw new Error('network'); }), /network/);
 });

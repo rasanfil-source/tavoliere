@@ -15,7 +15,6 @@ const APP_SHELL = [
   '/blessing-view.mjs',
   '/firebase-client.js',
   '/core/firebase-runtime-policy.mjs',
-  '/core/startup-timing.mjs',
   '/core/personal-calendar-cache.mjs',
   '/center-context.js',
   '/center-settings.js',
