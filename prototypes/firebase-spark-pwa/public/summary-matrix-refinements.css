@@ -1130,6 +1130,12 @@ html[data-interface-variant="urban-plus"] .month-flag-present {
   caption-side: top;
 }
 
+/* Il titolo conserva la superficie della scheda senza arrotondare il viewport scorrevole. */
+html[data-interface-family="cool"] .summary-layout-classic .summary-matrix-caption {
+  background: var(--view-surface);
+  border-radius: 12px 12px 0 0;
+}
+
 /* Con caption il clipping della tabella include il titolo: arrotonda anche
    le celle superiori, così i loro sfondi non coprono gli angoli del bordo. */
 .summary-layout-classic .summary-matrix thead tr:first-child > th:first-child {

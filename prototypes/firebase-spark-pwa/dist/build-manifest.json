@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "release": "7b44d029bc2735c1",
+  "release": "7ce4296210f7767b",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
   "entry": "/assets/app-5MR7EHTX.js",
   "styles": [
     "/assets/styles-XV4NM45Z.css",
-    "/assets/summary-matrix-refinements-WIYYVHSZ.css"
+    "/assets/summary-matrix-refinements-OMVPZEIV.css"
   ],
   "initial": [
     "/assets/app-5MR7EHTX.js",
@@ -924,8 +924,8 @@
       ],
       "imports": []
     },
-    "/assets/summary-matrix-refinements-WIYYVHSZ.css": {
-      "bytes": 48631,
+    "/assets/summary-matrix-refinements-OMVPZEIV.css": {
+      "bytes": 48771,
       "source": "summary-matrix-refinements.css",
       "inputs": [
         "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css"
@@ -974,7 +974,7 @@
     "/assets/chunk-XCHZLRE7.js": "8f4529e030f555f652af8e800bcbc1586919300359cfbb0001f2b04f0c9887e3",
     "/assets/chunk-ZBG26DBK.js": "80893242151b6bd341a18d410186cebb0fe5f9a4ccb3bf09b96e0e36273827d7",
     "/assets/styles-XV4NM45Z.css": "6fa1c5c9788e8de53989d11b8705c6eb0ade825837cbdcc87a6d2368c3ead209",
-    "/assets/summary-matrix-refinements-WIYYVHSZ.css": "4a40358aeac1add05d7b250d52430610a587f7730a0240585591813a6a4b72fd",
+    "/assets/summary-matrix-refinements-OMVPZEIV.css": "d449dfde9dd5a9161f22e0fac9c3935d5c442fe4baa9369ceb19fcf8004ce34c",
     "/audit-log.js": "3b3b79532fe853ee17c1f2bc70d4e363e6ca4d702240d55f8f6ba54b90cc9854",
     "/blessing-view.mjs": "7f2939097503bc51a7327cfce4fb9272000b747fab5645404c52863e04553f60",
     "/booking-for.mjs": "edcb9781825461c37bd7c4ce0a3f7c0f8c8f214394b606adcee232b54384b518",
@@ -1020,7 +1020,7 @@
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "487cd8b82c0bc4f980d3784b69db1b9e94d2843b13a41065a0ece90a5f4e589f",
+    "/index.html": "048af59c4ba6b5c744edda7800b04a3847c95f498a11ba2734f23e83d296fac2",
     "/kitchen-data.js": "005c7820eeb2253d3dc20b332420f299fe7a10887b2bfa770f0afc48dcf0289c",
     "/kitchen-monthly-summary.js": "c52409d9e4bdd365e5396ba44e00d149e642992fb4da27578d3c9d89f8ce5db8",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
@@ -1035,9 +1035,9 @@
     "/styles.css": "6fa1c5c9788e8de53989d11b8705c6eb0ade825837cbdcc87a6d2368c3ead209",
     "/summary-contact-hint.mjs": "c8d9e1d48ae5277610754c3ebfffe625edba30d0eb3d3c85f8c5b7519717e2ab",
     "/summary-matrix-model.js": "27680bd862b3b52fd120f7fc4a4850e0f07e4fa45a47e5435560c5235e5d13c7",
-    "/summary-matrix-refinements.css": "4a40358aeac1add05d7b250d52430610a587f7730a0240585591813a6a4b72fd",
+    "/summary-matrix-refinements.css": "d449dfde9dd5a9161f22e0fac9c3935d5c442fe4baa9369ceb19fcf8004ce34c",
     "/summary-matrix-view.js": "6255a2b0b9c5506243ff014df52679c04d98d7357aea59f14500c88044b60abc",
-    "/sw.js": "8b63f0ab84f74d6ecaa0e2c0fec450c37da974a45d6a1ab689338378ca97b172"
+    "/sw.js": "bb849f49c178bb1d3b2055de4f1f48447e993fc031049f049b665ec85c85f9fe"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "4ecb837ea25af027cf79382934be0effa23965ce707ed0199512832c7a994120",
@@ -1105,7 +1105,7 @@
     "prototypes/firebase-spark-pwa/public/styles.css": "eed14a00c4c8bcd0e57b8ab3c4b308e9349f2a526c6d9a178fe3935dbc039e85",
     "prototypes/firebase-spark-pwa/public/summary-contact-hint.mjs": "7ced78dd49f412af720d84f1d03f445d8f32188c33df5915b20a6e8710305cf1",
     "prototypes/firebase-spark-pwa/public/summary-matrix-model.js": "c61438cbffd0e038f21e3a815ccb610386d46dad5065be782d2be70287fc379b",
-    "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "0394b32b5db14f8473f9bdaeef237bf4fd4bfde143eac669670033a8fa370272",
+    "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "0c2f9b03ccf9c7f51c5043f29273cbe688fee33a9a97ad93ce42edbd76a98f74",
     "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "daf7d8eeaed2119d97b343e16d5e01763d1993c0f13df477576f30812b160d27",
     "prototypes/firebase-spark-pwa/public/sw.js": "ff20b93c848458aed9221265b961ab03f1bd5fe0b99c11b7acfe5935df3bbceb",
     "tools/build-public.mjs": "5cba71dfd239c75266d7f0847187ba265357f0a91995364788a8eaf451b5d81f",
