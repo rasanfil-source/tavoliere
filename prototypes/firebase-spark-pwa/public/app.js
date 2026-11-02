@@ -9884,7 +9884,7 @@ async function handleWeekHealthSave() {
 
 async function handleWeekDietSave() {
   const context = captureWeekOperationContext();
-  if (!context.isCurrent()) return;
+  if (!context.isCurrent() || elements.weekDietSave.disabled) return;
   const participantId = elements.weekDietParticipant.value;
   if (!participantId) return;
   elements.weekDietSave.disabled = true;
@@ -9893,12 +9893,9 @@ async function handleWeekDietSave() {
     const dietTag = readDietCode(elements.weekDietType, elements.weekDietNumber);
     const duration = Number(elements.weekDietDuration.value) === 2 ? 2 : 1;
     const startDate = parseDateId(context.dateId);
-    const savedDays = await Promise.all(Array.from({ length: duration }, async (_, index) => {
-      const date = addCalendarDays(startDate, index);
-      return saveDietAssignments(date, participantId, dietTag);
-    }));
+    const health = await saveDietAssignments(startDate, participantId, dietTag, { duration });
     if (!context.isCurrent()) return;
-    state.weekOperationalHealth = savedDays[0];
+    state.weekOperationalHealth = health;
     renderWeekOperations();
     elements.weekDietStatus.textContent = dietTag === 'STANDARD'
       ? 'Dieta occasionale rimossa'
@@ -9937,8 +9934,9 @@ async function handleWeekDietListClick(event) {
 
 async function handleWeekKitchenNoteSave() {
   const context = captureWeekOperationContext('notes');
-  if (!context.isCurrent()) return;
-  const noteText = elements.weekKitchenNoteInput.value.trim();
+  if (!context.isCurrent() || elements.weekKitchenNoteSave.disabled) return;
+  const submittedDraft = elements.weekKitchenNoteInput.value;
+  const noteText = submittedDraft.trim();
   if (!noteText) {
     elements.weekKitchenNoteStatus.textContent = t('week.operations.note.empty');
     return;
@@ -9952,7 +9950,9 @@ async function handleWeekKitchenNoteSave() {
     );
     if (!context.isCurrent()) return;
     state.weekOperationalNote = note;
-    elements.weekKitchenNoteInput.value = '';
+    if (elements.weekKitchenNoteInput.value === submittedDraft) {
+      elements.weekKitchenNoteInput.value = '';
+    }
     renderWeekKitchenNotes();
     elements.weekKitchenNoteStatus.textContent = t('week.operations.note.saved');
   } catch (error) {
