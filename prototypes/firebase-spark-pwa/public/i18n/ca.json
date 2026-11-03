@@ -783,5 +783,7 @@
   "mealReminder.status.failed": "No s’han activat els recordatoris. Torna-ho a provar amb l’aplicació oberta i comprova els permisos de notificació.",
   "week.operations.invited.today": "d’avui",
   "week.operations.invited.tomorrow": "de demà",
-  "week.operations.invited.afterTomorrow": "de demà passat"
+  "week.operations.invited.afterTomorrow": "de demà passat",
+  "participant.meal.save.waiting": "Encara no s’ha rebut la confirmació. Pots consultar els altres àpats; la selecció pendent continua bloquejada.",
+  "participant.meal.save.failed": "No s’ha desat la reserva"
 }

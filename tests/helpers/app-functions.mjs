@@ -12,6 +12,10 @@ export function functions(names, dependencies = {}) {
   const runtime = { ...dependencies };
   runtime.scheduleRecoveryRefresh ??= () => {};
   runtime.resetRecoveryRefresh ??= () => {};
+  runtime.hasBlockingMealWrites ??= () => Boolean(runtime.state?.pendingMealKeys?.size);
+  runtime.activeSingleMealKeys ??= () => new Set();
+  runtime.overlayPendingMeals ??= () => {};
+  runtime.renderPendingMealStatus ??= () => {};
   runtime.serverNow ??= () => (runtime.Date || Date).now();
   runtime.synchronizeServerClock ??= async () => true;
   runtime.startServerClockSync ??= () => {};

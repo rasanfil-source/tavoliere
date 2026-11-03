@@ -783,5 +783,7 @@
   "language.ca": "Catalán",
   "week.operations.invited.today": "de hoy",
   "week.operations.invited.tomorrow": "de mañana",
-  "week.operations.invited.afterTomorrow": "de pasado mañana"
+  "week.operations.invited.afterTomorrow": "de pasado mañana",
+  "participant.meal.save.waiting": "Todavía no se ha recibido la confirmación. Puedes consultar las otras comidas; la selección pendiente sigue bloqueada.",
+  "participant.meal.save.failed": "No se ha guardado la reserva"
 }

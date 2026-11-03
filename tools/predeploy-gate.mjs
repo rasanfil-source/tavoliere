@@ -12,6 +12,7 @@ const checks = [
   ...toolFiles.map((file) => ['node', ['--check', file]]),
   ['node', ['prototypes/firebase-spark-pwa/scripts/validate-i18n.mjs']],
   ['node', ['--test', ...globSync('tests/firebase-spark/*.test.mjs'), ...globSync('tests/milestone1/*.test.mjs')]],
+  ['node', ['node_modules/@playwright/test/cli.js', 'test', '--config=playwright.i18n.config.mjs']],
   ['node', [
     'tools/firebase-cli.mjs',
     '--config', 'firebase.json',

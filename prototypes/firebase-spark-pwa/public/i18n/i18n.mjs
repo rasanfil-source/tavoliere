@@ -12,7 +12,9 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_CACHE_KEY = '20261031b';
+const CATALOG_CACHE_KEY = '20261103a';
+// Separata dalla release dell'app: contiene solo cataloghi pubblici, mai sessioni.
+const CATALOG_STORAGE = 'tavola-comune-i18n-v1';
 
 export const KEY_ALIASES = Object.freeze({
   'common.action.add': 'common.actions.add',
@@ -38,6 +40,9 @@ export const KEY_ALIASES = Object.freeze({
 
 export const CORE_FALLBACKS = Object.freeze({
   ca: Object.freeze({
+    "participant.meal.save.waiting": "Encara no s’ha rebut la confirmació. Pots consultar els altres àpats; la selecció pendent continua bloquejada.",
+    "participant.meal.save.failed": "No s’ha desat la reserva",
+    "participant.meal.save.success": "Reserva desada",
     "week.operations.day": "Dia",
     "week.operations.diet": "Dieta ocasional",
     "week.operations.diet.count": "{count} dietes actives",
@@ -220,6 +225,9 @@ export const CORE_FALLBACKS = Object.freeze({
     "summary.yes": "Sí"
 }),
   it: Object.freeze({
+    "participant.meal.save.waiting": "Conferma del salvataggio non ancora ricevuta. Puoi consultare gli altri pasti; la selezione in attesa resta bloccata.",
+    "participant.meal.save.failed": "Prenotazione non salvata",
+    "participant.meal.save.success": "Prenotazione salvata",
     "week.operations.day": "Giorno",
     "week.operations.diet": "Dieta occasionale",
     "week.operations.diet.count": "{count} diete attive",
@@ -402,6 +410,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Link per accedere'
   }),
   en: Object.freeze({
+    "participant.meal.save.waiting": "Save confirmation has not arrived yet. You can view other meals; the pending selection remains locked.",
+    "participant.meal.save.failed": "Booking was not saved",
+    "participant.meal.save.success": "Booking saved",
     "week.operations.day": "Day",
     "week.operations.diet": "Occasional diet",
     "week.operations.diet.count": "{count} active diets",
@@ -548,6 +559,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Access links'
   }),
   fr: Object.freeze({
+    "participant.meal.save.waiting": "La confirmation de l’enregistrement n’est pas encore arrivée. Vous pouvez consulter les autres repas ; la sélection en attente reste bloquée.",
+    "participant.meal.save.failed": "La réservation n’a pas été enregistrée",
+    "participant.meal.save.success": "Reservation enregistree",
     "week.operations.day": "Jour",
     "week.operations.diet": "Régime occasionnel",
     "week.operations.diet.count": "{count} régimes actifs",
@@ -694,6 +708,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Liens d\'accès'
   }),
   es: Object.freeze({
+    "participant.meal.save.waiting": "Todavía no se ha recibido la confirmación. Puedes consultar las otras comidas; la selección pendiente sigue bloqueada.",
+    "participant.meal.save.failed": "No se ha guardado la reserva",
+    "participant.meal.save.success": "Reserva guardada",
     "week.operations.day": "Día",
     "week.operations.diet": "Dieta ocasional",
     "week.operations.diet.count": "{count} dietas activas",
@@ -840,6 +857,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Enlaces de acceso'
   }),
   de: Object.freeze({
+    "participant.meal.save.waiting": "Die Speicherbestätigung ist noch nicht eingetroffen. Du kannst andere Mahlzeiten ansehen; die ausstehende Auswahl bleibt gesperrt.",
+    "participant.meal.save.failed": "Die Buchung wurde nicht gespeichert",
+    "participant.meal.save.success": "Reservierung gespeichert",
     "week.operations.day": "Tag",
     "week.operations.diet": "Gelegentliche Diät",
     "week.operations.diet.count": "{count} aktive Diäten",
@@ -988,6 +1008,7 @@ export const CORE_FALLBACKS = Object.freeze({
 });
 
 let currentLocale = DEFAULT_LOCALE;
+let localeRequestRevision = 0;
 let catalogs = new Map();
 const catalogLoads = new Map();
 let isDevelopment = false;
@@ -1095,12 +1116,32 @@ async function loadCatalogUncached(locale) {
     const catalogFetchUrl = new URL(catalogUrl.href);
     catalogFetchUrl.searchParams.set('v', CATALOG_CACHE_KEY);
     let catalog = null;
+    let cache = null;
+    // Funziona anche al primo accesso, prima che il service worker controlli la pagina.
+    // Storage negato, pieno o eliminato dal browser non impedisce il caricamento.
+    try {
+      cache = await globalThis.caches?.open(CATALOG_STORAGE);
+      const cached = await cache?.match(catalogFetchUrl.href);
+      if (cached) {
+        const value = await cached.json();
+        if (isValidCatalog(value)) catalog = value;
+      }
+    } catch { /* La rete e i testi incorporati restano disponibili. */ }
 
-    if (typeof fetch === 'function') {
+    if (!catalog && typeof fetch === 'function') {
       try {
+        // Una copia danneggiata non deve essere riproposta dal service worker.
+        await cache?.delete(catalogFetchUrl.href).catch(() => undefined);
         const response = await fetch(catalogFetchUrl.href, { cache: 'no-cache' });
         if (response && response.ok) {
-          catalog = await response.json();
+          const value = await response.clone().json();
+          if (isValidCatalog(value)) {
+            catalog = value;
+            // La scrittura su disco non ritarda l'inizializzazione della UI.
+            void cache?.put(catalogFetchUrl.href, response).catch(() => undefined);
+          } else {
+            await cache?.delete(catalogFetchUrl.href).catch(() => undefined);
+          }
         }
       } catch {
         // Fallback per ambienti node senza supporto file:// in fetch
@@ -1132,6 +1173,12 @@ async function loadCatalogUncached(locale) {
   }
 }
 
+function isValidCatalog(value) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && typeof value['app.title'] === 'string' && value['app.title'].trim()
+    && Object.values(value).every(text => typeof text === 'string');
+}
+
 /**
  * Imposta la lingua corrente e carica il catalogo
  * @param {string} locale - Codice lingua
@@ -1139,6 +1186,7 @@ async function loadCatalogUncached(locale) {
  */
 export async function setLocale(locale, options = {}) {
   const { persist = true } = typeof options === 'boolean' ? { persist: options } : options;
+  const revision = ++localeRequestRevision;
 
   if (!SUPPORTED_LOCALES.includes(locale)) {
     console.warn(`Lingua non supportata: ${locale}. Fallback a ${DEFAULT_LOCALE}`);
@@ -1146,12 +1194,10 @@ export async function setLocale(locale, options = {}) {
   }
 
   await loadCatalog(locale);
-
-  if (!catalogs.has(locale) && locale !== DEFAULT_LOCALE) {
-    currentLocale = DEFAULT_LOCALE;
-  } else {
-    currentLocale = locale;
-  }
+  // Un catalogo lento non deve annullare una scelta più recente. Se la rete
+  // fallisce conserviamo la lingua scelta e usiamo i testi incorporati.
+  if (revision !== localeRequestRevision) return currentLocale;
+  currentLocale = locale;
 
   if (typeof document !== 'undefined') {
     document.documentElement.lang = currentLocale;
@@ -1237,7 +1283,8 @@ export function t(key, variables = {}, options = {}) {
   let message = catalog[key] ?? catalog[alias];
   
   if (message === undefined) {
-    message = defaultCatalog[key] ?? defaultCatalog[alias];
+    message = CORE_FALLBACKS[currentLocale]?.[key] ?? CORE_FALLBACKS[currentLocale]?.[alias]
+      ?? defaultCatalog[key] ?? defaultCatalog[alias];
     if (message === undefined) {
       const core = CORE_FALLBACKS[currentLocale]?.[key]
         ?? CORE_FALLBACKS[currentLocale]?.[alias]

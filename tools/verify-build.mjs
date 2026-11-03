@@ -27,8 +27,8 @@ export async function verifyBuild(buildRoot = resolve(process.env.TAT_BUILD_OUTP
     }
   }
   const startupInputs = new Set(manifest.resident.flatMap(path => manifest.outputs[path].inputs));
-  for (const module of ['admin-participant-data.js', 'admin-center.js', 'domain/center-backup.mjs', 'domain/center-restore.mjs']) {
-    assert.ok(![...startupInputs].some(input => input.endsWith('/' + module)), `Eager administration: ${module}`);
+  for (const module of ['admin-participant-data.js', 'admin-center.js', 'domain/center-backup.mjs', 'domain/center-restore.mjs', 'core/pending-meals.mjs']) {
+    assert.ok(![...startupInputs].some(input => input.endsWith('/' + module)), `Eager optional module: ${module}`);
     assert.ok(Object.values(manifest.outputs).some(output => output.inputs.some(input => input.endsWith('/' + module))), `Lost feature: ${module}`);
   }
   assert.ok([...startupInputs].some(input => /@firebase\/firestore\/dist\/.*index\./.test(input)), 'Full Firestore missing');

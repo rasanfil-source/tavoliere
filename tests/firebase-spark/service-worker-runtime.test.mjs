@@ -11,7 +11,7 @@ function worker({ offline = false, storageFailure = false, navigationPreload } =
   const handlers = {};
   const entries = new Map();
   const requests = [];
-  const deleted = [];
+  const deleted = [], opened = [];
   let claimed = false;
   const key = (request) => new URL(typeof request === 'string' ? request : request.url, origin).href;
   const cache = {
@@ -30,8 +30,8 @@ function worker({ offline = false, storageFailure = false, navigationPreload } =
       addEventListener: (name, handler) => { handlers[name] = handler; }
     },
     caches: {
-      open: async () => cache,
-      keys: async () => ['tavola-comune-app-v448', 'unrelated-cache'],
+      open: async (name) => { opened.push(name); return cache; },
+      keys: async () => ['tavola-comune-app-v448', 'tavola-comune-i18n-v1', 'unrelated-cache'],
       delete: async (name) => { deleted.push(name); }
     },
     fetch: async (request) => {
@@ -41,7 +41,7 @@ function worker({ offline = false, storageFailure = false, navigationPreload } =
     }
   });
   return {
-    entries, requests, deleted,
+    entries, requests, deleted, opened,
     get claimed() { return claimed; },
     async activate() {
       let pending;
@@ -71,6 +71,22 @@ test('Catalan catalog is served from the service worker cache offline', async ()
   const response = await sw.fetch(origin + '/i18n/ca.json?v=20261017-ca');
   assert.equal(await response.text(), '{"hello":"Hola"}');
 });
+
+for (const locale of ['it', 'en', 'fr', 'es', 'de', 'ca']) {
+  test(`${locale}: catalog is downloaded once; only a new version needs the network`, async () => {
+    const sw = worker();
+    const url = `${origin}/i18n/${locale}.json?v=first-content-hash`;
+    await sw.fetch(url);
+    assert.equal(sw.requests.length, 1);
+    for (let reopening = 0; reopening < 3; reopening++) await sw.fetch(url);
+    assert.equal(sw.requests.length, 1);
+    await sw.fetch(url.replace('first-content-hash', 'updated-content-hash'));
+    assert.equal(sw.requests.length, 2);
+    assert.deepEqual([...new Set(sw.opened)], ['tavola-comune-i18n-v1']);
+    await sw.activate();
+    assert.ok(!sw.deleted.includes('tavola-comune-i18n-v1'));
+  });
+}
 
 test('prima attivazione prepara i tre SDK per la riapertura', async () => {
   const sw = worker();

@@ -783,5 +783,7 @@
   "language.ca": "Catalano",
   "week.operations.invited.today": "di oggi",
   "week.operations.invited.tomorrow": "di domani",
-  "week.operations.invited.afterTomorrow": "di dopodomani"
+  "week.operations.invited.afterTomorrow": "di dopodomani",
+  "participant.meal.save.waiting": "Conferma del salvataggio non ancora ricevuta. Puoi consultare gli altri pasti; la selezione in attesa resta bloccata.",
+  "participant.meal.save.failed": "Prenotazione non salvata"
 }

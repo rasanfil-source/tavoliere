@@ -1,3 +1,4 @@
+import { createPendingMealTracker } from '../../prototypes/firebase-spark-pwa/public/core/pending-meals.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -52,7 +53,7 @@ function calendarContext(save) {
     synchronizeServerClock: async () => true,
     scheduleBackgroundRefresh() {},
     saveParticipantMeal: save, getMealPendingKey: (date, type) => date + type,
-    setParticipantStatus() {}, scheduleMealRemindersFromCurrentCalendar() {}, friendlyErrorMessage: () => 'error' });
+    getSingleMealTracker: async () => state.singleMealTracker ||= createPendingMealTracker(), renderPendingMealStatus() {}, t: key => key, setParticipantStatus() {}, scheduleMealRemindersFromCurrentCalendar() {}, friendlyErrorMessage: () => 'error' });
   vm.runInContext(['toJavaScriptDate', 'isMealWindowOpenAtServerTime', 'invalidateParticipantCalendarCache',
     'saveMealOptimistically', 'beginOptimisticBulkSelection'].map(extract).join('\n'), context);
   return { context, state, meal, monthMeal, cache };

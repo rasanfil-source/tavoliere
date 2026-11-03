@@ -783,5 +783,7 @@
   "language.ca": "Catalan",
   "week.operations.invited.today": "d’aujourd’hui",
   "week.operations.invited.tomorrow": "de demain",
-  "week.operations.invited.afterTomorrow": "d’après-demain"
+  "week.operations.invited.afterTomorrow": "d’après-demain",
+  "participant.meal.save.waiting": "La confirmation de l’enregistrement n’est pas encore arrivée. Vous pouvez consulter les autres repas ; la sélection en attente reste bloquée.",
+  "participant.meal.save.failed": "La réservation n’a pas été enregistrée"
 }

@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
 const CACHE_NAME = CACHE_PREFIX + 'v460';
+const CATALOG_STORAGE = 'tavola-comune-i18n-v1';
 const SHELL_ENTRY = '/app.js?v=20261031b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Solo file SDK pubblici e immutabili: sono escluse risposte Auth e dati di sessione.
@@ -112,7 +113,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type !== 'CLEAR_APPLICATION_CACHE') return;
   const purge = caches.keys().then((names) => Promise.all(names
-    .filter((name) => name.startsWith(CACHE_PREFIX))
+    .filter((name) => name.startsWith(CACHE_PREFIX) || name === CATALOG_STORAGE)
     .map((name) => caches.delete(name))));
   const ready = purge.then(() => precacheInstalledShell().then(() => true, () => false));
   event.waitUntil(ready);
@@ -163,6 +164,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.origin === self.location.origin && /^\/i18n\/(?:it|en|fr|es|de|ca)\.json$/.test(url.pathname)
+      && url.searchParams.has('v')) {
+    event.respondWith(sdkCacheFirst(event.request, CATALOG_STORAGE));
+    return;
+  }
+
   if (url.origin === self.location.origin && isAppResourcePath(url.pathname)) {
     if (url.searchParams.has('v')) {
       event.respondWith(versionedCacheFirst(event.request, url.pathname));
@@ -200,8 +207,8 @@ function isBundledAssetPath(pathname) {
   return /^\/assets\/[a-zA-Z0-9_-]+-[A-Z0-9]{8}\.(?:js|css)$/.test(pathname);
 }
 
-async function sdkCacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME).catch(() => null);
+async function sdkCacheFirst(request, cacheName = CACHE_NAME) {
+  const cache = await caches.open(cacheName).catch(() => null);
   const cached = await cache?.match(request).catch(() => undefined);
   if (cached) return cached;
   const response = await fetch(request);

@@ -485,7 +485,7 @@ test('una richiesta residente superata non può rimontare il login dopo l access
   const refresh = app.match(/async function refreshParticipant\(source, options = \{\}\)[\s\S]*?\n}/)?.[0] || '';
   const login = app.match(/async function handleResidentLogin\(event\)[\s\S]*?\n}/)?.[0] || '';
   const logout = app.match(/async function handleForgetDevice\(\)[\s\S]*?\n}/)?.[0] || '';
-  assert.match(refresh, /if \(state\.residentAuthTransition \|\| state\.pendingMealKeys\?\.size\) return/);
+  assert.match(refresh, /if \(state\.residentAuthTransition \|\| hasBlockingMealWrites\(\)\) return/);
   assert.match(refresh, /!isCurrentParticipantRequest\(request\) \|\| state\.residentAuthTransition/);
   assert.match(login, /state\.residentAuthTransition = 'signing-in'[\s\S]*invalidateViewRequests\(\)/);
   assert.match(logout, /state\.residentAuthTransition = 'signing-out'[\s\S]*invalidateViewRequests\(\)/);

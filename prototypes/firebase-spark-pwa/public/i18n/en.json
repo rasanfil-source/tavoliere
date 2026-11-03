@@ -783,5 +783,7 @@
   "language.ca": "Catalan",
   "week.operations.invited.today": "today",
   "week.operations.invited.tomorrow": "tomorrow",
-  "week.operations.invited.afterTomorrow": "the day after tomorrow"
+  "week.operations.invited.afterTomorrow": "the day after tomorrow",
+  "participant.meal.save.waiting": "Save confirmation has not arrived yet. You can view other meals; the pending selection remains locked.",
+  "participant.meal.save.failed": "Booking was not saved"
 }

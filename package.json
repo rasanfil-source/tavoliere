@@ -7,6 +7,7 @@
     "build": "node tools/build-public.mjs",
     "test": "node --test tests/firebase-spark/*.test.mjs && npm run test:i18n",
     "test:i18n": "node prototypes/firebase-spark-pwa/scripts/validate-i18n.mjs",
+    "test:i18n:browser": "playwright test --config=playwright.i18n.config.mjs",
     "test:firebase": "node --test tests/firebase-spark/*.test.mjs",
     "test:firebase-rules": "node --test tests/firebase-rules/*.test.mjs",
     "backup:inspect": "node tools/inspect-center-backup.mjs",

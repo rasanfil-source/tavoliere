@@ -165,7 +165,7 @@ test('meals become usable while roles, presentation and accessory continuation r
   let splashHidden = false;
   const state = { mode: 'week', friendlyAccess: true, residentReady: true, residentAuthTransition: '',
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
-  const context = vm.createContext({ state, console, participantCalendarRevision: 0,
+  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, state, console, participantCalendarRevision: 0,
     serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     isCenterAccessRevokedError: error => error?.code === 'permission-denied',
@@ -195,7 +195,7 @@ test('meals become usable while roles, presentation and accessory continuation r
 });
 
 test('a refresh during a pending selection does not start reads that can replace optimistic state', async () => {
-  const context = vm.createContext({ state: { pendingMealKeys: new Set(['one-meal']) },
+  const context = vm.createContext({ hasBlockingMealWrites: () => true, state: { pendingMealKeys: new Set(['one-meal']) },
     beginParticipantRequest: () => { throw Error('must wait for write completion'); } });
   vm.runInContext(extract(app, 'refreshParticipant'), context);
   await context.refreshParticipant('manuale');
@@ -311,7 +311,7 @@ test('essential meal reads start while current center settings are still pending
   const state = { mode: 'week', friendlyAccess: true, residentReady: true,
     participantWeek: [], participantMonth: [], selectedParticipant: { participantId: 'person' },
     centerContactSettings: { timezone: 'Europe/Rome' }, weekStartDate: new Date(2026, 9, 12) };
-  const context = vm.createContext({ state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
+  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), activeSingleMealKeys: () => new Set(), renderPendingMealStatus() {}, state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
     serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     isCenterAccessRevokedError: error => error?.code === 'permission-denied',
@@ -349,7 +349,7 @@ test('date/timezone changes discard a speculative calendar; obsolete requests ca
     const pending = deferred();
     const state = { mode: 'week', participantRequestVersion: 1, selectedParticipant: { participantId: 'person' },
       participantWeek: [], participantMonth: [], pendingMealKeys: new Set(), centerContactSettings: { timezone: 'Europe/Rome' } };
-    const context = vm.createContext({ state, participantCalendarRevision: 0,
+    const context = vm.createContext({ activeSingleMealKeys: () => new Set(), overlayPendingMeals() {}, state, participantCalendarRevision: 0,
       serverNow: () => Date.now(), isMealWindowOpenAtServerTime: meal => meal.isOpen,
       currentPersonalCalendarScope: () => activeScope, getActiveCenterId: () => scope.centerId, getCurrentUser: () => user,
       getLocale: () => change === 'language' ? 'en' : 'it',

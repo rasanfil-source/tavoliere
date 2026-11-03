@@ -920,7 +920,7 @@ async function loadParticipantPeriod(participantId, startDate, days, options = {
       getMealWindowsInRange(startDateId, endDateId, options.forceStaticRefresh, options.requireServer),
       'mealWindows'
     ),
-    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId, options.requireServer), 'reservationOverrides'),
+    tagResidentCalendarRead(getOwnOverrides(participantId, startDateId, endDateId, options.requireServer, options.pendingMealKeys), 'reservationOverrides'),
     tagResidentCalendarRead(getParticipantRules(participantId, options.forceStaticRefresh, options.requireServer), 'reservationRule')
   ]);
   const windowsByKey = new Map(
@@ -1205,7 +1205,17 @@ async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = fals
   });
 }
 
-async function getOwnOverrides(participantId, startDateId, endDateId, requireServer = false) {
+async function getOwnOverrides(participantId, startDateId, endDateId, requireServer = false, pendingMealKeys = new Set()) {
+  function values(snapshot, records) {
+    if (requireServer && snapshot.metadata?.fromCache === false && snapshot.metadata?.hasPendingWrites
+        && snapshot.docs.every(item => item.metadata?.hasPendingWrites === false
+          || item.metadata?.hasPendingWrites === true && pendingMealKeys.has(item.data().mealWindowId))) {
+      // Solo i singoli pasti tracciati possono essere sovrapposti alla lettura.
+      // La presenza di scritture locali non diventa una conferma del server.
+      return calendarValues(snapshot, records, false);
+    }
+    return calendarValues(snapshot, records, requireServer);
+  }
   const overrides = collection(db, 'centers', getActiveCenterId(), 'reservationOverrides');
   const read = requireServer ? getDocsFromServer : getDocs;
   try {
@@ -1215,8 +1225,8 @@ async function getOwnOverrides(participantId, startDateId, endDateId, requireSer
       where('mealDate', '>=', startDateId),
       where('mealDate', '<=', endDateId)
     ));
-    return calendarValues(snapshot,
-      snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() })), requireServer);
+    return values(snapshot,
+      snapshot.docs.map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() })));
   } catch (error) {
     if (error?.code !== 'failed-precondition') {
       throw error;
@@ -1225,9 +1235,9 @@ async function getOwnOverrides(participantId, startDateId, endDateId, requireSer
       overrides,
       where('participantId', '==', participantId)
     ));
-    return calendarValues(snapshot, snapshot.docs
+    return values(snapshot, snapshot.docs
       .map((docSnap) => ({ overrideId: docSnap.id, ...docSnap.data() }))
-      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId), requireServer);
+      .filter((override) => override.mealDate >= startDateId && override.mealDate <= endDateId));
   }
 }
 

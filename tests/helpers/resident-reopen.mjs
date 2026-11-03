@@ -45,7 +45,8 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     Object.defineProperty(days, 'serverConfirmed', { value: true });
     return days;
   };
-  const dependencies = {
+  const dependencies = { hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size),
+    activeSingleMealKeys: () => new Set(), overlayPendingMeals() {}, renderPendingMealStatus() {},
     calendarLoadContextKey: () => `${state.mode}:${user.uid}`,
     serverNow: () => Date.now(),
     state, console: { error: (...args) => record(`error:${args[1] || ''}`) },

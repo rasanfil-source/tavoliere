@@ -43,7 +43,7 @@ test('changing language rerenders loaded calendars and summary without fetching 
     const calls = [];
     const elements = { adminLanguageSelect: { value: 'it' } };
     const { renderAllViews } = bind(['renderAllViews'], {
-      state: { mode }, elements, document: {}, getLocale,
+      state: { mode }, elements, document: {}, getLocale, renderPendingMealStatus() {},
       renderMode: () => calls.push('mode'),
       renderParticipantMeals: () => calls.push(mode),
       applyTranslations: () => calls.push('translations')
