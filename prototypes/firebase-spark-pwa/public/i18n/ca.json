@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "de demà",
   "week.operations.invited.afterTomorrow": "de demà passat",
   "participant.meal.save.waiting": "Encara no s’ha rebut la confirmació. Pots consultar els altres àpats; la selecció pendent continua bloquejada.",
-  "participant.meal.save.failed": "No s’ha desat la reserva"
+  "participant.meal.save.failed": "No s’ha desat la reserva",
+  "participant.meal.recovery.checking": "S’està comprovant el desament anterior…",
+  "participant.meal.recovery.unknown": "Una reserva anterior encara està pendent de confirmació. L’àpat afectat continua bloquejat; els altres estan disponibles.",
+  "participant.meal.recovery.volatile": "S’està desant. L’emmagatzematge local no està disponible: mantén aquesta pàgina oberta fins a rebre la confirmació."
 }

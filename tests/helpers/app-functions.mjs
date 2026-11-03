@@ -16,6 +16,8 @@ export function functions(names, dependencies = {}) {
   runtime.activeSingleMealKeys ??= () => new Set();
   runtime.overlayPendingMeals ??= () => {};
   runtime.renderPendingMealStatus ??= () => {};
+  runtime.schedulePendingMealRecovery ??= () => {};
+  runtime.storedPendingMealKeys ??= () => new Set();
   runtime.serverNow ??= () => (runtime.Date || Date).now();
   runtime.synchronizeServerClock ??= async () => true;
   runtime.startServerClockSync ??= () => {};

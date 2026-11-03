@@ -982,12 +982,37 @@ export async function loadParticipantWeek(participantId, startDate = new Date(),
 }
 
 export async function saveParticipantMeal(participant, meal, effect, options = {}) {
-  assertOnline();
-  await synchronizeServerClock();
-  meal.isOpen = isReservationWindowOpen(meal);
-  if (!meal.isOpen) throw new Error('Il termine per modificare questo pasto è scaduto.');
+  try {
+    assertOnline();
+    await synchronizeServerClock();
+    meal.isOpen = isReservationWindowOpen(meal);
+    if (!meal.isOpen) throw new Error('Il termine per modificare questo pasto è scaduto.');
+    if (options.expectedUid && (getCurrentUser()?.uid !== options.expectedUid
+        || getActiveCenterId() !== options.expectedCenterId)) throw new Error('Sessione cambiata');
+  } catch (error) {
+    error.mealWriteNotStarted = true;
+    throw error;
+  }
   await commitReservationMeals(participant, [meal], effect, options);
   markMealSaved(meal, effect);
+}
+
+export async function verifyPendingMeal(record) {
+  const current = () => getCurrentUser()?.uid === record.uid && getActiveCenterId() === record.centerId;
+  if (!current()) return { status: 'stale' };
+  const snapshot = await getDocFromServer(doc(db, 'centers', record.centerId,
+    'reservationOverrides', record.participantId + '_' + record.mealWindowId));
+  if (!current()) return { status: 'stale' };
+  if (snapshot.metadata?.fromCache !== false || snapshot.metadata?.hasPendingWrites !== false) {
+    return { status: 'unknown' };
+  }
+  const value = snapshot.exists() ? snapshot.data() : null;
+  // L'assenza o un diverso requestId non provano un rifiuto: la risposta può
+  // essere in viaggio o il documento può essere stato modificato altrove.
+  return { status: value?.requestId === record.requestId && value.effect === record.effect
+      && value.actorUid === record.uid && value.participantId === record.participantId
+      && value.centerId === record.centerId && value.mealWindowId === record.mealWindowId
+    ? 'confirmed' : 'unknown' };
 }
 
 export async function saveParticipantDay(participant, meals, effect) {
@@ -1070,15 +1095,28 @@ async function saveReservationGroup(participant, meals, effect) {
 async function commitReservationMeals(participant, meals, effect, options = {}) {
   const centerId = getActiveCenterId();
   const actorUid = options.bookingFor ? getCurrentUser()?.uid : null;
-  const writeContext = actorUid ? { centerId, actorUid } : { centerId };
+  const writeContext = { centerId, actorUid, requestId: options.requestId || null };
+  const assertWriteContext = () => {
+    if (options.expectedUid && (getCurrentUser()?.uid !== options.expectedUid
+        || getActiveCenterId() !== options.expectedCenterId)) {
+      throw Object.assign(new Error('Sessione cambiata durante il salvataggio'), { code: 'cancelled' });
+    }
+  };
   if (options.bookingFor && !actorUid) throw new Error('Autenticazione richiesta');
+  let uncertainAttempt = false;
   try {
-    await commitWithRetry(() => {
+    await commitWithRetry(async () => {
+      assertWriteContext();
       const batch = writeBatch(db);
       meals.forEach((meal) => queueReservationWrite(batch, participant, meal, effect, writeContext));
-      return batch.commit();
+      try { return await batch.commit(); } catch (error) {
+        if (!['permission-denied', 'invalid-argument', 'unauthenticated', 'not-found', 'already-exists']
+          .includes(String(error?.code || '').replace(/^firestore\//, ''))) uncertainAttempt = true;
+        throw error;
+      }
     });
   } catch (error) {
+    if (uncertainAttempt) error.mealWriteMayHaveCommitted = true;
     const code = String(error?.code || '').replace(/^firestore\//, '');
     if (!['permission-denied', 'not-found'].includes(code)) throw error;
 
@@ -1086,6 +1124,7 @@ async function commitReservationMeals(participant, meals, effect, options = {}) 
     // lettura del calendario. Riconciliamo solo quel conflitto, conservando
     // identità, dieta e data di creazione degli override già presenti.
     await runTransaction(db, async (transaction) => {
+      assertWriteContext();
       const snapshots = await Promise.all(meals.map((meal) => transaction.get(doc(
         db, 'centers', centerId, 'reservationOverrides',
         participant.participantId + '_' + meal.mealWindowId
@@ -1093,10 +1132,14 @@ async function commitReservationMeals(participant, meals, effect, options = {}) 
       if (!snapshots.some((snapshot, index) => snapshot.exists() !== Boolean(meals[index].createdAt))) {
         throw error;
       }
+      assertWriteContext();
       snapshots.forEach((snapshot, index) => queueReservationWrite(
         transaction, participant, meals[index], effect,
         { ...writeContext, exists: snapshot.exists() }
       ));
+    }).catch(transactionError => {
+      if (uncertainAttempt) transactionError.mealWriteMayHaveCommitted = true;
+      throw transactionError;
     });
   }
 }
@@ -1104,6 +1147,7 @@ async function commitReservationMeals(participant, meals, effect, options = {}) 
 function queueReservationWrite(batch, participant, meal, effect, {
   centerId = getActiveCenterId(),
   actorUid = null,
+  requestId = null,
   exists = Boolean(meal.createdAt)
 } = {}) {
   const overrideRef = doc(
@@ -1115,7 +1159,7 @@ function queueReservationWrite(batch, participant, meal, effect, {
   );
   const update = {
     effect,
-    requestId: createRequestId(),
+    requestId: requestId || createRequestId(),
     source: actorUid ? 'DELEGATED' : getReservationWriteSource(),
     actorUid: actorUid || getCurrentUser()?.uid || '',
     updatedAt: serverTimestamp()

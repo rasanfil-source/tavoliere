@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "de mañana",
   "week.operations.invited.afterTomorrow": "de pasado mañana",
   "participant.meal.save.waiting": "Todavía no se ha recibido la confirmación. Puedes consultar las otras comidas; la selección pendiente sigue bloqueada.",
-  "participant.meal.save.failed": "No se ha guardado la reserva"
+  "participant.meal.save.failed": "No se ha guardado la reserva",
+  "participant.meal.recovery.checking": "Verificando el guardado anterior…",
+  "participant.meal.recovery.unknown": "Una reserva anterior sigue pendiente de confirmación. Ese plato permanece bloqueado; las demás comidas están disponibles.",
+  "participant.meal.recovery.volatile": "Guardando. El almacenamiento local no está disponible: mantén esta página abierta hasta recibir la confirmación."
 }

@@ -1,4 +1,5 @@
 import { createPendingMealTracker } from '../../prototypes/firebase-spark-pwa/public/core/pending-meals.mjs';
+import { createPendingMealJournal, isDefinitiveMealFailure } from '../../prototypes/firebase-spark-pwa/public/core/pending-meal-journal.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -42,16 +43,17 @@ test('installation bootstrap retains the cookie center in the document URL witho
 const app = read('app.js');
 const extract = name => app.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`))[0];
 function calendarContext(save) {
-  const meal = { mealDate: '2026-10-13', mealTypeId: 'lunch', effect: 'ABSENT', isOpen: true };
+  const meal = { mealDate: '2026-10-13', mealWindowId: '2026-10-13_lunch', mealTypeId: 'lunch', effect: 'ABSENT', isOpen: true };
   const monthMeal = { ...meal };
-  const state = { pendingMealKeys: new Set(), selectedParticipant: {}, participantWeek: [{ meals: [meal] }],
+  const state = { singleMealJournal: createPendingMealJournal(), isDefinitiveMealFailure,
+    pendingMealKeys: new Set(), selectedParticipant: { participantId: 'person' }, participantWeek: [{ meals: [meal] }],
     participantMonth: [{ meals: [monthMeal] }], mealReminderDays: [] };
   const cache = new Map([['old', {}]]);
   const context = vm.createContext({ state, participantMonthCache: cache, participantCalendarRevision: 0,
     clearPersonalCalendarSnapshots() {}, getActiveCenterId: () => 'one', getCurrentUser: () => ({ uid: 'user' }),
     serverNow: () => Date.now(),
     synchronizeServerClock: async () => true,
-    scheduleBackgroundRefresh() {},
+    scheduleBackgroundRefresh() {}, schedulePendingMealRecovery() {}, storedPendingMealKeys: () => new Set(),
     saveParticipantMeal: save, getMealPendingKey: (date, type) => date + type,
     getSingleMealTracker: async () => state.singleMealTracker ||= createPendingMealTracker(), renderPendingMealStatus() {}, t: key => key, setParticipantStatus() {}, scheduleMealRemindersFromCurrentCalendar() {}, friendlyErrorMessage: () => 'error' });
   vm.runInContext(['toJavaScriptDate', 'isMealWindowOpenAtServerTime', 'invalidateParticipantCalendarCache',
@@ -68,7 +70,7 @@ test('single weekly save updates monthly meal and invalidates stale cached month
 });
 
 test('failed weekly save restores selection and discards cache loaded during the write', async () => {
-  const h = calendarContext(async () => { h.cache.set('during-write', {}); throw new Error('offline'); });
+  const h = calendarContext(async () => { h.cache.set('during-write', {}); throw Object.assign(new Error('denied'), { code: 'permission-denied' }); });
   await h.context.saveMealOptimistically({ meal: h.meal, effect: 'PRESENT', sync() {} });
   assert.equal(h.meal.effect, 'ABSENT');
   assert.equal(h.monthMeal.effect, 'ABSENT');

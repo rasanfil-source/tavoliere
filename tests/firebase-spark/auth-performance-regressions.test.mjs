@@ -226,7 +226,7 @@ for (const [strongIdentity, signature] of [[false, ''], [true, ''], [false, 'AA'
       monthDate: state.monthDate.getTime() };
     let restores = 0, hides = 0, loginRenders = 0;
     const user = strongIdentity ? { uid: 'persisted-owner' } : null;
-    const deps = { hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, state, participantCalendarRevision: 0, beginParticipantRequest: () => request,
+    const deps = { hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, schedulePendingMealRecovery() {}, state, participantCalendarRevision: 0, beginParticipantRequest: () => request,
       currentPersonalCalendarScope: () => null, setParticipantStatus() {}, renderCalendarPlaceholder() {},
       waitForAuthReady: () => ready.promise, isCurrentParticipantRequest: () => true,
       hasStrongAdministratorIdentity: () => strongIdentity, loadStoredResidentSignature: () => signature,

@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "di domani",
   "week.operations.invited.afterTomorrow": "di dopodomani",
   "participant.meal.save.waiting": "Conferma del salvataggio non ancora ricevuta. Puoi consultare gli altri pasti; la selezione in attesa resta bloccata.",
-  "participant.meal.save.failed": "Prenotazione non salvata"
+  "participant.meal.save.failed": "Prenotazione non salvata",
+  "participant.meal.recovery.checking": "Verifico il salvataggio precedente…",
+  "participant.meal.recovery.unknown": "Esito di una prenotazione precedente ancora da verificare. Il pasto interessato resta bloccato; gli altri sono disponibili.",
+  "participant.meal.recovery.volatile": "Salvataggio in corso. La memoria locale non è disponibile: mantieni aperta la pagina fino alla conferma."
 }

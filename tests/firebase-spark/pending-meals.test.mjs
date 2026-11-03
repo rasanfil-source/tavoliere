@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { setImmediate as turn } from 'node:timers/promises';
 import { createPendingMealTracker } from '../../prototypes/firebase-spark-pwa/public/core/pending-meals.mjs';
+import { createPendingMealJournal, isDefinitiveMealFailure } from '../../prototypes/firebase-spark-pwa/public/core/pending-meal-journal.mjs';
 import { functions } from '../helpers/app-functions.mjs';
 import { loadBrowserModule } from '../helpers/browser-module.mjs';
 
@@ -46,7 +47,8 @@ function harness() {
   const pending = new Promise((yes, no) => { resolve = yes; reject = no; });
   const meal = { mealDate: '2030-01-02', mealTypeId: 'lunch', mealWindowId: '2030-01-02_lunch', effect: 'ABSENT' };
   const state = { mode: 'week', pendingMealKeys: new Set(), selectedParticipant: { participantId: 'person' },
-    participantWeek: [{ meals: [meal] }], participantMonth: [], singleMealTracker: h.tracker };
+    participantWeek: [{ meals: [meal] }], participantMonth: [], singleMealTracker: h.tracker,
+    singleMealJournal: createPendingMealJournal(), isDefinitiveMealFailure };
   const statuses = [], refreshes = [];
   const api = functions(['saveMealOptimistically', 'activeSingleMealKeys', 'hasBlockingMealWrites',
     'overlayPendingMeals', 'renderPendingMealStatus'], {
@@ -78,7 +80,7 @@ for (const success of [true, false]) {
     h.api.overlayPendingMeals(h.state.participantWeek);
     assert.equal(serverMeal.effect, 'PRESENT');
     assert.equal(other.effect, 'ABSENT');
-    if (success) h.resolve(); else h.reject(new Error('denied'));
+    if (success) h.resolve(); else h.reject(Object.assign(new Error('denied'), { code: 'permission-denied' }));
     await save;
     assert.equal(serverMeal.effect, success ? 'PRESENT' : 'ABSENT');
     assert.equal(h.state.pendingMealKeys.size, 0);

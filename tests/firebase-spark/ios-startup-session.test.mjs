@@ -115,7 +115,7 @@ test('a failed common-password attempt leaves the existing resident Auth identit
 test('first login keeps its identity if the calendar network read fails', async () => {
   const state = { friendlyAccess: true, residentReady: true, selectedParticipant: { participantId: 'resident' },
     mode: 'week', participantWeek: [], participantMonth: [], todayOverview: [] };
-  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, state, console: { error() {} }, participantCalendarRevision: 0, calendarLoadContextKey: () => 'week:user',
+  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, schedulePendingMealRecovery() {}, state, console: { error() {} }, participantCalendarRevision: 0, calendarLoadContextKey: () => 'week:user',
     currentPersonalCalendarScope: () => null, getCurrentUser: () => ({ uid: 'user' }),
     preparePersonalCalendarRead: () => null, getActiveCenterId: () => 'center',
     renderCalendarPlaceholder() {},

@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "de demain",
   "week.operations.invited.afterTomorrow": "d’après-demain",
   "participant.meal.save.waiting": "La confirmation de l’enregistrement n’est pas encore arrivée. Vous pouvez consulter les autres repas ; la sélection en attente reste bloquée.",
-  "participant.meal.save.failed": "La réservation n’a pas été enregistrée"
+  "participant.meal.save.failed": "La réservation n’a pas été enregistrée",
+  "participant.meal.recovery.checking": "Vérification de l’enregistrement précédent…",
+  "participant.meal.recovery.unknown": "Une réservation précédente reste à vérifier. Le repas concerné reste bloqué ; les autres sont disponibles.",
+  "participant.meal.recovery.volatile": "Enregistrement en cours. Le stockage local est indisponible : gardez cette page ouverte jusqu’à la confirmation."
 }

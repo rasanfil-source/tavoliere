@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "tomorrow",
   "week.operations.invited.afterTomorrow": "the day after tomorrow",
   "participant.meal.save.waiting": "Save confirmation has not arrived yet. You can view other meals; the pending selection remains locked.",
-  "participant.meal.save.failed": "Booking was not saved"
+  "participant.meal.save.failed": "Booking was not saved",
+  "participant.meal.recovery.checking": "Checking the previous save…",
+  "participant.meal.recovery.unknown": "A previous booking still needs confirmation. That meal remains locked; other meals are available.",
+  "participant.meal.recovery.volatile": "Saving. Local storage is unavailable: keep this page open until confirmation."
 }

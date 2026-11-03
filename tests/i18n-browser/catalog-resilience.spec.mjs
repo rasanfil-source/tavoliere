@@ -24,12 +24,14 @@ const test = base.extend({
 const root = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
 const moduleSource = await readFile(new URL('i18n/i18n.mjs', root), 'utf8');
 const appSource = await readFile(new URL('app.js', root), 'utf8');
+const journalSource = await readFile(new URL('core/pending-meal-journal.mjs', root), 'utf8');
 const locales = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 const catalogs = Object.fromEntries(await Promise.all(locales.map(async locale => [locale,
   JSON.parse(await readFile(new URL(`i18n/${locale}.json`, root), 'utf8'))])));
 const keys = [...new Set(['app.title', 'app.title.kitchen', 'summary.view.todayTitle',
   'time.today', 'time.tomorrow', 'meal.type.breakfast', 'meal.type.lunch', 'meal.type.dinner',
   'participant.meal.save.waiting', 'participant.meal.save.failed', 'participant.meal.save.success',
+  'participant.meal.recovery.checking', 'participant.meal.recovery.unknown', 'participant.meal.recovery.volatile',
   ...Object.keys(catalogs.it).filter(key => key.startsWith('week.operations.') || key.startsWith('common.actions.'))])];
 const functionNames = ['renderAllViews', 'setParticipantStatus', 'formatRefreshLabel',
   'setFreshnessStatus', 'formatKitchenRefreshLabel', 'setKitchenScreenFreshnessStatus'];
@@ -50,6 +52,7 @@ async function setup(page, { locale = 'it', mode = 'week', delivery = 'ok' } = {
       </body></html>` });
     if (url.pathname === '/i18n/i18n.mjs') return route.fulfill({ contentType: 'text/javascript',
       body: moduleSource.replace(/const CATALOG_CACHE_KEY = [^;]+;/, `const CATALOG_CACHE_KEY = '${version}';`) });
+    if (url.pathname === '/core/pending-meal-journal.mjs') return route.fulfill({contentType:'text/javascript',body:journalSource});
     const match = url.pathname.match(/^\/i18n\/(\w+)\.json$/);
     if (match) {
       requests.push(match[1]);
@@ -91,6 +94,29 @@ async function setup(page, { locale = 'it', mode = 'week', delivery = 'ok' } = {
     }
   };
 }
+
+test('pending meal record survives reload with the same ID, without credentials or cross-user visibility', async ({page}) => {
+  const h=await setup(page);
+  const id=await page.evaluate(async()=>{
+    const {createPendingMealJournal}=await import('/core/pending-meal-journal.mjs');
+    const journal=createPendingMealJournal({storage:localStorage});
+    const record=journal.create({uid:'one',centerId:'center',participantId:'person'},
+      {mealDate:'2030-01-02',mealTypeId:'lunch',mealWindowId:'2030-01-02_lunch'},'PRESENT');
+    journal.put({...record,password:'not-to-store',token:'not-to-store'});
+    localStorage.setItem('auth-sentinel','unchanged');return record.requestId;
+  });
+  await h.reopen();
+  const result=await page.evaluate(async()=>{
+    const {createPendingMealJournal}=await import('/core/pending-meal-journal.mjs');
+    const journal=createPendingMealJournal({storage:localStorage});
+    const scope={uid:'one',centerId:'center',participantId:'person'};
+    const records=journal.list(scope);
+    return {records,other:journal.list({...scope,uid:'two'}),auth:localStorage.getItem('auth-sentinel')};
+  });
+  expect(result.records).toHaveLength(1);expect(result.records[0].requestId).toBe(id);
+  expect(result.records[0]).not.toHaveProperty('password');expect(result.records[0]).not.toHaveProperty('token');
+  expect(result.other).toEqual([]);expect(result.auth).toBe('unchanged');expect(h.unexpected).toEqual([]);
+});
 
 for (const locale of locales) {
   test(`${locale}: local catalogs survive reopen and an app update; changed catalog version fetches again`, async ({ page }) => {

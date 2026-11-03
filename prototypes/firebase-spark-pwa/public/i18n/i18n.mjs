@@ -12,7 +12,7 @@
 
 export const SUPPORTED_LOCALES = ['it', 'en', 'fr', 'es', 'de', 'ca'];
 export const DEFAULT_LOCALE = 'it';
-const CATALOG_CACHE_KEY = '20261103a';
+const CATALOG_CACHE_KEY = '20261103b';
 // Separata dalla release dell'app: contiene solo cataloghi pubblici, mai sessioni.
 const CATALOG_STORAGE = 'tavola-comune-i18n-v1';
 
@@ -40,6 +40,9 @@ export const KEY_ALIASES = Object.freeze({
 
 export const CORE_FALLBACKS = Object.freeze({
   ca: Object.freeze({
+    "participant.meal.recovery.checking": "S’està comprovant el desament anterior…",
+    "participant.meal.recovery.unknown": "Una reserva anterior encara està pendent de confirmació. L’àpat afectat continua bloquejat; els altres estan disponibles.",
+    "participant.meal.recovery.volatile": "S’està desant. L’emmagatzematge local no està disponible: mantén aquesta pàgina oberta fins a rebre la confirmació.",
     "participant.meal.save.waiting": "Encara no s’ha rebut la confirmació. Pots consultar els altres àpats; la selecció pendent continua bloquejada.",
     "participant.meal.save.failed": "No s’ha desat la reserva",
     "participant.meal.save.success": "Reserva desada",
@@ -225,6 +228,9 @@ export const CORE_FALLBACKS = Object.freeze({
     "summary.yes": "Sí"
 }),
   it: Object.freeze({
+    "participant.meal.recovery.checking": "Verifico il salvataggio precedente…",
+    "participant.meal.recovery.unknown": "Esito di una prenotazione precedente ancora da verificare. Il pasto interessato resta bloccato; gli altri sono disponibili.",
+    "participant.meal.recovery.volatile": "Salvataggio in corso. La memoria locale non è disponibile: mantieni aperta la pagina fino alla conferma.",
     "participant.meal.save.waiting": "Conferma del salvataggio non ancora ricevuta. Puoi consultare gli altri pasti; la selezione in attesa resta bloccata.",
     "participant.meal.save.failed": "Prenotazione non salvata",
     "participant.meal.save.success": "Prenotazione salvata",
@@ -410,6 +416,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Link per accedere'
   }),
   en: Object.freeze({
+    "participant.meal.recovery.checking": "Checking the previous save…",
+    "participant.meal.recovery.unknown": "A previous booking still needs confirmation. That meal remains locked; other meals are available.",
+    "participant.meal.recovery.volatile": "Saving. Local storage is unavailable: keep this page open until confirmation.",
     "participant.meal.save.waiting": "Save confirmation has not arrived yet. You can view other meals; the pending selection remains locked.",
     "participant.meal.save.failed": "Booking was not saved",
     "participant.meal.save.success": "Booking saved",
@@ -559,6 +568,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Access links'
   }),
   fr: Object.freeze({
+    "participant.meal.recovery.checking": "Vérification de l’enregistrement précédent…",
+    "participant.meal.recovery.unknown": "Une réservation précédente reste à vérifier. Le repas concerné reste bloqué ; les autres sont disponibles.",
+    "participant.meal.recovery.volatile": "Enregistrement en cours. Le stockage local est indisponible : gardez cette page ouverte jusqu’à la confirmation.",
     "participant.meal.save.waiting": "La confirmation de l’enregistrement n’est pas encore arrivée. Vous pouvez consulter les autres repas ; la sélection en attente reste bloquée.",
     "participant.meal.save.failed": "La réservation n’a pas été enregistrée",
     "participant.meal.save.success": "Reservation enregistree",
@@ -708,6 +720,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Liens d\'accès'
   }),
   es: Object.freeze({
+    "participant.meal.recovery.checking": "Verificando el guardado anterior…",
+    "participant.meal.recovery.unknown": "Una reserva anterior sigue pendiente de confirmación. Ese plato permanece bloqueado; las demás comidas están disponibles.",
+    "participant.meal.recovery.volatile": "Guardando. El almacenamiento local no está disponible: mantén esta página abierta hasta recibir la confirmación.",
     "participant.meal.save.waiting": "Todavía no se ha recibido la confirmación. Puedes consultar las otras comidas; la selección pendiente sigue bloqueada.",
     "participant.meal.save.failed": "No se ha guardado la reserva",
     "participant.meal.save.success": "Reserva guardada",
@@ -857,6 +872,9 @@ export const CORE_FALLBACKS = Object.freeze({
     'admin.overview.links': 'Enlaces de acceso'
   }),
   de: Object.freeze({
+    "participant.meal.recovery.checking": "Vorherigen Speichervorgang prüfen…",
+    "participant.meal.recovery.unknown": "Eine frühere Buchung muss noch bestätigt werden. Die betroffene Mahlzeit bleibt gesperrt; andere Mahlzeiten sind verfügbar.",
+    "participant.meal.recovery.volatile": "Wird gespeichert. Der lokale Speicher ist nicht verfügbar: Lass diese Seite bis zur Bestätigung geöffnet.",
     "participant.meal.save.waiting": "Die Speicherbestätigung ist noch nicht eingetroffen. Du kannst andere Mahlzeiten ansehen; die ausstehende Auswahl bleibt gesperrt.",
     "participant.meal.save.failed": "Die Buchung wurde nicht gespeichert",
     "participant.meal.save.success": "Reservierung gespeichert",

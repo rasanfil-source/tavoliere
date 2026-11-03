@@ -143,6 +143,7 @@ const domainModuleLoaders = {
   notes: () => import('./kitchen-notes.js?v=20261014b'),
   participant: () => import('./participant-data.js?v=20261031b'),
   pendingMeals: () => import('./core/pending-meals.mjs?v=20261103a'),
+  mealJournal: () => import('./core/pending-meal-journal.mjs?v=20261103a'),
   summaryView: () => import('./summary-matrix-view.js?v=20261031b')
 };
 const domainModuleLoads = new Map();
@@ -1533,6 +1534,7 @@ function refreshCalendarOnResume() {
   if (document.hidden) return;
   state.singleMealTracker?.check();
   renderPendingMealStatus();
+  schedulePendingMealRecovery();
   const missingCalendar = ['week', 'participant'].includes(state.mode)
     && (state.residentReady || state.residentRestorePending || state.selectedParticipant)
     && !(state.mode === 'week' ? state.participantWeek : state.participantMonth).length;
@@ -1777,6 +1779,7 @@ function hideStartupSplash() {
 function handleConnectivityChange() {
   updateConnectivityState();
   if (isConnectionAvailable()) {
+    schedulePendingMealRecovery();
     scheduleBackgroundRefresh('connessione');
   }
 }
@@ -4993,6 +4996,7 @@ async function refreshParticipant(source, options = {}) {
     }
   } finally {
     hideStartupSplash();
+    schedulePendingMealRecovery();
     // Un allineamento tardivo delle date richiede un nuovo caricamento del periodo. Il recupero riguarda soltanto la richiesta ancora attiva; navigazione e autenticazione mantengono la precedenza.
     if (!options.refreshOperation?.cancelled
         && !state.residentAuthTransition
@@ -10910,6 +10914,7 @@ function syncMonthGridFromState() {
 }
 
 function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
+  const storedKeys = storedPendingMealKeys();
   const participantId = state.selectedParticipant?.participantId;
   const uid = getCurrentUser()?.uid;
   const centerId = getActiveCenterId();
@@ -10922,6 +10927,7 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
     .flatMap((day) => day.meals || [])
     .filter((meal) => meal.isOpen && (!mealTypeId || meal.mealTypeId === mealTypeId))
     .filter((meal) => meal.effect !== effect)
+    .filter((meal) => !storedKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId)))
     .filter((meal) => !state.pendingMealKeys.has(getMealPendingKey(meal.mealDate, meal.mealTypeId)));
   const mealKeys = new Set(meals.map((meal) => getMealPendingKey(meal.mealDate, meal.mealTypeId)));
   const previousEffects = new Map(meals.map((meal) => [meal, meal.effect]));
@@ -10976,7 +10982,7 @@ function beginOptimisticBulkSelection(days, effect, mealTypeId = null) {
 
 function activeSingleMealKeys() {
   return new Set((state.singleMealTracker?.values() || [])
-    .filter(entry => entry.isCurrent()).map(entry => entry.meal.mealWindowId));
+    .filter(entry => entry.isCurrent() && !entry.recovered).map(entry => entry.meal.mealWindowId));
 }
 
 function hasBlockingMealWrites() {
@@ -10992,7 +10998,7 @@ function overlayPendingMeals(days) {
   for (const day of days || []) {
     for (const meal of day.meals || []) {
       const entry = state.singleMealTracker?.get(getMealPendingKey(meal.mealDate, meal.mealTypeId));
-      if (entry?.isCurrent()) meal.effect = entry.effect;
+      if (entry?.isCurrent() && !entry.recovered) meal.effect = entry.effect;
     }
   }
 }
@@ -11000,14 +11006,129 @@ function overlayPendingMeals(days) {
 function renderPendingMealStatus() {
   if (!['week', 'participant'].includes(state.mode)) return;
   const entries = state.singleMealTracker?.values().filter(entry => entry.isCurrent()) || [];
-  if (entries.length) setParticipantStatus(t(entries.some(entry => entry.waiting)
+  if (entries.some(entry => entry.recovered)) {
+    setParticipantStatus(t(state.mealRecoveryRunning ? 'participant.meal.recovery.checking'
+      : 'participant.meal.recovery.unknown'), 'pending');
+  } else if (entries.length) setParticipantStatus(t(entries.some(entry => entry.waiting)
     ? 'participant.meal.save.waiting' : 'common.actions.saving'), 'pending');
 }
 
 async function getSingleMealTracker() {
-  const module = await loadDomainModule('pendingMeals');
+  const [module, journalModule] = await Promise.all([loadDomainModule('pendingMeals'), loadDomainModule('mealJournal')]);
   state.singleMealTracker ||= module.createPendingMealTracker({ onWaiting: () => renderPendingMealStatus() });
+  if (!state.singleMealJournal) {
+    let storage;
+    try { storage = window.localStorage; } catch { /* Memoria non disponibile. */ }
+    state.singleMealJournal = journalModule.createPendingMealJournal({ storage });
+    state.isDefinitiveMealFailure = journalModule.isDefinitiveMealFailure;
+  }
+  const scope = { uid: getCurrentUser()?.uid, centerId: getActiveCenterId(), participantId: state.selectedParticipant?.participantId };
+  const pendingKeys = state.pendingMealKeys;
+  const isCurrent = () => scope.uid === getCurrentUser()?.uid && scope.centerId === getActiveCenterId()
+    && scope.participantId === state.selectedParticipant?.participantId && pendingKeys === state.pendingMealKeys
+    && !state.residentAuthTransition;
+  for (const record of state.singleMealJournal.list(scope)) {
+    const key = getMealPendingKey(record.mealDate, record.mealTypeId);
+    const previous = state.singleMealTracker.get(key);
+    if (previous?.isCurrent() && !previous.recovered) continue;
+    const entry = previous?.isCurrent() ? previous : state.singleMealTracker.begin(key, {
+      meal: record, effect: record.effect, isCurrent, recovered: true, records: []
+    });
+    if (!entry.records.some(value => value.requestId === record.requestId)) entry.records.push(record);
+    entry.waiting = true;
+    pendingKeys.add(key);
+  }
   return state.singleMealTracker;
+}
+
+function storedPendingMealKeys() {
+  const keys = new Set();
+  const scope = [getCurrentUser()?.uid, getActiveCenterId(), state.selectedParticipant?.participantId];
+  if (scope.some(value => !value)) return keys;
+  const prefix = 'tavolaComune.mealPending.v1:' + scope.map(encodeURIComponent).join(':') + ':';
+  try {
+    const storage = window.localStorage;
+    for (let index = 0; index < storage.length; index++) {
+      const key = storage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const record = JSON.parse(storage.getItem(key));
+        if (record?.schema === 1 && record.uid === scope[0] && record.centerId === scope[1]
+            && record.participantId === scope[2] && /^\d{4}-\d{2}-\d{2}$/.test(record.mealDate)
+            && [record.requestId, record.mealWindowId, record.mealTypeId].every(value =>
+              typeof value === 'string' && value.length > 0 && value.length <= 256 && !value.includes('/'))
+            && Number.isFinite(record.startedAt) && record.startedAt > 0
+            && ['PRESENT', 'ABSENT'].includes(record.effect) && key === prefix + encodeURIComponent(record.requestId)) {
+          keys.add(getMealPendingKey(record.mealDate, record.mealTypeId));
+        }
+      } catch { /* Un record danneggiato non blocca gli altri pasti. */ }
+    }
+  } catch { /* Nessun cambiamento all'autenticazione se lo storage è negato. */ }
+  return keys;
+}
+
+function schedulePendingMealRecovery() {
+  if (!['week', 'participant'].includes(state.mode) || !state.selectedParticipant
+      || state.residentAuthTransition || state.mealRecoveryScheduled || state.mealRecoveryRunning) return;
+  // Nessun nuovo modulo o accesso a rete quando il registro della sessione è vuoto.
+  if (!storedPendingMealKeys().size
+      && !state.singleMealTracker?.values().some(entry => entry.recovered && entry.isCurrent())) return;
+  state.mealRecoveryScheduled = true;
+  window.setTimeout(() => {
+    state.mealRecoveryScheduled = false;
+    void reconcilePendingMeals().catch(() => undefined);
+  }, 0);
+}
+
+async function reconcilePendingMeals() {
+  if (state.mealRecoveryRunning || state.residentAuthTransition || !['week', 'participant'].includes(state.mode)) return;
+  state.mealRecoveryRunning = true;
+  const uid = getCurrentUser()?.uid, centerId = getActiveCenterId(), participantId = state.selectedParticipant?.participantId;
+  const isCurrent = () => uid === getCurrentUser()?.uid && centerId === getActiveCenterId()
+    && participantId === state.selectedParticipant?.participantId && !state.residentAuthTransition;
+  let confirmed = false;
+  try {
+    const tracker = await getSingleMealTracker();
+    if (!isCurrent() || !['week', 'participant'].includes(state.mode)) return;
+    const entries = tracker.values().filter(entry => entry.recovered && entry.isCurrent());
+    if (!entries.length) return;
+    renderParticipantMeals();
+    renderPendingMealStatus();
+    if (!isConnectionAvailable()) return;
+    const participantModule = await loadDomainModule('participant');
+    // Letture sequenziali: non avviamo una raffica dopo un lungo periodo offline.
+    for (const entry of entries) {
+      if (!entry.isCurrent()) continue;
+      for (const record of [...entry.records]) {
+        try {
+          let timeout;
+          const result = await Promise.race([
+            participantModule.verifyPendingMeal(record),
+            new Promise(resolve => { timeout = window.setTimeout(() => resolve({ status: 'unknown' }), 12000); })
+          ]).finally(() => window.clearTimeout(timeout));
+          if (!entry.isCurrent()) break;
+          if (result.status !== 'confirmed') continue;
+          state.singleMealJournal.remove(record);
+          entry.records = entry.records.filter(value => value.requestId !== record.requestId);
+          if (!entry.records.length) {
+            tracker.finish(entry);
+            state.pendingMealKeys.delete(entry.key);
+            confirmed = true;
+          }
+        } catch { /* Assenza di rete o accesso: esito ancora incerto, nessun reinvio. */ }
+      }
+    }
+  } finally {
+    state.mealRecoveryRunning = false;
+    if (isCurrent() && ['week', 'participant'].includes(state.mode)) {
+      renderParticipantMeals();
+      renderPendingMealStatus();
+      if (confirmed) {
+        invalidateParticipantCalendarCache();
+        scheduleBackgroundRefresh('salvataggio-verificato');
+      }
+    }
+  }
 }
 
 async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
@@ -11040,15 +11161,18 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
   if (state.pendingMealKeys.has(pendingKey)) return;
   invalidateParticipantCalendarCache();
   const previousEffect = meal.effect;
-  const entry = tracker.begin(pendingKey, { meal, effect, previousEffect, isCurrent });
+  const record = state.singleMealJournal.create({ uid, centerId, participantId: participant.participantId }, meal, effect);
+  const entry = tracker.begin(pendingKey, { meal, effect, previousEffect, isCurrent, record });
   if (!entry) return;
+  const durable = state.singleMealJournal.put(record);
   state.pendingMealKeys.add(pendingKey);
   meal.effect = effect;
   sync();
-  setParticipantStatus(t('common.actions.saving'));
+  setParticipantStatus(t(durable ? 'common.actions.saving' : 'participant.meal.recovery.volatile'));
 
   try {
-    await saveParticipantMeal(participant, meal, effect);
+    await saveParticipantMeal(participant, meal, effect, { requestId: record.requestId, expectedUid: uid, expectedCenterId: centerId });
+    state.singleMealJournal.remove(record);
     if (!isCurrent()) return;
     [state.participantWeek, state.participantMonth, state.mealReminderDays]
       .flatMap((days) => days || []).flatMap((day) => day.meals || [])
@@ -11062,6 +11186,14 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
         && initialRequest === state.participantRequestVersion) onSaved();
     if (['week', 'participant'].includes(state.mode)) setParticipantStatus(t('participant.meal.save.success'));
   } catch (error) {
+    if (!state.isDefinitiveMealFailure(error)) {
+      entry.recovered = true;
+      entry.records = [record];
+      entry.waiting = true;
+      if (isCurrent()) renderPendingMealStatus();
+      return;
+    }
+    state.singleMealJournal.remove(record);
     meal.effect = previousEffect;
     if (isCurrent()) {
       [state.participantWeek, state.participantMonth, state.mealReminderDays]
@@ -11073,8 +11205,10 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
       }
     }
   } finally {
-    tracker.finish(entry);
-    pendingKeys.delete(pendingKey);
+    if (!entry.recovered) {
+      tracker.finish(entry);
+      pendingKeys.delete(pendingKey);
+    }
     if (isCurrent()) {
       invalidateParticipantCalendarCache();
       if (!state.pendingMealKeys.size && state.residentReady) scheduleBackgroundRefresh('salvataggio');
@@ -11082,6 +11216,7 @@ async function saveMealOptimistically({ meal, effect, sync, onSaved }) {
       if (initialMode !== state.mode && ['week', 'participant'].includes(state.mode)) renderParticipantMeals();
       renderPendingMealStatus();
       scheduleMealRemindersFromCurrentCalendar();
+      if (entry.recovered) schedulePendingMealRecovery();
     }
   }
 }

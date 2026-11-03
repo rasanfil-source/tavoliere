@@ -785,5 +785,8 @@
   "week.operations.invited.tomorrow": "morgen",
   "week.operations.invited.afterTomorrow": "übermorgen",
   "participant.meal.save.waiting": "Die Speicherbestätigung ist noch nicht eingetroffen. Du kannst andere Mahlzeiten ansehen; die ausstehende Auswahl bleibt gesperrt.",
-  "participant.meal.save.failed": "Die Buchung wurde nicht gespeichert"
+  "participant.meal.save.failed": "Die Buchung wurde nicht gespeichert",
+  "participant.meal.recovery.checking": "Vorherigen Speichervorgang prüfen…",
+  "participant.meal.recovery.unknown": "Eine frühere Buchung muss noch bestätigt werden. Die betroffene Mahlzeit bleibt gesperrt; andere Mahlzeiten sind verfügbar.",
+  "participant.meal.recovery.volatile": "Wird gespeichert. Der lokale Speicher ist nicht verfügbar: Lass diese Seite bis zur Bestätigung geöffnet."
 }

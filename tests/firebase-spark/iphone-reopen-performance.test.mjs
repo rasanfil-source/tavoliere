@@ -165,7 +165,7 @@ test('meals become usable while roles, presentation and accessory continuation r
   let splashHidden = false;
   const state = { mode: 'week', friendlyAccess: true, residentReady: true, residentAuthTransition: '',
     participantWeek: [], participantMonth: [], todayOverview: [], selectedParticipant: { participantId: 'person' } };
-  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, state, console, participantCalendarRevision: 0,
+  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), renderPendingMealStatus() {}, schedulePendingMealRecovery() {}, state, console, participantCalendarRevision: 0,
     serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     isCenterAccessRevokedError: error => error?.code === 'permission-denied',
@@ -311,7 +311,7 @@ test('essential meal reads start while current center settings are still pending
   const state = { mode: 'week', friendlyAccess: true, residentReady: true,
     participantWeek: [], participantMonth: [], selectedParticipant: { participantId: 'person' },
     centerContactSettings: { timezone: 'Europe/Rome' }, weekStartDate: new Date(2026, 9, 12) };
-  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), activeSingleMealKeys: () => new Set(), renderPendingMealStatus() {}, state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
+  const context = vm.createContext({ hasBlockingMealWrites: () => Boolean(state.pendingMealKeys?.size), activeSingleMealKeys: () => new Set(), renderPendingMealStatus() {}, schedulePendingMealRecovery() {}, state, console, participantCalendarRevision: 0, getActiveCenterId: () => 'center',
     serverNow: () => Date.now(),
     currentPersonalCalendarScope: () => scope, beginParticipantRequest: () => ({}), isCurrentParticipantRequest: () => true,
     isCenterAccessRevokedError: error => error?.code === 'permission-denied',
