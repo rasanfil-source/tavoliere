@@ -8200,13 +8200,15 @@ function renderSickCard(dailyHealth) {
   `;
 }
 
-function setParticipantStatus(message, freshness = '') {
+function setParticipantStatus(message, freshness = '', recoveryRequired = false) {
   elements.participantStatus.textContent = message;
   elements.weekStatus.textContent = message;
   elements.summaryStatus.textContent = message;
   [elements.participantStatus, elements.weekStatus, elements.summaryStatus].forEach((element) => {
     if (freshness) element.dataset.freshness = freshness;
     else delete element.dataset.freshness;
+    if (recoveryRequired) element.dataset.recoveryRequired = 'true';
+    else delete element.dataset.recoveryRequired;
   });
 }
 
@@ -11008,9 +11010,9 @@ function renderPendingMealStatus() {
   const entries = state.singleMealTracker?.values().filter(entry => entry.isCurrent()) || [];
   if (entries.some(entry => entry.recovered)) {
     setParticipantStatus(t(state.mealRecoveryRunning ? 'participant.meal.recovery.checking'
-      : 'participant.meal.recovery.unknown'), 'pending');
+      : 'participant.meal.recovery.unknown'), 'pending', true);
   } else if (entries.length) setParticipantStatus(t(entries.some(entry => entry.waiting)
-    ? 'participant.meal.save.waiting' : 'common.actions.saving'), 'pending');
+    ? 'participant.meal.save.waiting' : 'common.actions.saving'), 'pending', entries.some(entry => entry.waiting));
 }
 
 async function getSingleMealTracker() {
