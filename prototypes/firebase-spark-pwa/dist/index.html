@@ -61,7 +61,7 @@
         if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
             || params.has('invite') || params.has('adminInvite')) return;
         // La build sostituisce il grafo aggiuntivo con URL identificati dall'impronta del contenuto.
-        var residentModulePreloads = ["/assets/chunk-DEFXUQHB.js","/assets/chunk-QZWGC2YQ.js","/assets/chunk-WH36HPAX.js"];
+        var residentModulePreloads = ["/assets/chunk-DEFXUQHB.js","/assets/chunk-JQCTMK4M.js","/assets/chunk-LHQWXFLW.js"];
         residentModulePreloads.forEach(function (path) {
           var link = document.createElement('link');
           link.rel = 'modulepreload';
@@ -109,14 +109,14 @@
       }());
     </script>
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
-    <link rel="stylesheet" href="/assets/styles-XV4NM45Z.css">
+    <link rel="stylesheet" href="/assets/styles-E5SU2CH7.css">
     <link rel="stylesheet" href="/assets/summary-matrix-refinements-LMVS55DV.css">
-    <script type="module" src="/assets/app-KCC5RHN3.js" onerror="window.__showStartupRecovery()"></script>
-      <link rel="modulepreload" href="/assets/chunk-3NQH5LBU.js">
-    <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
+    <script type="module" src="/assets/app-LCRWDZDZ.js" onerror="window.__showStartupRecovery()"></script>
+      <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
+    <link rel="modulepreload" href="/assets/chunk-AXH43XTZ.js">
     <link rel="modulepreload" href="/assets/chunk-DZJEM4PC.js">
     <link rel="modulepreload" href="/assets/chunk-FF5MZSFQ.js">
-    <link rel="modulepreload" href="/assets/chunk-HCYGUTZE.js">
+    <link rel="modulepreload" href="/assets/chunk-I5YRBNML.js">
     <link rel="modulepreload" href="/assets/chunk-IMMYBHEU.js">
     <link rel="modulepreload" href="/assets/chunk-JUUUUMHC.js">
     <link rel="modulepreload" href="/assets/chunk-KTQAX33F.js">
@@ -124,7 +124,7 @@
     <link rel="modulepreload" href="/assets/chunk-O2XFH626.js">
     <link rel="modulepreload" href="/assets/chunk-Q3QCBAAQ.js">
     <link rel="modulepreload" href="/assets/chunk-T63ZSDGB.js">
-    <link rel="modulepreload" href="/assets/chunk-ZE363LNP.js">
+    <link rel="modulepreload" href="/assets/chunk-Z6VRK422.js">
   </head>
   <body>
     <div class="startup-gate" data-startup-gate aria-hidden="true">
@@ -195,6 +195,7 @@
           <p data-participant-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="participant.status.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna vista mese" title="Aggiorna">
             <span aria-hidden="true">↻</span>
+            <strong data-i18n="common.actions.refresh">Aggiorna</strong>
           </button>
         </div>
         <nav class="meal-view-nav" aria-label="Navigazione partecipante" data-i18n-aria-label="a11y.participantNavigation">
@@ -242,6 +243,7 @@
           <p data-week-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna vista settimana" title="Aggiorna">
             <span aria-hidden="true">↻</span>
+            <strong data-i18n="common.actions.refresh">Aggiorna</strong>
           </button>
         </div>
         <nav class="meal-view-nav" aria-label="Navigazione settimanale" data-i18n-aria-label="a11y.weekNavigation">
@@ -419,6 +421,7 @@
           <p data-summary-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna Oggi a tavola" title="Aggiorna">
             <span aria-hidden="true">↻</span>
+            <strong data-i18n="common.actions.refresh">Aggiorna</strong>
           </button>
         </div>
         <div class="summary-date-tabs" data-summary-date-tabs role="tablist" aria-label="Giorno del riepilogo">
@@ -440,6 +443,7 @@
           <p data-status aria-live="polite">-</p>
           <button class="status-refresh-button" type="button" data-refresh-button data-i18n-aria-label="common.actions.refresh" data-i18n-title="common.actions.refresh" aria-label="Aggiorna cucina" title="Aggiorna">
             <span aria-hidden="true">↻</span>
+            <strong data-i18n="common.actions.refresh">Aggiorna</strong>
           </button>
         </div>
         <div class="summary-date-tabs kitchen-date-tabs" data-kitchen-date-tabs role="tablist" aria-label="Giorno della cucina">

@@ -1,0 +1,15 @@
+# Valutazione dell'audit di avvio
+
+Confronto con il codice corrente e con la build distribuita, non soltanto con public.
+
+1. **Warm-up in activate:** attesa superflua nel sorgente, rimossa. In produzione la build già sostituisce FIREBASE_SDK con un elenco vuoto perché incorpora Firebase nei bundle. Non era quindi dimostrata la latenza di produzione descritta nell'audit. Test: activate termina senza richieste SDK, che restano memorizzabili al primo uso.
+2. **Timeout:** il riepilogo usa 5 secondi e il calendario 15; alla scadenza invalida le richieste. È una scelta conservativa che può scartare risultati utili su rete lenta. Un timeout morbido è un possibile miglioramento, ma deve mantenere coordinamento, navigazione e protezione dalle risposte obsolete. Non modificato in questo rilascio; non è dimostrato che Auth impedisca sempre il completamento. Il watchdog segnala il mancato avvio dei moduli, non certifica il completamento dei dati.
+3. **Letture amministrative:** il numero di chiamate nel sorgente non dimostra quattro round trip in ogni avvio. Non accolta la tesi di rischio nullo per una cache dei permessi: revoche e cambi di contesto devono essere coperti. Non rinviata la protezione delle cancellazioni senza una verifica dedicata.
+4. **Letture prima della sessione:** non adottate. Un token locale valido non dimostra che l'autorizzazione server sia pronta; provocare permission-denied può aumentare lavoro e latenza.
+5. **Registrazione differita:** ipotesi da misurare. Posticipare l'installazione ritarda anche la disponibilità offline; nessun cambiamento automatico.
+6. **Versioni e moduli mancanti:** il problema descritto riguarda i percorsi sorgente. La build normalizza gli import e genera bundle con impronta del contenuto, grafo iniziale e precache. verify-build e i test della build verificano già identità SDK, import, preload e risorse. Non aggiunto un controllo duplicato.
+7. **Orologio:** il limite di 2 secondi e il rifiuto di Age non nullo esistono. Non è dimostrata una risposta CDN problematica in produzione. Non rimosso il controllo dell'ora dal salvataggio: protegge le scadenze. Un endpoint dedicato richiederebbe misura e progettazione separate.
+8. **Riparazione automatica:** non adottata. Cancellare la cache dopo due errori di rete può eliminare una shell offline ancora utilizzabile. Rimane la pulizia esplicita già prevista dall'app.
+9. **Strategie:** Firebase è già incluso nella build. Nessuna migrazione a Firestore Lite o modifica della persistenza Auth, nessuna richiesta automatica storage.persist e nessuna nuova telemetria locale senza necessità dimostrata. Le affermazioni generali su iOS non sostituiscono misure sul dispositivo.
+
+Inclusa inoltre la richiesta UI: il comando Aggiorna esistente mostra il testo tradotto in grassetto. Non sono presenti il nuovo pulsante «Aggiorna e sblocca» né il relativo dialogo. Il comportamento di recupero delle operazioni pendenti resta quello della release precedente.

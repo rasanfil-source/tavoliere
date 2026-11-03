@@ -104,8 +104,6 @@ self.addEventListener('activate', (event) => {
           ) && name !== CACHE_NAME)
           .map((name) => caches.delete(name))))
         .then(() => self.clients.claim())
-        // La prima pagina carica questi moduli prima del controllo del worker. La cache viene popolata dopo l'acquisizione delle pagine, senza ritardare l'avvio.
-        .then(() => Promise.allSettled(FIREBASE_SDK.map((url) => sdkCacheFirst(url))))
     ])
   );
 });

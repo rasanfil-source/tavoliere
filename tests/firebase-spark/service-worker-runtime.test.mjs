@@ -88,13 +88,14 @@ for (const locale of ['it', 'en', 'fr', 'es', 'de', 'ca']) {
   });
 }
 
-test('prima attivazione prepara i tre SDK per la riapertura', async () => {
+test('activation completes without SDK downloads; first use caches the SDK', async () => {
   const sw = worker();
   await sw.activate();
   assert.equal(sw.claimed, true);
-  assert.equal(sw.entries.size, 3);
+  assert.equal(sw.entries.size, 0);
+  assert.equal(sw.requests.length, 0);
   await sw.fetch(sdk);
-  assert.equal(sw.requests.length, 3);
+  assert.equal(sw.requests.length, 1);
   assert.deepEqual(sw.deleted, ['tavola-comune-app-v448']);
 });
 
