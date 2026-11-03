@@ -4660,6 +4660,16 @@ async function refreshParticipant(source, options = {}) {
       // Settimana senza essere scambiata per un nuovo accesso residente.
       await waitForAuthReady();
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
+      // Auth persistente ha precedenza sulla sigla locale. Un dispositivo
+      // senza entrambe le identità può mostrare il modulo senza caricare il dominio.
+      if (!hasStrongAdministratorIdentity() && !loadStoredResidentSignature()
+          && !(state.mode === 'week' && canUseWeekWithoutParticipant())) {
+        state.residentRestorePending = false;
+        renderResidentAccess(true);
+        hideStartupSplash();
+        setParticipantStatus('Inserisci sigla e password comune');
+        return;
+      }
       if (shouldBlockResidentEntryRestore({
         entryGateClosed: isResidentEntryGateClosed(),
         strongAuthUser: hasStrongAdministratorIdentity()
@@ -8534,7 +8544,7 @@ async function handleDayBulkButton(button) {
 }
 
 async function handleWeekMassButton(button) {
-  if (!canManageMass()) {
+  if (!canManageMass() || button.getAttribute('aria-busy') === 'true') {
     return;
   }
 
@@ -8542,85 +8552,92 @@ async function handleWeekMassButton(button) {
   const weekStart = state.weekStartDate.getTime();
   const participantId = state.selectedParticipant?.participantId || '';
   const uid = getCurrentUser()?.uid;
-  await synchronizeServerClock();
-  if (state.mode !== 'week' || centerId !== getActiveCenterId()
-      || weekStart !== state.weekStartDate.getTime()
-      || participantId !== (state.selectedParticipant?.participantId || '')
-      || uid !== getCurrentUser()?.uid || state.residentAuthTransition || !canManageMass()) return;
+  const isCurrent = () => state.mode === 'week' && centerId === getActiveCenterId()
+    && weekStart === state.weekStartDate.getTime()
+    && participantId === (state.selectedParticipant?.participantId || '')
+    && uid === getCurrentUser()?.uid && !state.residentAuthTransition && canManageMass();
   const dateId = button.dataset.weekMassDate;
-  const day = state.participantWeek.find((item) => item.date === dateId);
-  const windowState = day ? getMassWindowState(day) : null;
-  if (!windowState?.isOpen) {
-    setParticipantStatus(windowState ? formatCutoffLabel(windowState) : 'Messa non modificabile');
-    if (day) syncWeekMassButton(button, day, button.dataset.weekMassScheduled === 'true');
-    return;
-  }
   const massScheduled = button.dataset.weekMassScheduled !== 'true';
-  const operationIndex = state.weekDailyOperations.findIndex((item) => item.dateId === dateId);
-  const previousOperation = operationIndex >= 0
-    ? { ...state.weekDailyOperations[operationIndex] }
-    : null;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  if (operationIndex >= 0) {
-    state.weekDailyOperations[operationIndex].massScheduled = massScheduled;
-  } else {
-    state.weekDailyOperations.push({ dateId, massScheduled });
-  }
-  syncWeekGridFromState();
-  setParticipantStatus('Salvo la Messa...');
-
   try {
-    await saveMassStatus(parseDateId(dateId), massScheduled);
-    setParticipantStatus(massScheduled ? 'Messa prevista' : 'Messa non prevista');
-  } catch (error) {
-    if (previousOperation) {
-      state.weekDailyOperations[operationIndex] = previousOperation;
-    } else {
-      state.weekDailyOperations = state.weekDailyOperations.filter((item) => item.dateId !== dateId);
+    await synchronizeServerClock();
+    if (!isCurrent()) return;
+    const day = state.participantWeek.find((item) => item.date === dateId);
+    const windowState = day ? getMassWindowState(day) : null;
+    if (!windowState?.isOpen) {
+      setParticipantStatus(windowState ? formatCutoffLabel(windowState) : 'Messa non modificabile');
+      return;
     }
-    setParticipantStatus(friendlyErrorMessage(error, 'Indicazione della Messa non salvata'));
+    const operationIndex = state.weekDailyOperations.findIndex((item) => item.dateId === dateId);
+    const previousOperation = operationIndex >= 0
+      ? { ...state.weekDailyOperations[operationIndex] }
+      : null;
+    setMassStatusInState(dateId, massScheduled);
+    syncWeekGridFromState();
+    setParticipantStatus('Salvo la Messa...');
+    try {
+      await saveMassStatus(parseDateId(dateId), massScheduled);
+      if (isCurrent()) setParticipantStatus(massScheduled ? 'Messa prevista' : 'Messa non prevista');
+    } catch (error) {
+      if (!isCurrent()) return;
+      if (previousOperation) {
+        const currentIndex = state.weekDailyOperations.findIndex((item) => item.dateId === dateId);
+        if (currentIndex >= 0) state.weekDailyOperations[currentIndex] = previousOperation;
+        else state.weekDailyOperations.push(previousOperation);
+      } else {
+        state.weekDailyOperations = state.weekDailyOperations.filter((item) => item.dateId !== dateId);
+      }
+      throw error;
+    }
+  } catch (error) {
+    if (isCurrent()) setParticipantStatus(friendlyErrorMessage(error, 'Indicazione della Messa non salvata'));
   } finally {
     button.disabled = false;
     button.removeAttribute('aria-busy');
-    syncWeekGridFromState();
+    if (isCurrent()) syncWeekGridFromState();
   }
 }
 
 async function handleWeekMassBulkButton(button) {
-  if (!canManageMass()) return;
+  if (!canManageMass() || button.getAttribute('aria-busy') === 'true') return;
   const centerId = getActiveCenterId();
   const weekStart = state.weekStartDate.getTime();
   const participantId = state.selectedParticipant?.participantId || '';
   const uid = getCurrentUser()?.uid;
-  await synchronizeServerClock();
-  if (state.mode !== 'week' || centerId !== getActiveCenterId()
-      || weekStart !== state.weekStartDate.getTime()
-      || participantId !== (state.selectedParticipant?.participantId || '')
-      || uid !== getCurrentUser()?.uid || state.residentAuthTransition || !canManageMass()) return;
-  const openDays = state.participantWeek.filter((day) => getMassWindowState(day).isOpen);
-  if (openDays.length === 0) {
-    setParticipantStatus('Le Messe della settimana non sono più modificabili');
-    return;
-  }
-
+  const isCurrent = () => state.mode === 'week' && centerId === getActiveCenterId()
+    && weekStart === state.weekStartDate.getTime()
+    && participantId === (state.selectedParticipant?.participantId || '')
+    && uid === getCurrentUser()?.uid && !state.residentAuthTransition && canManageMass();
   const massScheduled = button.dataset.weekMassScheduled === 'true';
-  const previousOperations = state.weekDailyOperations.map((operation) => ({ ...operation }));
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  openDays.forEach((day) => setMassStatusInState(day.date, massScheduled));
-  syncWeekGridFromState();
-  setParticipantStatus('Salvo le Messe della settimana...');
-
   try {
-    await saveMassStatuses(openDays.map((day) => parseDateId(day.date)), massScheduled);
-    setParticipantStatus(massScheduled ? 'Messe della settimana previste' : 'Messe della settimana non previste');
-  } catch (error) {
-    state.weekDailyOperations = previousOperations;
-    setParticipantStatus(friendlyErrorMessage(error, 'Indicazioni delle Messe non salvate'));
-  } finally {
-    button.removeAttribute('aria-busy');
+    await synchronizeServerClock();
+    if (!isCurrent()) return;
+    const openDays = state.participantWeek.filter((day) => getMassWindowState(day).isOpen);
+    if (openDays.length === 0) {
+      setParticipantStatus('Le Messe della settimana non sono più modificabili');
+      return;
+    }
+    const previousOperations = state.weekDailyOperations.map((operation) => ({ ...operation }));
+    openDays.forEach((day) => setMassStatusInState(day.date, massScheduled));
     syncWeekGridFromState();
+    setParticipantStatus('Salvo le Messe della settimana...');
+    try {
+      await saveMassStatuses(openDays.map((day) => parseDateId(day.date)), massScheduled);
+      if (isCurrent()) setParticipantStatus(massScheduled ? 'Messe della settimana previste' : 'Messe della settimana non previste');
+    } catch (error) {
+      if (!isCurrent()) return;
+      state.weekDailyOperations = previousOperations;
+      throw error;
+    }
+  } catch (error) {
+    if (isCurrent()) setParticipantStatus(friendlyErrorMessage(error, 'Indicazioni delle Messe non salvate'));
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    if (isCurrent()) syncWeekGridFromState();
   }
 }
 

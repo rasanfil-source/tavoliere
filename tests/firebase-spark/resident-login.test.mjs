@@ -1157,7 +1157,7 @@ test('il ruolo vice usa direttamente sigla e password amministratori nel login r
   assert.match(participantData, /loadCenterContactSettings\(\{ forceRefresh: true \}\)/);
   assert.match(participantData, /const technicalEmails = \[\.\.\.new Set/);
   assert.match(firebaseClient, /technicalEmailOverride = ''/);
-  assert.match(participantData, /await authorizeResidentAdministratorSession/);
+  assert.match(participantData, /await authorizeParticipant\(participant\.participantId\)/);
   assert.doesNotMatch(index, /data-resident-admin-unlock/);
 });
 

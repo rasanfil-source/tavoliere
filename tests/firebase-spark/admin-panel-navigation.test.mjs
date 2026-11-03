@@ -182,7 +182,7 @@ test('i link operativi non sono utilizzabili senza token e viaggiano con il logi
   assert.match(participantData, /administratorAuthorized: true,[\s\S]*operationalLinks/);
   assert.match(
     participantData,
-    /await authorizeResidentAdministratorSession\([\s\S]*authorizedLinksSnapshot[\s\S]*privateSettings'[\s\S]*'operationalLinks'/
+    /await authorizeParticipant\([\s\S]*authorizedLinksSnapshot[\s\S]*privateSettings'[\s\S]*'operationalLinks'/
   );
   assert.match(app, /normalizeOperationalLinksFromAuthorizedLogin\(result\.operationalLinks\)/);
   assert.match(app, /control\.disabled = !enabled/);

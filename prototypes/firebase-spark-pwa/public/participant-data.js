@@ -21,7 +21,6 @@ import {
   isResidentTechnicalEmail,
   replaceWithAnonymousUser,
   signOutCurrentUser,
-  authorizeResidentAdministratorSession,
   verifyResidentCommonPassword,
   waitForAuthReady,
   withResidentTechnicalSession,
@@ -535,7 +534,6 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   let participant = null;
   let token;
   let operationalLinks = null;
-  let technicalEmail = '';
   const technicalEmails = [...new Set([
     String(settings.adminTechnicalEmail || '').trim().toLowerCase(),
     getAdministratorTechnicalEmail(centerId, passwordVersion),
@@ -543,25 +541,27 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
   ].filter(Boolean))];
   let lastTechnicalError = null;
   for (const candidateEmail of technicalEmails) {
+    let credentialsAccepted = false;
     try {
       await withAdministratorTechnicalSession(
         centerId,
         administratorPassword,
         passwordVersion,
-      async ({ db: technicalDb, email }) => {
-        participant = await loadPublicParticipantBySignature(normalized, technicalDb);
-        if (!participant) {
-          throw residentLoginError(
-            'La tua sigla non risulta tra i residenti attivi.',
-            'resident/participant-not-found'
-          );
+        async ({ db: technicalDb, authorizeParticipant }) => {
+          credentialsAccepted = true;
+          participant = await loadPublicParticipantBySignature(normalized, technicalDb);
+          if (!participant) {
+            throw residentLoginError(
+              'La tua sigla non risulta tra i residenti attivi.',
+              'resident/participant-not-found'
+            );
           }
           const isAuthorizedPerson = participant.viceAdminRole === true;
-        if (!isAuthorizedPerson) {
-          throw residentLoginError(
-            'Questa persona non è autorizzata come vice-amministratore.',
-            'resident/not-vice'
-          );
+          if (!isAuthorizedPerson) {
+            throw residentLoginError(
+              'Questa persona non è autorizzata come vice-amministratore.',
+              'resident/not-vice'
+            );
           }
           token = await createPersonalTokenForParticipant(participant.participantId, technicalDb);
           // Recupera i collegamenti mentre la password amministratori è ancora
@@ -576,7 +576,9 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
             'operationalLinks'
           )).catch(() => null);
           operationalLinks = linksSnapshot?.exists() ? linksSnapshot.data() : null;
-          technicalEmail = email;
+          await createPersonalAnonymousSession(participant.participantId, token);
+          rememberResidentIdentity(participant, normalized, token);
+          await authorizeParticipant(participant.participantId);
         },
         candidateEmail
       );
@@ -590,7 +592,9 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
         'auth/user-not-found',
         'auth/invalid-email'
       ].includes(error?.code);
-      if (!retryableCredentialError) throw error;
+      // Solo un rifiuto del login tecnico prova l'indirizzo alternativo.
+      // Dopo aver creato la sessione personale non ripetere la transizione.
+      if (credentialsAccepted || !retryableCredentialError) throw error;
     }
   }
   if (lastTechnicalError) throw lastTechnicalError;
@@ -598,15 +602,6 @@ export async function signInFriendlyViceAdministrator(signature, administratorPa
     throw residentLoginError('Accesso amministrativo non riuscito.', 'resident/vice-auth-failed');
   }
 
-  await createPersonalAnonymousSession(participant.participantId, token);
-  rememberResidentIdentity(participant, normalized, token);
-  await authorizeResidentAdministratorSession({
-    centerId,
-    participantId: participant.participantId,
-    password: administratorPassword,
-    passwordVersion,
-    technicalEmail: technicalEmail || settings.adminTechnicalEmail
-  });
   // Dopo la creazione della vice-sessione, i collegamenti vengono letti con l'identità definitiva, anche quando l'account tecnico del centro è in rotazione.
   const authorizedLinksSnapshot = await getDoc(doc(
     db,

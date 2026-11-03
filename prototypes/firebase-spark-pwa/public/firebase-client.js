@@ -278,9 +278,9 @@ async function acquireResidentMaintenanceAuth() {
 }
 
 export async function withResidentTechnicalSession(centerId, password, operation) {
-  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = getResidentTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   try {
     const credential = await signInWithEmailAndPassword(
       maintenanceAuth,
@@ -308,21 +308,27 @@ export async function withAdministratorTechnicalSession(
   operation,
   technicalEmailOverride = ''
 ) {
-  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = String(technicalEmailOverride || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId, passwordVersion);
   const technicalPassword = formatTechnicalAuthPassword(password);
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   try {
     const credential = await signInWithEmailAndPassword(
       maintenanceAuth,
       email,
       technicalPassword
     );
+    const maintenanceDb = initializeFirestore(maintenanceAuth.app, firestoreSettings);
     return await operation({
       auth: maintenanceAuth,
-      db: initializeFirestore(maintenanceAuth.app, firestoreSettings),
+      db: maintenanceDb,
       user: credential.user,
-      email
+      email,
+      // La persona viene autorizzata dopo la creazione della sua identità
+      // principale, senza riacquisire la coda o ripetere il login tecnico.
+      authorizeParticipant: (participantId) => writeResidentAdministratorSession({
+        centerId, participantId, passwordVersion
+      }, maintenanceDb)
     });
   } finally {
     await release();
@@ -495,31 +501,51 @@ export async function authorizeResidentAdministratorSession({
     throw new Error('La password amministratori non è ancora impostata');
   }
 
-  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   const email = String(technicalEmail || '').trim().toLowerCase()
     || getAdministratorTechnicalEmail(centerId);
   const technicalPassword = formatTechnicalAuthPassword(password);
+  const { maintenanceAuth, release } = await acquireResidentMaintenanceAuth();
   try {
     await signInWithEmailAndPassword(maintenanceAuth, email, technicalPassword);
-    await deleteDoc(doc(db, 'centers', centerId, 'viceSessions', primaryUser.uid)).catch((error) => {
-      if (error?.code !== 'not-found') throw error;
-    });
     const maintenanceDb = initializeFirestore(maintenanceAuth.app, firestoreSettings);
-    const expiresAt = Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-    await setDoc(doc(maintenanceDb, 'centers', centerId, 'viceSessions', primaryUser.uid), {
-      centerId,
-      authUid: primaryUser.uid,
-      participantId: normalizedParticipantId,
-      passwordVersion: normalizedVersion,
-      status: 'ACTIVE',
-      expiresAt,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return { expiresAt: expiresAt.toDate(), passwordVersion: normalizedVersion };
+    return await writeResidentAdministratorSession({
+      centerId, participantId: normalizedParticipantId, passwordVersion: normalizedVersion,
+      expectedUid: primaryUser.uid
+    }, maintenanceDb);
   } finally {
     await release();
   }
+}
+
+async function writeResidentAdministratorSession({
+  centerId, participantId, passwordVersion, expectedUid = getCurrentUser()?.uid
+}, maintenanceDb) {
+  const primaryUser = getCurrentUser();
+  if (!primaryUser?.isAnonymous || primaryUser.uid !== expectedUid) {
+    throw new Error('Accedi prima come residente');
+  }
+  const normalizedParticipantId = String(participantId || '').trim();
+  if (!normalizedParticipantId) throw new Error('Identità residente non disponibile');
+  const normalizedVersion = Number(passwordVersion || 0);
+  if (!Number.isInteger(normalizedVersion) || normalizedVersion < 1) {
+    throw new Error('La password amministratori non è ancora impostata');
+  }
+  await deleteDoc(doc(db, 'centers', centerId, 'viceSessions', primaryUser.uid)).catch((error) => {
+    if (error?.code !== 'not-found') throw error;
+  });
+  if (getCurrentUser()?.uid !== primaryUser.uid) throw new Error('La sessione residente è cambiata');
+  const expiresAt = Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  await setDoc(doc(maintenanceDb, 'centers', centerId, 'viceSessions', primaryUser.uid), {
+    centerId,
+    authUid: primaryUser.uid,
+    participantId: normalizedParticipantId,
+    passwordVersion: normalizedVersion,
+    status: 'ACTIVE',
+    expiresAt,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  return { expiresAt: expiresAt.toDate(), passwordVersion: normalizedVersion };
 }
 
 export async function updateAdministratorPassword(newPassword) {
