@@ -147,7 +147,7 @@ const domainModuleLoaders = {
 const domainModuleLoads = new Map();
 const operationGuard = createOperationGuard();
 const requestCoordinator = createStateStore();
-const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260824a';
+const SUMMARY_STYLESHEET_HREF = '/summary-matrix-refinements.css?v=20260824b';
 let summaryStylesheetLoad = null;
 
 function ensureSummaryStyles() {
@@ -1583,6 +1583,12 @@ async function applyCenterDefaultLanguage(centerSettings) {
 }
 
 function renderAllViews() {
+  if (state.mode === 'kitchen' && elements.status?.dataset?.freshness === 'current') {
+    setKitchenScreenFreshnessStatus();
+  } else if (['participant', 'week', 'summary'].includes(state.mode)
+      && elements.participantStatus?.dataset?.freshness === 'current' && state.lastSuccessfulRefreshAt) {
+    setParticipantStatus(formatRefreshLabel('timer', state.lastSuccessfulRefreshAt), 'current');
+  }
   renderMode();
   if (['participant', 'week', 'summary'].includes(state.mode)) {
     renderParticipantMeals();
@@ -1611,6 +1617,11 @@ function renderAllViews() {
 async function bootstrapApp() {
   watchAuth((user) => {
     bookingForView?.checkIdentity();
+    if (user && !state.residentAuthTransition && ['participant', 'week'].includes(state.mode)
+        && (state.calendarLoadErrorKey || state.residentRestorePending)
+        && (!isResidentEntryGateClosed() || hasStrongAdministratorIdentity())) {
+      scheduleBackgroundRefresh('auth-pronta');
+    }
     const scope = state.personalCalendarScope;
     if (scope && scope.uid !== user?.uid) {
       state.personalCalendarScope = null;
@@ -1744,6 +1755,8 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
+  window.__booted = true;
+  document.querySelector('[data-startup-recovery]')?.remove();
   const appShell = document.querySelector('[data-app-shell]');
   if (appShell) {
     appShell.inert = false;
@@ -1784,6 +1797,32 @@ function blockOfflineAction(statusElement) {
 function scheduleBackgroundRefresh(source) {
   window.clearTimeout(state.backgroundRefreshTimerId);
   state.backgroundRefreshTimerId = window.setTimeout(() => refreshNow(source), 180);
+}
+
+function resetRecoveryRefresh() {
+  window.clearTimeout(state.recoveryRefreshTimerId);
+  state.recoveryRefreshTimerId = 0;
+  state.recoveryRefreshAttempt = 0;
+  state.recoveryRefreshContext = '';
+}
+
+function scheduleRecoveryRefresh() {
+  const context = buildRefreshContextKey();
+  const uid = getCurrentUser()?.uid;
+  if (state.recoveryRefreshContext !== context) resetRecoveryRefresh();
+  state.recoveryRefreshContext = context;
+  if (state.recoveryRefreshTimerId) return;
+  const delay = [3000, 10000, 30000][state.recoveryRefreshAttempt || 0];
+  if (delay === undefined) return;
+  state.recoveryRefreshAttempt = (state.recoveryRefreshAttempt || 0) + 1;
+  state.recoveryRefreshTimerId = window.setTimeout(() => {
+    state.recoveryRefreshTimerId = 0;
+    if (context !== buildRefreshContextKey() || uid !== getCurrentUser()?.uid || state.residentAuthTransition
+        || state.pendingMealKeys?.size || !isConnectionAvailable()
+        || (['participant', 'week'].includes(state.mode)
+          && isResidentEntryGateClosed() && !hasStrongAdministratorIdentity())) return;
+    void refreshNow('recupero');
+  }, delay);
 }
 
 function scheduleOperationalDayRefresh() {
@@ -4020,6 +4059,7 @@ async function refreshNow(source) {
     }
     state.participantRequestVersion += 1;
     hideStartupSplash();
+    scheduleRecoveryRefresh();
     const message = t('errors.timeout');
     if (request.mode === 'summary') {
       state.summaryLoadError = message;
@@ -4478,6 +4518,7 @@ async function performRefresh(source, operation) {
     state.operationalDataDateByMode.kitchen = kitchenDates[0] ? formatDateId(kitchenDates[0]) : '';
     selectKitchenMatrixDay(kitchenDayOffset, { scroll: false });
     state.kitchenUpdatedAt = new Date(serverNow());
+    resetRecoveryRefresh();
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
     renderMeals();
     setKitchenScreenFreshnessStatus(kitchenDayOffset);
@@ -4515,6 +4556,7 @@ async function performRefresh(source, operation) {
     }
   } catch (error) {
     if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
+    if (isRecoverableSessionError(error)) scheduleRecoveryRefresh();
     console.warn('Aggiornamento cucina non riuscito', error?.refreshStage || '', error?.code || '', error?.message || '');
     if (isCenterAccessRevokedError(error)) {
       clearKitchenDataAfterAccessRevocation();
@@ -4865,6 +4907,7 @@ async function refreshParticipant(source, options = {}) {
     // Il calendario pronto può apparire mentre le letture facoltative dei promemoria proseguono separatamente.
     hideStartupSplash();
     void refreshMealRemindersAfterCalendar(() => isCurrentParticipantRequest(request));
+    resetRecoveryRefresh();
     state.lastSuccessfulRefreshAt = new Date(serverNow());
     if (state.mode === 'summary') {
       setSummaryScreenFreshnessStatus(source);
@@ -4876,6 +4919,7 @@ async function refreshParticipant(source, options = {}) {
     }
   } catch (error) {
     if (!isCurrentParticipantRequest(request)) return;
+    if (isRecoverableSessionError(error) || error?.preserveResidentIdentity) scheduleRecoveryRefresh();
     if (retryPermission
       && isCenterAccessRevokedError(error)
       && isConnectionAvailable()
@@ -10393,7 +10437,7 @@ function formatKitchenWindowLabel(meal) {
 }
 
 function formatKitchenRefreshLabel(date) {
-  return `${t('common.status.saved')} ${formatTime(date)}`;
+  return t('status.updatedAt', { time: formatLastUpdateTime(date) });
 }
 
 function toJavaScriptDate(value) {

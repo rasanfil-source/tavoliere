@@ -12,6 +12,44 @@
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
     <title>Prenotazione pasti</title>
+    <style>
+      .startup-gate{position:fixed;inset:0;z-index:1000;background:#fff}
+      .startup-splash{width:100%;height:100%;display:grid;grid-template-rows:1fr auto 1fr;place-items:center}
+      .startup-splash img{grid-row:2;width:min(52vw,240px);height:min(52vw,240px);object-fit:contain}
+      [data-startup-recovery]{position:fixed;inset:auto 16px 24px;z-index:1001;padding:20px;background:#fff;color:#172b3a;border:1px solid #aaa;border-radius:12px;text-align:center;font:16px system-ui}
+      [data-startup-recovery] button{display:block;margin:12px auto 0;padding:12px 24px;font:inherit}
+    </style>
+    <script data-startup-watchdog>
+      (function () {
+        var shown = false;
+        window.__showStartupRecovery = function () {
+          if (window.__booted || shown || !document.body) return;
+          shown = true;
+          var locale = navigator.language || 'it';
+          try { locale = localStorage.getItem('tavolaComune.locale') || locale; } catch (_) {}
+          var messages = {
+            it: ['Avvio non completato. Controlla la connessione e riprova.', 'Riprova'],
+            en: ['Startup could not finish. Check your connection and try again.', 'Try again'],
+            fr: ['Le démarrage n’a pas abouti. Vérifiez votre connexion et réessayez.', 'Réessayer'],
+            es: ['No se ha completado el inicio. Comprueba la conexión e inténtalo de nuevo.', 'Reintentar'],
+            de: ['Der Start konnte nicht abgeschlossen werden. Prüfe die Verbindung und versuche es erneut.', 'Erneut versuchen'],
+            ca: ['No s’ha pogut completar l’inici. Comprova la connexió i torna-ho a provar.', 'Torna-ho a provar']
+          };
+          var copy = messages[locale.toLowerCase().split('-')[0]] || messages.it;
+          var panel = document.createElement('aside');
+          panel.setAttribute('data-startup-recovery', '');
+          panel.setAttribute('role', 'alert');
+          panel.textContent = copy[0];
+          var retry = document.createElement('button');
+          retry.type = 'button';
+          retry.textContent = copy[1];
+          retry.onclick = function () { window.location.reload(); };
+          panel.appendChild(retry);
+          document.body.appendChild(panel);
+        };
+        window.setTimeout(window.__showStartupRecovery, 10000);
+      }());
+    </script>
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
@@ -23,7 +61,7 @@
         if (['admin', 'kitchen', 'summary'].includes(params.get('view'))
             || params.has('invite') || params.has('adminInvite')) return;
         // La build sostituisce il grafo aggiuntivo con URL identificati dall'impronta del contenuto.
-        var residentModulePreloads = ["/assets/chunk-C4BW26B7.js","/assets/chunk-DEFXUQHB.js","/assets/chunk-SALMRFQH.js"];
+        var residentModulePreloads = ["/assets/chunk-BN5DNV6A.js","/assets/chunk-DEFXUQHB.js","/assets/chunk-WVCLFH6R.js"];
         residentModulePreloads.forEach(function (path) {
           var link = document.createElement('link');
           link.rel = 'modulepreload';
@@ -73,19 +111,19 @@
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/assets/styles-XV4NM45Z.css">
     <link rel="stylesheet" href="/assets/summary-matrix-refinements-LMVS55DV.css">
-    <script type="module" src="/assets/app-PCZTN3AR.js"></script>
+    <script type="module" src="/assets/app-CZC6ZMPV.js" onerror="window.__showStartupRecovery()"></script>
       <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
-    <link rel="modulepreload" href="/assets/chunk-AMWAMAH2.js">
-    <link rel="modulepreload" href="/assets/chunk-B6MOZB27.js">
+    <link rel="modulepreload" href="/assets/chunk-A67OOZRS.js">
+    <link rel="modulepreload" href="/assets/chunk-BRDEAWKH.js">
     <link rel="modulepreload" href="/assets/chunk-DZJEM4PC.js">
     <link rel="modulepreload" href="/assets/chunk-FF5MZSFQ.js">
     <link rel="modulepreload" href="/assets/chunk-IMMYBHEU.js">
     <link rel="modulepreload" href="/assets/chunk-JUUUUMHC.js">
     <link rel="modulepreload" href="/assets/chunk-KTQAX33F.js">
     <link rel="modulepreload" href="/assets/chunk-LYSTTI3X.js">
-    <link rel="modulepreload" href="/assets/chunk-NWI4VZB3.js">
     <link rel="modulepreload" href="/assets/chunk-O2XFH626.js">
-    <link rel="modulepreload" href="/assets/chunk-SA2BS4NP.js">
+    <link rel="modulepreload" href="/assets/chunk-Q3QCBAAQ.js">
+    <link rel="modulepreload" href="/assets/chunk-T3IL2N5U.js">
     <link rel="modulepreload" href="/assets/chunk-T63ZSDGB.js">
   </head>
   <body>

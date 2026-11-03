@@ -57,7 +57,7 @@ test('Auth retains local persistence and only initializes Google support at expl
   assert.equal(initializations[1].popupRedirectResolver, undefined);
 });
 
-for (const code of ['unavailable', 'auth/network-request-failed', 'permission-denied']) {
+for (const code of ['unavailable', 'auth/network-request-failed', 'permission-denied', 'unknown', 'AbortError']) {
   test(`resident restore preserves device credentials after ${code}, even online`, async () => {
     let cleared = 0, signedOut = 0;
     const context = vm.createContext({
@@ -85,7 +85,7 @@ test('an expired personal token still requires a new login', async () => {
     waitForAuthReady: async () => {}, getStrongAuthenticatedUser: () => null,
     getCurrentUser: () => null,
     getAuthorizedAdministratorUser: async () => null,
-    ensurePersonalSession: async () => { throw new Error('Accesso del dispositivo scaduto'); },
+    ensurePersonalSession: async () => { throw Object.assign(new Error('Accesso del dispositivo scaduto'), { code: 'resident/identity-invalid' }); },
     isRecoverableSessionError: recoverable,
     clearStoredResidentIdentity: () => cleared++, clearCurrentSession() {},
     signOutCurrentUser: async () => signedOut++
@@ -125,7 +125,7 @@ test('first login keeps its identity if the calendar network read fails', async 
     loadCenterContactSettings: async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); },
     isRecoverableSessionError: recoverable, isCenterAccessRevokedError: () => false,
     shouldPreserveResidentViewAfterRefreshError: () => false, friendlyErrorMessage: () => 'offline',
-    hideStartupSplash() {}, renderResidentAccess: () => { throw new Error('must not return to login'); }
+    scheduleRecoveryRefresh() {}, resetRecoveryRefresh() {}, hideStartupSplash() {}, renderResidentAccess: () => { throw new Error('must not return to login'); }
   });
   vm.runInContext(extract(app, 'refreshParticipant'), context);
   assert.equal(await context.refreshParticipant('avvio', { loginHandshake: true }), true);

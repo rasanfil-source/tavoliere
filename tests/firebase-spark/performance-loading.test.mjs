@@ -69,7 +69,7 @@ test('la schermata iniziale avvia Auth prima delle lingue e attende il calendari
       initI18n: () => { calls.push('i18n'); return new Promise(() => {}); },
       renderMode() {}, renderAllViews() {}, renderCalendarPlaceholder() {},
       loadStoredResidentSignature: () => 'RM', canUseWeekWithoutParticipant: () => false,
-      hideStartupSplash: () => calls.push('hide'), refreshNow: (source) => calls.push(source), console
+      scheduleRecoveryRefresh: () => {}, resetRecoveryRefresh: () => {}, hideStartupSplash: () => calls.push('hide'), refreshNow: (source) => calls.push(source), console
     });
     vm.runInContext(bootstrap, context);
     await context.bootstrapApp();

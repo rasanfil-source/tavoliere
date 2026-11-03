@@ -327,7 +327,7 @@ export async function signInFriendlyResident(signature, commonPassword) {
       clearCurrentSession();
     }
     if (!keepStrongAdministratorSession && getCurrentUser()?.uid !== existingUser?.uid
-        && !isRecoverableSessionError(error)) {
+        && error?.code === 'resident/identity-invalid') {
       await signOutCurrentUser();
     }
     throw error;
@@ -373,10 +373,10 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     const participant = profileResult && !profileResult.error
       ? profileResult.value : await loadPublicParticipantById(participantId);
     if (!participant) {
-      throw new Error('Sigla non attiva');
+      throw Object.assign(new Error('Sigla non attiva'), { code: 'resident/identity-invalid' });
     }
     if (normalizeResidentSignature(participant.signature) !== signature) {
-      throw new Error('Identità del dispositivo non coerente');
+      throw Object.assign(new Error('Identità del dispositivo non coerente'), { code: 'resident/identity-invalid' });
     }
     rememberResidentIdentity(participant, signature, {
       tokenId: token.tokenId,
@@ -385,7 +385,7 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     return { participant, participants: [participant] };
   } catch (error) {
     // Durante il recupero di token e sessione le letture possono essere negate. Le credenziali del dispositivo restano disponibili per riprovare; le regole continuano a proteggere i dati.
-    if (isRecoverableSessionError(error)) {
+    if (error?.code !== 'resident/identity-invalid') {
       error.preserveResidentIdentity = true;
       throw error;
     }
@@ -679,11 +679,14 @@ async function ensurePersonalSession(participantId, token, options = {}) {
   }
   const tokenExpiresAt = new Date(token.expiresAt);
   if (Number.isNaN(tokenExpiresAt.getTime()) || tokenExpiresAt <= new Date()) {
-    throw new Error('Accesso del dispositivo scaduto');
+    throw Object.assign(new Error('Accesso del dispositivo scaduto'), { code: 'resident/identity-invalid' });
   }
 
   let user = getCurrentUser();
   if (!user || !user.isAnonymous) {
+    if (!isConnectionAvailable()) {
+      throw Object.assign(new Error('Connessione necessaria per ripristinare l’accesso personale'), { code: 'unavailable' });
+    }
     const credential = await replaceWithAnonymousUser();
     user = credential.user;
   }

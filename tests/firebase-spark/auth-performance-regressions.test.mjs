@@ -233,7 +233,7 @@ for (const [strongIdentity, signature] of [[false, ''], [true, ''], [false, 'AA'
       canUseWeekWithoutParticipant: () => false, isResidentEntryGateClosed: () => false,
       shouldBlockResidentEntryRestore: () => false, getActiveCenterId: () => 'test', getCurrentUser: () => user,
       restoreFriendlyResidentSession: async () => { restores++; return null; },
-      renderResidentAccess: () => loginRenders++, hideStartupSplash: () => hides++ };
+      renderResidentAccess: () => loginRenders++, scheduleRecoveryRefresh: () => {}, resetRecoveryRefresh: () => {}, hideStartupSplash: () => hides++ };
     const refresh = new Function(...Object.keys(deps), extract(app, 'refreshParticipant')
       + '; return refreshParticipant;')(...Object.values(deps));
     const pending = refresh('avvio');

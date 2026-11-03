@@ -314,7 +314,7 @@ test('un aggiornamento fallito conserva i dati partecipante già visibili', () =
 
 test('un errore temporaneo conserva identita e sessione residente', () => {
   const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
-  assert.match(restore, /isRecoverableSessionError\(error\)/);
+  assert.match(restore, /error\?\.code !== 'resident\/identity-invalid'/);
   assert.match(restore, /error\.preserveResidentIdentity = true/);
   assert.match(restore, /throw error/);
   assert.match(app, /residentRestorePending: Boolean\(loadStoredResidentSignature\(\)\)/);

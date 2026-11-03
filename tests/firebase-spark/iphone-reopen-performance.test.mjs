@@ -179,7 +179,7 @@ test('meals become usable while roles, presentation and accessory continuation r
     applyResidentPreferences: (value) => value, anchorCalendarToCenterToday: () => false,
     loadCurrentParticipantCalendar: async () => { calls.push('meals'); await meals.promise; return true; },
     renderMode() {}, renderParticipantMeals: () => calls.push('render'),
-    hideStartupSplash: () => { assert.ok(calls.includes('render')); splashHidden = true; },
+    scheduleRecoveryRefresh: () => {}, resetRecoveryRefresh: () => {}, hideStartupSplash: () => { assert.ok(calls.includes('render')); splashHidden = true; },
     refreshParticipantExtras: () => { calls.push('extras'); return new Promise(() => {}); },
     refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => 'updated'
   });
@@ -326,7 +326,7 @@ test('essential meal reads start while current center settings are still pending
       const result = await preparedCalendar.result;
       assert.equal(result.value, days);
       calls.push('usable');
-    }, renderMode() {}, renderParticipantMeals() {}, hideStartupSplash() {},
+    }, renderMode() {}, renderParticipantMeals() {}, scheduleRecoveryRefresh() {}, resetRecoveryRefresh() {}, hideStartupSplash() {},
     refreshParticipantExtras: async () => {}, refreshMealRemindersAfterCalendar: async () => {}, formatRefreshLabel: () => ''
   });
   vm.runInContext(extract(app, 'preparePersonalCalendarRead') + extract(app, 'refreshParticipant'), context);

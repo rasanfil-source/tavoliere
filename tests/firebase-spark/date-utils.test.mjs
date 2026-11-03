@@ -7,6 +7,16 @@ import {
   getDateInTimeZone
 } from '../../prototypes/firebase-spark-pwa/public/date-utils.mjs';
 
+test('clock ignores cached Date headers with positive Age', async () => {
+  for (const age of [null, '0', '60', '-1', 'invalid']) {
+    const api = await loadBrowserModule('date-utils.mjs', {
+      window: { location: { origin: 'https://test.example' }, setTimeout, clearTimeout },
+      fetch: async () => ({ ok: true, headers: { get: key => key === 'Age' ? age : 'Tue, 03 Nov 2026 12:00:00 GMT' } })
+    }, ['synchronizeServerClock']);
+    assert.equal(await api.synchronizeServerClock(), age === null || age === '0');
+  }
+});
+
 test('la data corrente segue il fuso del centro e non quello del dispositivo', () => {
   const instant = new Date('2026-01-01T00:30:00Z');
   assert.equal(formatDateId(getDateInTimeZone('Europe/Rome', instant)), '2026-01-01');

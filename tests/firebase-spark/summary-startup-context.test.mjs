@@ -79,7 +79,7 @@ test('an expired operation cannot cancel a newer request or overwrite another vi
     SUMMARY_STARTUP_LOAD_TIMEOUT_MS: 5000,
     window: { setTimeout: fn => { timeout = fn; return 1; }, clearTimeout() {} },
     performRefresh: (_, operation) => { h.beginParticipantRequest(operation); return new Promise(() => {}); },
-    hideStartupSplash: () => assert.fail('obsolete request'), setParticipantStatus: () => assert.fail('obsolete request')
+    scheduleRecoveryRefresh: () => {}, resetRecoveryRefresh: () => {}, hideStartupSplash: () => assert.fail('obsolete request'), setParticipantStatus: () => assert.fail('obsolete request')
   });
   const run = h.refreshNow('avvio');
   h.state.mode = 'week';

@@ -67,6 +67,8 @@ export async function synchronizeServerClock({ force = false } = {}) {
       if (!response?.ok) return false;
       if (response.url && new URL(response.url).origin !== window.location.origin) return false;
       const dateHeaderMs = Date.parse(response.headers.get('Date') || '');
+      const age = Number(response.headers.get('Age') || 0);
+      if (!Number.isFinite(age) || age !== 0) return false;
       const receivedAt = monotonicNow();
       const roundTripMs = receivedAt - startedAt;
       if (!Number.isFinite(dateHeaderMs) || roundTripMs > SERVER_CLOCK_REQUEST_TIMEOUT_MS) return false;

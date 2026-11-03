@@ -10,6 +10,8 @@ export function functionSource(name) {
 }
 export function functions(names, dependencies = {}) {
   const runtime = { ...dependencies };
+  runtime.scheduleRecoveryRefresh ??= () => {};
+  runtime.resetRecoveryRefresh ??= () => {};
   runtime.serverNow ??= () => (runtime.Date || Date).now();
   runtime.synchronizeServerClock ??= async () => true;
   runtime.startServerClockSync ??= () => {};
