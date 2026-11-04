@@ -92,9 +92,9 @@ test('la nuova prova usa un’identità PWA separata e l’icona verde arrotonda
   assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-512\.png/.test(icon.src)));
   assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-maskable-512\.png/.test(icon.src)));
   assert.match(index, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(index, /icon-preview-v2.*20261104d/);
+  assert.match(index, /icon-preview-v2.*20261104e/);
   assert.match(serviceWorker, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(buildScript, /manifest-icon-preview-v2\.webmanifest\?v=20261104d/);
+  assert.match(buildScript, /manifest-icon-preview-v2\.webmanifest\?v=20261104e/);
   assert.match(serviceWorker, /\?icon-preview-v2=1&access=friendly/);
 });
 
