@@ -105,7 +105,6 @@ import {
 } from './summary-contact-hint.mjs?v=20261014b';
 
 window.__appStarted = true;
-window.__startupPerf?.mark('app-evaluation-start');
 clearLegacyPersonalCalendarSnapshotsOnce();
 const initialMode = resolveMode({ appLaunch: true });
 let authLifecycle = createInitialAuthState({ route: initialMode });
@@ -1675,7 +1674,6 @@ async function applyCenterDefaultLanguage(centerSettings) {
 }
 
 function renderAllViews() {
-  globalThis.window?.__startupPerf?.mark('translations-ready');
   if (state.mode === 'kitchen' && elements.status?.dataset?.freshness === 'current') {
     setKitchenScreenFreshnessStatus();
   } else if (['participant', 'week', 'summary'].includes(state.mode)
@@ -1710,7 +1708,6 @@ function renderAllViews() {
 
 async function bootstrapApp() {
   watchAuth((user) => {
-    globalThis.window?.__startupPerf?.mark('auth-ready');
     bookingForView?.checkIdentity();
     if (user && !state.residentAuthTransition && ['participant', 'week'].includes(state.mode)
         && (state.calendarLoadErrorKey || state.residentRestorePending)
@@ -1786,7 +1783,6 @@ async function bootstrapApp() {
   void refreshNow(isPlainResidentLogin ? 'ripristino-accesso' : 'avvio');
 }
 
-window.__startupPerf?.mark('app-initialized');
 bootstrapApp().catch(error => {
   console.error(error);
   window.__showStartupRecovery?.(true);
@@ -1854,7 +1850,6 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
-  window.__startupPerf?.mark('splash-hidden');
   if (state.mode === 'admin') schedulePostStartupWork();
   window.__booted = true;
   document.querySelector('[data-startup-recovery]')?.remove();
@@ -4146,7 +4141,6 @@ async function handleCenterInitialization() {
 }
 
 async function refreshNow(source) {
-  globalThis.window?.__startupPerf?.mark('refresh-start');
   if (source === 'timer' && globalThis.document?.hidden) {
     state.nextRefreshAt = 0;
     return;
@@ -4724,7 +4718,6 @@ async function performRefresh(source, operation) {
     state.kitchenUpdatedAt = new Date(serverNow());
     resetRecoveryRefresh();
     state.lastSuccessfulRefreshAt = state.kitchenUpdatedAt;
-    globalThis.window?.__startupPerf?.mark('kitchen-ready');
     renderMeals();
     setKitchenScreenFreshnessStatus(kitchenDayOffset);
 

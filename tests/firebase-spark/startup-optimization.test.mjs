@@ -51,15 +51,10 @@ for (const change of ['none', 'uid', 'center', 'version', 'mode']) {
   });
 }
 
-test('diagnostics are explicitly opt-in and distinguish ready data from splash dismissal', () => {
+test('temporary startup diagnostics are absent from the app shell and runtime', () => {
   const root = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
   const html = readFileSync(new URL('index.html', root), 'utf8');
   const app = readFileSync(new URL('app.js', root), 'utf8');
-  const diagnostic = readFileSync(new URL('startup-diagnostics.mjs', root), 'utf8');
-  assert.match(html, /choice === '1'/);
-  assert.match(html, /15 \* 60 \* 1000/);
-  assert.match(app, /mark\('splash-hidden'\)/);
-  assert.match(app, /mark\('translations-ready'\)/);
-  assert.match(app, /mark\('splash-hidden'\)/);
-  assert.doesNotMatch(diagnostic, /fetch\(|sendBeacon|localStorage\.setItem|sessionStorage/);
+  assert.doesNotMatch(html, /startup-diagnostics|startupDiagnosticsUntil|perf=1/);
+  assert.doesNotMatch(app, /__startupPerf|startup-diagnostics/);
 });

@@ -1,5 +1,5 @@
-// Misura la build reale senza credenziali o richieste al backend. Il login vuoto
-// non è una misura del tempo fino al calendario: usare ?perf=1 sui telefoni per quello.
+// Misura la build reale senza credenziali o richieste al backend.
+// Il login vuoto non misura il tempo fino al calendario.
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';

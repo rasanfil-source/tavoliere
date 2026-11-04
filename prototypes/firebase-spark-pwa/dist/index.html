@@ -23,30 +23,6 @@
       [data-startup-recovery]{position:fixed;inset:auto 16px 24px;z-index:1001;padding:20px;background:#fff;color:#172b3a;border:1px solid #aaa;border-radius:12px;text-align:center;font:16px system-ui}
       [data-startup-recovery] button{display:block;margin:12px auto 0;padding:12px 24px;font:inherit}
     </style>
-    <script data-startup-diagnostics>
-      // Attivazione esplicita per 15 minuti: vale anche riaprendo la PWA dall'icona.
-      // La preferenza non contiene dati personali o di sessione.
-      (function () {
-      var choice = new URLSearchParams(location.search).get('perf');
-      var enabled = choice === '1';
-      try {
-        if (choice === '1') localStorage.setItem('tavolaComune.startupDiagnosticsUntil', String(Date.now() + 15 * 60 * 1000));
-        if (choice === '0') localStorage.removeItem('tavolaComune.startupDiagnosticsUntil');
-        var until = Number(localStorage.getItem('tavolaComune.startupDiagnosticsUntil') || 0);
-        enabled = choice === '1' || choice !== '0' && until > Date.now();
-        if (until && until <= Date.now()) localStorage.removeItem('tavolaComune.startupDiagnosticsUntil');
-      } catch (_) {}
-      if (enabled) {
-        window.__startupPerf = {
-          marks: {},
-          mark: function (name) {
-            if (!(name in this.marks)) this.marks[name] = performance.now();
-          }
-        };
-        import('/startup-diagnostics.mjs?v=20261104a').catch(function () {});
-      }
-      }());
-    </script>
     <script data-startup-watchdog>
       (function () {
         var shown = false;
@@ -151,7 +127,7 @@
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/assets/styles-IB2ZNLLP.css">
     <link rel="stylesheet" href="/assets/summary-matrix-refinements-LMVS55DV.css">
-    <script type="module" src="/assets/app-SFCPWDKM.js" onerror="window.__showStartupRecovery(true)"></script>
+    <script type="module" src="/assets/app-CEYIJ6E7.js" onerror="window.__showStartupRecovery(true)"></script>
       <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
     <link rel="modulepreload" href="/assets/chunk-DZJEM4PC.js">
     <link rel="modulepreload" href="/assets/chunk-FF5MZSFQ.js">
