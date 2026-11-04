@@ -65,13 +65,14 @@ for (const code of ['unavailable', 'auth/network-request-failed', 'permission-de
       loadStoredResidentToken: () => ({ tokenId: 'personal_token', expiresAt: '2050-01-01' }),
       waitForAuthReady: async () => {}, getStrongAuthenticatedUser: () => null,
       getCurrentUser: () => null,
-      getAuthorizedAdministratorUser: async () => null,
+      getAuthorizedAdministratorAccess: async () => null, getActiveCenterId: () => 'center',
       ensurePersonalSession: async () => { throw Object.assign(new Error('temporary'), { code }); },
       isRecoverableSessionError: recoverable, isConnectionAvailable: () => true,
       clearStoredResidentIdentity: () => cleared++, clearCurrentSession: () => cleared++,
       signOutCurrentUser: async () => signedOut++
     });
-    vm.runInContext(extract(participants, 'restoreFriendlyResidentSession'), context);
+    vm.runInContext(extract(participants, 'assertCurrentResidentIdentity') + '\n'
+      + extract(participants, 'restoreFriendlyResidentSession'), context);
     await assert.rejects(context.restoreFriendlyResidentSession(), error => error.preserveResidentIdentity === true);
     assert.equal(cleared, 0); assert.equal(signedOut, 0);
   });
@@ -84,13 +85,14 @@ test('an expired personal token still requires a new login', async () => {
     loadStoredResidentToken: () => ({ tokenId: 'expired', expiresAt: '2020-01-01' }),
     waitForAuthReady: async () => {}, getStrongAuthenticatedUser: () => null,
     getCurrentUser: () => null,
-    getAuthorizedAdministratorUser: async () => null,
+    getAuthorizedAdministratorAccess: async () => null, getActiveCenterId: () => 'center',
     ensurePersonalSession: async () => { throw Object.assign(new Error('Accesso del dispositivo scaduto'), { code: 'resident/identity-invalid' }); },
     isRecoverableSessionError: recoverable,
     clearStoredResidentIdentity: () => cleared++, clearCurrentSession() {},
     signOutCurrentUser: async () => signedOut++
   });
-  vm.runInContext(extract(participants, 'restoreFriendlyResidentSession'), context);
+  vm.runInContext(extract(participants, 'assertCurrentResidentIdentity') + '\n'
+    + extract(participants, 'restoreFriendlyResidentSession'), context);
   assert.equal(await context.restoreFriendlyResidentSession(), null);
   assert.equal(cleared, 1); assert.equal(signedOut, 1);
 });

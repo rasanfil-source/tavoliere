@@ -57,7 +57,7 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     formatCalendarWeekLabel: () => { record('empty-week-label'); return ''; },
     getCenterToday: () => weekStart, getSelectedDay: () => null,
     waitForAuthReady: () => authReady ||= io('auth', user),
-    getStrongAuthenticatedUser: () => null, getAuthorizedAdministratorUser: async () => null,
+    getStrongAuthenticatedUser: () => null, getAuthorizedAdministratorAccess: async () => null,
     loadStoredResidentSignature: () => 'AA', loadStoredResidentParticipantId: () => 'person',
     loadStoredResidentToken: () => ({ tokenId: 'token', expiresAt: '2050-01-01' }),
     ensurePersonalSession, ensureStoredResidentSession: ensurePersonalSession,
@@ -83,7 +83,8 @@ export function residentReopenHarness({ sources = reopenSources, read = async (_
     shouldPreserveResidentViewAfterRefreshError: () => true, friendlyErrorMessage: () => '', t: key => key,
     ...overrides
   };
-  const code = [extract(sources.participant, 'restoreFriendlyResidentSession'),
+  const code = [extract(sources.participant, 'assertCurrentResidentIdentity'),
+    extract(sources.participant, 'restoreFriendlyResidentSession'),
     extract(sources.app, 'isCenterAccessRevokedError'),
     extract(sources.app, 'toJavaScriptDate'),
     extract(sources.app, 'isMealWindowOpenAtServerTime'),

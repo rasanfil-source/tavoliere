@@ -174,9 +174,6 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
     if (!existingAccess.active) return { ...emptyAccess(), invitationError: true };
   }
   if (existingAccess.active) {
-    if (['OWNER', 'ADMIN'].includes(existingAccess.role)) {
-      await synchronizeAdministratorDeletionProtection(requestedCenterId);
-    }
     // Il profilo facilita la navigazione; la membership determina i permessi. Il riallineamento del profilo avviene fuori dal percorso critico dell'accesso.
     if (adminProfileNeedsRepair(profileData, user, requestedCenterId, existingAccess.role)) {
       void saveAdminProfile(user, requestedCenterId, existingAccess.role).catch(() => undefined);
@@ -189,14 +186,17 @@ export async function loadAdminCenterAccess(user = getCurrentUser()) {
         requestedCenterId
       ])]
     };
-    return {
-      ...existingAccess,
-      availableCenters: await listAccessibleAdminCenters(
+    const [, availableCenters] = await Promise.all([
+      ['OWNER', 'ADMIN'].includes(existingAccess.role)
+        ? synchronizeAdministratorDeletionProtection(requestedCenterId)
+        : Promise.resolve(),
+      listAccessibleAdminCenters(
         user,
         navigationProfile,
         new Map([[requestedCenterId, existingAccess]])
       )
-    };
+    ]);
+    return { ...existingAccess, availableCenters };
   }
 
   if (profileSnapshot.exists()) {

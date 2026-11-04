@@ -325,18 +325,18 @@ test('un errore temporaneo conserva identita e sessione residente', () => {
 test('un amministratore forte ripristina la propria persona anche senza una vecchia sessione residente locale', () => {
   const restore = participantData.match(/export async function restoreFriendlyResidentSession\([^]*?\n}/)?.[0] || '';
   const restoreAdmin = participantData.match(/export async function restoreResidentIdentityForAuthorizedAdministrator\([\s\S]*?\n}/)?.[0] || '';
-  assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\);/);
-  assert.match(restoreAdmin, /membershipSnapshot\.exists\(\)[\s\S]*membershipSnapshot\.data\(\)\.status !== 'ACTIVE'/);
+  assert.match(restore, /if \(authorizedAdministrator\) \{\s*return restoreResidentIdentityForAuthorizedAdministrator\(authorizedAdministrator\.user, authorizedAdministrator\);/);
+  assert.match(restoreAdmin, /membershipData\.status !== 'ACTIVE'/);
   assert.match(restoreAdmin, /const membershipParticipantId = String\(/);
   assert.match(restoreAdmin, /!membershipParticipantId && membershipRole !== 'OWNER'/);
   assert.match(restoreAdmin, /loadCenterContactSettings\(\{ forceRefresh: false \}\)/);
   assert.doesNotMatch(restoreAdmin, /loadStoredResidentParticipantId|loadStoredResidentSignature/);
-  assert.match(restoreAdmin, /return \{\s*participant,\s*participants: \[participant\],\s*strongAdministrator: true\s*\};/);
+  assert.match(restoreAdmin, /return \{\s*participant,\s*participants: \[participant\],\s*strongAdministrator: true,\s*verifiedUser: membershipUser, verifiedCenterId: centerId\s*\};/);
 });
 
 test('un account Google non autorizzato non blocca il successivo accesso residente', () => {
   const adminProbe = participantData.match(
-    /async function getAuthorizedAdministratorUser\(\)[\s\S]*?\n}/
+    /async function getAuthorizedAdministratorAccess\([^]*?\n}/
   )?.[0] || '';
   const login = participantData.match(
     /export async function signInFriendlyResident\(signature, commonPassword\)[\s\S]*?\n}/

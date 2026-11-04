@@ -125,12 +125,15 @@ export function watchAuth(callback) {
   };
 }
 
-export function signInWithGoogle() {
+export async function signInWithGoogle() {
   if (!auth) {
     return Promise.reject(new Error('Firebase non configurato'));
   }
 
-  return runAuthMutation(() => signInWithPopup(auth, googleProvider, browserPopupRedirectResolver));
+  // Il popup interattivo non trattiene le letture della sessione già stabile.
+  // La persistenza e le eventuali mutazioni composte precedenti restano attese.
+  await waitForStableAuth();
+  return signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
 }
 
 export async function signInAdministratorWithEmail(email, password) {

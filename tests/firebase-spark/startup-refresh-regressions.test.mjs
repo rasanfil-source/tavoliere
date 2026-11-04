@@ -45,6 +45,8 @@ test('session renewal binds the calendar to the returned identity and publishes 
       return h.user;
     }
   } });
+  h.state.residentReady = true;
+  h.state.selectedParticipant = { participantId: 'person', signature: 'AA' };
   await h.run();
   assert.equal(h.state.residentReady, true);
   assert.equal(h.state.participantWeek.length, 7);
@@ -60,6 +62,8 @@ test('session renewal cannot revive a request invalidated by navigation', async 
       return h.user;
     }
   } });
+  h.state.residentReady = true;
+  h.state.selectedParticipant = { participantId: 'person', signature: 'AA' };
   await h.run();
   assert.equal(h.state.participantWeek.length, 0);
 });

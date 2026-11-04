@@ -226,9 +226,20 @@ function getStrongAuthenticatedUser() {
     : null;
 }
 
-async function getAuthorizedAdministratorUser() {
+function assertCurrentResidentIdentity(user, centerId) {
+  if (centerId !== getActiveCenterId() || user?.uid !== getCurrentUser()?.uid) {
+    throw Object.assign(new Error('Identità cambiata durante il ripristino'), {
+      code: 'resident/session-changed', preserveResidentIdentity: true
+    });
+  }
+}
+
+async function getAuthorizedAdministratorAccess(expectedUser = null) {
+  const centerId = getActiveCenterId();
   await waitForAuthReady();
   const user = getStrongAuthenticatedUser();
+  assertCurrentResidentIdentity(user || getCurrentUser(), centerId);
+  if (expectedUser) assertCurrentResidentIdentity(expectedUser, centerId);
   if (!user) {
     return null;
   }
@@ -238,7 +249,7 @@ async function getAuthorizedAdministratorUser() {
     adminSnapshot = await getDoc(doc(
       db,
       'centers',
-      getActiveCenterId(),
+      centerId,
       'admins',
       user.uid
     ));
@@ -252,12 +263,17 @@ async function getAuthorizedAdministratorUser() {
     }
     throw error;
   }
+  assertCurrentResidentIdentity(user, centerId);
   if (!adminSnapshot.exists()) return null;
   const admin = adminSnapshot.data();
   const role = normalizeCenterRole(admin.role);
   return admin.status === 'ACTIVE' && hasCapability(role, CAPABILITIES.OPEN_ADMIN_AREA)
-    ? user
+    ? { user, centerId, admin }
     : null;
+}
+
+async function getAuthorizedAdministratorUser() {
+  return (await getAuthorizedAdministratorAccess())?.user || null;
 }
 
 export async function signInFriendlyResident(signature, commonPassword) {
@@ -337,14 +353,18 @@ export async function signInFriendlyResident(signature, commonPassword) {
 }
 
 export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
+  const centerId = getActiveCenterId();
   const signature = loadStoredResidentSignature();
   const participantId = loadStoredResidentParticipantId();
   const token = loadStoredResidentToken();
   await waitForAuthReady();
+  const restoreUser = getCurrentUser();
+  assertCurrentResidentIdentity(restoreUser, centerId);
   const strongAuthenticatedUser = getStrongAuthenticatedUser();
-  const authorizedAdministrator = await getAuthorizedAdministratorUser();
+  const authorizedAdministrator = await getAuthorizedAdministratorAccess();
+  assertCurrentResidentIdentity(restoreUser, centerId);
   if (authorizedAdministrator) {
-    return restoreResidentIdentityForAuthorizedAdministrator(authorizedAdministrator);
+    return restoreResidentIdentityForAuthorizedAdministrator(authorizedAdministrator.user, authorizedAdministrator);
   }
   if (!signature || !participantId || !token.tokenId || !token.expiresAt) {
     return null;
@@ -353,6 +373,7 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     // Mostra il modulo residente per richiedere la password comune.
     return null;
   }
+  let sessionUser;
   try {
     const initialUser = getCurrentUser();
     // La lettura anticipata richiede un'identità anonima esistente e un token dispositivo valido. Gli errori vengono gestiti durante la verifica della sessione.
@@ -363,14 +384,21 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
       : null;
     // Solo letture speculative protette dalle regole. Nessun calendario viene
     // pubblicato prima della verifica della sessione e del profilo.
-    if (profileRead && onSessionReady) void Promise.resolve().then(() => onSessionReady({
-      participantId, uid: initialUser.uid
-    })).catch(() => undefined);
-    const sessionUser = await ensurePersonalSession(participantId, token);
+    if (profileRead && onSessionReady) void Promise.resolve().then(() => {
+      assertCurrentResidentIdentity(initialUser, centerId);
+      return onSessionReady({
+        participantId, uid: initialUser.uid
+      });
+    }).catch(() => undefined);
+    sessionUser = await ensurePersonalSession(participantId, token);
+    assertCurrentResidentIdentity(sessionUser, centerId);
     // La preparazione facoltativa non invalida un'identità autenticata.
-    if (onSessionReady && (!profileRead || initialUser.uid !== sessionUser.uid)) void Promise.resolve().then(() => onSessionReady({
-      participantId, uid: sessionUser.uid
-    })).catch(() => undefined);
+    if (onSessionReady && (!profileRead || initialUser.uid !== sessionUser.uid)) void Promise.resolve().then(() => {
+      assertCurrentResidentIdentity(sessionUser, centerId);
+      return onSessionReady({
+        participantId, uid: sessionUser.uid
+      });
+    }).catch(() => undefined);
     const profileResult = profileRead && initialUser.uid === sessionUser.uid
       ? await profileRead : null;
     // Una lettura negata per sessione assente viene ripetuta dopo la creazione della sessione; un cambio di identità invalida il profilo già letto.
@@ -379,6 +407,7 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
     }
     const participant = profileResult && !profileResult.error
       ? profileResult.value : await loadPublicParticipantById(participantId);
+    assertCurrentResidentIdentity(sessionUser, centerId);
     if (!participant) {
       throw Object.assign(new Error('Sigla non attiva'), { code: 'resident/identity-invalid' });
     }
@@ -389,8 +418,9 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
       tokenId: token.tokenId,
       expiresAt: new Date(token.expiresAt)
     });
-    return { participant, participants: [participant] };
+    return { participant, participants: [participant], verifiedUser: sessionUser, verifiedCenterId: centerId };
   } catch (error) {
+    assertCurrentResidentIdentity(sessionUser || restoreUser, centerId);
     // Durante il recupero di token e sessione le letture possono essere negate. Le credenziali del dispositivo restano disponibili per riprovare; le regole continuano a proteggere i dati.
     if (error?.code !== 'resident/identity-invalid') {
       error.preserveResidentIdentity = true;
@@ -403,29 +433,24 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
   }
 }
 
-export async function restoreResidentIdentityForAuthorizedAdministrator(user = null) {
-  const authorizedUser = user || await getAuthorizedAdministratorUser();
-  const membershipUser = authorizedUser || getCurrentUser();
-  if (!membershipUser || membershipUser.isAnonymous) return null;
+export async function restoreResidentIdentityForAuthorizedAdministrator(user = null, verifiedAccess = null) {
+  const access = verifiedAccess || await getAuthorizedAdministratorAccess(user);
+  if (!access) return null;
+  const { user: membershipUser, centerId, admin: membershipData } = access;
+  assertCurrentResidentIdentity(membershipUser, centerId);
 
   // L'identità residente derivata dalla membership forte ha precedenza su
   // qualsiasi residuo locale di un accesso precedente sullo stesso device.
-  const membershipSnapshot = await getDoc(doc(
-    db,
-    'centers',
-    getActiveCenterId(),
-    'admins',
-    membershipUser.uid
-  ));
-  if (!membershipSnapshot.exists() || membershipSnapshot.data().status !== 'ACTIVE') return null;
-  const membershipRole = String(membershipSnapshot.data().role || '').trim().toUpperCase();
+  const membershipRole = normalizeCenterRole(membershipData.role);
+  if (membershipData.status !== 'ACTIVE' || !hasCapability(membershipRole, CAPABILITIES.OPEN_ADMIN_AREA)) return null;
   const membershipParticipantId = String(
-    membershipSnapshot.data()?.participantId || ''
+    membershipData.participantId || ''
   ).trim();
   if (!membershipParticipantId && membershipRole !== 'OWNER') return null;
   const settings = membershipParticipantId
     ? null
     : await loadCenterContactSettings({ forceRefresh: false });
+  assertCurrentResidentIdentity(membershipUser, centerId);
   const participantId = membershipParticipantId
     || String(settings?.administratorParticipantId || '').trim();
   const signature = membershipParticipantId
@@ -437,6 +462,7 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
     : signature
       ? await loadPublicParticipantBySignature(signature)
       : null;
+  assertCurrentResidentIdentity(membershipUser, centerId);
   if (!participant || (signature
       && normalizeResidentSignature(participant.signature) !== signature)) {
     return null;
@@ -446,7 +472,10 @@ export async function restoreResidentIdentityForAuthorizedAdministrator(user = n
     [RESIDENT_SIGNATURE_STORAGE_KEY, normalizedSignature],
     [RESIDENT_PARTICIPANT_STORAGE_KEY, participant.participantId]
   ]);
-  return { participant, participants: [participant], strongAdministrator: true };
+  return {
+    participant, participants: [participant], strongAdministrator: true,
+    verifiedUser: membershipUser, verifiedCenterId: centerId
+  };
 }
 
 export async function forgetResidentDevice() {

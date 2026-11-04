@@ -2633,7 +2633,6 @@ let adminHydrationLoad = null;
 
 function initializeAuthPanel() {
   let authSettled = false;
-  let authRevision = 0;
   elements.authStatus.textContent = t('app.header.checkingAccess', {}, {
     fallback: 'Accesso in verifica'
   });
@@ -2676,7 +2675,6 @@ function initializeAuthPanel() {
       }
       return;
     }
-    const revision = ++authRevision;
     authSettled = true;
     window.clearTimeout(authFallback);
     if (!user) {
@@ -2692,7 +2690,7 @@ function initializeAuthPanel() {
     }
 
     beginAdminAuthorizationCheck();
-    applyAdminAuthState(user, revision, () => authRevision).catch(showAuthError);
+    applyAdminAuthState(user).catch(showAuthError);
   });
 }
 
@@ -2760,29 +2758,41 @@ function reconcileAdminAccessWithoutStrongUser() {
   return request;
 }
 
-async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
-  const hydrationKey = [
+function getAdminHydrationKey(user) {
+  return [
     user?.uid || '',
     getActiveCenterId(),
     getAdminRoleInvitationId(),
     state.mode
   ].join(':');
-  if (adminHydrationLoad?.key === hydrationKey) {
+}
+
+async function applyAdminAuthState(user) {
+  let hydrationKey = getAdminHydrationKey(user);
+  if (adminHydrationLoad?.key === hydrationKey
+      && adminHydrationLoad.version === state.adminHydrationVersion) {
     return adminHydrationLoad.promise;
   }
 
   const hydrationVersion = ++state.adminHydrationVersion;
+  const isCurrentHydration = () => hydrationVersion === state.adminHydrationVersion
+    && getCurrentUser()?.uid === user?.uid
+    && getAdminHydrationKey(user) === hydrationKey;
+  const updateHydrationContext = () => {
+    // Il rifiuto dell'invito rimuove intenzionalmente adminInvite dall'URL.
+    hydrationKey = getAdminHydrationKey(user);
+    if (adminHydrationLoad?.version === hydrationVersion) adminHydrationLoad.key = hydrationKey;
+  };
   state.adminPanelHydrating = true;
   let authorizationFailed = false;
+  let completed = false;
   let request;
   request = (async () => {
     try {
-      return await resolveAdminAuthState(user, revision, () => (
-        hydrationVersion === state.adminHydrationVersion
-          ? getCurrentRevision()
-          : Number.NaN
-      ));
+      completed = await resolveAdminAuthState(user, isCurrentHydration, updateHydrationContext);
+      return completed;
     } catch (error) {
+      if (!isCurrentHydration()) return false;
       authorizationFailed = true;
       // Le letture di membership e impostazioni sono indipendenti da Firebase Auth. Un ruolo già verificato mantiene il pannello e i dati disponibili; gli errori recuperabili compaiono nella riga di stato.
       if (hydrationVersion === state.adminHydrationVersion
@@ -2799,7 +2809,7 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
         // In caso di errore showAuthError prepara prima la schermata stabile e
         // soltanto dopo rimuove il velo iniziale. Non pubblicare qui uno stato
         // intermedio ancora privo del relativo messaggio.
-        if (!authorizationFailed && state.adminAuthorizationPending) {
+        if (!authorizationFailed && completed && isCurrentHydration() && state.adminAuthorizationPending) {
           finishAdminAuthorizationCheck();
         }
       }
@@ -2807,17 +2817,16 @@ async function applyAdminAuthState(user, revision = 0, getCurrentRevision = () =
   })().finally(() => {
     if (adminHydrationLoad?.promise === request) adminHydrationLoad = null;
   });
-  adminHydrationLoad = { key: hydrationKey, promise: request };
+  adminHydrationLoad = { key: hydrationKey, version: hydrationVersion, promise: request };
   return request;
 }
 
-async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = () => revision) {
+async function resolveAdminAuthState(user, isCurrentHydration = () => true, updateHydrationContext = () => {}) {
   const adminModule = await loadDomainModule('admin');
+  if (!isCurrentHydration()) return false;
   const isPlatformOwner = adminModule.isPlatformOwnerUser(user);
   let access = await adminModule.loadAdminCenterAccess(user);
-  if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) {
-    return;
-  }
+  if (!isCurrentHydration()) return false;
 
   let invitationResponse = '';
   let invitationAcceptanceFailed = false;
@@ -2834,19 +2843,22 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     try {
       setAdminInvitationResponseStatus(t('admin.invitations.accepting'));
       const result = await adminModule.acceptAdministratorInvitation(roleInvitationId, user);
+      if (!isCurrentHydration()) return false;
       clearAdminInvitationDecision(roleInvitationId);
       if (result.role === 'ADMIN') {
         storePendingAdminSuccession(result.centerId, user.uid);
       }
       setAdminInvitationResponseStatus(t('admin.invitations.accepted'));
       await showRoleInvitationAccepted(result.role);
+      if (!isCurrentHydration()) return false;
       activateAdminCenter(result.centerId);
       const acceptedUrl = new URL(window.location.href);
       acceptedUrl.searchParams.delete('adminInvite');
       window.history.replaceState({}, '', acceptedUrl.pathname + acceptedUrl.search);
       window.location.reload();
-      return;
+      return true;
     } catch (error) {
+      if (!isCurrentHydration()) return false;
       invitationAcceptanceFailed = true;
       clearAdminInvitationDecision(roleInvitationId);
       setAdminInvitationResponseStatus(friendlyErrorMessage(error, t('admin.invitations.acceptFailed')));
@@ -2854,13 +2866,16 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   } else if (storedDecision === 'REJECT') {
     try {
       await adminModule.rejectAdministratorInvitation(roleInvitationId, user);
+      if (!isCurrentHydration()) return false;
       clearAdminInvitationDecision(roleInvitationId);
       const rejectedUrl = new URL(window.location.href);
       rejectedUrl.searchParams.delete('adminInvite');
       window.history.replaceState({}, '', rejectedUrl.pathname + rejectedUrl.search);
+      updateHydrationContext();
       access = { ...access, invitationPending: false, invitationError: false };
       invitationResponse = 'REJECTED';
     } catch (error) {
+      if (!isCurrentHydration()) return false;
       setAdminInvitationResponseStatus(friendlyErrorMessage(error, 'Rifiuto fallito'));
     }
   }
@@ -2872,7 +2887,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
     redirectedUrl.searchParams.delete('adminInvite');
     window.history.replaceState({}, '', redirectedUrl.pathname + redirectedUrl.search);
     window.location.reload();
-    return;
+    return true;
   }
 
   const activeCenterId = access.centerId || getActiveCenterId();
@@ -2987,7 +3002,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   applyAdminCapabilityVisibility();
   if (state.platformOwner) {
     await refreshPlatformCenterList();
-    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
+    if (!isCurrentHydration()) return false;
   }
   if (isAdmin && !state.platformOwner) {
     await refreshAdminParticipants({
@@ -2999,10 +3014,11 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       // la scheda Configurazione deve popolarsi subito con il successore.
       forceSettingsRefresh: successionCompleted
     });
-    if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
+    if (!isCurrentHydration()) return false;
     if (state.mode === 'participant' || state.mode === 'week') {
       if (!state.residentReady) {
         const restored = await restoreResidentIdentityForAuthorizedAdministrator();
+        if (!isCurrentHydration()) return false;
         if (restored) {
           state.participants = restored.participants;
           state.selectedParticipant = restored.participant;
@@ -3012,7 +3028,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
       renderResidentAccess(false);
       renderMode();
       await refreshNow('autorizzazione');
-      if (revision !== getCurrentRevision() || getCurrentUser()?.uid !== user.uid) return;
+      if (!isCurrentHydration()) return false;
     }
   }
   elements.adminPanel.hidden = !isAdmin || state.platformOwner;
@@ -3026,6 +3042,7 @@ async function resolveAdminAuthState(user, revision = 0, getCurrentRevision = ()
   } else if (successionWasPending && access.role === 'ADMIN') {
     scheduleAdminSuccessionRoleCheck();
   }
+  return true;
 }
 
 
@@ -4787,6 +4804,7 @@ async function refreshParticipant(source, options = {}) {
   if (!hadVisibleData && ['participant', 'week'].includes(state.mode)) renderCalendarPlaceholder();
   if (!hadVisibleData && state.mode === 'summary') renderTodayOverview();
   let preparedCalendar = null;
+  let verifiedSessionUser = null;
 
   try {
     if (state.friendlyAccess && !state.residentReady) {
@@ -4837,7 +4855,10 @@ async function refreshParticipant(source, options = {}) {
       // Un cambio di autenticazione durante il ripristino invalida la richiesta: una risposta superata non può ricreare il modulo di accesso.
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       if (restored) {
-        request.authUid = getCurrentUser()?.uid;
+        verifiedSessionUser = restored.verifiedUser;
+        if (!verifiedSessionUser || verifiedSessionUser.uid !== getCurrentUser()?.uid
+            || restored.verifiedCenterId !== getActiveCenterId()) return;
+        request.authUid = verifiedSessionUser.uid;
         state.participants = restored.participants;
         state.selectedParticipant = restored.participant;
         state.residentReady = true;
@@ -4868,10 +4889,10 @@ async function refreshParticipant(source, options = {}) {
     }
     if (!isCurrentParticipantRequest(request)) return;
     request.authUid = getCurrentUser()?.uid;
-    let sessionPromise = Promise.resolve();
-    if (state.friendlyAccess && state.residentReady) {
+    let sessionPromise = Promise.resolve(verifiedSessionUser);
+    if (!verifiedSessionUser && state.friendlyAccess && state.residentReady) {
       sessionPromise = ensureStoredResidentSession();
-    } else if (!(canUseWeekWithoutParticipant() && state.mode === 'week')) {
+    } else if (!verifiedSessionUser && !(canUseWeekWithoutParticipant() && state.mode === 'week')) {
       sessionPromise = ensurePublicDemoSession();
     }
     sessionPromise = sessionPromise.catch((error) => {

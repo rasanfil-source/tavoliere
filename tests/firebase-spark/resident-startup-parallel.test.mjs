@@ -20,8 +20,10 @@ function harness({ profileLoader, initialUser = { uid: 'restored-uid', isAnonymo
     loadStoredResidentToken: () => ({ tokenId: 'token', expiresAt: '2050-01-01' }),
     waitForAuthReady: () => auth.promise, getStrongAuthenticatedUser: () => null,
     getCurrentUser: () => initialUser,
-    getAuthorizedAdministratorUser: async () => null,
-    ensurePersonalSession: () => { events.push('session'); return session.promise.then(() => ({ uid: sessionUid })); },
+    getAuthorizedAdministratorAccess: async () => null, getActiveCenterId: () => 'center',
+    ensurePersonalSession: () => { events.push('session'); return session.promise.then(() => {
+      initialUser = { uid: sessionUid, isAnonymous: true }; return initialUser;
+    }); },
     loadPublicParticipantById: () => { events.push('profile'); return profileLoader ? profileLoader() : profile.promise; },
     normalizeResidentSignature: value => value,
     rememberResidentIdentity: () => events.push('remember'),
@@ -29,7 +31,7 @@ function harness({ profileLoader, initialUser = { uid: 'restored-uid', isAnonymo
     clearStoredResidentIdentity: () => events.push('clear'), clearCurrentSession() {},
     signOutCurrentUser: async () => events.push('signout')
   });
-  vm.runInContext(restore, context);
+  vm.runInContext(source.match(/function assertCurrentResidentIdentity\([^]*?\n}/)[0] + '\n' + restore, context);
   return { auth, session, profile, events, restore: context.restoreFriendlyResidentSession };
 }
 

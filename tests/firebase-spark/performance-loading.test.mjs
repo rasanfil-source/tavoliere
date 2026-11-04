@@ -94,12 +94,12 @@ test('il primo ingresso nel pannello pubblica soltanto uno stato Auth definitivo
   const adminRefresh = refresh.match(/if \(state\.mode === 'admin'\) \{[\s\S]*?\n  }/)?.[0] || '';
   const signedOut = app.match(/function setSignedOutState\(\)[\s\S]*?\n}/)?.[0] || '';
   const authError = app.match(/function showAuthError\(error\)[\s\S]*?\n}/)?.[0] || '';
-  const authHydration = app.match(/async function applyAdminAuthState\(user,[\s\S]*?\n}/)?.[0] || '';
+  const authHydration = app.match(/async function applyAdminAuthState\(user\)[\s\S]*?\n}/)?.[0] || '';
 
   assert.doesNotMatch(adminRefresh, /hideStartupSplash\(/);
   assert.match(signedOut, /applyAdminCapabilityVisibility\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(authError, /friendlyErrorMessage\([\s\S]*finishAdminAuthorizationCheck\(\{ recoverable: isRecoverableSessionError\(error\) \}\);/);
-  assert.match(authHydration, /if \(!authorizationFailed && state\.adminAuthorizationPending\)[\s\S]*finishAdminAuthorizationCheck\(\);/);
+  assert.match(authHydration, /if \(!authorizationFailed && completed && isCurrentHydration\(\) && state\.adminAuthorizationPending\)[\s\S]*finishAdminAuthorizationCheck\(\);/);
   assert.match(app, /elements\.adminPanel\.hidden = !isAdmin \|\| state\.platformOwner;\s*renderMode\(\);[\s\S]*finishAdminAuthorizationCheck\(\);/);
 });
 
