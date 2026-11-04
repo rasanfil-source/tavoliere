@@ -42,6 +42,7 @@ const APP_SHELL = [
   '/i18n/i18n.mjs',
   '/manifest.webmanifest',
   '/manifest-kitchen.webmanifest',
+  '/manifest-icon-preview.webmanifest',
   '/icons/splash-512-transparent.png?v=20260824a',
   '/icons/whatsapp.svg'
 ];
@@ -165,7 +166,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (url.origin === self.location.origin
-      && ['/manifest.webmanifest', '/manifest-kitchen.webmanifest'].includes(url.pathname)
+      && ['/manifest.webmanifest', '/manifest-kitchen.webmanifest', '/manifest-icon-preview.webmanifest'].includes(url.pathname)
       && /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(url.searchParams.get('c') || '')) {
     event.respondWith(centerManifest(url));
     return;
@@ -204,8 +205,11 @@ async function centerManifest(url) {
   const cache = await caches.open(CACHE_NAME);
   const response = await cache.match(url.pathname) || await fetch(url.pathname);
   const manifest = await response.json();
-  const start = new URL(url.pathname === '/manifest-kitchen.webmanifest'
-    ? '/?view=kitchen' : '/?access=friendly', self.location.origin);
+  const startPath = url.pathname === '/manifest-kitchen.webmanifest'
+    ? '/?view=kitchen'
+    : url.pathname === '/manifest-icon-preview.webmanifest'
+      ? '/?icon-preview=1&access=friendly' : '/?access=friendly';
+  const start = new URL(startPath, self.location.origin);
   start.searchParams.set('c', url.searchParams.get('c'));
   manifest.start_url = start.pathname + start.search;
   // Identità stabile per centro e vista, indipendente dagli identificatori delle risorse.

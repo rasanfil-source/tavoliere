@@ -105,8 +105,10 @@
             current.set('c', center);
             window.history.replaceState(window.history.state, '', window.location.pathname + '?' + current + window.location.hash);
           }
-          var path = current.get('view') === 'kitchen'
-            ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
+          var path = current.get('icon-preview') === '1'
+            ? '/manifest-icon-preview.webmanifest'
+            : current.get('view') === 'kitchen'
+              ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
           var manifest = new URL(path, window.location.origin);
           manifest.searchParams.set('v', '20261014b');
           if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) manifest.searchParams.set('c', center);
