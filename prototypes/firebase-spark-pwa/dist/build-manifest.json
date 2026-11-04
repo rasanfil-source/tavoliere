@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "release": "df8df4fe9c011529",
+  "release": "c1fe531d320437f4",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
   "entry": "/assets/app-CEYIJ6E7.js",
@@ -1074,13 +1074,16 @@
     "/icons/launcher-192.png": "76c5774c01270f8f1abead9b5a6285c3804b59d9036894b2e131825ec8c7ca6e",
     "/icons/launcher-512-maskable.png": "977771f4c888250b8e5228eb4d3d193f9a480697e713e634cfa40ab860c82427",
     "/icons/launcher-512.png": "d18bae703a78d261fce234578f57065262759046ddbe7ed67750922882bb6647",
+    "/icons/launcher-rounded-green-192.png": "1234e5b0958b2691d2ff87cbd203e9052a1ce8ad2e45eee878900b9074c7b2d6",
+    "/icons/launcher-rounded-green-512.png": "3d06f4236937add3cc1227e8eed731831757eff2cb76c274bbd0e5b49cc39f7a",
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "35bd4cb9b6494e7454e5374852227b69291b510102f25327660f5baf6a001bf3",
+    "/index.html": "7d659d1590dbfe46bda6c95d7206e5c4beb008c488580693939cb936ea62fee1",
     "/kitchen-data.js": "19f6f8bb83b36ba55c381035e25c1fc272c728ad417ec01432d688cd0472dd95",
     "/kitchen-monthly-summary.js": "c52409d9e4bdd365e5396ba44e00d149e642992fb4da27578d3c9d89f8ce5db8",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
+    "/manifest-icon-preview-v2.webmanifest": "cdeb5f651ba25770470e0b1f6e2a3e7ea2babe8f4310ad1473c87bf491034c49",
     "/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "/meal-reminders.mjs": "2d7517e62ede5681c8ce2213249e2a2bd491677212343602d1bc811c9abe67f2",
@@ -1094,7 +1097,7 @@
     "/summary-matrix-model.js": "27680bd862b3b52fd120f7fc4a4850e0f07e4fa45a47e5435560c5235e5d13c7",
     "/summary-matrix-refinements.css": "d2519f53589f673c582bad19ebccd3e26edef0890a42b6e4877bd4fd23d2ef2e",
     "/summary-matrix-view.js": "6255a2b0b9c5506243ff014df52679c04d98d7357aea59f14500c88044b60abc",
-    "/sw.js": "5e85f3f14e37a9ef57792e9a2298fca8993e711016faf1fa0b82cadaf6090aeb"
+    "/sw.js": "e6ae74f99fc9c0d2dc401b212a52df4bddf935da01df866828019523a8b1922c"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "4ecb837ea25af027cf79382934be0effa23965ce707ed0199512832c7a994120",
@@ -1147,13 +1150,16 @@
     "prototypes/firebase-spark-pwa/public/icons/launcher-192.png": "76c5774c01270f8f1abead9b5a6285c3804b59d9036894b2e131825ec8c7ca6e",
     "prototypes/firebase-spark-pwa/public/icons/launcher-512-maskable.png": "977771f4c888250b8e5228eb4d3d193f9a480697e713e634cfa40ab860c82427",
     "prototypes/firebase-spark-pwa/public/icons/launcher-512.png": "d18bae703a78d261fce234578f57065262759046ddbe7ed67750922882bb6647",
+    "prototypes/firebase-spark-pwa/public/icons/launcher-rounded-green-192.png": "1234e5b0958b2691d2ff87cbd203e9052a1ce8ad2e45eee878900b9074c7b2d6",
+    "prototypes/firebase-spark-pwa/public/icons/launcher-rounded-green-512.png": "3d06f4236937add3cc1227e8eed731831757eff2cb76c274bbd0e5b49cc39f7a",
     "prototypes/firebase-spark-pwa/public/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "prototypes/firebase-spark-pwa/public/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "prototypes/firebase-spark-pwa/public/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "prototypes/firebase-spark-pwa/public/index.html": "74b746ef6922b0a7317d4c6871617dcfb3695265493aebbf6c14d241ea7384ad",
+    "prototypes/firebase-spark-pwa/public/index.html": "dd86dd2f7474a0860249fd041ceaf9611b9e3587686af9e1aab333784db9b1ff",
     "prototypes/firebase-spark-pwa/public/kitchen-data.js": "a49081cf16ec411065385f0fd6a336534b2f89035260e7b46ceba3ab5ab3e756",
     "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js": "4cf1253ed45ad84acf395376a4ed53f276b830cac40074455ba2f7e812ec8a67",
     "prototypes/firebase-spark-pwa/public/kitchen-notes.js": "8d4996bb89628e64b2d78dafdcaf516066f5d6677996d694447aeb6eb8f4aac2",
+    "prototypes/firebase-spark-pwa/public/manifest-icon-preview-v2.webmanifest": "cdeb5f651ba25770470e0b1f6e2a3e7ea2babe8f4310ad1473c87bf491034c49",
     "prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "prototypes/firebase-spark-pwa/public/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "prototypes/firebase-spark-pwa/public/meal-reminders.mjs": "34158ebfca4cb3d1e8a40133e7ec6c702926c7547b918910713fbf05abb4572c",
@@ -1167,8 +1173,8 @@
     "prototypes/firebase-spark-pwa/public/summary-matrix-model.js": "c61438cbffd0e038f21e3a815ccb610386d46dad5065be782d2be70287fc379b",
     "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "b22923eaed81f74fb4b8c3c6a85e27fb6ed95d4a61bd289ee5e859078b7e429e",
     "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "daf7d8eeaed2119d97b343e16d5e01763d1993c0f13df477576f30812b160d27",
-    "prototypes/firebase-spark-pwa/public/sw.js": "440e0620f7e2e4f979ebc9e5e292fa0eb18d56851de01ff49760f645926a3e9c",
-    "tools/build-public.mjs": "b87b173196ede2df33f644a1066de058e514f35a3ac29690a3cbc8e41b112100",
+    "prototypes/firebase-spark-pwa/public/sw.js": "317852bb7d2676e1e9acaa1383aabde7478f6bac96d06ca2b0ac568758b00c63",
+    "tools/build-public.mjs": "309f4b7bed7386f29447f1aa8c767b6b02851070480c811a5537fb49944632ac",
     "package-lock.json": "9ceefe538a435895cfc52b669ad1af7296b9312d248c5ed96303a8779d991171"
   }
 }
