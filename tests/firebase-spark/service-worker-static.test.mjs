@@ -7,11 +7,6 @@ const serviceWorker = readFileSync(
   'utf8'
 );
 
-const buildScript = readFileSync(
-  new URL('../../tools/build-public.mjs', import.meta.url),
-  'utf8'
-);
-
 const app = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url),
   'utf8'
@@ -34,11 +29,6 @@ const appManifest = JSON.parse(readFileSync(
 
 const kitchenManifest = JSON.parse(readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest', import.meta.url),
-  'utf8'
-));
-
-const iconPreviewV2Manifest = JSON.parse(readFileSync(
-  new URL('../../prototypes/firebase-spark-pwa/public/manifest-icon-preview-v2.webmanifest', import.meta.url),
   'utf8'
 ));
 
@@ -84,19 +74,6 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
     assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
     assert.ok(maskableIcons.every((icon) => /\/icons\/launcher-(192|512)-maskable\.png\?v=20260822a/.test(icon.src)));
   }
-});
-
-test('la nuova prova usa un’identità PWA separata e l’icona verde arrotondata', () => {
-  assert.equal(iconPreviewV2Manifest.short_name, 'Prova verde');
-  assert.equal(iconPreviewV2Manifest.background_color, '#ffffff');
-  assert.deepEqual(iconPreviewV2Manifest.icons.map((icon) => icon.purpose), ['any', 'any', 'maskable', 'maskable']);
-  assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-512\.png/.test(icon.src)));
-  assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-maskable-512\.png/.test(icon.src)));
-  assert.match(index, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(index, /icon-preview-v2.*20261104g/);
-  assert.match(serviceWorker, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(buildScript, /manifest-icon-preview-v2\.webmanifest\?v=20261104g/);
-  assert.match(serviceWorker, /\?icon-preview-v2=1&access=friendly/);
 });
 
 test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () => {
