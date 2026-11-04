@@ -88,13 +88,14 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
 
 test('la nuova prova usa un’identità PWA separata e l’icona verde arrotondata', () => {
   assert.equal(iconPreviewV2Manifest.short_name, 'Prova verde');
+  assert.equal(iconPreviewV2Manifest.background_color, '#ffffff');
   assert.deepEqual(iconPreviewV2Manifest.icons.map((icon) => icon.purpose), ['any', 'any', 'maskable', 'maskable']);
   assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-512\.png/.test(icon.src)));
   assert.ok(iconPreviewV2Manifest.icons.some((icon) => /launcher-rounded-green-maskable-512\.png/.test(icon.src)));
   assert.match(index, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(index, /icon-preview-v2.*20261104e/);
+  assert.match(index, /icon-preview-v2.*20261104f/);
   assert.match(serviceWorker, /manifest-icon-preview-v2\.webmanifest/);
-  assert.match(buildScript, /manifest-icon-preview-v2\.webmanifest\?v=20261104e/);
+  assert.match(buildScript, /manifest-icon-preview-v2\.webmanifest\?v=20261104f/);
   assert.match(serviceWorker, /\?icon-preview-v2=1&access=friendly/);
 });
 
