@@ -41,8 +41,11 @@ test('watchdog works without modules, preserves storage and disappears after boo
  for(const locale of SUPPORTED_LOCALES){
   const panels=[];let timer,reloads=0;
   const context={navigator:{language:locale},localStorage:{getItem:()=>locale},window:{setTimeout:fn=>{timer=fn;},location:{reload:()=>reloads++}},
-   document:{body:{appendChild:node=>panels.push(node)},createElement:()=>({setAttribute(){},appendChild(child){this.child=child;}})}};
-  vm.runInNewContext(script,context);timer();timer();assert.equal(panels.length,1);assert.ok(panels[0].textContent);
+   document:{querySelector:()=>null,body:{appendChild:node=>panels.push(node)},createElement:()=>({setAttribute(){},appendChild(child){this.child=child;}})}};
+  vm.runInNewContext(script,context);timer();timer();assert.equal(panels.length,0);
+  context.window.__appStarted=true;timer();assert.equal(panels.length,0);
+  context.window.__showStartupRecovery(true);context.window.__showStartupRecovery(true);
+  assert.equal(panels.length,1);assert.ok(panels[0].textContent);
   panels[0].child.onclick();assert.equal(reloads,1);
   panels.length=0;context.window.__booted=true;timer();assert.equal(panels.length,0);
  }

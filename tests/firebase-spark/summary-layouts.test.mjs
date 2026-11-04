@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const root = new URL('../../prototypes/firebase-spark-pwa/public/', import.meta.url);
 const index = readFileSync(new URL('index.html', root), 'utf8');
-const app = readFileSync(new URL('app.js', root), 'utf8');
+const app = ['app.js', 'admin-actions.js'].map(name => readFileSync(new URL(name, root), 'utf8')).join('\n');
 const view = readFileSync(new URL('summary-matrix-view.js', root), 'utf8');
 const styles = readFileSync(new URL('summary-matrix-refinements.css', root), 'utf8');
 const appStyles = readFileSync(new URL('styles.css', root), 'utf8');

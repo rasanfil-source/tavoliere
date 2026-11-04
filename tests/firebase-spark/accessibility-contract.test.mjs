@@ -9,7 +9,7 @@ const index = readFileSync(
 const app = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url),
   'utf8'
-);
+) + readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/admin-actions.js', import.meta.url), 'utf8');
 const styles = readFileSync(
   new URL('../../prototypes/firebase-spark-pwa/public/styles.css', import.meta.url),
   'utf8'

@@ -91,7 +91,7 @@ test('service worker handles only navigation, app resources, and Firebase SDK re
 
 test('service worker keeps navigation network-first with an offline cache fallback', () => {
   assert.match(serviceWorker, /const response = await fetch\(request\)/);
-  assert.match(serviceWorker, /await cache\.addAll\(resources\);[\s\S]*await cache\.put\('\/index\.html', response\)/);
+  assert.match(serviceWorker, /await cache\.addAll\(missing\);[\s\S]*await cache\.put\('\/index\.html', response\)/);
   assert.match(serviceWorker, /cache\?\.match\(fallbackPath \|\| '\/index\.html'\)/);
   assert.match(serviceWorker, /networkFirst\(event\.request, '\/index\.html', event\)/);
 });

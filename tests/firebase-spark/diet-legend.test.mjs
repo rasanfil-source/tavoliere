@@ -9,7 +9,7 @@ import {
   updateKitchenDietLegendEntry
 } from '../../prototypes/firebase-spark-pwa/public/diet-legend.mjs';
 
-const app = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url), 'utf8');
+const app = ['app.js', 'admin-actions.js'].map(name => readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/' + name, import.meta.url), 'utf8')).join('\n');
 const participantData = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/admin-participant-data.js', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/index.html', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/styles.css', import.meta.url), 'utf8');

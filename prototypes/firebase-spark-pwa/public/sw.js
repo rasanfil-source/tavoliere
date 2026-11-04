@@ -92,7 +92,18 @@ async function precacheInstalledShell() {
   const cache = await caches.open(CACHE_NAME);
   const resources = APP_SHELL.filter((path) => path !== '/' && path !== '/index.html')
     .map((path) => /\.(?:m?js|css)$/.test(path) && !isBundledAssetPath(path) ? `${path}?v=20261031b` : path);
-  await cache.addAll(resources);
+  // Prima di eliminare la vecchia shell, riusa le risposte con lo stesso hash.
+  // L'identità esatta dell'URL garantisce che appartengano allo stesso contenuto;
+  // HTML, URL con token, dati Firebase e file senza hash non sono riutilizzati.
+  const missing = [];
+  await Promise.all(resources.map(async path => {
+    const existing = isBundledAssetPath(path)
+      ? await caches.match(path).catch(() => undefined)
+      : null;
+    if (existing?.ok) await cache.put(path, existing);
+    else missing.push(path);
+  }));
+  await cache.addAll(missing);
   // L'HTML viene pubblicato in cache quando tutte le risorse necessarie sono disponibili.
   await cache.put('/index.html', response);
 }

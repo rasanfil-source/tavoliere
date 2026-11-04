@@ -82,6 +82,8 @@ export async function loadKitchenCounts(date = new Date(), options = {}) {
 
 export async function ensureKitchenDemoSession() {
   await waitForAuthReady();
+  globalThis.window?.__startupPerf?.mark('kitchen-auth-ready');
+  globalThis.window?.__startupPerf?.mark('kitchen-auth-ready');
   let user = getCurrentUser();
 
   if (

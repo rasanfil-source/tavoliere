@@ -34,7 +34,7 @@ test('HTML preloads only the additional resident graph on personal routes', asyn
   }
 });
 
-function worker({ installFailure = false, html = installedHtml } = {}) {
+function worker({ installFailure = false, html = installedHtml, previousEntries = new Map() } = {}) {
   const handlers = {}, entries = new Map(), requests = [], installs = [];
   let offline = false;
   const key = request => new URL(typeof request === 'string' ? request : request.url, origin).href;
@@ -50,7 +50,9 @@ function worker({ installFailure = false, html = installedHtml } = {}) {
   vm.runInNewContext(source, { URL, Response, setTimeout, clearTimeout,
     self: { location: { origin }, clients: { claim: async () => {} },
       addEventListener: (type, handler) => { handlers[type] = handler; } },
-    caches: { open: async () => cache, keys: async () => ['tavola-comune-app-test'],
+    caches: { open: async () => cache,
+      match: async request => (await cache.match(request)) || previousEntries.get(key(request))?.clone(),
+      keys: async () => ['tavola-comune-app-test'],
       delete: async () => { entries.clear(); } },
     fetch: async request => {
       requests.push(key(request));
@@ -96,7 +98,39 @@ test('generated worker installs the complete resident graph without administrati
     assert.ok(manifest.files[path], path);
     assert.ok(!path.includes('?'), 'hashed assets use one URL identity');
     const inputs = manifest.outputs[path].inputs;
-    assert.ok(!inputs.some(input => /admin-participant-data|admin-center|domain\/center-(backup|restore)/.test(input)));
+    assert.ok(!inputs.some(input => /admin-participant-data|admin-actions|admin-center|domain\/center-(backup|restore)/.test(input)));
+  }
+});
+
+test('a release reuses exact hashed assets from the old shell while fetching changed assets and HTML', async () => {
+  const shared = manifest.resident.filter(path => path !== manifest.entry);
+  const previousEntries = new Map(shared.map(path => [origin + path, new Response('previous immutable') ]));
+  previousEntries.set(origin + '/index.html', new Response('old HTML'));
+  previousEntries.set(origin + '/assets/app-AAAAAAAA.js', new Response('old entry'));
+  const sw = worker({ previousEntries }); await sw.install();
+  for (const path of shared) {
+    assert.ok(!sw.installs.includes(path));
+    assert.equal(await (await sw.fetch(path)).text(), 'previous immutable');
+  }
+  assert.ok(sw.installs.includes(manifest.entry));
+  assert.equal(await sw.entries.get(origin + '/index.html').text(), installedHtml);
+  assert.ok(!sw.entries.has(origin + '/assets/app-AAAAAAAA.js'));
+  assert.equal(await previousEntries.get(origin + '/index.html').text(), 'old HTML');
+});
+
+test('failed update retains the previous complete shell and never publishes new HTML', async () => {
+  const previousEntries = new Map([[origin + '/index.html', new Response('old HTML')],
+    [origin + manifest.resident[1], new Response('shared')]]);
+  const sw = worker({ previousEntries, installFailure: true });
+  await assert.rejects(sw.install(), /incomplete release/);
+  assert.ok(!sw.entries.has(origin + '/index.html'));
+  assert.equal(await previousEntries.get(origin + '/index.html').text(), 'old HTML');
+});
+
+test('production preloads no CDN SDK and keeps diagnostics and Admin actions out of the initial graph', () => {
+  assert.doesNotMatch(installedHtml, /rel="modulepreload"[^>]*gstatic/);
+  for (const path of manifest.initial) {
+    assert.ok(!manifest.outputs[path].inputs.some(input => /admin-actions|startup-diagnostics/.test(input)));
   }
 });
 
@@ -179,7 +213,8 @@ test('rebuild is reproducible and retains immutable files needed by already open
     await mkdir(resolve(scratch, 'assets'));
     const retained = resolve(scratch, 'assets/chunk-AAAAAAAA.js');
     await writeFile(retained, 'previous published chunk');
-    const built = spawnSync(process.execPath, ['tools/build-public.mjs'], {
+    const runtimeNode = process.env.TAT_NODE_PATH || process.execPath;
+    const built = spawnSync(runtimeNode, ['tools/build-public.mjs'], {
       encoding: 'utf8', env: { ...process.env, TAT_BUILD_OUTPUT: scratch }
     });
     assert.equal(built.status, 0, built.stderr);

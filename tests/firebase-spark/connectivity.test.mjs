@@ -8,7 +8,8 @@ import {
   isConnectionAvailable
 } from '../../prototypes/firebase-spark-pwa/public/core/connectivity.mjs';
 
-const appSource = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/app.js', import.meta.url), 'utf8')
+  + readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/admin-actions.js', import.meta.url), 'utf8');
 function appFunction(name) {
   const match = appSource.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`));
   assert.ok(match, `Funzione ${name} presente`);

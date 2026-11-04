@@ -23,14 +23,50 @@
       [data-startup-recovery]{position:fixed;inset:auto 16px 24px;z-index:1001;padding:20px;background:#fff;color:#172b3a;border:1px solid #aaa;border-radius:12px;text-align:center;font:16px system-ui}
       [data-startup-recovery] button{display:block;margin:12px auto 0;padding:12px 24px;font:inherit}
     </style>
+    <script data-startup-diagnostics>
+      // Attivazione esplicita per 15 minuti: vale anche riaprendo la PWA dall'icona.
+      // La preferenza non contiene dati personali o di sessione.
+      (function () {
+      var choice = new URLSearchParams(location.search).get('perf');
+      var enabled = choice === '1';
+      try {
+        if (choice === '1') localStorage.setItem('tavolaComune.startupDiagnosticsUntil', String(Date.now() + 15 * 60 * 1000));
+        if (choice === '0') localStorage.removeItem('tavolaComune.startupDiagnosticsUntil');
+        var until = Number(localStorage.getItem('tavolaComune.startupDiagnosticsUntil') || 0);
+        enabled = choice === '1' || choice !== '0' && until > Date.now();
+        if (until && until <= Date.now()) localStorage.removeItem('tavolaComune.startupDiagnosticsUntil');
+      } catch (_) {}
+      if (enabled) {
+        window.__startupPerf = {
+          marks: {},
+          mark: function (name) {
+            if (!(name in this.marks)) this.marks[name] = performance.now();
+          }
+        };
+        import('/startup-diagnostics.mjs?v=20261104a').catch(function () {});
+      }
+      }());
+    </script>
     <script data-startup-watchdog>
       (function () {
         var shown = false;
-        window.__showStartupRecovery = function () {
+        window.__showStartupRecovery = function (failed) {
           if (window.__booted || shown || !document.body) return;
-          shown = true;
           var locale = navigator.language || 'it';
           try { locale = localStorage.getItem('tavolaComune.locale') || locale; } catch (_) {}
+          locale = locale.toLowerCase().split('-')[0];
+          // Il tempo trascorso non dimostra un errore: su rete lenta Auth e dati
+          // possono essere ancora in corso. Il retry riguarda errori espliciti.
+          if (failed !== true) {
+            var gate = document.querySelector('[data-startup-gate]');
+            if (gate) gate.classList.add('startup-progress');
+            var status = document.querySelector('[data-startup-status]');
+            var waiting = { it: 'Caricamento in corso…', en: 'Loading…', fr: 'Chargement en cours…',
+              es: 'Cargando…', de: 'Wird geladen…', ca: 'S’està carregant…' };
+            if (status) { status.hidden = false; status.textContent = waiting[locale] || waiting.it; }
+            return;
+          }
+          shown = true;
           var messages = {
             it: ['Avvio non completato. Controlla la connessione e riprova.', 'Riprova'],
             en: ['Startup could not finish. Check your connection and try again.', 'Try again'],
@@ -115,7 +151,7 @@
     <link rel="apple-touch-icon" href="/icons/launcher-192.png?v=20260821a">
     <link rel="stylesheet" href="/assets/styles-IB2ZNLLP.css">
     <link rel="stylesheet" href="/assets/summary-matrix-refinements-LMVS55DV.css">
-    <script type="module" src="/assets/app-IORUQ6AO.js" onerror="window.__showStartupRecovery()"></script>
+    <script type="module" src="/assets/app-SFCPWDKM.js" onerror="window.__showStartupRecovery(true)"></script>
       <link rel="modulepreload" href="/assets/chunk-7ZENLLVJ.js">
     <link rel="modulepreload" href="/assets/chunk-DZJEM4PC.js">
     <link rel="modulepreload" href="/assets/chunk-FF5MZSFQ.js">
