@@ -113,7 +113,7 @@
             : current.get('view') === 'kitchen'
               ? '/manifest-kitchen.webmanifest' : '/manifest.webmanifest';
           var manifest = new URL(path, window.location.origin);
-          manifest.searchParams.set('v', '20261014b');
+          manifest.searchParams.set('v', current.get('icon-preview-v2') === '1' ? '20261104b' : '20261014b');
           if (/^[a-z0-9][a-z0-9_-]{1,63}$/i.test(center)) manifest.searchParams.set('c', center);
           if (navigator.serviceWorker && navigator.serviceWorker.controller) manifest.searchParams.set('controlled', '1');
           document.querySelector('[data-app-manifest]').href = manifest.href;

@@ -106,7 +106,7 @@ html = html.replace('</head>', initial.filter(path => path !== entry)
 await writeFile(resolve(outputRoot, 'index.html'), html);
 
 // La cache iniziale deriva dal grafo effettivo dei moduli e non precarica le funzioni facoltative amministrative, cucina, riepilogo o copie di sicurezza.
-const staticShell = ['/', '/index.html', '/manifest.webmanifest', '/manifest-kitchen.webmanifest', '/manifest-icon-preview-v2.webmanifest',
+const staticShell = ['/', '/index.html', '/manifest.webmanifest', '/manifest-kitchen.webmanifest', '/manifest-icon-preview-v2.webmanifest?v=20261104b',
   '/icons/splash-512-transparent.png?v=20260824a', '/icons/whatsapp.svg'];
 let worker = await readFile(resolve(sourceRoot, 'sw.js'), 'utf8');
 const release = digest(html + JSON.stringify(outputs) + worker).slice(0, 16);
