@@ -7,7 +7,8 @@ const source = readFileSync(new URL('../../prototypes/firebase-spark-pwa/public/
 const origin = 'https://tavola-comune.web.app';
 const sdk = 'https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js';
 
-function worker({ offline = false, storageFailure = false, navigationPreload } = {}) {
+function worker({ offline = false, storageFailure = false, navigationPreload,
+  names = ['tavola-comune-app-v448', 'tavola-comune-i18n-v1', 'unrelated-cache'] } = {}) {
   const handlers = {};
   const entries = new Map();
   const requests = [];
@@ -31,7 +32,7 @@ function worker({ offline = false, storageFailure = false, navigationPreload } =
     },
     caches: {
       open: async (name) => { opened.push(name); return cache; },
-      keys: async () => ['tavola-comune-app-v448', 'tavola-comune-i18n-v1', 'unrelated-cache'],
+      keys: async () => names,
       delete: async (name) => { deleted.push(name); }
     },
     fetch: async (request) => {
@@ -63,6 +64,14 @@ test('SDK versionato scaricato una volta e riutilizzato senza richieste di rete'
   assert.equal(sw.requests.length, 1);
   await sw.fetch(sdk.replace('12.17.0', '12.18.0'));
   assert.equal(sw.requests.length, 2);
+  assert.deepEqual([...new Set(sw.opened)], ['tavola-comune-sdk-12.17.0', 'tavola-comune-sdk-12.18.0']);
+});
+
+test('activation retains the current SDK across releases and removes only old SDK versions', async () => {
+  const sw = worker({ names: ['tavola-comune-app-old', 'tavola-comune-sdk-12.16.0',
+    'tavola-comune-sdk-12.17.0', 'tavola-comune-i18n-v1', 'unrelated'] });
+  await sw.activate();
+  assert.deepEqual(sw.deleted.sort(), ['tavola-comune-app-old', 'tavola-comune-sdk-12.16.0']);
 });
 
 test('Catalan catalog is served from the service worker cache offline', async () => {

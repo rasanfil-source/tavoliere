@@ -171,6 +171,8 @@ function ensureSummaryStyles() {
 
 function loadDomainModule(name) {
   if (!domainModuleLoads.has(name)) {
+    // Le traduzioni si risolvono al render, mai in costanti valutate all'import.
+    // Scaricare un modulo non deve attendere i cataloghi completi.
     const pending = domainModuleLoaders[name]().catch((error) => {
       domainModuleLoads.delete(name);
       throw error;
@@ -298,8 +300,6 @@ const setAdminParticipantActiveStatus = callDomain('participant', 'setAdminParti
 const deleteAdminParticipant = callDomain('participant', 'deleteAdminParticipant');
 const exportCenterData = callDomain('participant', 'exportCenterData');
 const restoreCenterConfiguration = callDomain('participant', 'restoreCenterConfiguration');
-
-preloadActiveViewModules();
 
 function activateAdminCenter(centerId) {
   return setActiveCenterId(centerId);
@@ -1545,7 +1545,9 @@ function refreshCalendarOnResume() {
     && displayedOperationalDateId !== currentCenterDateId;
   // Una riapertura può trovare il calendario iniziale ancora incompleto,
   // anche se il timer del prossimo aggiornamento è lontano.
-  if (missingCalendar || operationalDataIsStale || serverNow() > state.nextRefreshAt - 2 * 60 * 1000) {
+  const stalledRefresh = state.refreshInFlight && !state.activeRefreshOperation?.waitingForAuth
+    && (Date.now() - state.refreshStartedAt >= 4000 || state.activeRefreshOperation?.startedHidden);
+  if (stalledRefresh || missingCalendar || operationalDataIsStale || serverNow() > state.nextRefreshAt - 2 * 60 * 1000) {
     scheduleBackgroundRefresh(operationalDataIsStale ? 'cambio-giorno' : 'ripresa');
   }
 }
@@ -1643,7 +1645,6 @@ async function bootstrapApp() {
   });
   syncStartupSplashPresentation();
   applyMealReminderUrlPreference();
-  registerServiceWorker();
   updateConnectivityState();
   initializeOperationalLinks();
   initializeResidentAccess();
@@ -1655,11 +1656,12 @@ async function bootstrapApp() {
   const settingsPromise = ['kitchen', 'participant', 'week', 'summary'].includes(state.mode)
     ? Promise.resolve(null)
     : loadCenterContactSettings().catch(() => null);
-  window.setTimeout(hideStartupSplash, 8000);
+  window.setTimeout(showStartupProgress, 2500);
   const i18nPromise = initI18n({
     development: window.location.hostname === 'localhost',
     centerLocale: state.centerContactSettings.language || null
   });
+  preloadActiveViewModules();
 
   // L'HTML italiano e CORE_FALLBACKS consentono il primo disegno. I cataloghi completi si caricano indipendentemente da Firebase Auth e dall'accesso residente.
   renderMode();
@@ -1761,6 +1763,7 @@ function readAdminDietLegendLabel() {
 }
 
 function hideStartupSplash() {
+  if (state.mode === 'admin') schedulePostStartupWork();
   window.__booted = true;
   document.querySelector('[data-startup-recovery]')?.remove();
   const appShell = document.querySelector('[data-app-shell]');
@@ -1774,6 +1777,38 @@ function hideStartupSplash() {
     gate.classList.add('startup-splash-hidden');
     window.setTimeout(() => gate.remove(), 180);
   }
+}
+
+function showStartupProgress() {
+  const gate = document.querySelector('[data-startup-gate]');
+  if (!gate || gate.classList.contains('startup-splash-hidden')) return;
+  // Mostra una shell neutra nel gate, senza rivelare un login non ancora deciso da Auth.
+  gate.classList.add('startup-progress');
+  gate.removeAttribute('aria-hidden');
+  const status = gate.querySelector('[data-startup-status]');
+  if (status) {
+    status.hidden = false;
+    status.textContent = t('app.header.verifyingAuth');
+  }
+  if (elements.startupSplashCopy) elements.startupSplashCopy.hidden = false;
+}
+
+function schedulePostStartupWork() {
+  if (state.postStartupScheduled) return;
+  state.postStartupScheduled = true;
+  // Lascia al browser il primo paint, poi svolge solo attività facoltative.
+  const run = () => {
+    registerServiceWorker();
+    Promise.resolve().then(() => navigator.storage?.persist?.()).catch(() => undefined);
+    void Promise.resolve().then(() => {
+      if (!['week', 'participant'].includes(state.mode)) return;
+      return Promise.all(['pendingMeals', 'mealJournal'].map(name => loadDomainModule(name)));
+    }).catch(() => undefined);
+  };
+  window.setTimeout(() => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 3000 });
+    else run();
+  }, 0);
 }
 
 function handleConnectivityChange() {
@@ -2612,7 +2647,7 @@ function initializeAuthPanel() {
     if (authSettled || state.mode !== 'admin') {
       return;
     }
-    void reconcileAdminAccessWithoutStrongUser();
+    showStartupProgress();
   }, 8000);
 
   elements.authButton.disabled = false;
@@ -4001,10 +4036,17 @@ async function handleCenterInitialization() {
   }
 }
 
-const SUMMARY_STARTUP_LOAD_TIMEOUT_MS = 5_000;
-
 async function refreshNow(source) {
+  if (source === 'timer' && globalThis.document?.hidden) {
+    state.nextRefreshAt = 0;
+    return;
+  }
   const refreshKey = buildRefreshContextKey();
+  if (state.refreshInFlight && ['ripresa', 'cambio-giorno'].includes(source)
+      && !state.activeRefreshOperation?.waitingForAuth
+      && (Date.now() - state.refreshStartedAt >= 4000 || state.activeRefreshOperation?.startedHidden)) {
+    state.activeRefreshOperation?.cancel();
+  }
   if (state.refreshInFlight) {
     // Gli eventi ravvicinati di timer, visibilità e rete condividono le letture del periodo corrente. Un aggiornamento manuale o un cambio di vista o data viene accodato una sola volta.
     if (source === 'manuale' || source === 'cambio-giorno' || refreshKey !== state.activeRefreshKey) {
@@ -4021,31 +4063,69 @@ async function refreshNow(source) {
 
   state.refreshInFlight = true;
   state.activeRefreshKey = refreshKey;
+  state.refreshStartedAt = Date.now();
   const refreshMode = state.mode;
-  const operation = { cancelled: false };
+  let cancelWait;
+  let timeoutId = 0;
+  let softTimeoutId = 0;
+  const cancelled = new Promise(resolve => { cancelWait = resolve; });
+  const operation = { cancelled: false, startedHidden: Boolean(globalThis.document?.hidden), cancel() {
+    operation.cancelled = true;
+    if (operation.request?.version === state.participantRequestVersion) state.participantRequestVersion += 1;
+    if (operation.kitchenVersion !== undefined && operation.kitchenVersion === state.kitchenRequestVersion) state.kitchenRequestVersion += 1;
+    state.refreshInFlight = false;
+    cancelWait({ status: 'cancelled' });
+  } };
+  state.activeRefreshOperation = operation;
   try {
-    const guardParticipantRefresh = ['summary', 'participant', 'week'].includes(refreshMode);
+    const guardParticipantRefresh = ['summary', 'participant', 'week', 'kitchen'].includes(refreshMode);
     if (!guardParticipantRefresh) {
       await performRefresh(source);
       return;
     }
 
-    let timeoutId = 0;
+    softTimeoutId = window.setTimeout(() => {
+      if (state.activeRefreshOperation !== operation || operation.cancelled || state.mode !== refreshMode) return;
+      // Un caricamento lento rimane valido: nessuna nuova lettura o invalidazione a 5 secondi.
+      if (refreshMode === 'kitchen') elements.status.textContent = t('common.status.loading');
+      else setParticipantStatus(t('common.status.loading'));
+    }, 5000);
     const outcome = await Promise.race([
       performRefresh(source, operation).then(
-        () => ({ status: 'complete' }),
+        () => {
+          if (!operation.cancelled) schedulePostStartupWork();
+          return { status: 'complete' };
+        },
         (error) => ({ status: 'error', error })
       ),
       new Promise((resolve) => {
-        timeoutId = window.setTimeout(
-          () => resolve({ status: 'timeout' }),
-          refreshMode === 'summary' ? SUMMARY_STARTUP_LOAD_TIMEOUT_MS : 15_000
-        );
-      })
+        const expire = () => {
+          // Il tempo trascorso non decide se esiste un utente. La richiesta
+          // continua ad attendere il vero evento Auth, anche offline.
+          if (operation.waitingForAuth) {
+            timeoutId = window.setTimeout(expire, 20_000);
+            return;
+          }
+          resolve({ status: 'timeout' });
+        };
+        timeoutId = window.setTimeout(expire, 20_000);
+      }),
+      cancelled
     ]);
     if (timeoutId) window.clearTimeout(timeoutId);
     if (outcome.status === 'error') throw outcome.error;
     if (outcome.status !== 'timeout') return;
+
+    if (refreshMode === 'kitchen') {
+      operation.cancelled = true;
+      if (operation.kitchenVersion !== state.kitchenRequestVersion || state.mode !== 'kitchen') return;
+      state.kitchenRequestVersion += 1;
+      scheduleRecoveryRefresh();
+      if (!isKitchenScreenReady(state.kitchenDayOffset)) renderMeals(t('errors.timeout'));
+      setFreshnessStatus(elements.status, t('errors.timeout'), 'previous');
+      hideStartupSplash();
+      return;
+    }
 
     // Invalida il lavoro ancora pendente prima di sbloccare refreshInFlight:
     // un completamento tardivo non deve sovrascrivere il nuovo tentativo.
@@ -4079,6 +4159,11 @@ async function refreshNow(source) {
     }
     setParticipantStatus(message, 'previous');
   } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+    if (softTimeoutId) window.clearTimeout(softTimeoutId);
+    // Il completamento della vecchia richiesta non può sbloccare quella nuova.
+    if (state.activeRefreshOperation !== operation) return;
+    state.activeRefreshOperation = null;
     state.refreshInFlight = false;
     state.activeRefreshKey = '';
     const pendingSource = state.pendingRefreshSource;
@@ -4473,12 +4558,13 @@ async function performRefresh(source, operation) {
 
   if (state.mode === 'participant' || state.mode === 'week' || state.mode === 'summary') {
     await refreshParticipant(source, { refreshOperation: operation });
-    hideStartupSplash();
+    if (!operation?.cancelled) hideStartupSplash();
     return;
   }
 
   elements.status.textContent = 'Aggiorno...';
   const kitchenRequestVersion = ++state.kitchenRequestVersion;
+  if (operation) operation.kitchenVersion = kitchenRequestVersion;
   const kitchenDayOffset = state.kitchenDayOffset;
   const kitchenCenterId = getActiveCenterId();
 
@@ -4487,7 +4573,7 @@ async function performRefresh(source, operation) {
       error.refreshStage = 'sessione';
       throw error;
     });
-    if (kitchenCenterId !== getActiveCenterId()) return;
+    if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
     // Le impostazioni del centro sono protette dalla sessione Cucina e vengono lette dopo la sua creazione.
     const centerSettings = await loadCenterContactSettings({
       forceRefresh: source === 'manuale'
@@ -4495,10 +4581,11 @@ async function performRefresh(source, operation) {
       error.refreshStage = 'impostazioni';
       throw error;
     });
-    if (kitchenCenterId !== getActiveCenterId()) return;
+    if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
     state.centerContactSettings = applyResidentPreferences(centerSettings);
     scheduleOperationalDayRefresh();
     await applyCenterDefaultLanguage(state.centerContactSettings);
+    if (!isCurrentKitchenRequest(kitchenRequestVersion, kitchenCenterId, kitchenDayOffset)) return;
     renderMode();
     const kitchenDates = Array.from({ length: 3 }, (_, index) => addCalendarDays(getCenterToday(), index));
     alignKitchenPayloadState(kitchenDates, kitchenCenterId);
@@ -4707,7 +4794,12 @@ async function refreshParticipant(source, options = {}) {
       // precedente uscita con sigla può averla lasciata chiusa, ma una
       // sessione Gmail/email forte persistente deve poter ricostruire Mese o
       // Settimana senza essere scambiata per un nuovo accesso residente.
-      await waitForAuthReady();
+      if (options.refreshOperation) options.refreshOperation.waitingForAuth = true;
+      try {
+        await waitForAuthReady();
+      } finally {
+        if (options.refreshOperation) options.refreshOperation.waitingForAuth = false;
+      }
       if (!isCurrentParticipantRequest(request) || state.residentAuthTransition) return;
       // Auth persistente ha precedenza sulla sigla locale. Un dispositivo
       // senza entrambe le identità può mostrare il modulo senza caricare il dominio.
@@ -9608,7 +9700,7 @@ function renderResidentSettingsPanel() {
 }
 
 async function refreshResidentAdministratorAuthorization(isCurrent = () => true) {
-  if (!state.residentReady) {
+  if (!state.residentReady || (state.selectedParticipant && state.selectedParticipant.viceAdminRole !== true)) {
     state.residentAdministratorAuthorized = false;
     return false;
   }
@@ -10605,9 +10697,13 @@ async function loadParticipantMonthData(participantId, monthStart, options = {})
 }
 
 function prefetchNextParticipantMonth(participantId, monthStart, options = {}) {
+  const today = getCenterToday();
+  if (today.getDate() < 25 || today.getFullYear() !== monthStart.getFullYear()
+      || today.getMonth() !== monthStart.getMonth()) return;
   const nextMonth = new Date(monthStart);
   nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
   const run = () => {
+    if (document.hidden) return;
     if (options.isCurrentRequest && !options.isCurrentRequest()) return;
     void loadParticipantMonthData(participantId, nextMonth, {
       ...options,

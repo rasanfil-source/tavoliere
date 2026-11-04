@@ -220,7 +220,7 @@ async function getActiveMealTypes(forceRefresh = false) {
     && Date.now() - mealTypesCache.loadedAt < STATIC_DATA_CACHE_MS) {
     return mealTypesCache.value;
   }
-  if (mealTypesLoad?.centerId === centerId) return mealTypesLoad.promise;
+  if (mealTypesLoad?.centerId === centerId && Date.now() - mealTypesLoad.startedAt < 20_000) return mealTypesLoad.promise;
   let request;
   request = getDocs(collection(db, 'centers', centerId, 'mealTypes'))
     .then((snapshot) => {
@@ -228,13 +228,13 @@ async function getActiveMealTypes(forceRefresh = false) {
         .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
         .filter((meal) => meal.status === 'ACTIVE')
         .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-      mealTypesCache = { centerId, loadedAt: Date.now(), value };
+      if (mealTypesLoad?.promise === request) mealTypesCache = { centerId, loadedAt: Date.now(), value };
       return value;
     })
     .finally(() => {
       if (mealTypesLoad?.promise === request) mealTypesLoad = null;
     });
-  mealTypesLoad = { centerId, promise: request };
+  mealTypesLoad = { centerId, promise: request, startedAt: Date.now() };
   return request;
 }
 
@@ -281,18 +281,18 @@ async function getRules(forceRefresh = false, staticVersion = '0') {
     return rulesCache.value;
   }
   const loadKey = `${centerId}:${staticVersion}`;
-  if (rulesLoad?.key === loadKey) return rulesLoad.promise;
+  if (rulesLoad?.key === loadKey && Date.now() - rulesLoad.startedAt < 20_000) return rulesLoad.promise;
   let request;
   request = getDocs(collection(db, 'centers', centerId, 'reservationRules'))
     .then((snapshot) => {
       const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
-      rulesCache = { centerId, loadedAt: Date.now(), staticVersion, value };
+      if (rulesLoad?.promise === request) rulesCache = { centerId, loadedAt: Date.now(), staticVersion, value };
       return value;
     })
     .finally(() => {
       if (rulesLoad?.promise === request) rulesLoad = null;
     });
-  rulesLoad = { key: loadKey, promise: request };
+  rulesLoad = { key: loadKey, promise: request, startedAt: Date.now() };
   return request;
 }
 

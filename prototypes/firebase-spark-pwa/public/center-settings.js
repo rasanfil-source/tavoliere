@@ -36,6 +36,7 @@ const ALLOWED_INTERFACE_STYLES = new Set(['original', 'cool', 'urban-plus', 'fut
 let centerContactSettingsCache = null;
 let centerContactSettingsLoad = null;
 let centerContactSettingsLoadCenterId = '';
+let centerContactSettingsLoadStartedAt = 0;
 let centerContactSettingsRevision = 0;
 let calendarSettingsLoad = null;
 let calendarSettingsCache = null;
@@ -48,10 +49,11 @@ export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) 
       && Date.now() - calendarSettingsCache.cachedAt < CENTER_SETTINGS_CACHE_MS) {
     return calendarSettingsCache.value;
   }
-  if (calendarSettingsLoad?.centerId === centerId && calendarSettingsLoad.revision === revision) {
+  if (calendarSettingsLoad?.centerId === centerId && calendarSettingsLoad.revision === revision
+      && Date.now() - calendarSettingsLoad.startedAt < 20_000) {
     return calendarSettingsLoad.promise;
   }
-  const pending = { centerId, revision };
+  const pending = { centerId, revision, startedAt: Date.now() };
   pending.promise = (async () => {
     const snapshot = await getDocFromServer(doc(db, 'centers', centerId));
     if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) {
@@ -69,7 +71,7 @@ export async function loadCenterCalendarSettings({ forceRefresh = false } = {}) 
       if (calendarSettingsLoad === pending) calendarSettingsLoad = null;
       return loadCenterCalendarSettings({ forceRefresh: true });
     }
-    if (getActiveCenterId() === centerId && revision === centerContactSettingsRevision) {
+    if (calendarSettingsLoad === pending && getActiveCenterId() === centerId && revision === centerContactSettingsRevision) {
       calendarSettingsCache = { centerId, value, snapshot, cachedAt: Date.now() };
     }
     return value;
@@ -420,9 +422,12 @@ function normalizeCenterLanguage(value) {
 
 function refreshCenterContactSettings() {
   const centerId = getActiveCenterId();
-  if (centerContactSettingsLoad && centerContactSettingsLoadCenterId === centerId) {
+  if (centerContactSettingsLoad && centerContactSettingsLoadCenterId === centerId
+      && Date.now() - centerContactSettingsLoadStartedAt < 20_000) {
     return centerContactSettingsLoad;
   }
+  // Un tentativo scaduto non deve aggiornare la cache dopo quello sostitutivo.
+  if (centerContactSettingsLoad) centerContactSettingsRevision += 1;
   const requestRevision = centerContactSettingsRevision;
   let request;
   request = Promise.all([
@@ -498,6 +503,7 @@ function refreshCenterContactSettings() {
       if (centerContactSettingsLoad === request) centerContactSettingsLoad = null;
     });
   centerContactSettingsLoad = request;
+  centerContactSettingsLoadStartedAt = Date.now();
   centerContactSettingsLoadCenterId = centerId;
   return request;
 }

@@ -1,17 +1,31 @@
 export const DEFAULT_CENTER_ID = 'center_default';
 const CENTER_STORAGE_KEY = 'tavolaComune.centerId';
 const CENTER_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{1,63}$/i;
+let cachedSearch;
+let cachedCenterId;
+let persistedCenterId;
+
+// Le altre schede possono cambiare il centro quando l'URL non ne specifica uno.
+globalThis.window?.addEventListener?.('storage', (event) => {
+  if (event.key === CENTER_STORAGE_KEY || event.key === null) {
+    cachedSearch = undefined;
+    persistedCenterId = undefined;
+  }
+});
 
 export function getActiveCenterId() {
-  const requested = new URLSearchParams(window.location.search).get('c') || '';
+  const search = window.location.search;
+  if (cachedCenterId && cachedSearch === search) return cachedCenterId;
+  cachedSearch = search;
+  const requested = new URLSearchParams(search).get('c') || '';
   if (CENTER_ID_PATTERN.test(requested)) {
     storeCenterId(requested);
-    return requested;
+    return cachedCenterId = requested;
   }
 
   const stored = loadStoredCenterId();
   if (CENTER_ID_PATTERN.test(stored)) storeCenterId(stored);
-  return CENTER_ID_PATTERN.test(stored) ? stored : DEFAULT_CENTER_ID;
+  return cachedCenterId = CENTER_ID_PATTERN.test(stored) ? stored : DEFAULT_CENTER_ID;
 }
 
 export function setActiveCenterId(centerId, { updateUrl = true } = {}) {
@@ -20,6 +34,7 @@ export function setActiveCenterId(centerId, { updateUrl = true } = {}) {
   }
 
   storeCenterId(centerId);
+  cachedSearch = undefined;
   if (updateUrl) {
     const url = new URL(window.location.href);
     url.searchParams.set('c', centerId);
@@ -60,6 +75,8 @@ function loadStoredCenterId() {
 }
 
 function storeCenterId(centerId) {
+  if (persistedCenterId === centerId) return;
+  persistedCenterId = centerId;
   try {
     const cookieValue = document.cookie.split(';').map((item) => item.trim())
       .find((item) => item.startsWith(CENTER_STORAGE_KEY + '='))

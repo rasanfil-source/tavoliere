@@ -1,6 +1,8 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
 const CACHE_NAME = CACHE_PREFIX + 'v460';
 const CATALOG_STORAGE = 'tavola-comune-i18n-v1';
+const SDK_CACHE_PREFIX = 'tavola-comune-sdk-';
+const SDK_CACHE_NAME = SDK_CACHE_PREFIX + '12.17.0';
 const SHELL_ENTRY = '/app.js?v=20261031b';
 const HTML_NETWORK_TIMEOUT_MS = 1200;
 // Solo file SDK pubblici e immutabili: sono escluse risposte Auth e dati di sessione.
@@ -31,6 +33,8 @@ const APP_SHELL = [
   '/core/auth-state-machine.mjs',
   '/core/operation-guard.mjs',
   '/core/state-store.mjs',
+  '/core/pending-meals.mjs?v=20261103a',
+  '/core/pending-meal-journal.mjs?v=20261103a',
   '/core/user-error.mjs',
   '/domain/admin-overview.mjs',
   '/domain/administrator-auth.mjs',
@@ -73,6 +77,9 @@ self.addEventListener('install', (event) => {
 });
 
 async function precacheInstalledShell() {
+  // Separata dalla shell: una release o un cambio Aspetto non riscarica l'SDK.
+  // La build locale azzera FIREBASE_SDK perché lo include già nei bundle.
+  await Promise.all(FIREBASE_SDK.map(url => sdkCacheFirst(url, SDK_CACHE_NAME))).catch(() => undefined);
   // Scarica soltanto l'URL canonico: gli indirizzi di navigazione possono contenere credenziali.
   const response = await fetch('/index.html', { cache: 'no-cache' });
   if (!response.ok) throw new Error('Offline shell unavailable');
@@ -98,7 +105,7 @@ self.addEventListener('activate', (event) => {
         .catch(() => undefined),
       caches.keys()
         .then((names) => Promise.all(names
-          .filter((name) => (
+          .filter((name) => (name.startsWith(SDK_CACHE_PREFIX) && name !== SDK_CACHE_NAME) || (
             name.startsWith(CACHE_PREFIX)
             || name.startsWith('tavola-comune-spark-gate-')
           ) && name !== CACHE_NAME)
@@ -178,7 +185,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin === 'https://www.gstatic.com' && /^\/firebasejs\/\d+\.\d+\.\d+\/[^/]+\.js$/.test(url.pathname)) {
-    event.respondWith(sdkCacheFirst(event.request));
+    event.respondWith(sdkCacheFirst(event.request, SDK_CACHE_PREFIX + url.pathname.split('/')[2]));
   }
 });
 

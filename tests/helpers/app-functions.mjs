@@ -21,6 +21,7 @@ export function functions(names, dependencies = {}) {
   runtime.serverNow ??= () => (runtime.Date || Date).now();
   runtime.synchronizeServerClock ??= async () => true;
   runtime.startServerClockSync ??= () => {};
+  runtime.schedulePostStartupWork ??= () => {};
   return new Function(...Object.keys(runtime), names.map(functionSource).join('\n')
     + '\nreturn {' + names.join(',') + '};')(...Object.values(runtime));
 }

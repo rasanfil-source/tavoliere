@@ -95,6 +95,48 @@ async function setup(page, { locale = 'it', mode = 'week', delivery = 'ok' } = {
   };
 }
 
+test('actual presentation imports without evaluating translations or waiting for full catalogs', async ({ page }) => {
+  const h = await setup(page, { locale: 'fr', mode: 'summary', delivery: 'delayed' });
+  await page.route('**/i18n-observer.mjs', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'export const getLocale = () => window.i18n.getLocale(); export const t = (...args) => { window.translationCalls++; return window.i18n.t(...args); };'
+  }));
+  for (const name of ['summary-matrix-view.js', 'summary-matrix-model.js', 'blessing-view.mjs',
+    'html-utils.js', 'diet-utils.mjs', 'diet-legend.mjs']) {
+    const source = (await readFile(new URL(name, root), 'utf8'))
+      .replace(/\.\/i18n\/i18n\.mjs\?v=[^'"]+/g, '/i18n-observer.mjs');
+    await page.route(`**/${name}*`, route => route.fulfill({ contentType: 'text/javascript', body: source }));
+  }
+  const loader = appSource.match(/function loadDomainModule\([^]*?\n}/)[0];
+  await page.evaluate(async source => {
+    start();
+    window.translationCalls = 0;
+    const deps = { domainModuleLoads: new Map(),
+      domainModuleLoaders: {
+        summaryView: () => import('/summary-matrix-view.js'),
+        participant: async () => { window.dataStarted = true; return {}; }
+      }
+    };
+    const load = new Function(...Object.keys(deps), source + '; return loadDomainModule;')(...Object.values(deps));
+    window.presentation = await load('summaryView');
+    await load('participant');
+  }, loader);
+  expect(await page.evaluate(() => dataStarted)).toBe(true);
+  expect(await page.evaluate(() => finished)).toBe(false);
+  expect(await page.evaluate(() => translationCalls)).toBe(0);
+  const render = () => page.evaluate(() => {
+    const container = document.createElement('div');
+    presentation.mountSummaryMatrix(container, {});
+    return container.textContent;
+  });
+  expect(await render()).not.toBe('summary.noMeal');
+  await h.release();
+  await page.evaluate(() => initializing);
+  expect(await render()).toBe(catalogs.fr['summary.noMeal']);
+  expect([...new Set(h.requests)].sort()).toEqual(['fr', 'it']);
+  expect(h.unexpected).toEqual([]);
+});
+
 test('pending meal record survives reload with the same ID, without credentials or cross-user visibility', async ({page}) => {
   const h=await setup(page);
   const id=await page.evaluate(async()=>{

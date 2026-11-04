@@ -10,7 +10,7 @@ const deferred = () => {
 };
 
 for (const mode of ['week', 'participant']) {
-  test(`${mode}: Auth gates profile/session; session gates meals; publication waits for all essential data`, async () => {
+  test(`${mode}: Auth gates speculative reads; publication waits for session and all essential data`, async () => {
     const gates = Object.fromEntries(['auth', 'session', 'profile', 'settings', 'overrides', 'extras']
       .map(key => [key, deferred()]));
     const h = residentReopenHarness({ mode, read: async (name, value) => {
@@ -21,8 +21,6 @@ for (const mode of ['week', 'participant']) {
     await turn();
     assert.deepEqual(h.names(), ['auth']);
     gates.auth.resolve(); await turn();
-    assert.deepEqual(h.names(), ['auth', 'profile', 'session']);
-    gates.session.resolve(); await turn();
     for (const name of ['profile', 'settings', 'mealTypes', 'mealWindows', 'overrides', 'rule']) {
       assert.ok(h.names().includes(name), name);
     }
@@ -31,6 +29,10 @@ for (const mode of ['week', 'participant']) {
     gates.settings.resolve(); gates.overrides.resolve(); await turn();
     assert.ok(!h.names().includes('usable'), 'unverified profile cannot enable the calendar');
     gates.profile.resolve();
+    await turn();
+    assert.ok(!h.names().includes('usable'), 'completed speculative data cannot bypass session verification');
+    assert.equal(h.state.selectedParticipant, undefined);
+    gates.session.resolve();
     await pending;
     const days = mode === 'week' ? h.state.participantWeek : h.state.participantMonth;
     assert.equal(days.length, mode === 'week' ? 7 : 31);

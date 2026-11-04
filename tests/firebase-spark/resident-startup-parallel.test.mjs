@@ -33,7 +33,7 @@ function harness({ profileLoader, initialUser = { uid: 'restored-uid', isAnonymo
   return { auth, session, profile, events, restore: context.restoreFriendlyResidentSession };
 }
 
-test('profile overlaps session after Auth; settings and identity publication still wait for session', async () => {
+test('profile and optional preparation overlap session after Auth; identity publication waits for session', async () => {
   const h = harness();
   const pending = h.restore({ onSessionReady: (identity) => {
     assert.equal(identity.participantId, 'person');
@@ -43,7 +43,7 @@ test('profile overlaps session after Auth; settings and identity publication sti
   await turn();
   assert.deepEqual(h.events, []);
   h.auth.resolve(); await turn();
-  assert.deepEqual(h.events, ['profile', 'session']);
+  assert.deepEqual(h.events, ['profile', 'session', 'settings']);
   h.session.resolve(); await turn();
   assert.ok(h.events.includes('settings'));
   assert.ok(h.events.includes('profile'));
@@ -51,16 +51,17 @@ test('profile overlaps session after Auth; settings and identity publication sti
   h.profile.resolve({ participantId: 'person', signature: 'AA' });
   assert.equal((await pending).participant.participantId, 'person');
   assert.ok(!h.events.includes('signout'));
+  assert.equal(h.events.filter(event => event === 'settings').length, 1);
 });
 
-test('failed session does not start protected preparation or clear persistent identity', async () => {
+test('failed session cannot publish speculative preparation or clear persistent identity', async () => {
   const h = harness();
   const pending = h.restore({ onSessionReady: () => h.events.push('settings') });
   const rejected = assert.rejects(pending, error => error.preserveResidentIdentity === true);
   h.auth.resolve(); await turn();
   h.session.reject(Object.assign(new Error('network'), { code: 'unavailable' }));
   await rejected;
-  assert.deepEqual(h.events, ['profile', 'session']);
+  assert.deepEqual(h.events, ['profile', 'session', 'settings']);
 });
 
 test('completed profile cannot publish identity before the session is checked', async () => {

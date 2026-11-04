@@ -7,14 +7,24 @@ import {
   getDateInTimeZone
 } from '../../prototypes/firebase-spark-pwa/public/date-utils.mjs';
 
-test('clock ignores cached Date headers with positive Age', async () => {
-  for (const age of [null, '0', '60', '-1', 'invalid']) {
+test('clock accepts a small CDN Age and rejects stale or invalid values', async () => {
+  for (const age of [null, '0', '1', '5', '6', '60', '-1', '0.5', 'invalid']) {
     const api = await loadBrowserModule('date-utils.mjs', {
       window: { location: { origin: 'https://test.example' }, setTimeout, clearTimeout },
       fetch: async () => ({ ok: true, headers: { get: key => key === 'Age' ? age : 'Tue, 03 Nov 2026 12:00:00 GMT' } })
     }, ['synchronizeServerClock']);
-    assert.equal(await api.synchronizeServerClock(), age === null || age === '0');
+    assert.equal(await api.synchronizeServerClock(), [null, '0', '1', '5'].includes(age));
   }
+});
+
+test('clock adds CDN Age to Date using monotonic elapsed time', async () => {
+  const api = await loadBrowserModule('date-utils.mjs', {
+    globalThis: { performance: { now: () => 100 } },
+    window: { location: { origin: 'https://test.example' }, setTimeout, clearTimeout },
+    fetch: async () => ({ ok: true, headers: { get: key => key === 'Age' ? '3' : 'Tue, 03 Nov 2026 12:00:00 GMT' } })
+  }, ['synchronizeServerClock', 'serverNow']);
+  assert.equal(await api.synchronizeServerClock(), true);
+  assert.equal(api.serverNow(), Date.parse('2026-11-03T12:00:03.500Z'));
 });
 
 test('la data corrente segue il fuso del centro e non quello del dispositivo', () => {

@@ -86,6 +86,12 @@ test('generated worker installs the complete resident graph without administrati
   const sw = worker();
   await sw.install();
   for (const path of [...manifest.resident, ...manifest.styles]) assert.ok(sw.installs.includes(path), path);
+  for (const module of ['core/pending-meals.mjs', 'core/pending-meal-journal.mjs']) {
+    const entry = Object.entries(manifest.outputs).find(([, output]) => output.source === module)?.[0];
+    assert.ok(entry, module);
+    assert.ok(sw.installs.includes(entry), `${module} must work on the first offline tap`);
+    assert.ok(!manifest.initial.includes(entry), `${module} must not execute during startup`);
+  }
   for (const path of sw.installs.filter(path => path.startsWith('/assets/'))) {
     assert.ok(manifest.files[path], path);
     assert.ok(!path.includes('?'), 'hashed assets use one URL identity');

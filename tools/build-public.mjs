@@ -89,6 +89,7 @@ const styles = [entryFor('styles.css'), entryFor('summary-matrix-refinements.css
 const initial = staticGraph([entry]);
 const resident = staticGraph([entry, entryFor('participant-data.js')]);
 const residentPreloads = resident.filter(path => !initial.includes(path));
+const mealSupport = staticGraph([entryFor('core/pending-meals.mjs'), entryFor('core/pending-meal-journal.mjs')]);
 if (!entry || !entryFor('participant-data.js') || styles.some(path => !path)) throw new Error('Missing build entry');
 
 let html = await readFile(resolve(sourceRoot, 'index.html'), 'utf8');
@@ -113,7 +114,7 @@ worker = worker.replace(/const CACHE_NAME = [^;]+;/, `const CACHE_NAME = CACHE_P
 worker = worker.replace(/const SHELL_ENTRY = [^;]+;/, `const SHELL_ENTRY = ${JSON.stringify(entry)};`);
 worker = worker.replace(/const FIREBASE_SDK = \[[^]*?;/, 'const FIREBASE_SDK = [];');
 worker = worker.replace(/const APP_SHELL = \[[^]*?\n\];/,
-  `const APP_SHELL = ${JSON.stringify([...staticShell, ...styles, ...resident])};`);
+  `const APP_SHELL = ${JSON.stringify([...new Set([...staticShell, ...styles, ...resident, ...mealSupport])])};`);
 const compiledWorker = await transform(worker, { loader: 'js', minify: true, target: 'es2020',
   format: 'esm', legalComments: 'none', charset: 'utf8' });
 await writeFile(resolve(outputRoot, 'sw.js'), compiledWorker.code);

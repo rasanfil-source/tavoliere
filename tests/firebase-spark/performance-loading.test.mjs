@@ -40,9 +40,10 @@ test('i moduli di dominio vengono caricati in base alla vista', () => {
   assert.match(serviceWorker, /const LAZY_MODULES = \[/);
 });
 
-test('la schermata iniziale avvia Auth prima delle lingue e attende il calendario senza anteprime', async () => {
+test('la schermata iniziale avvia Auth prima delle lingue e mostra solo progressi finché attende Auth', async () => {
   const bootstrap = app.match(/async function bootstrapApp\(\)[\s\S]*?\n}/)?.[0] || '';
-  assert.match(bootstrap, /window\.setTimeout\(hideStartupSplash, 8000\)/);
+  assert.match(bootstrap, /window\.setTimeout\(showStartupProgress, 2500\)/);
+  assert.doesNotMatch(bootstrap, /window\.setTimeout\(hideStartupSplash/);
   assert.doesNotMatch(bootstrap, /settingsDeadline|Promise\.race\(\[settingsPromise/);
   assert.match(bootstrap, /\['kitchen', 'participant', 'week', 'summary'\]\.includes\(state\.mode\)[\s\S]*Promise\.resolve\(null\)[\s\S]*loadCenterContactSettings\(\)\.catch/);
   assert.match(bootstrap, /const i18nPromise = initI18n/);
@@ -64,8 +65,10 @@ test('la schermata iniziale avvia Auth prima delle lingue e attende il calendari
       registerServiceWorker() {}, updateConnectivityState() {}, initializeOperationalLinks() {}, initializeResidentAccess() {},
       hasAdminInterface: true, initializeAuthPanel: () => calls.push('auth'),
       window: { location: { hostname: 'localhost' }, setTimeout: (callback, delay) => {
-        assert.equal(delay, 8000); fallback = callback;
+        assert.equal(delay, 2500); fallback = callback;
       } },
+      preloadActiveViewModules: () => calls.push('preload'),
+      showStartupProgress: () => calls.push('progress'),
       initI18n: () => { calls.push('i18n'); return new Promise(() => {}); },
       renderMode() {}, renderAllViews() {}, renderCalendarPlaceholder() {},
       loadStoredResidentSignature: () => 'RM', canUseWeekWithoutParticipant: () => false,
@@ -73,9 +76,11 @@ test('la schermata iniziale avvia Auth prima delle lingue e attende il calendari
     });
     vm.runInContext(bootstrap, context);
     await context.bootstrapApp();
-    assert.deepEqual(calls, ['auth', 'i18n', 'avvio'], 'start data reads without dismissing the startup presentation');
+    assert.deepEqual(calls, ['auth', 'i18n', 'preload', 'avvio'], 'start module and data reads without waiting for full catalogs or dismissing the startup presentation');
     fallback();
-    assert.equal(calls.at(-1), 'hide', 'retain the timeout escape for a slow or stalled connection');
+    assert.equal(calls.at(-1), 'progress', 'a slow Auth event must not reveal an unconfirmed login');
+    assert.ok(!calls.includes('hide'));
+    assert.ok(calls.includes('preload'), 'module downloads must not wait for full catalogs');
   }
 });
 

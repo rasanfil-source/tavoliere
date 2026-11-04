@@ -80,13 +80,15 @@ let participantRulesRevision = 0;
 const staticQueryLoads = new Map();
 
 function shareStaticQuery(key, loader) {
-  if (staticQueryLoads.has(key)) return staticQueryLoads.get(key);
-  let request;
-  request = Promise.resolve().then(loader).finally(() => {
-    if (staticQueryLoads.get(key) === request) staticQueryLoads.delete(key);
+  const existing = staticQueryLoads.get(key);
+  if (existing && Date.now() - existing.startedAt < 20_000) return existing.promise;
+  const pending = { startedAt: Date.now() };
+  const isCurrent = () => staticQueryLoads.get(key) === pending;
+  pending.promise = Promise.resolve().then(() => loader(isCurrent)).finally(() => {
+    if (isCurrent()) staticQueryLoads.delete(key);
   });
-  staticQueryLoads.set(key, request);
-  return request;
+  staticQueryLoads.set(key, pending);
+  return pending.promise;
 }
 
 export { normalizeResidentSignature };
@@ -359,9 +361,14 @@ export async function restoreFriendlyResidentSession({ onSessionReady } = {}) {
         (value) => ({ value }), (error) => ({ error })
       )
       : null;
+    // Solo letture speculative protette dalle regole. Nessun calendario viene
+    // pubblicato prima della verifica della sessione e del profilo.
+    if (profileRead && onSessionReady) void Promise.resolve().then(() => onSessionReady({
+      participantId, uid: initialUser.uid
+    })).catch(() => undefined);
     const sessionUser = await ensurePersonalSession(participantId, token);
     // La preparazione facoltativa non invalida un'identità autenticata.
-    if (onSessionReady) void Promise.resolve().then(() => onSessionReady({
+    if (onSessionReady && (!profileRead || initialUser.uid !== sessionUser.uid)) void Promise.resolve().then(() => onSessionReady({
       participantId, uid: sessionUser.uid
     })).catch(() => undefined);
     const profileResult = profileRead && initialUser.uid === sessionUser.uid
@@ -822,7 +829,7 @@ export async function listPublicParticipants(options = {}) {
     return publicParticipantsCache.value;
   }
   const key = `publicParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
-  return shareStaticQuery(key, async () => {
+  return shareStaticQuery(key, async (isCurrent) => {
     const snapshot = await getDocs(collection(db, 'centers', getActiveCenterId(), 'publicParticipants'));
     const value = snapshot.docs
       .map((docSnap) => {
@@ -835,7 +842,7 @@ export async function listPublicParticipants(options = {}) {
       })
       .filter((participant) => participant.status === 'ACTIVE')
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    publicParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
+    if (isCurrent()) publicParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
     return value;
   });
 }
@@ -850,7 +857,7 @@ async function listSummaryParticipants(options = {}) {
   }
 
   const key = `summaryParticipants:${getActiveCenterId()}:${String(options.staticVersion || '')}`;
-  return shareStaticQuery(key, async () => {
+  return shareStaticQuery(key, async (isCurrent) => {
     const snapshot = await getDocs(query(
       collection(db, 'centers', getActiveCenterId(), 'participants'),
       where('phoneConsent', '==', true)
@@ -873,7 +880,7 @@ async function listSummaryParticipants(options = {}) {
         whatsappEnabled: false
       })
     }));
-    summaryParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
+    if (isCurrent()) summaryParticipantsCache = createVersionedCacheEntry(value, options.staticVersion);
     return value;
   });
 }
@@ -1215,14 +1222,14 @@ async function getMealTypes(forceRefresh = false, requireServer = false) {
     return mealTypesCache.value;
   }
   const centerId = getActiveCenterId();
-  return shareStaticQuery(`mealTypes:${centerId}:${requireServer ? 'server' : 'default'}`, async () => {
+  return shareStaticQuery(`mealTypes:${centerId}:${requireServer ? 'server' : 'default'}`, async (isCurrent) => {
     const snapshot = await (requireServer ? getDocsFromServer : getDocs)(collection(db, 'centers', centerId, 'mealTypes'));
     const value = snapshot.docs
       .map((docSnap) => ({ mealTypeId: docSnap.id, ...docSnap.data() }))
       .filter((meal) => meal.status === 'ACTIVE')
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     calendarValues(snapshot, value, requireServer);
-    mealTypesCache = { centerId, loadedAt: Date.now(), value };
+    if (isCurrent()) mealTypesCache = { centerId, loadedAt: Date.now(), value };
     return value;
   });
 }
@@ -1236,7 +1243,7 @@ async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = fals
     return cached.value;
   }
   const key = JSON.stringify(['mealWindows', centerId, uid, startDateId, endDateId, requireServer, forceRefresh]);
-  return shareStaticQuery(key, async () => {
+  return shareStaticQuery(key, async (isCurrent) => {
     const snapshot = await (requireServer ? getDocsFromServer : getDocs)(query(
       collection(db, 'centers', centerId, 'mealWindows'),
       where('mealDate', '>=', startDateId),
@@ -1244,7 +1251,7 @@ async function getMealWindowsInRange(startDateId, endDateId, forceRefresh = fals
     ));
     const value = snapshot.docs.map((docSnap) => ({ mealWindowId: docSnap.id, ...docSnap.data() }));
     calendarValues(snapshot, value, requireServer);
-    mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
+    if (isCurrent()) mealWindowsCache.set(cacheKey, { centerId, loadedAt: Date.now(), value });
     return value;
   });
 }
@@ -1396,10 +1403,10 @@ async function getRules(options = {}) {
   }
   const centerId = getActiveCenterId();
   const key = `summaryRules:${centerId}:${String(options.staticVersion || '')}`;
-  return shareStaticQuery(key, async () => {
+  return shareStaticQuery(key, async (isCurrent) => {
     const snapshot = await getDocs(collection(db, 'centers', centerId, 'reservationRules'));
     const value = snapshot.docs.map((docSnap) => ({ ruleId: docSnap.id, ...docSnap.data() }));
-    summaryRulesCache = createVersionedCacheEntry(value, options.staticVersion);
+    if (isCurrent()) summaryRulesCache = createVersionedCacheEntry(value, options.staticVersion);
     return value;
   });
 }
@@ -1417,7 +1424,7 @@ async function getParticipantRules(participantId, forceRefresh = false, requireS
   // diretta evita che il primo calendario dipenda dalla valutazione di una
   // query protetta (le regole Firestore non funzionano come filtri).
   const key = JSON.stringify(['participantRules', centerId, uid, participantId, requireServer, forceRefresh, revision]);
-  return shareStaticQuery(key, async () => {
+  return shareStaticQuery(key, async (isCurrent) => {
     const snapshot = await (requireServer ? getDocFromServer : getDoc)(doc(
       db,
       'centers',
@@ -1430,7 +1437,7 @@ async function getParticipantRules(participantId, forceRefresh = false, requireS
       : [];
     calendarValues(snapshot, value, requireServer);
     // Una scrittura amministrativa completata invalida le letture precedenti e la relativa cache.
-    if (revision === participantRulesRevision) participantRulesCache.set(participantId, {
+    if (isCurrent() && revision === participantRulesRevision) participantRulesCache.set(participantId, {
       centerId,
       uid,
       loadedAt: Date.now(),
