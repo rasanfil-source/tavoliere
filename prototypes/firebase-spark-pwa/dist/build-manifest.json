@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "release": "3842dc30c653a7dc",
+  "release": "df8df4fe9c011529",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
   "entry": "/assets/app-CEYIJ6E7.js",
@@ -1077,11 +1077,10 @@
     "/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "a6a483f2020c42f76018dbbf30d9b609c37f29160f19eb2c6fcd8b97270565c7",
+    "/index.html": "35bd4cb9b6494e7454e5374852227b69291b510102f25327660f5baf6a001bf3",
     "/kitchen-data.js": "19f6f8bb83b36ba55c381035e25c1fc272c728ad417ec01432d688cd0472dd95",
     "/kitchen-monthly-summary.js": "c52409d9e4bdd365e5396ba44e00d149e642992fb4da27578d3c9d89f8ce5db8",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
-    "/manifest-icon-preview.webmanifest": "3b84bf28dffc20bc482aa9a92d988b7cf204a90a83617b465e56ec1db692ccf2",
     "/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "/meal-reminders.mjs": "2d7517e62ede5681c8ce2213249e2a2bd491677212343602d1bc811c9abe67f2",
@@ -1095,7 +1094,7 @@
     "/summary-matrix-model.js": "27680bd862b3b52fd120f7fc4a4850e0f07e4fa45a47e5435560c5235e5d13c7",
     "/summary-matrix-refinements.css": "d2519f53589f673c582bad19ebccd3e26edef0890a42b6e4877bd4fd23d2ef2e",
     "/summary-matrix-view.js": "6255a2b0b9c5506243ff014df52679c04d98d7357aea59f14500c88044b60abc",
-    "/sw.js": "2c1d8447a088e318f7af7b5ee26875ddf150067906305ea0556857a374af78f5"
+    "/sw.js": "5e85f3f14e37a9ef57792e9a2298fca8993e711016faf1fa0b82cadaf6090aeb"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "4ecb837ea25af027cf79382934be0effa23965ce707ed0199512832c7a994120",
@@ -1151,11 +1150,10 @@
     "prototypes/firebase-spark-pwa/public/icons/splash-512-blended.png": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b",
     "prototypes/firebase-spark-pwa/public/icons/splash-512-transparent.png": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381",
     "prototypes/firebase-spark-pwa/public/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "prototypes/firebase-spark-pwa/public/index.html": "a6410ab7fbd515d250d627920096b04d994d9f32fd45e4c3e019733947b378d9",
+    "prototypes/firebase-spark-pwa/public/index.html": "74b746ef6922b0a7317d4c6871617dcfb3695265493aebbf6c14d241ea7384ad",
     "prototypes/firebase-spark-pwa/public/kitchen-data.js": "a49081cf16ec411065385f0fd6a336534b2f89035260e7b46ceba3ab5ab3e756",
     "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js": "4cf1253ed45ad84acf395376a4ed53f276b830cac40074455ba2f7e812ec8a67",
     "prototypes/firebase-spark-pwa/public/kitchen-notes.js": "8d4996bb89628e64b2d78dafdcaf516066f5d6677996d694447aeb6eb8f4aac2",
-    "prototypes/firebase-spark-pwa/public/manifest-icon-preview.webmanifest": "3b84bf28dffc20bc482aa9a92d988b7cf204a90a83617b465e56ec1db692ccf2",
     "prototypes/firebase-spark-pwa/public/manifest-kitchen.webmanifest": "bc514917711606f45a582b5722da25f17e199c7225cf98098fdc9222ebc6d64b",
     "prototypes/firebase-spark-pwa/public/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
     "prototypes/firebase-spark-pwa/public/meal-reminders.mjs": "34158ebfca4cb3d1e8a40133e7ec6c702926c7547b918910713fbf05abb4572c",
@@ -1169,7 +1167,7 @@
     "prototypes/firebase-spark-pwa/public/summary-matrix-model.js": "c61438cbffd0e038f21e3a815ccb610386d46dad5065be782d2be70287fc379b",
     "prototypes/firebase-spark-pwa/public/summary-matrix-refinements.css": "b22923eaed81f74fb4b8c3c6a85e27fb6ed95d4a61bd289ee5e859078b7e429e",
     "prototypes/firebase-spark-pwa/public/summary-matrix-view.js": "daf7d8eeaed2119d97b343e16d5e01763d1993c0f13df477576f30812b160d27",
-    "prototypes/firebase-spark-pwa/public/sw.js": "e5ad3b1fb05f44c377e6d0d85d9e4c81a1165ff5f3f5d9e2a8da8739573f065e",
+    "prototypes/firebase-spark-pwa/public/sw.js": "440e0620f7e2e4f979ebc9e5e292fa0eb18d56851de01ff49760f645926a3e9c",
     "tools/build-public.mjs": "b87b173196ede2df33f644a1066de058e514f35a3ac29690a3cbc8e41b112100",
     "package-lock.json": "9ceefe538a435895cfc52b669ad1af7296b9312d248c5ed96303a8779d991171"
   }

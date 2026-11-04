@@ -32,10 +32,6 @@ const kitchenManifest = JSON.parse(readFileSync(
   'utf8'
 ));
 
-const iconPreviewManifest = JSON.parse(readFileSync(
-  new URL('../../prototypes/firebase-spark-pwa/public/manifest-icon-preview.webmanifest', import.meta.url),
-  'utf8'
-));
 
 test('il service worker separa il nucleo iniziale dai moduli caricati per vista', () => {
   assert.match(serviceWorker, /'\/firebase-client\.js'/);
@@ -78,16 +74,6 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
     assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
     assert.ok(maskableIcons.every((icon) => /\/icons\/launcher-(192|512)-maskable\.png\?v=20260822a/.test(icon.src)));
   }
-});
-
-test('la prova icona installa una seconda PWA con identità distinta e icone standard quadrate', () => {
-  assert.equal(appManifest.icons.some((icon) => icon.purpose === 'maskable'), true);
-  assert.equal(iconPreviewManifest.short_name, 'Prova icona');
-  assert.ok(iconPreviewManifest.icons.every((icon) => icon.purpose === 'any'));
-  assert.ok(iconPreviewManifest.icons.some((icon) => icon.src === '/icons/launcher-512.png?v=20260821a'));
-  assert.match(index, /manifest-icon-preview\.webmanifest/);
-  assert.match(serviceWorker, /manifest-icon-preview\.webmanifest/);
-  assert.match(serviceWorker, /\?icon-preview=1&access=friendly/);
 });
 
 test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () => {
