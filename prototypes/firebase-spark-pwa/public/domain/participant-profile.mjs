@@ -21,16 +21,16 @@ export function validateParticipantProfile(profile = {}) {
   const phone = normalizePhoneNumber(rawPhone);
 
   if (!displayName || displayName.length > 120) {
-    throw new Error('Il nome deve contenere da 1 a 120 caratteri.');
+    throw participantProfileError('displayName', 'Il nome deve contenere da 1 a 120 caratteri.');
   }
   if (!/^[A-Z0-9]{2,12}$/.test(signature)) {
-    throw new Error('La sigla deve contenere da 2 a 12 lettere o numeri.');
+    throw participantProfileError('signature', 'La sigla deve contenere da 2 a 12 lettere o numeri.');
   }
   if (initials && !/^[\p{L}\p{N}]{1,6}$/u.test(initials)) {
-    throw new Error('Le iniziali devono contenere da 1 a 6 lettere o numeri.');
+    throw participantProfileError('initials', 'Le iniziali devono contenere da 1 a 6 lettere o numeri.');
   }
   if (rawPhone && !phone) {
-    throw new Error('Il numero di telefono deve contenere da 6 a 15 cifre.');
+    throw participantProfileError('phone', 'Il numero di telefono deve contenere da 6 a 15 cifre.');
   }
 
   return Object.freeze({
@@ -48,4 +48,10 @@ export function validateParticipantProfile(profile = {}) {
     viceAdminRole: profile.viceAdminRole === true,
     whatsappEnabled: profile.whatsappEnabled === true
   });
+}
+
+function participantProfileError(field, message) {
+  const error = new Error(message);
+  error.field = field;
+  return error;
 }

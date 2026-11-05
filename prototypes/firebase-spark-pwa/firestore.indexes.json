@@ -1,6 +1,24 @@
 {
   "indexes": [
     {
+      "collectionGroup": "adminInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "centerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "role",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "reservationOverrides",
       "queryScope": "COLLECTION",
       "fields": [

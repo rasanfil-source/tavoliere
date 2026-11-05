@@ -8898,14 +8898,14 @@ function clearAdminParticipantFieldErrors() {
 }
 
 function focusInvalidAdminParticipantField(error) {
-  const message = String(error?.message || '').toLowerCase();
-  const field = message.includes('nome')
-    ? elements.adminParticipantName
-    : message.includes('sigla')
-      ? elements.adminParticipantSignature
-      : message.includes('telefono') || message.includes('numero')
-        ? elements.adminPhoneInput
-        : null;
+  let field = null;
+  switch (error?.field) {
+    case 'displayName': field = elements.adminParticipantName; break;
+    case 'signature': field = elements.adminParticipantSignature; break;
+    case 'initials': field = elements.adminParticipantInitials; break;
+    case 'phone': field = elements.adminPhoneInput; break;
+    default: break;
+  }
   if (!field) return;
   field.setAttribute('aria-invalid', 'true');
   field.focus();

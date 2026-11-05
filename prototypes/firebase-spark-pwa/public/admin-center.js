@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -414,7 +415,10 @@ export async function listPlatformCenters(user = getCurrentUser()) {
   if (!db || !isPlatformOwnerUser(user)) {
     throw new Error('Solo il proprietario può vedere tutti i centri');
   }
-  const snapshot = await getDocs(collection(db, 'centers'));
+  const snapshot = await getDocs(query(
+    collection(db, 'centers'),
+    where('status', '==', 'ACTIVE')
+  ));
   return snapshot.docs
     .map((item) => ({
       centerId: item.id,
@@ -427,7 +431,6 @@ export async function listPlatformCenters(user = getCurrentUser()) {
       adminEmail: String(item.data().adminEmail || ''),
       administratorPasswordRequired: item.data().administratorPasswordRequired === true
     }))
-    .filter((center) => center.status === 'ACTIVE')
     .sort((left, right) => left.name.localeCompare(right.name, 'it'));
 }
 
@@ -505,12 +508,12 @@ export async function listAdministratorInvitations(user = getCurrentUser()) {
   const snapshot = await getDocs(query(
     collection(db, ADMIN_INVITATION_COLLECTION),
     where('centerId', '==', centerId),
+    where('role', '==', 'ADMIN'),
+    orderBy('createdAt', 'desc'),
     limit(50)
   ));
   return snapshot.docs
-    .map((item) => ({ invitationId: item.id, ...item.data() }))
-    .filter((item) => item.role === 'ADMIN')
-    .sort((left, right) => timestampValue(right.createdAt) - timestampValue(left.createdAt));
+    .map((item) => ({ invitationId: item.id, ...item.data() }));
 }
 
 export async function revokeAdministratorInvitation(invitationId, user = getCurrentUser()) {
@@ -1081,14 +1084,6 @@ function forgetStoredCenterInvitation() {
   } catch {
     // La rimozione locale resta facoltativa e non condiziona il completamento del centro.
   }
-}
-
-function timestampValue(value) {
-  if (value && typeof value.toMillis === 'function') {
-    return value.toMillis();
-  }
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
 }
 
 function createInvitationId() {
