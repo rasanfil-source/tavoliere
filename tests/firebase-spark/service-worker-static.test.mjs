@@ -72,14 +72,14 @@ test('Android riceve icone maskable a fondo pieno senza cornice bianca automatic
   for (const manifest of [appManifest, kitchenManifest]) {
     const maskableIcons = manifest.icons.filter((icon) => icon.purpose === 'maskable');
     assert.deepEqual(maskableIcons.map((icon) => icon.sizes), ['192x192', '512x512']);
-    assert.ok(maskableIcons.every((icon) => /\/icons\/launcher-(192|512)-maskable\.png\?v=20260822a/.test(icon.src)));
+    assert.ok(maskableIcons.every((icon) => /\/icons\/app-icon-maskable-(192|512)-v2\.png/.test(icon.src)));
   }
 });
 
 test('lo splash nativo e quello TAT condividono lo stesso colore di fondo', () => {
   assert.equal(appManifest.background_color, '#ffffff');
   assert.equal(kitchenManifest.background_color, '#ffffff');
-  assert.match(index, /splash-512-transparent\.png\?v=20260824a/);
+  assert.match(index, /app-icon-any-512-v2\.png/);
   assert.match(index, /fetchpriority="high"/);
 });
 
@@ -111,15 +111,15 @@ test('la release corrente invalida insieme applicazione stile impostazioni e cac
   assert.match(index, /summary-matrix-refinements\.css\?v=20260824b/);
   assert.match(index, /app\.js\?v=20261031b/);
   assert.match(app, /daily-operations\.js\?v=20261014b/);
-  assert.match(index, /manifest\.webmanifest\?v=20260824b/);
-  assert.match(index, /launcher-192\.png\?v=20260821a/);
+  assert.match(index, /manifest\.webmanifest\?v=20261105a/);
+  assert.match(index, /app-icon-any-192-v2\.png/);
   assert.match(app, /center-settings\.js\?v=20261014b/);
-  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v460'/);
+  assert.match(serviceWorker, /CACHE_NAME = CACHE_PREFIX \+ 'v461'/);
   assert.match(serviceWorker, /'\/icons\/happyduck\.png'/);
   assert.match(serviceWorker, /'\/diet-legend\.mjs'/);
   assert.match(serviceWorker, /CLEAR_APPLICATION_CACHE/);
-  assert.doesNotMatch(serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '', /launcher-512|happyduck/);
-  assert.match(serviceWorker, /splash-512-transparent\.png\?v=20260824a/);
+  assert.doesNotMatch(serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '', /app-icon-maskable|happyduck/);
+  assert.match(serviceWorker, /app-icon-any-512-v2\.png/);
 });
 
 test('la barra partecipante non conserva il vecchio pulsante di aggiornamento', () => {

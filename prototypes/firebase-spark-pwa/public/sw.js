@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'tavola-comune-app-';
-const CACHE_NAME = CACHE_PREFIX + 'v460';
+const CACHE_NAME = CACHE_PREFIX + 'v461';
 const CATALOG_STORAGE = 'tavola-comune-i18n-v1';
 const SDK_CACHE_PREFIX = 'tavola-comune-sdk-';
 const SDK_CACHE_NAME = SDK_CACHE_PREFIX + '12.17.0';
@@ -42,7 +42,7 @@ const APP_SHELL = [
   '/i18n/i18n.mjs',
   '/manifest.webmanifest',
   '/manifest-kitchen.webmanifest',
-  '/icons/splash-512-transparent.png?v=20260824a',
+  '/icons/app-icon-any-512-v2.png',
   '/icons/whatsapp.svg'
 ];
 const LAZY_MODULES = [
@@ -187,7 +187,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin === self.location.origin && isAppResourcePath(url.pathname)) {
-    if (url.searchParams.has('v')) {
+    if (url.searchParams.has('v') || /^\/icons\/app-icon-(?:any|maskable)-(?:192|512)-v\d+\.png$/.test(url.pathname)) {
       event.respondWith(versionedCacheFirst(event.request, url.pathname));
       return;
     }

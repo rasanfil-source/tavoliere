@@ -96,6 +96,43 @@
           }
         ]
       }
+    ],
+    "redirects": [
+      {
+        "source": "/icons/launcher-192.png",
+        "destination": "/icons/app-icon-any-192-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/launcher-512.png",
+        "destination": "/icons/app-icon-any-512-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/launcher-192-maskable.png",
+        "destination": "/icons/app-icon-maskable-192-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/launcher-512-maskable.png",
+        "destination": "/icons/app-icon-maskable-512-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/splash-512-transparent.png",
+        "destination": "/icons/app-icon-any-512-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/splash-512-blended.png",
+        "destination": "/icons/app-icon-any-512-v2.png",
+        "type": 302
+      },
+      {
+        "source": "/icons/icon-192.png",
+        "destination": "/icons/app-icon-any-192-v2.png",
+        "type": 302
+      }
     ]
   },
   "firestore": {

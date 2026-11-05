@@ -1,0 +1,227 @@
+{
+  "date": "2026-11-05",
+  "assets": [
+    {
+      "name": "a-any-192-r2.png",
+      "sha256": "7f793d96cf03b4249d7d33a2d0363cdd9948abd075544908857ada1f6da8cffc",
+      "bytes": 66462,
+      "width": 192,
+      "height": 192,
+      "nonOpaque": 36700,
+      "cornerAlphas": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "minCenterAlpha": 251,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 29,
+      "maxWhiteRadius": 0.41778820412613904,
+      "outsideSamples": [
+        {
+          "x": 140,
+          "y": 31,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.4081319922405959
+        },
+        {
+          "x": 139,
+          "y": 32,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.4008894462196252
+        },
+        {
+          "x": 140,
+          "y": 32,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.40385579216851103
+        },
+        {
+          "x": 44,
+          "y": 34,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.41778820412613904
+        },
+        {
+          "x": 45,
+          "y": 34,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.41446357671526596
+        },
+        {
+          "x": 46,
+          "y": 34,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.41117804271689895
+        },
+        {
+          "x": 43,
+          "y": 35,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.41720343030342455
+        },
+        {
+          "x": 44,
+          "y": 35,
+          "r": 253,
+          "g": 252,
+          "b": 253,
+          "radius": 0.41380855682475787
+        }
+      ]
+    },
+    {
+      "name": "a-any-512-r2.png",
+      "sha256": "6bf58931631783e139853ec743ae631c95f272a51087ebb35b9681ba3008bc91",
+      "bytes": 380376,
+      "width": 512,
+      "height": 512,
+      "nonOpaque": 261716,
+      "cornerAlphas": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "minCenterAlpha": 251,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 263,
+      "maxWhiteRadius": 0.4227534437981127,
+      "outsideSamples": [
+        {
+          "x": 374,
+          "y": 82,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.41036313606656094
+        },
+        {
+          "x": 375,
+          "y": 82,
+          "r": 251,
+          "g": 252,
+          "b": 251,
+          "radius": 0.411467861918281
+        },
+        {
+          "x": 372,
+          "y": 83,
+          "r": 245,
+          "g": 251,
+          "b": 245,
+          "radius": 0.4065527154916479
+        },
+        {
+          "x": 373,
+          "y": 83,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.4076490520457383
+        },
+        {
+          "x": 374,
+          "y": 83,
+          "r": 253,
+          "g": 253,
+          "b": 254,
+          "radius": 0.4087517806548083
+        },
+        {
+          "x": 375,
+          "y": 83,
+          "r": 253,
+          "g": 253,
+          "b": 253,
+          "radius": 0.4098608497254834
+        },
+        {
+          "x": 376,
+          "y": 83,
+          "r": 254,
+          "g": 254,
+          "b": 254,
+          "radius": 0.4109762079262561
+        },
+        {
+          "x": 371,
+          "y": 84,
+          "r": 243,
+          "g": 249,
+          "b": 241,
+          "radius": 0.4038413609929434
+        }
+      ]
+    },
+    {
+      "name": "a-maskable-192-r2.png",
+      "sha256": "c42285acf4eb451204d9ccaa35e63d561f90204dae381c7a52769ded5202b95d",
+      "bytes": 49778,
+      "width": 192,
+      "height": 192,
+      "nonOpaque": 0,
+      "cornerAlphas": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "minCenterAlpha": 255,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 0,
+      "maxWhiteRadius": 0.36977332701001503,
+      "outsideSamples": []
+    },
+    {
+      "name": "a-maskable-512-r2.png",
+      "sha256": "a74dcc46121f30867d46fa18d4d1127bc50e11b3e2f949c21d861162268d86b5",
+      "bytes": 317144,
+      "width": 512,
+      "height": 512,
+      "nonOpaque": 0,
+      "cornerAlphas": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "minCenterAlpha": 255,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 0,
+      "maxWhiteRadius": 0.3729829583659893,
+      "outsideSamples": []
+    }
+  ],
+  "checks": {
+    "staticManifest": true,
+    "allIconURLs200": true,
+    "installabilityErrors": [],
+    "mobileNoOverflow": true,
+    "installHandler": true,
+    "reportDownload": true,
+    "offlineReload": true,
+    "externalRequests": [],
+    "pageErrors": []
+  },
+  "limits": "Desktop Edge automation; real Android installation and Home rendering still to test."
+}

@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-05",
+  "assets": [
+    {
+      "name": "current-green-192-r1.png",
+      "sha256": "0c8b4c0ecf774e5cd9b74f438c59de512102a1c3428c1ee35a2777b4c1a4ddad",
+      "bytes": 54857,
+      "width": 192,
+      "height": 192,
+      "nonOpaque": 0,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 0,
+      "maxWhiteRadius": 0.37710994956709903,
+      "outsideSamples": []
+    },
+    {
+      "name": "current-green-512-r1.png",
+      "sha256": "ccbb966f3a667df9adedfd605c9eb052f9154a7d7fa0c143029b6d099d3b682c",
+      "bytes": 328767,
+      "width": 512,
+      "height": 512,
+      "nonOpaque": 0,
+      "whitePeripheral": 0,
+      "nonGreenPeripheral": 0,
+      "whiteOutsideSafe": 0,
+      "maxWhiteRadius": 0.38024539853935324,
+      "outsideSamples": []
+    }
+  ],
+  "checks": {
+    "staticManifest": true,
+    "allIconURLs200": true,
+    "installabilityErrors": [],
+    "mobileNoOverflow": true,
+    "installHandler": true,
+    "reportDownload": true,
+    "offlineReload": true,
+    "externalRequests": [],
+    "pageErrors": []
+  },
+  "limits": "Desktop Edge automation; real Android installation and Home rendering still to test."
+}

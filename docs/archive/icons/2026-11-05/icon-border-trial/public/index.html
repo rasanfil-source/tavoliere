@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#367a3f">
+  <meta name="description" content="Prova separata del bordo dell'icona Oggi a tavola.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/current-green-192-r1.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/current-green-192-r1.png">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+  <title>TAT · Prova bordo 1</title>
+</head>
+<body>
+<main>
+  <header><span class="eyebrow">Oggi a tavola · Prova separata</span><h1>Via il bordo bianco.</h1><p>Il simbolo attuale, con il verde esteso fino ai bordi.</p></header>
+  <section class="preview" aria-label="Simulazione delle forme Android">
+    <figure><img class="circle" src="/icons/current-green-192-r1.png" width="112" height="112" alt="Icona su fondo verde con maschera circolare"><figcaption>Forma circolare</figcaption></figure>
+    <figure><img class="rounded" src="/icons/current-green-192-r1.png" width="112" height="112" alt="Icona su fondo verde con maschera quadrata arrotondata"><figcaption>Forma arrotondata</figcaption></figure>
+  </section>
+  <p class="small">Queste sono simulazioni. La prova decisiva è l’icona che apparirà sulla Home del tuo dispositivo.</p>
+  <section class="panel">
+    <h2>Provala sul tuo Android</h2>
+    <p id="mode" role="status">Aperta nel browser.</p>
+    <button id="install" type="button" hidden>Installa «TAT Bordo 1»</button>
+    <p id="install-status" role="status">Apri questo indirizzo in Chrome, fuori dalla navigazione in incognito.</p>
+    <ol>
+      <li>Usa il pulsante di installazione, se compare. Altrimenti apri il menu di Chrome → <strong>Aggiungi a schermata Home</strong> e scegli <strong>Installa</strong>, se disponibile.</li>
+      <li>Controlla che il nome sia <strong>TAT Bordo 1</strong>. L’app abituale può restare installata.</li>
+      <li>Torna alla Home, osserva il bordo e apri la nuova icona.</li>
+    </ol>
+    <p class="small">Se Chrome offre solo «Crea scorciatoia», oppure l’icona ha un piccolo simbolo di Chrome, annotalo: potresti star provando un collegamento invece di un’app installata.</p>
+  </section>
+  <section class="panel">
+    <h2>Com’è il bordo sulla Home?</h2>
+    <label for="device">Dispositivo</label>
+    <select id="device"><option value="">Scegli il dispositivo</option><option>Realme GT 5G</option><option>Samsung Galaxy Tab S4</option><option>Altro Android</option></select>
+    <fieldset><legend>Risultato osservato sulla Home</legend><label><input type="radio" name="border" value="green"> Verde fino al contorno</label><label><input type="radio" name="border" value="white"> Bordo bianco ancora presente</label><label><input type="radio" name="border" value="untested" checked> Non ancora verificato</label></fieldset>
+    <label for="installation">Come è stata aggiunta?</label>
+    <select id="installation"><option value="unknown">Non so / non ancora installata</option><option value="install">Con il comando Installa</option><option value="shortcut">Come scorciatoia / con simbolo di Chrome</option></select>
+    <button id="save" type="button" class="secondary">Scarica il resoconto della prova</button>
+    <p id="result-status" role="status" class="small">Le risposte restano su questo dispositivo. Il download non invia dati.</p>
+  </section>
+  <details><summary>Dettagli della prova</summary><p>Versione R1 · 5 novembre 2026. L’icona è un quadrato verde opaco; Android può ritagliarlo. L’immagine di ripiego ha lo stesso fondo verde.</p><p>Questa pagina non accede a prenotazioni, utenti o Firebase e non modifica l’installazione ordinaria.</p><pre id="diagnostics">Controllo in corso…</pre></details>
+</main>
+</body>
+</html>

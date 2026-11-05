@@ -1,0 +1,18 @@
+{
+  "id": "/tat-icon-border-r1",
+  "name": "TAT · Prova bordo 1",
+  "short_name": "TAT Bordo 1",
+  "description": "Prova isolata dell'icona attuale su fondo verde, senza cornice bianca incorporata.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#367a3f",
+  "icons": [
+    {"src": "/icons/current-green-192-r1.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/current-green-512-r1.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/current-green-192-r1.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/icons/current-green-512-r1.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

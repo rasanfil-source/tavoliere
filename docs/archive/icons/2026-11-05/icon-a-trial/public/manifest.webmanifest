@@ -1,0 +1,18 @@
+{
+  "id": "/tat-icon-a-r2",
+  "name": "TAT · Prova A2",
+  "short_name": "TAT Prova A2",
+  "description": "Variante A con angoli trasparenti nell'apertura e icona Android dedicata.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#233142",
+  "icons": [
+    {"src": "/icons/a-any-192-r2.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/a-any-512-r2.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/a-maskable-192-r2.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/icons/a-maskable-512-r2.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

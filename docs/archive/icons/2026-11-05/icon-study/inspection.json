@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-05",
+  "scope": "Bozzetti locali; nessuna verifica su telefoni reali",
+  "assets": [
+    {
+      "file": "assets/originale.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 233795,
+      "sha256": "d18bae703a78d261fce234578f57065262759046ddbe7ed67750922882bb6647"
+    },
+    {
+      "file": "assets/bozzetto-a-continuita.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1507384,
+      "sha256": "298662b61cd95d191e2e24e0eb408e6bedd2c48cdcf6719eaefaaafd9b9654a1"
+    },
+    {
+      "file": "assets/bozzetto-b-essenziale.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1303358,
+      "sha256": "cec6759146e6024cc33b14278a6a956be6f64e2547a0ee34d2fdaa167dea69ad"
+    }
+  ],
+  "checks": {
+    "desktop": "1160 px",
+    "mobile": "390 px",
+    "imagesDecoded": true,
+    "interactiveControls": true,
+    "horizontalOverflow": false,
+    "pageErrors": []
+  }
+}

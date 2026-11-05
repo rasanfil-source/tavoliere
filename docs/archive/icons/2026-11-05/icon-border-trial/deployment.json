@@ -1,0 +1,26 @@
+{
+  "publishedAt": "2026-11-05T15:23:23.457Z",
+  "channel": "icona-bordo-r1",
+  "url": "https://tavola-comune--icona-bordo-r1-hb1vkooj.web.app",
+  "expiresIn": "14d",
+  "files": {
+    "/app.js": "768d0f969d004f57f5a741b4044525d9e2d597fc62d21e091bb4d6d25cf9b537",
+    "/icons/current-green-192-r1.png": "0c8b4c0ecf774e5cd9b74f438c59de512102a1c3428c1ee35a2777b4c1a4ddad",
+    "/icons/current-green-512-r1.png": "ccbb966f3a667df9adedfd605c9eb052f9154a7d7fa0c143029b6d099d3b682c",
+    "/index.html": "a2bde51f5e7678ce9eebaa796756d3bb1124b3b75e12bc14f7d0e3cd137d8972",
+    "/manifest.webmanifest": "8ba410edb8dd0b79e79e2ef88888a5100660e5c000b6724839339b39ad705026",
+    "/styles.css": "190f3fbc143c03483e0cdf900ccba62d62695aa7d76fcc33c07465be70b6858f",
+    "/sw.js": "07b778acaac4927556b5c39d748a14b6d73d9b4431c67e9e031e3682280774d7"
+  },
+  "liveBefore": {
+    "/build-manifest.json": "7eceac2ef5e9e33d163192f7a3cfbff6bcc4e666f73b953419adb61368e37e32",
+    "/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
+    "/icons/launcher-512-maskable.png": "977771f4c888250b8e5228eb4d3d193f9a480697e713e634cfa40ab860c82427"
+  },
+  "liveAfter": {
+    "/build-manifest.json": "7eceac2ef5e9e33d163192f7a3cfbff6bcc4e666f73b953419adb61368e37e32",
+    "/manifest.webmanifest": "bb44108a56f6cb834c42e798e94ab526a3716f2903ce7f27e1b5111f4a09d613",
+    "/icons/launcher-512-maskable.png": "977771f4c888250b8e5228eb4d3d193f9a480697e713e634cfa40ab860c82427"
+  },
+  "liveUnchanged": true
+}

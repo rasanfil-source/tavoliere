@@ -3849,8 +3849,8 @@ async function showMealReminder(item) {
     const registration = await navigator.serviceWorker.ready;
     await registration.showNotification(t('mealReminder.notification.title'), {
       body: t('mealReminder.notification.body', { meal: mealLabel }),
-      icon: '/icons/launcher-192.png?v=20260821a',
-      badge: '/icons/icon-192.png?v=20260821b',
+      icon: '/icons/app-icon-any-192-v2.png',
+      badge: '/icons/app-icon-any-192-v2.png',
       tag: `meal-reminder-${getActiveCenterId()}-${item.reminderId}`,
       renotify: false,
       data: {
@@ -6983,7 +6983,7 @@ function renderMode() {
 function renderCenterAvatar(showInCurrentMode, centerName) {
   const configuredDataUrl = state.centerContactSettings.avatarDataUrl || '';
   const usesFutureView = state.centerContactSettings.interfaceStyle === 'future';
-  const dataUrl = configuredDataUrl || (usesFutureView ? '/icons/splash-512-transparent.png' : '');
+  const dataUrl = configuredDataUrl || (usesFutureView ? '/icons/app-icon-any-512-v2.png' : '');
   const show = showInCurrentMode && Boolean(dataUrl);
   elements.centerAvatar.classList.toggle('center-avatar-fallback', show && !configuredDataUrl);
   elements.centerAvatar.hidden = !show;

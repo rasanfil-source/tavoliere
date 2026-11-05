@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oggi a tavola · Studio dell’icona</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#253d32;background:#f3f4ed;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1160px;margin:auto;padding:44px 28px 32px}
+    .eyebrow{font-size:12px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:#58735b}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.045em;line-height:1.08;margin:14px 0}header p{max-width:750px;color:#56645b;line-height:1.6;font-size:17px}.tag{display:inline-block;background:#e4eadc;border-radius:30px;padding:7px 12px;font-size:12px;font-weight:700}
+    .toolbar{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:26px 0 22px}fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:700;margin-bottom:8px}button{border:1px solid #bac6b8;background:transparent;color:#253d32;padding:9px 13px;border-radius:9px;font:inherit;font-size:13px;cursor:pointer}button[aria-pressed=true]{background:#253d32;color:#fff;border-color:#253d32}button:focus-visible{outline:3px solid #bf8723;outline-offset:3px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{border:1px solid #d5ded0;background:#fff;border-radius:19px;overflow:hidden}.card header{padding:19px 22px 15px;min-height:137px}.card h2{margin:9px 0 7px;font-size:23px;letter-spacing:-.025em}.card p{font-size:13px;line-height:1.5;margin:0}.number{font-size:11px;letter-spacing:.12em;font-weight:750;color:#64735d}.recommended{background:#edf4ea}
+    .stage{background:#edf0e6;min-height:256px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px}.stage.dark{background:#202d29;color:#f0f4ed}.stage .app-name{font-size:13px;font-weight:600}.icon{display:block;object-fit:contain;aspect-ratio:1}.proposal{border-radius:18%}body[data-mask=circle] .proposal{border-radius:50%}body[data-mask=square] .proposal{border-radius:0}.hero-icon{width:192px;height:192px}
+    .samples{padding:18px 20px;display:flex;justify-content:space-between;align-items:end;gap:14px}.sample{display:flex;flex-direction:column;align-items:center;gap:9px}.sample small{font-size:11px;font-variant-numeric:tabular-nums;color:inherit;opacity:.75}.samples.dark{background:#202d29;color:#fff}.samples.light{background:#fff;color:#425149}.surface-label{font-size:11px;padding:10px 20px 0;color:#61715f}.surface-label.dark{background:#202d29;color:#d1dbcd}
+    .opening{margin-top:28px;border:1px solid #d5ded0;border-radius:19px;background:#fff;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:25px}.opening h2{font-size:23px;margin:0 0 10px}.opening p{font-size:14px;line-height:1.6;color:#56645b}.opening .choices{display:flex;gap:7px;margin-top:18px}.splash{min-height:235px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px}.splash img{width:80px;height:80px}.splash strong{font-size:21px}.splash span{color:#61715f;font-size:13px;text-align:center}.note{font-size:12px;line-height:1.6;color:#63715f;margin-top:22px}a{color:#286641}footer{border-top:1px solid #d5ded0;padding-top:15px;margin-top:22px;font-size:12px;color:#61715f}
+    @media(max-width:760px){main{padding:26px 18px}.grid{grid-template-columns:1fr}.card header{min-height:auto}.opening{grid-template-columns:1fr}.toolbar{gap:20px}.stage{min-height:250px}}
+    @media(prefers-reduced-motion:no-preference){button{transition:background .15s}}
+  </style>
+</head>
+<body data-mask="rounded">
+<main>
+  <header><div class="eyebrow">Oggi a tavola / Studio 01</div><h1>La stessa identità.<br>Un’icona più nitida.</h1><p>Il piatto e le posate restano il nostro segno. Due proposte per alleggerire l’effetto lucido e dare più presenza all’icona sulla Home.</p><span class="tag">Bozzetti · 5 novembre 2026</span></header>
+  <div class="toolbar">
+    <fieldset id="masks"><legend>Forma simulata delle proposte</legend><button type="button" data-mask="rounded" aria-pressed="true">Arrotondata</button> <button type="button" data-mask="circle" aria-pressed="false">Circolare</button> <button type="button" data-mask="square" aria-pressed="false">File intero</button></fieldset>
+    <fieldset id="backgrounds"><legend>Sfondo Home simulato</legend><button type="button" data-bg="light" aria-pressed="true">Chiaro</button> <button type="button" data-bg="dark" aria-pressed="false">Scuro</button></fieldset>
+  </div>
+  <section class="grid" aria-label="Confronto originale e due proposte" id="comparison"></section>
+  <section class="opening"><div><div class="eyebrow">All’apertura</div><h2 style="margin-top:12px">Un ingresso coerente</h2><p>Anteprima su fondo bianco, con il nome dell’app e il simbolo scelto. Serve a valutare la continuità visiva con la Home.</p><p>La schermata è statica: non introduce tempi di attesa nell’app.</p><div class="choices" id="splash-choices"><button type="button" data-version="a" aria-pressed="false">Proposta A</button><button type="button" data-version="b" aria-pressed="true">Proposta B</button></div></div><div class="splash"><img id="splash-icon" class="icon proposal" src="assets/bozzetto-b-essenziale.png" width="80" height="80" alt="Bozzetto B all’apertura"><strong>Oggi a tavola</strong><span>Per prenotarsi sempre in tempo!</span></div></section>
+  <p class="note">Le forme qui mostrate sono simulazioni CSS, non screenshot di Android o iPhone. I bozzetti sono immagini quadrate opache: gli angoli arrotondati non sono incorporati nei file. Le versioni definitive per Apple, Android e favicon saranno preparate dopo la scelta. L’originale conserva la sua sagoma circolare.</p>
+  <footer>Prova grafica locale · Nessun accesso a Firebase · Nessuna modifica all’app pubblicata · <a href="../../docs/PROGETTO_ICONA_TAT.md">Documento di progetto</a></footer>
+</main>
+<script>
+  const versions=[
+    {id:'original',label:'Riferimento',title:'Attuale',description:'Verde brillante, riflessi marcati e forma circolare.',src:'assets/originale.png'},
+    {id:'a',label:'Proposta A / Continuità',title:'Familiare, più leggera',description:'Verde luminoso e sfumato. Il simbolo conserva il carattere dell’originale.',src:'assets/bozzetto-a-continuita.png'},
+    {id:'b',label:'Proposta B / Essenziale',title:'Semplice, più decisa',description:'Verde più profondo, meno effetti e un contrasto più netto.',src:'assets/bozzetto-b-essenziale.png'}
+  ];
+  const icon=(v,size)=>`<img class="icon ${v.id==='original'?'':'proposal'} ${size===192?'hero-icon':''}" src="${v.src}" width="${size}" height="${size}" alt="${v.title}, ${size} pixel">`;
+  document.querySelector('#comparison').innerHTML=versions.map(v=>`<article class="card"><header class="${v.id==='b'?'recommended':''}"><div class="number">${v.label}</div><h2>${v.title}</h2><p>${v.description}</p></header><div class="stage">${icon(v,192)}<span class="app-name">Oggi a tavola</span></div>${['light','dark'].map(bg=>`<div class="surface-label ${bg}">${bg==='light'?'Su fondo chiaro':'Su fondo scuro'}</div><div class="samples ${bg}">${[32,48,64].map(size=>`<div class="sample">${icon(v,size)}<small>${size} px</small></div>`).join('')}</div>`).join('')}</article>`).join('');
+  function select(group,button){group.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));}
+  document.querySelector('#masks').addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;document.body.dataset.mask=button.dataset.mask;select(event.currentTarget,button);});
+  document.querySelector('#backgrounds').addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;document.querySelectorAll('.stage').forEach(stage=>stage.classList.toggle('dark',button.dataset.bg==='dark'));select(event.currentTarget,button);});
+  document.querySelector('#splash-choices').addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;const v=versions.find(v=>v.id===button.dataset.version);const img=document.querySelector('#splash-icon');img.src=v.src;img.alt=`Bozzetto ${v.id.toUpperCase()} all’apertura`;select(event.currentTarget,button);});
+</script>
+</body>
+</html>

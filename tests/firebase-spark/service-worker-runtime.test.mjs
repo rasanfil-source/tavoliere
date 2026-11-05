@@ -133,7 +133,7 @@ test('rete assente e cache piena non impediscono l attivazione', async () => {
 
 test('lo splash versionato usa subito la copia installata anche offline', async () => {
   const sw = worker({ offline: true });
-  const splash = `${origin}/icons/splash-512-transparent.png?v=20260824a`;
+  const splash = `${origin}/icons/app-icon-any-512-v2.png`;
   sw.entries.set(splash, new Response('splash'));
   assert.equal(await (await sw.fetch(splash)).text(), 'splash');
   assert.equal(sw.requests.length, 0);

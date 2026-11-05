@@ -106,7 +106,7 @@ test('il primo ingresso nel pannello pubblica soltanto uno stato Auth definitivo
 test('la shell PWA mantiene lazy i moduli ma carica sempre lo stile operativo condiviso', () => {
   const appShell = serviceWorker.match(/const APP_SHELL = \[[\s\S]*?\n\];/)?.[0] || '';
   const lazy = serviceWorker.match(/const LAZY_MODULES = \[[\s\S]*?\n\];/)?.[0] || '';
-  assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|launcher-512/);
+  assert.doesNotMatch(appShell, /summary-matrix-view|summary-matrix-refinements|happyduck|app-icon-maskable/);
   assert.match(lazy, /summary-matrix-view/);
   assert.match(lazy, /summary-matrix-refinements/);
   assert.match(index, /<link rel="stylesheet" href="\/summary-matrix-refinements\.css\?v=20260824b">/);

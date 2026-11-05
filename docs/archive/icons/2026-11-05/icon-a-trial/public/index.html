@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#233142">
+  <meta name="description" content="Prova della variante A: icona arrotondata con angoli trasparenti all'apertura.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/a-any-192-r2.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/a-any-192-r2.png">
+  <link rel="preload" as="image" href="/icons/a-any-512-r2.png" fetchpriority="high">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+  <title>TAT · Prova A2</title>
+</head>
+<body>
+<main>
+  <header><span class="eyebrow">Oggi a tavola · Prova A2</span><h1>Verde, con angoli trasparenti.</h1><p>La variante A, senza un disco verde dentro il quadrato.</p></header>
+  <section class="opening" aria-label="Prima schermata dell'app">
+    <img src="/icons/a-any-512-r2.png" width="192" height="192" fetchpriority="high" alt="Variante A arrotondata, con angoli realmente trasparenti">
+    <strong>Oggi a tavola</strong><span>Per prenotarsi sempre in tempo!</span>
+  </section>
+  <p class="small">Questa è l’immagine della prima schermata: il bianco passa attraverso gli angoli. Il rettangolo verde esterno non c’è.</p>
+  <section class="panel"><h2>Gli stessi angoli, su due sfondi</h2><div class="alpha-comparison"><figure class="light"><img src="/icons/a-any-192-r2.png" width="112" height="112" alt="Icona trasparente su fondo chiaro"><figcaption>Fondo chiaro</figcaption></figure><figure class="dark"><img src="/icons/a-any-192-r2.png" width="112" height="112" alt="Icona trasparente su fondo scuro"><figcaption>Fondo scuro</figcaption></figure></div><p class="small">Il file contiene già gli angoli trasparenti. Queste due immagini non usano un ritaglio CSS.</p></section>
+  <section class="panel">
+    <h2>Provala dalla Home Android</h2><p id="mode" role="status">Aperta nel browser.</p>
+    <button id="install" type="button" hidden>Installa «TAT Prova A2»</button>
+    <p id="install-status" role="status">Apri questo indirizzo in Chrome, fuori dalla navigazione in incognito.</p>
+    <ol><li>Premi il pulsante, se compare, oppure usa il menu di Chrome → <strong>Aggiungi a schermata Home → Installa</strong>.</li><li>Verifica che il nome sia <strong>TAT Prova A2</strong>, distinto dalla precedente prova.</li><li>Aprila dalla Home e osserva separatamente l’icona, l’eventuale schermata iniziale di Android e questa pagina bianca.</li></ol>
+    <p class="small">Per la Home è presente una variante Android dedicata. La forma viene scelta dal dispositivo: il Realme può mostrarla tonda e il Samsung arrotondata. La schermata generata da Android prima della pagina può usare una forma diversa dall’immagine qui sopra.</p>
+  </section>
+  <section class="panel">
+    <h2>Risultato sui tuoi dispositivi</h2>
+    <label for="device">Dispositivo</label><select id="device"><option value="">Scegli il dispositivo</option><option>Realme GT 5G</option><option>Samsung Galaxy Tab S4</option><option>Altro Android</option></select>
+    <fieldset><legend>Icona sulla Home</legend><label><input type="radio" name="border" value="green"> Senza cornice bianca</label><label><input type="radio" name="border" value="white"> Cornice bianca ancora presente</label><label><input type="radio" name="border" value="untested" checked> Non verificata</label></fieldset>
+    <label for="native-startup">Schermata di Android prima della pagina</label><select id="native-startup"><option value="unknown">Non osservata / non distinguibile</option><option value="rounded">Icona quadrata arrotondata come desiderata</option><option value="circle">Icona tonda</option><option value="frame">Icona con cornice indesiderata</option></select>
+    <label for="page-corners">Angoli dell’icona nella pagina bianca</label><select id="page-corners"><option value="unknown">Non verificati</option><option value="correct">Arrotondati, senza quadrato verde esterno</option><option value="wrong">Aspetto diverso da quello desiderato</option></select>
+    <label for="installation">Come è stata aggiunta?</label><select id="installation"><option value="unknown">Non so / non ancora installata</option><option value="install">Con il comando Installa</option><option value="shortcut">Come scorciatoia / con simbolo di Chrome</option></select>
+    <button id="save" type="button" class="secondary">Scarica il resoconto della prova</button><p id="result-status" role="status" class="small">Le risposte restano su questo dispositivo. Il download non invia dati.</p>
+  </section>
+  <details><summary>Dettagli della prova</summary><p>R2 · Icona generale e immagine all’apertura con alfa; variante Android maskable separata, opaca. Nessun ritardo artificiale all’avvio.</p><p>La prova non accede a Firebase e non modifica l’app ordinaria.</p><pre id="diagnostics">Controllo in corso…</pre></details>
+</main>
+</body>
+</html>

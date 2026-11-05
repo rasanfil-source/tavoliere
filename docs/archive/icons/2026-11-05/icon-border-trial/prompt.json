@@ -1,0 +1,7 @@
+{
+  "tool": "image_gen.imagegen",
+  "date": "2026-11-05",
+  "reference": "../icon-study/history/launcher-rounded-green-maskable-512.png",
+  "prompt": "Use case: precise-object-edit. Edit target: the supplied existing Oggi a tavola app icon. Fix its background for an Android maskable icon; this is not a logo redesign. Preserve the exact recognizable glossy green circular plate/button, white crossed knife and four-tine fork, ring, their orientation, relative proportions, lighting and existing visual identity. Keep the entire circular button centered with diameter approximately 76% of the square canvas, with all white cutlery inside a centered circle of radius 36% of canvas width. Extend a harmonious green background to ALL FOUR edges and corners of the square canvas. Every pixel must be opaque, including the very last row and column. Match the surrounding green smoothly, subtle gradient upper-left light leaf green to lower-right medium green. No white or gray exterior background, no transparency, no black edges, no frame, no rounded outside corners, no additional objects, no text, no mockup. Deliver ONE full-bleed opaque square PNG at high resolution. Important: the only white elements are the existing utensils and plate ring in the middle; the whole periphery is green.",
+  "note": "Raster edit retains the recognizable current emblem, not a pixel-identical copy. Exported with export-icons.ps1 to opaque RGB PNGs."
+}

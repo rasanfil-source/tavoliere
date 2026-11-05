@@ -1,0 +1,37 @@
+[
+  {
+    "file": "icon-192.png",
+    "bytes": 48724,
+    "sha256": "41766577446db77890d61ef9daa64c7d76c7c031e6736ab007ea15cc9ccf6b07"
+  },
+  {
+    "file": "launcher-192-maskable.png",
+    "bytes": 40917,
+    "sha256": "4fa0c91130f801a78a0ed1e1a866a6eb2bfe2a97d617bb42085ad2a9e90dbd29"
+  },
+  {
+    "file": "launcher-192.png",
+    "bytes": 47743,
+    "sha256": "76c5774c01270f8f1abead9b5a6285c3804b59d9036894b2e131825ec8c7ca6e"
+  },
+  {
+    "file": "launcher-512-maskable.png",
+    "bytes": 229461,
+    "sha256": "977771f4c888250b8e5228eb4d3d193f9a480697e713e634cfa40ab860c82427"
+  },
+  {
+    "file": "launcher-512.png",
+    "bytes": 233795,
+    "sha256": "d18bae703a78d261fce234578f57065262759046ddbe7ed67750922882bb6647"
+  },
+  {
+    "file": "splash-512-blended.png",
+    "bytes": 165489,
+    "sha256": "e287430ea2d8c780cf26d33c7d686a1c9df7e2b42c13424dc6b917b7a694bb6b"
+  },
+  {
+    "file": "splash-512-transparent.png",
+    "bytes": 261322,
+    "sha256": "35874d4c7f56e77a3038145680d587c5ce5dd739d7731c3d469e5989008fd381"
+  }
+]

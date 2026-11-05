@@ -107,7 +107,7 @@ await writeFile(resolve(outputRoot, 'index.html'), html);
 
 // La cache iniziale deriva dal grafo effettivo dei moduli e non precarica le funzioni facoltative amministrative, cucina, riepilogo o copie di sicurezza.
 const staticShell = ['/', '/index.html', '/manifest.webmanifest', '/manifest-kitchen.webmanifest',
-  '/icons/splash-512-transparent.png?v=20260824a', '/icons/whatsapp.svg'];
+  '/icons/app-icon-any-512-v2.png', '/icons/whatsapp.svg'];
 let worker = await readFile(resolve(sourceRoot, 'sw.js'), 'utf8');
 const release = digest(html + JSON.stringify(outputs) + worker).slice(0, 16);
 worker = worker.replace(/const CACHE_NAME = [^;]+;/, `const CACHE_NAME = CACHE_PREFIX + 'bundle-${release}';`);
