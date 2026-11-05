@@ -117,6 +117,7 @@ Prima di un rilascio usare il gate completo descritto in [Sviluppo e test](docs/
 
 - [Guida all’uso](docs/GUIDA_ALL_USO.md)
 - [Architettura, autenticazione e sicurezza](docs/ARCHITETTURA_E_SICUREZZA.md)
+- [Icona PWA di riferimento: Modulo Iscrizioni](docs/ICONA_RIFERIMENTO_MODULO_ISCRIZIONI.md) (documentazione esterna di confronto; non descrive l'implementazione TAT)
 - [Sviluppo e test](docs/SVILUPPO_E_TEST.md)
 - [Esercizio, rilascio e ripristino](docs/OPERATIONS.md)
 - [Come contribuire](CONTRIBUTING.md)
