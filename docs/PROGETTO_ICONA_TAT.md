@@ -2,6 +2,8 @@
 
 La variante A2 è la soluzione scelta dall’utente, collaudata sul Realme GT 5G il 5 novembre 2026. Il resoconto ricevuto conferma Home senza cornice bianca, icona arrotondata nella schermata iniziale, angoli corretti nella pagina e apertura standalone. Samsung Tab S4 e iPhone non hanno ancora un esito A2 registrato.
 
+Pubblicata in produzione il 5 novembre 2026, build `910f4bf31c4daf2c`, commit `1caea7d`. Gate completo superato, hash online corrispondenti e tre smoke test Hosting riusciti. Il [registro di rilascio](../releases/2026-11-05-icon-a2.json) riporta controlli, compatibilità e disattivazione delle anteprime; il [registro precedente](../releases/2026-11-05-before-icon-a2.json) conserva la versione di ripristino.
+
 ## File usati dall’app
 
 I soli asset attivi del marchio, in `prototypes/firebase-spark-pwa/public/icons/`, sono:
@@ -23,7 +25,7 @@ Le icone precedenti, gli studi A/B, i due siti di prova, i master, i prompt imag
 
 Sette reindirizzamenti Hosting 302 associano i vecchi URL alle immagini nuove. Sono una compatibilità per installazioni e pagine precedenti: nessun vecchio PNG è distribuito, la nuova versione usa gli URL nuovi direttamente. Non sono codice di prova e non caricano due immagini. I moduli immutabili già pubblicati in `dist/assets` restano disponibili alle schede aperte secondo la politica del build.
 
-I canali temporanei A2 e R1 conservano la scadenza originaria di 14 giorni e non vengono usati dall’app ordinaria.
+I canali temporanei A2 e R1 sono stati eliminati il 5 novembre 2026 su richiesta dell’utente: entrambi i link rispondono HTTP 404. Le copie già installate sui dispositivi possono ancora mostrare contenuti salvati nella propria cache offline e vanno rimosse dal dispositivo se non servono. I file e i risultati rimangono nello storico locale.
 
 ## Verifiche e manutenzione
 

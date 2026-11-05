@@ -1,0 +1,63 @@
+{
+  "publishedDate": "2026-11-05",
+  "verifiedAt": "2026-11-05T16:08:28.301Z",
+  "url": "https://tavola-comune.web.app",
+  "commit": "1caea7d",
+  "release": "910f4bf31c4daf2c",
+  "rollbackRecord": "2026-11-05-before-icon-a2.json",
+  "validation": {
+    "applicationTests": 853,
+    "browserTests": 42,
+    "firestoreRulesTests": 142,
+    "buildTests": 13,
+    "hostingSmokeTests": 3,
+    "releaseHashes": "all matched"
+  },
+  "redirects": [
+    {
+      "source": "/icons/launcher-192.png",
+      "destination": "/icons/app-icon-any-192-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/launcher-512.png",
+      "destination": "/icons/app-icon-any-512-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/launcher-192-maskable.png",
+      "destination": "/icons/app-icon-maskable-192-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/launcher-512-maskable.png",
+      "destination": "/icons/app-icon-maskable-512-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/splash-512-transparent.png",
+      "destination": "/icons/app-icon-any-512-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/splash-512-blended.png",
+      "destination": "/icons/app-icon-any-512-v2.png",
+      "status": 302
+    },
+    {
+      "source": "/icons/icon-192.png",
+      "destination": "/icons/app-icon-any-192-v2.png",
+      "status": 302
+    }
+  ],
+  "disabledPreviews": [
+    {
+      "url": "https://tavola-comune--icona-bordo-r1-hb1vkooj.web.app",
+      "status": 404
+    },
+    {
+      "url": "https://tavola-comune--icona-a-r2-olgnl6kk.web.app",
+      "status": 404
+    }
+  ]
+}

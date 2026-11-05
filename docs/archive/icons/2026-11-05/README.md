@@ -8,7 +8,7 @@ Storico conservato su richiesta dell'utente. Questa cartella non è distribuita 
 - `icon-a-trial/`: prova A2 approvata sul Realme, inclusi master, PNG esportati, prompt, resoconti tecnici e registro della pubblicazione.
 - `PROGETTO_ORIGINALE.md`: documento di lavoro completo prima della pulizia.
 
-I file sono conservati come snapshot: i percorsi relativi e i comandi nei vecchi documenti si riferiscono alla posizione originale sotto `prototypes/`. **Non eseguire gli script di build o pubblicazione archiviati da questa posizione.** I siti di prova hanno scadenza temporanea e non sono parte della produzione. Gli strumenti correnti del progetto si trovano in `tools/`.
+I file sono conservati come snapshot: i percorsi relativi e i comandi nei vecchi documenti si riferiscono alla posizione originale sotto `prototypes/`. **Non eseguire gli script di build o pubblicazione archiviati da questa posizione.** I due siti di prova sono stati disattivati il 5 novembre 2026: i link R1 e A2 rispondono HTTP 404. Le precedenti indicazioni di scadenza nei registri restano come dati storici. Gli strumenti correnti del progetto si trovano in `tools/`.
 
 La soluzione mantenuta e i punti di integrazione sono descritti in [Icona dell’app](../../../PROGETTO_ICONA_TAT.md).
 

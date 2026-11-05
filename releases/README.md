@@ -1,5 +1,19 @@
 # Ripristino della versione funzionante precedente alla pulizia
 
+## Rilascio icona A2 — 5 novembre 2026
+
+La nuova icona A2 e l'archiviazione delle prove sono registrate in [2026-11-05-icon-a2.json](2026-11-05-icon-a2.json). La build pubblicata è `910f4bf31c4daf2c`; i due canali di prova sono stati disattivati e verificati HTTP 404.
+
+Il punto precedente al cambio icona è la versione Hosting `801053132f747102`, build `d475a2aead8e8dae`, salvata con gli hash in [2026-11-05-before-icon-a2.json](2026-11-05-before-icon-a2.json). Per un eventuale ripristino autorizzato di questo specifico rilascio:
+
+```powershell
+pwsh.exe -NoLogo -NoProfile -Command "node tools/firebase-cli.mjs --project tavola-comune hosting:clone tavola-comune@801053132f747102 tavola-comune:live"
+```
+
+Il comando ripristina Hosting, non i dati. L'aggiornamento delle icone già memorizzate dal sistema operativo può avvenire separatamente. Lo script `rollback-hosting.mjs` documentato sotto resta legato al precedente punto del 2 novembre.
+
+## Punto storico del 2 novembre 2026
+
 La versione online confermata funzionante dall'utente prima del rilascio del 2 novembre 2026 è:
 
 - Sito: https://tavola-comune.web.app
