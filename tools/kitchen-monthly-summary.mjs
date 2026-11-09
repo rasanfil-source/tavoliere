@@ -15,6 +15,9 @@ const monthlyRetentionMonths = 24;
 const firstTrackedDate = '2026-11-01';
 const dailyCloseTime = '23:00';
 const monthEndCloseTime = '21:00';
+const requestAttempts = 5;
+const requestTimeoutMs = 30_000;
+const retryableHttpStatuses = new Set([408, 429, 500, 502, 503, 504]);
 const resourceRoot = projectId
   ? `projects/${encodeURIComponent(projectId)}/databases/(default)/documents`
   : '';
@@ -145,23 +148,27 @@ async function createAvailableMonthlySummary({ centerId, localToday, timeZone, n
     const availableFrom = mealCutoff && mealCutoff > booksClose ? mealCutoff : booksClose;
     if (!availableFrom || availableFrom > currentTime) continue;
 
-    const existingSummary = await getDocument(summaryPath);
-    const summary = existingSummary
-      ? decodeFields(existingSummary.fields || {})
-      : await calculateMonthlySummary({
-          centerId,
-          monthId,
-          periodStart,
-          periodEnd,
-          availableFrom,
-          currentTime,
-          timeZone
-        });
-    if (!summary) continue;
-
+    const existingSnapshot = await getDocument(summaryPath);
+    const existingSummary = existingSnapshot
+      ? decodeFields(existingSnapshot.fields || {})
+      : null;
+    const calculatedSummary = await calculateMonthlySummary({
+      centerId,
+      monthId,
+      periodStart,
+      periodEnd,
+      availableFrom,
+      currentTime,
+      timeZone
+    });
+    let summary = calculatedSummary;
     if (!existingSummary) {
       await createDocument(summaryPath, summary);
       created += 1;
+    } else if (sameSummaryData(existingSummary, calculatedSummary)) {
+      summary = existingSummary;
+    } else {
+      await upsertDocument(summaryPath, calculatedSummary);
     }
     await advanceCurrentSummary(centerId, summary);
   }
@@ -190,13 +197,15 @@ async function calculateMonthlySummary({
   if (dailyByDate.size !== expectedDayCount) return null;
 
   const counts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
+  const missingDates = [];
   let invitedTotal = 0;
   for (let offset = 0; offset < expectedDayCount; offset += 1) {
     const dateId = addDaysToDateId(periodStart, offset);
     const dailyRecord = dailyByDate.get(dateId);
     const dailyCounts = dailyRecord?.counts;
     if (!dailyCounts || mealTypeIds.some((mealTypeId) => !validCount(dailyCounts[mealTypeId]))) {
-      return null;
+      missingDates.push(dateId);
+      continue;
     }
     let invitedCounts = dailyRecord.invitedCounts;
     if (!invitedCounts) {
@@ -206,7 +215,10 @@ async function calculateMonthlySummary({
         : {};
       invitedCounts = normalizeInvitedCounts(dailyHealth.invitedMeals || {});
     }
-    if (!invitedCounts || mealTypeIds.some((mealTypeId) => !validCount(invitedCounts[mealTypeId]))) return null;
+    if (!invitedCounts || mealTypeIds.some((mealTypeId) => !validCount(invitedCounts[mealTypeId]))) {
+      missingDates.push(dateId);
+      continue;
+    }
     invitedTotal += mealTypeIds.reduce((total, mealTypeId) => total + invitedCounts[mealTypeId], 0);
     mealTypeIds.forEach((mealTypeId) => { counts[mealTypeId] += dailyCounts[mealTypeId]; });
   }
@@ -218,10 +230,20 @@ async function calculateMonthlySummary({
     periodEnd,
     counts,
     invitedTotal,
+    missingDates,
     availableFrom,
     recordedAt: currentTime,
     purgeAfter: localMidnight(addMonthsClamped(periodEnd, monthlyRetentionMonths), timeZone)
   };
+}
+
+function sameSummaryData(existing, calculated) {
+  return existing.monthId === calculated.monthId
+    && existing.periodStart === calculated.periodStart
+    && existing.periodEnd === calculated.periodEnd
+    && existing.invitedTotal === calculated.invitedTotal
+    && mealTypeIds.every((mealTypeId) => existing.counts?.[mealTypeId] === calculated.counts[mealTypeId])
+    && JSON.stringify(existing.missingDates || []) === JSON.stringify(calculated.missingDates);
 }
 
 async function advanceCurrentSummary(centerId, summary) {
@@ -237,6 +259,7 @@ async function advanceCurrentSummary(centerId, summary) {
     periodEnd: summary.periodEnd,
     counts: summary.counts,
     invitedTotal: summary.invitedTotal,
+    missingDates: summary.missingDates || [],
     availableFrom: summary.availableFrom,
     purgeAfter: summary.purgeAfter,
     updatedAt: new Date()
@@ -303,10 +326,15 @@ async function getDocument(documentPath) {
 
 async function createDocument(documentPath, data) {
   const name = `${resourceRoot}/${encodePath(documentPath)}`;
-  await commitWrites([{
-    update: { name, fields: encodeFields(data) },
-    currentDocument: { exists: false }
-  }]);
+  try {
+    await commitWrites([{
+      update: { name, fields: encodeFields(data) },
+      currentDocument: { exists: false }
+    }]);
+  } catch (error) {
+    if (error.status === 409 && await getDocument(documentPath)) return;
+    throw error;
+  }
 }
 
 async function upsertDocument(documentPath, data) {
@@ -323,20 +351,67 @@ async function commitWrites(writes) {
 }
 
 async function requestJson(path, { method = 'GET', body, allowNotFound = false } = {}) {
-  const response = await fetch(`${apiRoot}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  });
+  let response;
+  let responseText;
+  for (let attempt = 0; attempt < requestAttempts; attempt += 1) {
+    try {
+      response = await fetch(`${apiRoot}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(requestTimeoutMs),
+        ...(body ? { body: JSON.stringify(body) } : {})
+      });
+      if (retryableHttpStatuses.has(response.status) && attempt + 1 < requestAttempts) {
+        await waitBeforeRetry(attempt, response.headers.get('retry-after'));
+        continue;
+      }
+      responseText = await response.text();
+      break;
+    } catch (error) {
+      if (attempt + 1 >= requestAttempts || !isRetryableNetworkError(error)) throw error;
+      await waitBeforeRetry(attempt);
+    }
+  }
+
   if (allowNotFound && response.status === 404) return null;
-  const responseText = await response.text();
   if (!response.ok) {
-    throw new Error(`Firestore API ${method} ${path} failed (${response.status}): ${responseText}`);
+    const error = new Error(`Firestore API ${method} ${path} failed (${response.status}): ${responseText}`);
+    error.status = response.status;
+    throw error;
   }
   return responseText ? JSON.parse(responseText) : null;
+}
+
+function isRetryableNetworkError(error) {
+  const retryableCodes = new Set(['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH']);
+  const pending = [error];
+  const seen = new Set();
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current || seen.has(current)) continue;
+    seen.add(current);
+    if (retryableCodes.has(current.code) || current.name === 'TimeoutError' || current.name === 'AbortError') {
+      return true;
+    }
+    if (current.cause) pending.push(current.cause);
+    if (Array.isArray(current.errors)) pending.push(...current.errors);
+  }
+  return false;
+}
+
+async function waitBeforeRetry(attempt, retryAfter = null) {
+  let delayMs = Math.min(1000 * (2 ** attempt), 10_000);
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    const retryAt = Number.isFinite(seconds)
+      ? seconds * 1000
+      : Date.parse(retryAfter) - Date.now();
+    if (Number.isFinite(retryAt) && retryAt >= 0) delayMs = Math.min(retryAt, 30_000);
+  }
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 function encodePath(path) {
