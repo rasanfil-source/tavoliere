@@ -68,13 +68,20 @@ function validateSummary(data, { expectedMonthId = null } = {}) {
     if (!Number.isInteger(count) || count < 0) return null;
     counts[mealTypeId] = count;
   }
+  const missingDates = data.missingDates ?? [];
+  if (!Array.isArray(missingDates)
+    || missingDates.some((dateId) => typeof dateId !== 'string'
+      || !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(dateId)
+      || dateId < periodStart
+      || dateId > periodEnd)) return null;
 
   return {
     monthId: data.monthId,
     periodStart,
     periodEnd,
     counts,
-    invitedTotal
+    invitedTotal,
+    missingDates
   };
 }
 
