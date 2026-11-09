@@ -194,7 +194,6 @@ async function calculateMonthlySummary({
     return [data.dateId, data];
   }));
   const expectedDayCount = daysInMonth(monthId);
-  if (dailyByDate.size !== expectedDayCount) return null;
 
   const counts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
   const missingDates = [];
