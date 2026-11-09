@@ -555,6 +555,8 @@
   "kitchen.monthly.previous": "Previous month",
   "kitchen.monthly.next": "Next month",
   "kitchen.monthly.guests": "Of which guests or invitees",
+  "kitchen.monthly.missingDays": "Days with missing data:",
+  "kitchen.monthly.partial": "These totals are partial and include only days with available data.",
   "kitchen.monthly.firstAvailable": "The first totals will be available after November closes.",
   "kitchen.monthly.loading": "Loading the summary…",
   "kitchen.monthly.notReady": "The summary is not available yet. Try again shortly.",
