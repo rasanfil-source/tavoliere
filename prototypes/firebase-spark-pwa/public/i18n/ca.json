@@ -555,6 +555,8 @@
   "kitchen.monthly.previous": "Mes anterior",
   "kitchen.monthly.next": "Mes següent",
   "kitchen.monthly.guests": "Dels quals, hostes o convidats",
+  "kitchen.monthly.missingDays": "Dies sense dades:",
+  "kitchen.monthly.partial": "Els totals són parcials i només inclouen els dies amb dades disponibles.",
   "kitchen.monthly.firstAvailable": "Els primers totals estaran disponibles després del tancament de novembre.",
   "kitchen.monthly.loading": "S'està carregant el resum…",
   "kitchen.monthly.notReady": "El resum encara no està disponible. Torna-ho a provar d'aquí a una estona.",
