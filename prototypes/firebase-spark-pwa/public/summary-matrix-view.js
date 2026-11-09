@@ -521,7 +521,9 @@ function renderKitchenMonthlySummaryContent(content, monthlyState, {
       <div class="kitchen-monthly-guest-total">
         <span>${escapeHtml(t('kitchen.monthly.guests'))}</span>
         <strong>${escapeHtml(summary.invitedTotal)}</strong>
-      </div>`;
+      </div>${summary.missingDates?.length ? `
+      <p class="kitchen-monthly-missing-days"><strong>${escapeHtml(t('kitchen.monthly.missingDays'))}</strong> ${summary.missingDates.map((dateId) => escapeHtml(formatDate(dateId))).join(', ')}</p>
+      <p class="kitchen-monthly-partial-note">${escapeHtml(t('kitchen.monthly.partial'))}</p>` : ''}`;
 
   content.innerHTML = `
     <div class="kitchen-monthly-period">
