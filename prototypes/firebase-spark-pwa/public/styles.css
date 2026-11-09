@@ -7404,6 +7404,23 @@ body[data-mode="admin"] .admin-shell-body {
   font-size: 1.05rem;
 }
 
+.kitchen-monthly-missing-days {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-inline-start: 4px solid #8a5a00;
+  border-radius: 6px;
+  color: #523600;
+  background: #fff2cc;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.kitchen-monthly-partial-note {
+  margin: 5px 0 0;
+  color: var(--muted, #52645b);
+  font-size: .9rem;
+}
+
 .kitchen-monthly-summary-content dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
