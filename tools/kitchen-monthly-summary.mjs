@@ -181,7 +181,8 @@ async function createAvailableMonthlySummary({
 
     let needsRecalculation = !existingSummary
       || existingSummary.closedThrough !== closedThrough
-      || typeof existingSummary.finalized !== 'boolean';
+      || typeof existingSummary.finalized !== 'boolean'
+      || mealTypeIds.some((id) => !validCount(existingSummary.invitedCounts?.[id]));
     // Ripara anche una giornata recuperata dopo la prima pubblicazione,
     // senza rileggere ogni volta tutti i registri del mese.
     if (!needsRecalculation) {
@@ -247,6 +248,7 @@ async function calculateMonthlySummary({
   const expectedDayCount = closedThrough ? Number(closedThrough.slice(-2)) : 0;
 
   const counts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
+  const monthlyInvitedCounts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
   const missingDates = [];
   let invitedTotal = 0;
   for (let offset = 0; offset < expectedDayCount; offset += 1) {
@@ -265,12 +267,16 @@ async function calculateMonthlySummary({
         : {};
       invitedCounts = normalizeInvitedCounts(dailyHealth.invitedMeals || {});
     }
-    if (!invitedCounts || mealTypeIds.some((mealTypeId) => !validCount(invitedCounts[mealTypeId]))) {
+    if (!invitedCounts || mealTypeIds.some((mealTypeId) => !validCount(invitedCounts[mealTypeId])
+      || invitedCounts[mealTypeId] > dailyCounts[mealTypeId])) {
       missingDates.push(dateId);
       continue;
     }
     invitedTotal += mealTypeIds.reduce((total, mealTypeId) => total + invitedCounts[mealTypeId], 0);
-    mealTypeIds.forEach((mealTypeId) => { counts[mealTypeId] += dailyCounts[mealTypeId]; });
+    mealTypeIds.forEach((mealTypeId) => {
+      counts[mealTypeId] += dailyCounts[mealTypeId];
+      monthlyInvitedCounts[mealTypeId] += invitedCounts[mealTypeId];
+    });
   }
 
   return {
@@ -279,6 +285,7 @@ async function calculateMonthlySummary({
     periodStart,
     periodEnd,
     counts,
+    invitedCounts: monthlyInvitedCounts,
     invitedTotal,
     missingDates,
     closedThrough,
@@ -296,6 +303,7 @@ function sameSummaryData(existing, calculated) {
     && existing.closedThrough === calculated.closedThrough
     && existing.finalized === calculated.finalized
     && existing.invitedTotal === calculated.invitedTotal
+    && mealTypeIds.every((id) => existing.invitedCounts?.[id] === calculated.invitedCounts?.[id])
     && mealTypeIds.every((mealTypeId) => existing.counts?.[mealTypeId] === calculated.counts[mealTypeId])
     && JSON.stringify(existing.missingDates || []) === JSON.stringify(calculated.missingDates);
 }
@@ -314,6 +322,7 @@ async function advanceCurrentSummary(centerId, summary) {
     periodStart: summary.periodStart,
     periodEnd: summary.periodEnd,
     counts: summary.counts,
+    invitedCounts: summary.invitedCounts || null,
     invitedTotal: summary.invitedTotal,
     missingDates: summary.missingDates || [],
     closedThrough: summary.closedThrough,

@@ -69,6 +69,18 @@ function validateSummary(data, { expectedMonthId = null } = {}) {
     if (!Number.isInteger(count) || count < 0) return null;
     counts[mealTypeId] = count;
   }
+  let invitedCounts = null;
+  if (data.invitedCounts != null) {
+    invitedCounts = {};
+    for (const id of MEAL_TYPE_IDS) {
+      const count = data.invitedCounts[id];
+      if (!Number.isInteger(count) || count < 0 || count > counts[id]) return null;
+      invitedCounts[id] = count;
+    }
+    if (MEAL_TYPE_IDS.reduce((total, id) => total + invitedCounts[id], 0) !== invitedTotal) return null;
+  } else if (invitedTotal === 0) {
+    invitedCounts = Object.fromEntries(MEAL_TYPE_IDS.map((id) => [id, 0]));
+  }
   const missingDates = data.missingDates ?? [];
   const closedThrough = data.closedThrough === undefined ? periodEnd : data.closedThrough;
   const finalized = data.finalized === undefined ? missingDates.length === 0 : data.finalized;
@@ -89,6 +101,7 @@ function validateSummary(data, { expectedMonthId = null } = {}) {
     periodStart,
     periodEnd,
     counts,
+    invitedCounts,
     invitedTotal,
     missingDates,
     closedThrough,

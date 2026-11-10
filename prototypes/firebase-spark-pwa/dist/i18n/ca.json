@@ -555,6 +555,7 @@
   "kitchen.monthly.previous": "Mes anterior",
   "kitchen.monthly.next": "Mes següent",
   "kitchen.monthly.guests": "Dels quals, hostes o convidats",
+  "kitchen.monthly.guestsTotal": "Total d’àpats d’hostes o convidats",
   "kitchen.monthly.missingDays": "Dies sense dades:",
   "kitchen.monthly.partial": "Els totals són parcials i només inclouen els dies amb dades disponibles.",
   "kitchen.monthly.progress": "Provisional · dies tancats fins al {date}",

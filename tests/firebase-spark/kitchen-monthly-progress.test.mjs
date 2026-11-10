@@ -49,6 +49,9 @@ test('il mese cresce solo con giornate concluse e non riscrive totali invariati'
   assert.equal(summary.finalized, false);
   assert.equal(summary.counts.lunch, 27);
   assert.equal(summary.invitedTotal, 18);
+  assert.equal(summary.invitedCounts.breakfast, 9);
+  assert.equal(summary.invitedCounts.lunch, 0);
+  assert.equal(summary.invitedCounts.dinner, 9);
   assert.equal(summary.missingDates.length, 0);
   assert.equal(h.summary('2026-10'), undefined);
   assert.equal(h.current().monthId, '2026-11');
@@ -60,6 +63,36 @@ test('il mese cresce solo con giornate concluse e non riscrive totali invariati'
   await h.run('2026-11-10T23:05');
   assert.equal(h.current().closedThrough, '2026-11-10');
   assert.equal(h.current().counts.lunch, 30);
+  assert.equal(h.current().invitedCounts.dinner, 10);
+});
+
+test('aggiunge la ripartizione invitati ai totali progressivi esistenti senza duplicare i pasti', async () => {
+  const h = harness();
+  h.addMonth('2026-11', 2);
+  h.documents.set('centers/one/kitchenDailyTotals/2026-11-02', {
+    dateId: '2026-11-02', counts: { breakfast: 3, lunch: 5, dinner: 7 },
+    invitedCounts: { breakfast: 2, lunch: 3, dinner: 4 }
+  });
+  await h.run('2026-11-03T12:00');
+  const summary = h.summary('2026-11');
+  assert.equal(summary.counts.breakfast, 5);
+  assert.equal(summary.counts.lunch, 8);
+  assert.equal(summary.counts.dinner, 11);
+  assert.equal(summary.invitedTotal, 11);
+  assert.equal(summary.invitedCounts.breakfast, 3);
+  assert.equal(summary.invitedCounts.lunch, 3);
+  assert.equal(summary.invitedCounts.dinner, 5);
+  delete summary.invitedCounts;
+  delete h.current().invitedCounts;
+  h.writes.length = 0;
+  await h.run('2026-11-03T13:00');
+  assert.equal(h.writes.length, 2);
+  assert.equal(h.current().invitedCounts.dinner, 5);
+  assert.equal(h.current().counts.dinner, 11);
+  h.writes.length = h.queries.length = 0;
+  await h.run('2026-11-03T14:00');
+  assert.equal(h.writes.length, 0);
+  assert.equal(h.queries.includes('kitchenDailyTotals'), false);
 });
 
 test('una giornata mancante recuperata aggiorna anche un riepilogo già pubblicato', async () => {
@@ -141,6 +174,12 @@ test('il client accetta riepiloghi progressivi, rifiuta incoerenze e legge gli a
     counts: { breakfast: 2, lunch: 3, dinner: 4 }, invitedTotal: 1,
     closedThrough: '2026-11-09', finalized: false, missingDates: [] };
   assert.equal(validate(summary).closedThrough, '2026-11-09');
+  assert.equal(validate(summary).invitedCounts, null);
+  const breakdown = { breakfast: 0, lunch: 1, dinner: 0 };
+  assert.equal(validate({ ...summary, invitedCounts: breakdown }).invitedCounts.lunch, 1);
+  assert.equal(validate({ ...summary, invitedCounts: { breakfast: 0, lunch: 2, dinner: 0 } }), null);
+  assert.equal(validate({ ...summary, invitedCounts: { breakfast: -1, lunch: 2, dinner: 0 } }), null);
+  assert.equal(validate({ ...summary, invitedCounts: { breakfast: 0, lunch: 4, dinner: 0 }, invitedTotal: 4 }), null);
   assert.equal(validate({ ...summary, finalized: true }), null);
   assert.equal(validate({ ...summary, missingDates: ['2026-11-11'] }), null);
   assert.equal(validate({ ...summary, closedThrough: null }), null);

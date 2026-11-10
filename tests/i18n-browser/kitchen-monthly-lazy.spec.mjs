@@ -29,6 +29,7 @@ async function setup(page, { deferred = false } = {}) {
         monthId, earliestMonthId: '2026-11', periodStart: `${monthId}-01`,
         periodEnd: monthId === '2026-12' ? '2026-12-31' : '2026-11-30',
         counts: { breakfast: 2, lunch, dinner: 4 }, invitedTotal: 1, missingDates: [],
+        ...(monthId === '2026-12' ? { invitedCounts: { breakfast: 0, lunch: 1, dinner: 0 } } : {}),
         closedThrough: monthId === '2026-12' ? '2026-12-09' : '2026-11-30', finalized: monthId !== '2026-12'
       } });
     }
@@ -65,24 +66,30 @@ test('il riepilogo legge solo su apertura e selezione mese, mai sui refresh cuci
   await expect(page.locator('.kitchen-monthly-progress')).toContainText('09/12/2026');
   expect(h.modules).toHaveLength(1);
   expect(h.reads).toEqual(['current']);
+  await expect(page.locator('.kitchen-monthly-meal-guests strong')).toHaveText(['0', '1', '0']);
+  await expect(page.locator('.kitchen-monthly-guest-total')).toContainText('Totale pasti ospiti o invitati');
+  await expect(page.locator('.kitchen-monthly-guest-total strong')).toHaveText('1');
   await page.evaluate(() => remount());
   await expect(page.locator('.kitchen-monthly-progress')).toContainText('09/12/2026');
   expect(h.reads).toEqual(['current']);
   await page.getByRole('button', { name: 'Mese precedente', exact: true }).click();
   await expect(page.locator('.kitchen-monthly-progress')).toHaveText('Totale definitivo');
+  await expect(page.locator('.kitchen-monthly-meal-guests')).toHaveCount(0);
+  await expect(page.locator('.kitchen-monthly-guest-total strong')).toHaveText('1');
   expect(h.reads).toEqual(['current', '2026-11']);
   await page.getByRole('button', { name: 'Mese successivo', exact: true }).click();
   await expect(page.locator('.kitchen-monthly-progress')).toContainText('09/12/2026');
   expect(h.reads).toEqual(['current', '2026-11']);
   h.setLunch(7);
-  await page.locator('summary').click();
+  // Riproduce un refresh prima che l'evento toggle della chiusura sia consegnato.
+  await page.evaluate(() => { document.querySelector('details').open = false; remount(); });
   await expect(page.locator('details')).not.toHaveAttribute('open');
-  await page.evaluate(() => remount());
   expect(h.reads).toEqual(['current', '2026-11']);
   await page.locator('summary').click();
   await expect.poll(() => h.reads.length).toBe(3);
   await expect(page.locator('.kitchen-monthly-progress')).toContainText('09/12/2026');
-  await expect(page.locator('.kitchen-monthly-summary-content dd').nth(1)).toHaveText('7');
+  await expect(page.locator('.kitchen-monthly-meal-count').nth(1)).toHaveText('7');
+  await expect(page.locator('.kitchen-monthly-meal-guests strong')).toHaveText(['0', '1', '0']);
 });
 
 test('un refresh durante la lettura non duplica la richiesta e conserva il risultato nel nuovo box', async ({ page }) => {

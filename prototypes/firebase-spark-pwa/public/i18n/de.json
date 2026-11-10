@@ -555,6 +555,7 @@
   "kitchen.monthly.previous": "Voriger Monat",
   "kitchen.monthly.next": "Nächster Monat",
   "kitchen.monthly.guests": "Davon Gäste oder Eingeladene",
+  "kitchen.monthly.guestsTotal": "Mahlzeiten für Gäste oder Eingeladene insgesamt",
   "kitchen.monthly.missingDays": "Tage mit fehlenden Daten:",
   "kitchen.monthly.partial": "Die Summen sind unvollständig und berücksichtigen nur Tage mit verfügbaren Daten.",
   "kitchen.monthly.progress": "Vorläufig · abgeschlossene Tage bis {date}",

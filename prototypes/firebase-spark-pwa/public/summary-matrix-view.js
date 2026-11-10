@@ -44,6 +44,11 @@ export function mountSummaryMatrix(
 
   const prefix = kitchen ? "kitchen" : "summary";
   const render = layout === "international" ? renderInternationalScreen : renderScreen;
+  // Il toggle nativo può essere ancora in coda quando un refresh sostituisce il DOM.
+  const previousMonthlyState = kitchen ? kitchenMonthlyStates.get(container) : null;
+  if (previousMonthlyState?.details?.isConnected) {
+    previousMonthlyState.open = previousMonthlyState.details.open;
+  }
   container.innerHTML = `
     <div class="summary-matrix-track summary-layout-${layout}${kitchen ? " summary-layout-kitchen" : " summary-layout-diners"}" data-${prefix}-matrix-track aria-label="${escapeHtml(t("summary.screensLabel"))}">
       ${screens.map((screen) => screenReady(screen.index)
@@ -528,12 +533,12 @@ function renderKitchenMonthlySummaryContent(content, monthlyState, {
   const result = message
     ? escapeHtml(message)
     : `${renderKitchenMonthlyProgress(summary)}<dl>
-        ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast)}
-        ${renderKitchenMonthlyCount('lunch', summary.counts.lunch)}
-        ${renderKitchenMonthlyCount('dinner', summary.counts.dinner)}
+        ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast, summary.invitedCounts?.breakfast)}
+        ${renderKitchenMonthlyCount('lunch', summary.counts.lunch, summary.invitedCounts?.lunch)}
+        ${renderKitchenMonthlyCount('dinner', summary.counts.dinner, summary.invitedCounts?.dinner)}
       </dl>
       <div class="kitchen-monthly-guest-total">
-        <span>${escapeHtml(t('kitchen.monthly.guests'))}</span>
+        <span>${escapeHtml(t('kitchen.monthly.guestsTotal'))}</span>
         <strong>${escapeHtml(summary.invitedTotal)}</strong>
       </div>${summary.missingDates?.length ? `
       <p class="kitchen-monthly-missing-days"><strong>${escapeHtml(t('kitchen.monthly.missingDays'))}</strong> ${summary.missingDates.map((dateId) => escapeHtml(formatDate(dateId))).join(', ')}</p>
@@ -577,9 +582,12 @@ function kitchenMonthEndDateId(monthId) {
   return `${monthId}-${String(lastDay).padStart(2, '0')}`;
 }
 
-function renderKitchenMonthlyCount(mealTypeId, count) {
+function renderKitchenMonthlyCount(mealTypeId, count, invitedCount) {
   const label = t(`meal.type.${mealTypeId}`);
-  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(count)}</dd></div>`;
+  const guests = Number.isInteger(invitedCount)
+    ? `<small class="kitchen-monthly-meal-guests">${escapeHtml(t('kitchen.monthly.guests'))}: <strong>${escapeHtml(invitedCount)}</strong></small>`
+    : '';
+  return `<div><dt>${escapeHtml(label)}</dt><dd><span class="kitchen-monthly-meal-count">${escapeHtml(count)}</span>${guests}</dd></div>`;
 }
 
 function renderKitchenMonthlyProgress(summary) {

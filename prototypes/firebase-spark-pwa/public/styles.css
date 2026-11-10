@@ -7454,6 +7454,14 @@ body[data-mode="admin"] .admin-shell-body {
   font-weight: 700;
 }
 
+.kitchen-monthly-meal-guests {
+  display: block;
+  margin-top: 6px;
+  font-size: .78rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
 @media (max-width: 420px) {
   .kitchen-monthly-summary-content dl {
     grid-template-columns: minmax(0, 1fr);
