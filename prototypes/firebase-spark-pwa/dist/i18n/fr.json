@@ -555,6 +555,8 @@
   "kitchen.monthly.previous": "Mois précédent",
   "kitchen.monthly.next": "Mois suivant",
   "kitchen.monthly.guests": "Dont les invités",
+  "kitchen.monthly.missingDays": "Jours sans données :",
+  "kitchen.monthly.partial": "Les totaux sont partiels et ne comprennent que les jours pour lesquels des données sont disponibles.",
   "kitchen.monthly.firstAvailable": "Les premiers totaux seront disponibles à la clôture du mois de novembre.",
   "kitchen.monthly.loading": "Chargement du récapitulatif…",
   "kitchen.monthly.notReady": "Le récapitulatif n'est pas encore disponible. Réessayez bientôt.",

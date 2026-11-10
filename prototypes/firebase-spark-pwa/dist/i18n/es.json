@@ -555,6 +555,8 @@
   "kitchen.monthly.previous": "Mes anterior",
   "kitchen.monthly.next": "Mes siguiente",
   "kitchen.monthly.guests": "De ellos, huéspedes o invitados",
+  "kitchen.monthly.missingDays": "Días sin datos:",
+  "kitchen.monthly.partial": "Los totales son parciales e incluyen solo los días con datos disponibles.",
   "kitchen.monthly.firstAvailable": "Los primeros totales estarán disponibles cuando termine noviembre.",
   "kitchen.monthly.loading": "Cargando el resumen…",
   "kitchen.monthly.notReady": "El resumen aún no está disponible. Vuelve a intentarlo pronto.",
