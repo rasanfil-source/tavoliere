@@ -46,7 +46,8 @@ export async function loadKitchenMonthlySummary(monthId = null) {
 }
 
 function validateSummary(data, { expectedMonthId = null } = {}) {
-  if (!isValidMonthId(data.monthId) || (expectedMonthId && data.monthId !== expectedMonthId)) {
+  if (!isValidMonthId(data.monthId) || data.monthId < FIRST_TRACKED_MONTH
+    || (expectedMonthId && data.monthId !== expectedMonthId)) {
     return null;
   }
   const periodStart = `${data.monthId}-01`;
@@ -69,11 +70,19 @@ function validateSummary(data, { expectedMonthId = null } = {}) {
     counts[mealTypeId] = count;
   }
   const missingDates = data.missingDates ?? [];
+  const closedThrough = data.closedThrough === undefined ? periodEnd : data.closedThrough;
+  const finalized = data.finalized === undefined ? missingDates.length === 0 : data.finalized;
+  if (closedThrough !== null && (typeof closedThrough !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}$/.test(closedThrough)
+    || closedThrough < periodStart || closedThrough > periodEnd)) return null;
+  if (typeof finalized !== 'boolean'
+    || (finalized && (closedThrough !== periodEnd || missingDates.length !== 0))) return null;
   if (!Array.isArray(missingDates)
     || missingDates.some((dateId) => typeof dateId !== 'string'
       || !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(dateId)
       || dateId < periodStart
-      || dateId > periodEnd)) return null;
+      || !closedThrough || dateId > closedThrough)) return null;
+  if (!closedThrough && (invitedTotal !== 0 || MEAL_TYPE_IDS.some((id) => counts[id] !== 0))) return null;
 
   return {
     monthId: data.monthId,
@@ -81,7 +90,9 @@ function validateSummary(data, { expectedMonthId = null } = {}) {
     periodEnd,
     counts,
     invitedTotal,
-    missingDates
+    missingDates,
+    closedThrough,
+    finalized
   };
 }
 

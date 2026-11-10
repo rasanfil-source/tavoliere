@@ -7347,6 +7347,12 @@ body[data-mode="admin"] .admin-shell-body {
   margin: 0 0 10px;
 }
 
+.kitchen-monthly-progress {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
 .kitchen-monthly-period {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 34px;

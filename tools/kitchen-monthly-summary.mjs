@@ -67,10 +67,14 @@ for (const centerDocument of centers) {
       .map((daysBack) => addDaysToDateId(localToday, -daysBack))
       .reverse()
       .filter((dateId) => dateId >= trackingStartedOn);
+    const dailySnapshots = new Map();
+    const dailyCutoffs = new Map();
 
     for (const dateId of targetDates) {
       const path = `centers/${centerId}/${dailyCollection}/${dateId}`;
-      if (await getDocument(path)) continue;
+      const existing = await getDocument(path);
+      dailySnapshots.set(dateId, existing);
+      if (existing) continue;
 
       const windows = await queryDocuments(`centers/${centerId}`, 'mealWindows', [
         { field: 'mealDate', op: 'EQUAL', value: dateId }
@@ -78,6 +82,7 @@ for (const centerDocument of centers) {
       const mealCutoff = latestCompleteCutoff(windows);
       const booksClose = accountingClose(dateId, timeZone);
       const closesAt = mealCutoff && mealCutoff > booksClose ? mealCutoff : booksClose;
+      dailyCutoffs.set(dateId, closesAt);
       if (!closesAt || closesAt > now) continue;
 
       const overrides = (await queryDocuments(`centers/${centerId}`, 'reservationOverrides', [
@@ -98,13 +103,16 @@ for (const centerDocument of centers) {
         purgeAfter: localMidnight(addMonthsClamped(dateId, dailyRetentionMonths), timeZone)
       });
       writtenDailyTotals += 1;
+      dailySnapshots.delete(dateId);
     }
 
     writtenMonthlySummaries += await createAvailableMonthlySummary({
       centerId,
       localToday,
       timeZone,
-      now
+      now,
+      dailySnapshots,
+      dailyCutoffs
     });
   }
 
@@ -130,34 +138,75 @@ function latestCompleteCutoff(windowDocuments) {
   return new Date(Math.max(...closesAt.map((value) => value.getTime())));
 }
 
-async function createAvailableMonthlySummary({ centerId, localToday, timeZone, now: currentTime }) {
+async function createAvailableMonthlySummary({
+  centerId, localToday, timeZone, now: currentTime,
+  dailySnapshots = new Map(), dailyCutoffs = new Map()
+}) {
   const candidateMonths = [previousMonthId(localToday), localToday.slice(0, 7)];
   let created = 0;
+  let latestSummary = null;
 
   for (const monthId of candidateMonths) {
     const periodStart = `${monthId}-01`;
     const periodEnd = monthEndDateId(monthId);
-    if (localToday < periodEnd) continue;
+    if (periodStart < firstTrackedDate) continue;
 
     const summaryPath = `centers/${centerId}/${monthlyCollection}/${monthId}`;
-    const windows = await queryDocuments(`centers/${centerId}`, 'mealWindows', [
-      { field: 'mealDate', op: 'EQUAL', value: periodEnd }
-    ]);
-    const mealCutoff = latestCompleteCutoff(windows);
-    const booksClose = localDateTime(periodEnd, monthEndCloseTime, timeZone);
-    const availableFrom = mealCutoff && mealCutoff > booksClose ? mealCutoff : booksClose;
-    if (!availableFrom || availableFrom > currentTime) continue;
-
     const existingSnapshot = await getDocument(summaryPath);
     const existingSummary = existingSnapshot
       ? decodeFields(existingSnapshot.fields || {})
       : null;
+    // Un mese completo e consolidato non viene più ricalcolato.
+    if (existingSummary?.finalized === true) {
+      latestSummary = existingSummary;
+      continue;
+    }
+
+    let closedThrough = localToday < periodEnd ? localToday : periodEnd;
+    while (closedThrough >= periodStart) {
+      if (dailySnapshots.get(closedThrough)) break;
+      if (!dailyCutoffs.has(closedThrough)) {
+        const windows = await queryDocuments(`centers/${centerId}`, 'mealWindows', [
+          { field: 'mealDate', op: 'EQUAL', value: closedThrough }
+        ]);
+        const mealCutoff = latestCompleteCutoff(windows);
+        const booksClose = accountingClose(closedThrough, timeZone);
+        dailyCutoffs.set(closedThrough, mealCutoff && mealCutoff > booksClose ? mealCutoff : booksClose);
+      }
+      const cutoff = dailyCutoffs.get(closedThrough);
+      if (cutoff && cutoff <= currentTime) break;
+      closedThrough = addDaysToDateId(closedThrough, -1);
+    }
+    if (closedThrough < periodStart) closedThrough = null;
+
+    let needsRecalculation = !existingSummary
+      || existingSummary.closedThrough !== closedThrough
+      || typeof existingSummary.finalized !== 'boolean';
+    // Ripara anche una giornata recuperata dopo la prima pubblicazione,
+    // senza rileggere ogni volta tutti i registri del mese.
+    if (!needsRecalculation) {
+      for (const dateId of existingSummary.missingDates || []) {
+        if (!dailySnapshots.has(dateId)) {
+          dailySnapshots.set(dateId, await getDocument(`centers/${centerId}/${dailyCollection}/${dateId}`));
+        }
+        if (dailySnapshots.get(dateId)) {
+          needsRecalculation = true;
+          break;
+        }
+      }
+    }
+    if (!needsRecalculation) {
+      latestSummary = existingSummary;
+      continue;
+    }
+
     const calculatedSummary = await calculateMonthlySummary({
       centerId,
       monthId,
       periodStart,
       periodEnd,
-      availableFrom,
+      availableFrom: localMidnight(periodStart, timeZone),
+      closedThrough,
       currentTime,
       timeZone
     });
@@ -170,9 +219,10 @@ async function createAvailableMonthlySummary({ centerId, localToday, timeZone, n
     } else {
       await upsertDocument(summaryPath, calculatedSummary);
     }
-    await advanceCurrentSummary(centerId, summary);
+    latestSummary = summary;
   }
 
+  if (latestSummary) await advanceCurrentSummary(centerId, latestSummary);
   return created;
 }
 
@@ -181,19 +231,20 @@ async function calculateMonthlySummary({
   monthId,
   periodStart,
   periodEnd,
+  closedThrough,
   availableFrom,
   currentTime,
   timeZone
 }) {
-  const dailyDocuments = await queryDocuments(`centers/${centerId}`, dailyCollection, [
+  const dailyDocuments = closedThrough ? await queryDocuments(`centers/${centerId}`, dailyCollection, [
     { field: 'dateId', op: 'GREATER_THAN_OR_EQUAL', value: periodStart },
-    { field: 'dateId', op: 'LESS_THAN_OR_EQUAL', value: periodEnd }
-  ]);
+    { field: 'dateId', op: 'LESS_THAN_OR_EQUAL', value: closedThrough }
+  ]) : [];
   const dailyByDate = new Map(dailyDocuments.map((document) => {
     const data = decodeFields(document.fields || {});
     return [data.dateId, data];
   }));
-  const expectedDayCount = daysInMonth(monthId);
+  const expectedDayCount = closedThrough ? Number(closedThrough.slice(-2)) : 0;
 
   const counts = Object.fromEntries(mealTypeIds.map((mealTypeId) => [mealTypeId, 0]));
   const missingDates = [];
@@ -230,6 +281,8 @@ async function calculateMonthlySummary({
     counts,
     invitedTotal,
     missingDates,
+    closedThrough,
+    finalized: closedThrough === periodEnd && missingDates.length === 0,
     availableFrom,
     recordedAt: currentTime,
     purgeAfter: localMidnight(addMonthsClamped(periodEnd, monthlyRetentionMonths), timeZone)
@@ -240,6 +293,8 @@ function sameSummaryData(existing, calculated) {
   return existing.monthId === calculated.monthId
     && existing.periodStart === calculated.periodStart
     && existing.periodEnd === calculated.periodEnd
+    && existing.closedThrough === calculated.closedThrough
+    && existing.finalized === calculated.finalized
     && existing.invitedTotal === calculated.invitedTotal
     && mealTypeIds.every((mealTypeId) => existing.counts?.[mealTypeId] === calculated.counts[mealTypeId])
     && JSON.stringify(existing.missingDates || []) === JSON.stringify(calculated.missingDates);
@@ -248,8 +303,10 @@ function sameSummaryData(existing, calculated) {
 async function advanceCurrentSummary(centerId, summary) {
   const currentPath = `centers/${centerId}/${totalsMetadataCollection}/currentSummary`;
   const currentDocument = await getDocument(currentPath);
-  const currentMonthId = decodeFields(currentDocument?.fields || {}).monthId || '';
+  const currentSummary = decodeFields(currentDocument?.fields || {});
+  const currentMonthId = currentSummary.monthId || '';
   if (currentMonthId > summary.monthId) return;
+  if (sameSummaryData(currentSummary, summary)) return;
 
   await upsertDocument(currentPath, {
     centerId,
@@ -259,6 +316,8 @@ async function advanceCurrentSummary(centerId, summary) {
     counts: summary.counts,
     invitedTotal: summary.invitedTotal,
     missingDates: summary.missingDates || [],
+    closedThrough: summary.closedThrough,
+    finalized: summary.finalized,
     availableFrom: summary.availableFrom,
     purgeAfter: summary.purgeAfter,
     updatedAt: new Date()
@@ -492,11 +551,6 @@ function monthEndDateId(monthId) {
   const [year, month] = monthId.split('-').map(Number);
   const day = new Date(Date.UTC(year, month, 0)).getUTCDate();
   return `${monthId}-${String(day).padStart(2, '0')}`;
-}
-
-function daysInMonth(monthId) {
-  const [year, month] = monthId.split('-').map(Number);
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
 function previousMonthId(dateId) {

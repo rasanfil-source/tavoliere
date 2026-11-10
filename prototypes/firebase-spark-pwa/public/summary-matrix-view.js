@@ -68,20 +68,18 @@ export function mountSummaryMatrix(
           earliestMonthId: null,
           selectedMonthId: null,
           latestSummary: null,
-          summaries: new Map()
+          summaries: new Map(),
+          loading: false,
+          details: null
         };
         kitchenMonthlyStates.set(container, monthlyState);
-      } else {
-        monthlyState.latestMonthId = null;
-        monthlyState.earliestMonthId = null;
-        monthlyState.latestSummary = null;
-        monthlyState.summaries = new Map();
       }
+      monthlyState.details = details;
       details.open = monthlyState.open;
 
       content.addEventListener('click', (event) => {
         const button = event.target?.closest?.('[data-kitchen-month-step]');
-        if (!button || button.disabled || !details.open || details.dataset.loading === 'true') return;
+        if (!button || button.disabled || !details.open || monthlyState.loading) return;
         const nextMonthId = shiftKitchenMonthId(
           monthlyState.selectedMonthId,
           Number(button.dataset.kitchenMonthStep)
@@ -94,13 +92,20 @@ export function mountSummaryMatrix(
       });
 
       details.addEventListener('toggle', () => {
+        if (monthlyState.details !== details || monthlyState.open === details.open) return;
         monthlyState.open = details.open;
-        if (details.open && details.dataset.loading !== 'true') {
+        if (details.open && !monthlyState.loading) {
+          // Solo un'apertura esplicita aggiorna il mese corrente dal server.
+          monthlyState.latestMonthId = null;
           void loadKitchenMonthlySummary(details, monthSummary, monthlyState);
         }
       });
       if (monthlyState.open) {
-        void loadKitchenMonthlySummary(details, monthSummary, monthlyState, monthlyState.selectedMonthId);
+        renderKitchenMonthlySummaryContent(content, monthlyState, {
+          summary: monthlyState.summaries.get(monthlyState.selectedMonthId),
+          message: monthlyState.message || '',
+          loading: monthlyState.loading
+        });
       }
     }
   }
@@ -426,7 +431,9 @@ function renderKitchenMonthlySummary(monthSummary) {
 
 async function loadKitchenMonthlySummary(details, monthSummary, monthlyState, requestedMonthId = null) {
   const content = details.querySelector('[data-kitchen-monthly-summary-content]');
-  if (!content || details.dataset.loading === 'true') return;
+  if (!content || monthlyState.loading) return;
+  monthlyState.loading = true;
+  monthlyState.message = t('kitchen.monthly.loading');
   details.dataset.loading = 'true';
   if (monthlyState.latestMonthId === null) {
     content.textContent = t('kitchen.monthly.loading');
@@ -445,6 +452,9 @@ async function loadKitchenMonthlySummary(details, monthSummary, monthlyState, re
         monthlyState.latestMonthId = summary.monthId;
         monthlyState.earliestMonthId = summary.earliestMonthId || summary.monthId;
         monthlyState.latestSummary = summary;
+        // Conserva solo mesi consolidati; un mese incompleto può essere recuperato.
+        monthlyState.summaries = new Map([...monthlyState.summaries]
+          .filter(([, cached]) => cached.finalized === true));
         monthlyState.summaries.set(summary.monthId, summary);
         const preferredMonthId = requestedMonthId || monthlyState.selectedMonthId;
         monthlyState.selectedMonthId = preferredMonthId
@@ -472,23 +482,27 @@ async function loadKitchenMonthlySummary(details, monthSummary, monthlyState, re
       }
     }
 
-    if (!details.isConnected || !details.open) return;
     if (!summary) {
-      renderKitchenMonthlySummaryContent(content, monthlyState, {
-        message: t(monthlyState.latestMonthId === null
+      monthlyState.message = t(monthlyState.latestMonthId === null
           ? 'kitchen.monthly.firstAvailable'
-          : 'kitchen.monthly.notReady')
-      });
+          : 'kitchen.monthly.notReady');
       return;
     }
-    renderKitchenMonthlySummaryContent(content, monthlyState, { summary });
+    monthlyState.message = '';
   } catch {
-    if (!details.isConnected || !details.open) return;
-    renderKitchenMonthlySummaryContent(content, monthlyState, {
-      message: t('kitchen.monthly.unavailable')
-    });
+    monthlyState.message = t('kitchen.monthly.unavailable');
   } finally {
+    monthlyState.loading = false;
     delete details.dataset.loading;
+    // Un refresh operativo può aver sostituito il DOM mentre la lettura era in corso.
+    const currentDetails = monthlyState.details;
+    const currentContent = currentDetails?.querySelector('[data-kitchen-monthly-summary-content]');
+    if (currentDetails?.isConnected && currentDetails.open && currentContent) {
+      renderKitchenMonthlySummaryContent(currentContent, monthlyState, {
+        summary: monthlyState.summaries.get(monthlyState.selectedMonthId),
+        message: monthlyState.message
+      });
+    }
   }
 }
 
@@ -513,7 +527,7 @@ function renderKitchenMonthlySummaryContent(content, monthlyState, {
     || monthId >= monthlyState.latestMonthId;
   const result = message
     ? escapeHtml(message)
-    : `<dl>
+    : `${renderKitchenMonthlyProgress(summary)}<dl>
         ${renderKitchenMonthlyCount('breakfast', summary.counts.breakfast)}
         ${renderKitchenMonthlyCount('lunch', summary.counts.lunch)}
         ${renderKitchenMonthlyCount('dinner', summary.counts.dinner)}
@@ -566,6 +580,15 @@ function kitchenMonthEndDateId(monthId) {
 function renderKitchenMonthlyCount(mealTypeId, count) {
   const label = t(`meal.type.${mealTypeId}`);
   return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(count)}</dd></div>`;
+}
+
+function renderKitchenMonthlyProgress(summary) {
+  let label;
+  if (summary.finalized) label = t('kitchen.monthly.finalized');
+  else if (!summary.closedThrough) label = t('kitchen.monthly.noClosedDays');
+  else if (summary.closedThrough === summary.periodEnd) label = t('kitchen.monthly.incomplete');
+  else label = t('kitchen.monthly.progress', { date: formatDate(summary.closedThrough) });
+  return `<p class="kitchen-monthly-progress">${escapeHtml(label)}</p>`;
 }
 
 function renderContactHint(column, showContactHint = true) {
