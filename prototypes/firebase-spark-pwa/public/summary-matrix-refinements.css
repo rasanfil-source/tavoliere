@@ -1722,7 +1722,7 @@ html[data-interface-family="cool"] [data-kitchen-panel] .kitchen-date {
 .diet-code-badge {
   display: inline-flex;
   min-width: 2.25em;
-  min-height: 1.7em;
+  min-height: 1.55em;
   box-sizing: border-box;
   align-items: center;
   justify-content: center;
