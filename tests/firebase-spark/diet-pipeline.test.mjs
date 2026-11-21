@@ -31,14 +31,15 @@ test('la dieta temporanea sostituisce quella abituale in tutta la catena cucina 
   assert.deepEqual(rawMeals[0].dietParticipants[0].dietTags, ['1'], 'La dieta originale non deve essere mutata');
 });
 
-test('riepilogo e cucina conservano la dieta prenotata dopo una modifica anagrafica', () => {
+test('riepilogo e cucina conservano la dieta prenotata nei giorni precedenti alla modifica anagrafica', () => {
   const current = { ...participant, dietTags: ['2'] };
+  const todayId = '2030-01-03';
   const rule = { participantId: participant.participantId, status: 'ACTIVE', mealTypeIds: ['lunch'],
-    startsOn: '2020-01-01', endsOn: null, dietTags: ['2'] };
+    startsOn: '2020-01-01', endsOn: null, dietTags: ['2'], dietHistory: [{ startsOn: todayId, dietTags: ['2'] }] };
   for (const bookedDiet of ['1', 'STANDARD']) {
-    const override = { participantId: participant.participantId, mealTypeId: 'lunch', effect: 'PRESENT', dietTags: [bookedDiet] };
-    const summary = buildParticipantMealSummary({ mealTypeId: 'lunch' }, dateId, [current], [rule], [override]);
-    const kitchen = countEffectiveReservations(new Map([[participant.participantId, [rule]]]), [override], 'lunch', dateId);
+    const override = { participantId: participant.participantId, mealDate: dateId, mealTypeId: 'lunch', effect: 'PRESENT', dietTags: [bookedDiet] };
+    const summary = buildParticipantMealSummary({ mealTypeId: 'lunch' }, dateId, [current], [rule], [override], undefined, todayId);
+    const kitchen = countEffectiveReservations(new Map([[participant.participantId, [rule]]]), [override], 'lunch', dateId, todayId);
     assert.deepEqual(summary.present[0].dietTags, [bookedDiet]);
     assert.deepEqual(summary.present[0].dietTags, kitchen.participants[0].dietTags);
   }

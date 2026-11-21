@@ -1,7 +1,7 @@
 export const PRESENT = 'PRESENT';
 export const ABSENT = 'ABSENT';
 
-import { normalizeDietTags } from './diet-utils.mjs?v=20261014b';
+import { normalizeDietHistory, normalizeDietTags } from './diet-utils.mjs?v=20261014b';
 
 const VALID_EFFECTS = new Set([PRESENT, ABSENT]);
 
@@ -21,7 +21,17 @@ export function findApplicableRule(rules, participantId, mealTypeId, mealDate) {
   )) || null;
 }
 
-export function resolveEffectiveDietTags(rule, override) {
+export function resolveEffectiveDietTags(rule, override, { mealDate = override?.mealDate, todayId } = {}) {
+  // Oggi e in futuro la dieta anagrafica è autorevole anche per le regole
+  // aggiornate da versioni dell'app precedenti allo storico diete.
+  if (todayId && mealDate >= todayId && Array.isArray(rule?.dietTags) && rule.dietTags.length > 0) {
+    return normalizeDietTags(rule.dietTags);
+  }
+  // Le modifiche anagrafiche valgono dalla loro data, anche se il pasto era
+  // già prenotato. Lo storico mantiene questa scelta anche dopo mezzanotte.
+  const datedDiet = normalizeDietHistory(rule?.dietHistory).reverse()
+    .find((entry) => entry.startsOn <= mealDate);
+  if (datedDiet) return datedDiet.dietTags;
   if (Array.isArray(override?.dietTags) && override.dietTags.length > 0) {
     return normalizeDietTags(override.dietTags);
   }

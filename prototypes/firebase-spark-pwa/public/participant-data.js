@@ -1321,7 +1321,7 @@ async function getOwnOverrides(participantId, startDateId, endDateId, requireSer
   }
 }
 
-function buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, rulesByParticipant = groupRulesByParticipant(rules)) {
+function buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, rulesByParticipant = groupRulesByParticipant(rules), todayId) {
   const overrideByParticipant = new Map(overrides
     .filter((override) => override.mealTypeId === meal.mealTypeId)
     .map((override) => [override.participantId, override]));
@@ -1343,7 +1343,8 @@ function buildParticipantMealSummary(meal, mealDate, participants, rules, overri
         rulesByParticipant.get(participant.participantId) || [],
         participant.participantId, meal.mealTypeId, mealDate
       ) || participant,
-      overrideByParticipant.get(participant.participantId)
+      overrideByParticipant.get(participant.participantId),
+      { mealDate, todayId }
     )
   }));
   const present = reservationParticipants
@@ -1371,7 +1372,7 @@ export async function loadParticipantDaySummaries(date = new Date(), options = {
   ]);
   const rulesByParticipant = groupRulesByParticipant(rules);
   return mealTypes.map((meal) => (
-    buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, rulesByParticipant)
+    buildParticipantMealSummary(meal, mealDate, participants, rules, overrides, rulesByParticipant, options.todayId)
   ));
 }
 

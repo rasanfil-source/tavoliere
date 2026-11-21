@@ -4362,7 +4362,8 @@ async function loadKitchenDayPayload(date, { source, staticVersion, onLateUpdate
     loadKitchenCounts(date, {
       forceStaticRefresh: forceRefresh,
       sessionReady: true,
-      staticVersion
+      staticVersion,
+      todayId: formatDateId(getCenterToday())
     }),
     loadDailyHealth(date, { forceRefresh })
   ]);
@@ -4419,7 +4420,8 @@ async function loadSummaryDayPayload(date, {
     loadParticipantDaySummaries(date, {
       forceStaticRefresh: forceRefresh,
       staticVersion,
-      includeContacts
+      includeContacts,
+      todayId: formatDateId(getCenterToday())
     }),
     loadDailyHealth(date, { forceRefresh })
   ]);
@@ -9875,30 +9877,35 @@ function renderParticipantContact(participant, suffix = '') {
 }
 
 function applyDailyDietsToSummary(meals, dietAssignments) {
-  const dietByParticipant = new Map((dietAssignments || []).map((assignment) => (
-    [assignment.participantId, assignment.dietTag]
-  )));
-  const applyDiet = (participant) => {
+  return (meals || []).map((meal) => {
+    const applyDiet = getDailyDietForMeal(dietAssignments, meal.mealTypeId);
+    return {
+      ...meal,
+      present: (meal.present || []).map(applyDiet),
+      absent: (meal.absent || []).map(applyDiet)
+    };
+  });
+}
+
+function getDailyDietForMeal(dietAssignments, mealTypeId) {
+  const dietByParticipant = new Map();
+  for (const assignment of dietAssignments || []) {
+    if (assignment.status === 'REMOVED') continue;
+    const mealTypeIds = assignment.mealTypeIds;
+    if (Array.isArray(mealTypeIds) && mealTypeIds.length && !mealTypeIds.includes(mealTypeId)) continue;
+    dietByParticipant.set(assignment.participantId, assignment.dietTag);
+  }
+  return (participant) => {
     const dietTag = dietByParticipant.get(participant.participantId);
     return dietTag ? { ...participant, dietTags: [dietTag] } : participant;
   };
-  return (meals || []).map((meal) => ({
-    ...meal,
-    present: (meal.present || []).map(applyDiet),
-    absent: (meal.absent || []).map(applyDiet)
-  }));
 }
 
 function applyDailyDietsToKitchenMeals(meals, dietAssignments) {
-  const dietByParticipant = new Map((dietAssignments || []).map((assignment) => (
-    [assignment.participantId, assignment.dietTag]
-  )));
   return (meals || []).map((meal) => {
     const counts = new Map();
-    const dietParticipants = (meal.dietParticipants || []).map((participant) => {
-      const temporaryDiet = dietByParticipant.get(participant.participantId);
-      return temporaryDiet ? { ...participant, dietTags: [temporaryDiet] } : participant;
-    });
+    const applyDiet = getDailyDietForMeal(dietAssignments, meal.key);
+    const dietParticipants = (meal.dietParticipants || []).map(applyDiet);
     dietParticipants.forEach((participant) => {
       const tags = participant.dietTags || ['STANDARD'];
       tags.filter((tag) => tag !== 'STANDARD').forEach((tag) => (

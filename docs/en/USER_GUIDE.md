@@ -104,6 +104,8 @@ Opening **Monthly summary** shows the current month's breakfast, lunch and dinne
 
 A base diet is `STANDARD` or a numeric code displayed as `D1`, `D2`, `D3`, etc. The administrator may attach a one- or two-word kitchen label. Summary and People show the code; Kitchen also shows the legend. A multiplier appears only above one (`D3 × 2`, never `D3 × 1`).
 
+Diet changes in a Person's profile apply from today in the centre's time zone, including meals already booked. Summary and Kitchen count the new code. Its label appears in the Kitchen legend. Earlier days retain their recorded diet. Temporary diets take precedence for their assigned day and meals.
+
 Mass management is never inherited from an administrative role. Administrator, deputy or resident must have the liturgical flag on their Person record.
 
 Reminders are local to the device and disabled by default. Once authorised, they warn ten minutes before an unbooked lunch or dinner closes. They can be disabled in Appearance or from the notification.

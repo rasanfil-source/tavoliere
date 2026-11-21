@@ -109,6 +109,8 @@ La sección Notas indica Para mañana si se selecciona mañana, o Para el seguid
 
 Las dietas se identifican con códigos `D1`–`D999`. El administrador puede asociar a cada código una etiqueta breve para la cocina, por ejemplo `D3 = sin lactosa`.
 
+Los cambios de dieta en la ficha de una persona se aplican desde hoy, según la zona horaria del centro, también a las comidas ya reservadas. Resumen y Cocina cuentan el nuevo código. Su etiqueta aparece en la leyenda de Cocina. Los días anteriores conservan la dieta registrada. La dieta ocasional prevalece para el día y las comidas asignados.
+
 En el resumen y en cocina:
 
 - una sola dieta se muestra como `D3`, sin `× 1`;

@@ -4,7 +4,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js';
 import { db, getCurrentUser } from './firebase-client.js?v=20261014b';
 import { getActiveCenterId } from './center-context.js?v=20261014b';
-import { formatDateId, getDateInTimeZone } from './date-utils.mjs?v=20261014b';
+import { formatDateId, getDateInTimeZone, serverNow } from './date-utils.mjs?v=20261014b';
+import { updateDietHistory } from './diet-utils.mjs?v=20261014b';
 import { normalizeKitchenDietLegend } from './diet-legend.mjs?v=20261014b';
 import { validateParticipantProfile } from './domain/participant-profile.mjs?v=20261014b';
 import { appendAuditEvent, AUDIT_ACTIONS } from './audit-log.js?v=20261014b';
@@ -75,6 +76,7 @@ export async function saveAdminParticipant(participantId, profile, { prepareOnly
     );
     const revision = nextRevision(currentRevision);
     const existingRule = ruleSnapshot?.exists() ? ruleSnapshot.data() : {};
+    const todayId = formatDateId(getDateInTimeZone(centerSettings.timezone, new Date(serverNow())));
 
     transaction.set(metadataRef, { centerId, updatedAt: serverTimestamp() }, { merge: true });
     const centerUpdate = {};
@@ -103,8 +105,9 @@ export async function saveAdminParticipant(participantId, profile, { prepareOnly
       participantId: resolvedId,
       groupId,
       dietTags,
+      dietHistory: updateDietHistory(existingRule.dietHistory, dietTags, todayId),
       mealTypeIds: existingRule.mealTypeIds || ['breakfast', 'lunch', 'dinner'],
-      startsOn: existingRule.startsOn || formatDateId(getDateInTimeZone(centerSettings.timezone)),
+      startsOn: existingRule.startsOn || todayId,
       endsOn: existingRule.endsOn ?? null,
       status,
       updatedAt: serverTimestamp()

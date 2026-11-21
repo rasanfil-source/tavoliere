@@ -348,9 +348,11 @@ function normalizeDietAssignments(value) {
   if (!Array.isArray(value)) return [];
   const seen = new Set();
   return value
+    .filter((assignment) => assignment?.status !== 'REMOVED')
     .map((assignment) => ({
       participantId: String(assignment?.participantId || '').trim(),
-      dietTag: normalizeDietCode(assignment?.dietTag)
+      dietTag: normalizeDietCode(assignment?.dietTag),
+      ...(Array.isArray(assignment?.mealTypeIds) ? { mealTypeIds: [...assignment.mealTypeIds] } : {})
     }))
     .filter((assignment) => (
       assignment.participantId

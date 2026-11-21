@@ -131,6 +131,8 @@ Aprendo **Riepilogo mensile** si leggono i totali di colazione, pranzo e cena de
 
 La dieta di base è `STANDARD` oppure un codice numerico mostrato come `D1`, `D2`, `D3` e così via. L’amministratore può associare al codice un’etichetta cucina di una o due parole. Riepilogo e anagrafica mostrano il codice; Cucina mostra anche la legenda. La molteplicità compare soltanto quando supera uno (`D3 × 2`, non `D3 × 1`).
 
+Le modifiche alla dieta nella scheda Persona valgono da oggi, secondo il fuso orario del centro, anche per i pasti già prenotati. Il nuovo codice entra nei conteggi di Riepilogo e Cucina. L’etichetta associata al codice compare nella legenda di Cucina. I giorni precedenti conservano la dieta allora registrata. La dieta occasionale prevale per il giorno e i pasti assegnati.
+
 La **Messa** è un incarico personale separato: amministratore, vice o residente possono gestirla soltanto se la relativa spunta è assegnata alla loro Persona.
 
 I **promemoria** sono locali al dispositivo e disattivati per impostazione predefinita. Se autorizzati, avvisano dieci minuti prima della chiusura di pranzo o cena non ancora prenotati, anche nella vista Riepilogo. Funzionano mentre l’app è aperta: con l’app sospesa o chiusa gli avvisi non sono garantiti, anche su iPhone. Si disattivano da Aspetto o dalla notifica.

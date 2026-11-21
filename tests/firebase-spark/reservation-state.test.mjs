@@ -90,14 +90,24 @@ test('un override senza regola non crea una presenza', () => {
   }), ABSENT);
 });
 
-test('la dieta fotografata nella prenotazione prevale sulla dieta anagrafica successiva', () => {
+test('la dieta fotografata nella prenotazione rimane valida per i giorni precedenti alla modifica', () => {
   assert.deepEqual(
     resolveEffectiveDietTags(
-      { dietTags: ['7'] },
-      { dietTags: ['STANDARD'] }
+      { dietTags: ['7'], dietHistory: [{ startsOn: mealDate, dietTags: ['7'] }] },
+      { dietTags: ['STANDARD'] },
+      { mealDate: '2026-08-06', todayId: mealDate }
     ),
     ['STANDARD']
   );
   assert.deepEqual(resolveEffectiveDietTags({ dietTags: ['7'] }, null), ['7']);
   assert.deepEqual(resolveEffectiveDietTags(null, null), ['STANDARD']);
+});
+
+test('la dieta corrente non viene nascosta da uno storico lasciato invariato da un client precedente', () => {
+  const rule = { dietTags: ['12'], dietHistory: [{ startsOn: '2026-08-01', dietTags: ['7'] }] };
+  const override = { dietTags: ['STANDARD'] };
+  for (const dateId of [mealDate, '2026-08-08']) {
+    assert.deepEqual(resolveEffectiveDietTags(rule, override, { mealDate: dateId, todayId: mealDate }), ['12']);
+  }
+  assert.deepEqual(resolveEffectiveDietTags(rule, override, { mealDate: '2026-08-06', todayId: mealDate }), ['7']);
 });

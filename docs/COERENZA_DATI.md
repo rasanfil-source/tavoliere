@@ -12,7 +12,7 @@ La revoca amministrativa usa la membership del centro. Il profilo globale privat
 
 I campi giornalieri assenti sono interpretati come vuoti. Le scritture parziali preservano i campi indipendenti degli altri operatori. L'elenco ammalati conserva separatamente il valore letto dal server e la selezione in modifica: la transazione applica aggiunte e rimozioni rispetto a quel riferimento.
 
-La dieta occasionale della giornata prevale sulla dieta registrata nella prenotazione, che a sua volta conserva il valore assegnato al momento del salvataggio. Cucina e Riepilogo usano lo stesso criterio e i dati del pasto della data richiesta. Gli ammalati senza prenotazione conservano l'indicazione della dieta senza aumentare i commensali.
+Le modifiche alla dieta anagrafica decorrono dal giorno corrente nel fuso orario del centro e si applicano anche ai pasti già prenotati. `dietHistory` conserva la data di decorrenza e i codici dieta di ogni variazione. Per i pasti precedenti alla prima variazione registrata si usa la dieta salvata nella prenotazione. Per le regole prive di storico, i pasti di oggi e futuri usano la dieta anagrafica corrente. La dieta occasionale prevale per il giorno e i pasti assegnati. Cucina e Riepilogo usano lo stesso criterio. Gli ammalati senza prenotazione conservano l'indicazione della dieta senza aumentare i commensali.
 
 Le scritture concorrenti della stessa prenotazione vengono riconciliate in transazione. Identità, data di creazione e dieta già registrata sono preservate; restano applicati permessi e scadenze. Le selezioni di giornata sono atomiche.
 

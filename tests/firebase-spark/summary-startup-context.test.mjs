@@ -113,6 +113,7 @@ test('summary requires health/diets but not accessory reads; late results update
   const h = functions(['startOptionalOperationalRead', 'loadSummaryDayPayload'], {
     OPTIONAL_OPERATIONAL_READ_TIMEOUT_MS: 4000,
     window: { setTimeout: () => 1, clearTimeout() {} }, formatDateId: () => '2026-11-02',
+    getCenterToday: () => new Date('2026-11-02T12:00:00'),
     loadDailyOperation: () => operation.promise, loadKitchenNote: () => note.promise,
     loadDailyHealth: () => health.promise, loadParticipantDaySummaries: async () => ['meal'],
     applyDailyDietsToSummary: (meals, diets) => { assert.deepEqual(diets, ['diet']); return meals; },

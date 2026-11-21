@@ -16,6 +16,26 @@ export function normalizeDietTags(dietTags) {
   return normalized.length > 0 ? normalized : ['STANDARD'];
 }
 
+export function normalizeDietHistory(value) {
+  const byDate = new Map();
+  (Array.isArray(value) ? value : []).forEach((entry) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(entry?.startsOn)
+        || !Array.isArray(entry.dietTags) || entry.dietTags.length === 0) return;
+    byDate.set(entry.startsOn, { startsOn: entry.startsOn, dietTags: normalizeDietTags(entry.dietTags) });
+  });
+  return [...byDate.values()].sort((left, right) => left.startsOn.localeCompare(right.startsOn));
+}
+
+export function updateDietHistory(history, dietTags, startsOn) {
+  const previous = normalizeDietHistory(history).filter((entry) => entry.startsOn < startsOn);
+  const tags = normalizeDietTags(dietTags);
+  const last = previous[previous.length - 1];
+  if (!last || JSON.stringify([...last.dietTags].sort()) !== JSON.stringify([...tags].sort())) {
+    previous.push({ startsOn, dietTags: tags });
+  }
+  return previous;
+}
+
 export function formatDietLabel(value, translate) {
   const normalized = normalizeDietCode(value);
   if (normalized !== 'STANDARD') return `D${normalized}`;
