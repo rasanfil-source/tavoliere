@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "release": "9192ba49625bff0d",
+  "release": "73a23c4eefef353c",
   "firebaseVersion": "12.17.0",
   "firestore": "full",
   "entry": "/assets/app-VDJN2JUJ.js",
@@ -1074,7 +1074,7 @@
     "/icons/happyduck-badge.png": "762307a286de4d970390a1ac5311386f945f349fbf0a1eb3762d17bdd4d645d2",
     "/icons/happyduck.png": "77138134e9beb5583c46d1db294f459d06c2561867578e9d99c8b0ee418b39c9",
     "/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "/index.html": "dd4db6275aad9466175902e87a38e0805ab61375e2139f5bc79df9e4bea1995d",
+    "/index.html": "c672f26c1613f21ab82ab1b4f4ca897db56d2cbefeb0cfd314a3b9b907289570",
     "/kitchen-data.js": "bc7cfceb4ae9312d3214eb3fe9f96333f3dd49806607547ec959ca378e77cde1",
     "/kitchen-monthly-summary.js": "281a602d1ba1f344d4a03d22b132880671da61858e4b2433f735a14d41f8f68b",
     "/kitchen-notes.js": "70c8440932ab3aa19cc60a29742ed48323e4d0a3b73bd1e6ced0f224161a097f",
@@ -1091,7 +1091,7 @@
     "/summary-matrix-model.js": "27680bd862b3b52fd120f7fc4a4850e0f07e4fa45a47e5435560c5235e5d13c7",
     "/summary-matrix-refinements.css": "01d2d8ed90a47e72c8255d84fd6430550ee5f5bbc9fbb56cbc7184c570083f12",
     "/summary-matrix-view.js": "f9d9f058322162908283c8b36da72afc06866dd27665896b197356059434ea5f",
-    "/sw.js": "2f2ad0424797391946a22cd31c8b9f46d2b82419c194b0a5743f9371b22f3e29"
+    "/sw.js": "40e74f3f216a6439ab982e2847287590242ea92728888643ed6593063b8f0f14"
   },
   "sources": {
     "prototypes/firebase-spark-pwa/public/access-links.js": "4ecb837ea25af027cf79382934be0effa23965ce707ed0199512832c7a994120",
@@ -1144,7 +1144,7 @@
     "prototypes/firebase-spark-pwa/public/icons/happyduck-badge.png": "762307a286de4d970390a1ac5311386f945f349fbf0a1eb3762d17bdd4d645d2",
     "prototypes/firebase-spark-pwa/public/icons/happyduck.png": "77138134e9beb5583c46d1db294f459d06c2561867578e9d99c8b0ee418b39c9",
     "prototypes/firebase-spark-pwa/public/icons/whatsapp.svg": "083bac30fd04e44e09d195d6588943831b142433e94b5c8f50d390baa2d74013",
-    "prototypes/firebase-spark-pwa/public/index.html": "4cad13ab04181757847c807c22e3a91cadd1c2b83d9ecf50c5e9800db7b02501",
+    "prototypes/firebase-spark-pwa/public/index.html": "283fe98c4900f5dd6dd3cd9e2bd11d1a2b2528e641fa88ef96fed9f59966b1e5",
     "prototypes/firebase-spark-pwa/public/kitchen-data.js": "b39262c4c6f143db5e2b35d84a7dfe43fe013dbc0f2d9a9e51fa1a7aa72d91fb",
     "prototypes/firebase-spark-pwa/public/kitchen-monthly-summary.js": "8cad599f903eaad8ee0961325ed4959291e644255bb94a496bcdd11f5b5c2d10",
     "prototypes/firebase-spark-pwa/public/kitchen-notes.js": "8d4996bb89628e64b2d78dafdcaf516066f5d6677996d694447aeb6eb8f4aac2",
